@@ -861,12 +861,16 @@ class HighlightingService:
             return None
 
         # Calculate actual resolution/width
-        if width is not None and page.width > 0:
-            # Calculate resolution from width
-            actual_resolution = (width / page.width) * 72
+        target_width = width  # may be None
+        base_resolution = resolution if resolution is not None else 150
+
+        if target_width is not None and page.width > 0:
+            # Resolution needed for exact pixel width
+            width_resolution = (target_width / page.width) * 72
+            # Never render below the base resolution — render high, resize after
+            actual_resolution = max(width_resolution, base_resolution)
         else:
-            # Use provided resolution or default
-            actual_resolution = resolution if resolution is not None else 150
+            actual_resolution = base_resolution
 
         scale_factor = actual_resolution / 72
 
@@ -953,6 +957,13 @@ class HighlightingService:
                         logger.debug(
                             f"Added legend with {len(spec_labels)} labels for spec {spec_index}."
                         )
+
+        # If we rendered at higher resolution than needed for the target width,
+        # resize down with LANCZOS for sharp output.
+        if target_width is not None and page_image.width != target_width:
+            aspect = page_image.height / page_image.width
+            target_height = int(target_width * aspect)
+            page_image = page_image.resize((target_width, target_height), Image.Resampling.LANCZOS)
 
         return page_image
 
