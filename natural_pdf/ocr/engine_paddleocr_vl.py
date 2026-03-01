@@ -123,7 +123,7 @@ class PaddleOCRVLEngine(OCREngine):
         return raw_results
 
     def _standardize_results(
-        self, raw_results: Any, min_confidence: float, detect_only: bool
+        self, raw_results: Any, min_confidence: float, detect_only: bool, **kwargs
     ) -> List[TextRegion]:
         """Convert PaddleOCR-VL block results to standardized TextRegion objects.
 

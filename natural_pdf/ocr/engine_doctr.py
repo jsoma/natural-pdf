@@ -308,7 +308,7 @@ class DoctrOCREngine(OCREngine):
             raise
 
     def _standardize_results(
-        self, raw_results: Any, min_confidence: float, detect_only: bool
+        self, raw_results: Any, min_confidence: float, detect_only: bool, **kwargs
     ) -> List[TextRegion]:
         """Convert doctr results to standardized TextRegion objects."""
         standardized_regions = []

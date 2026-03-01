@@ -36,7 +36,7 @@ class _FakeOCREngine(OCREngine):
             }
         ]
 
-    def _standardize_results(self, raw_results, min_confidence, detect_only):
+    def _standardize_results(self, raw_results, min_confidence, detect_only, **kwargs):
         regions = []
         for entry in raw_results:
             bbox = self._standardize_bbox(entry["bbox"])

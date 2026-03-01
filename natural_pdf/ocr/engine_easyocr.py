@@ -168,7 +168,7 @@ class EasyOCREngine(OCREngine):
             return self._model.readtext(image, **readtext_args)
 
     def _standardize_results(
-        self, raw_results: Any, min_confidence: float, detect_only: bool
+        self, raw_results: Any, min_confidence: float, detect_only: bool, **kwargs
     ) -> List[TextRegion]:
         """Convert EasyOCR results to standardized TextRegion objects."""
         standardized_regions: List[TextRegion] = []
