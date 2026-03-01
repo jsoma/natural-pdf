@@ -3220,17 +3220,12 @@ class ElementCollection(
         This is a convenience wrapper that simply iterates over the collection
         and calls ``el.apply_ocr(...)`` on each item.
 
-        Two modes are supported depending on the arguments provided:
-
-        1. **Built-in OCR engines** – pass parameters like ``engine='easyocr'``
-           or ``languages=['en']`` and each element delegates to the shared
-           engine provider.
-        2. **Custom function** – pass a *callable* via the ``function`` keyword
-           (alias ``ocr_function`` also recognised).  The callable will receive
-           the element/region and must return the recognised text (or ``None``).
-           Internally this is forwarded through the element's own
-           :py:meth:`apply_ocr` implementation, so the behaviour mirrors the
-           single-element API.
+        When ``engine="vlm"`` (or ``model=``/``client=`` is provided) and
+        **all** elements are existing OCR text elements, the collection
+        switches to **correction mode**: each element is rendered, sent to
+        the VLM for plain-text correction, and updated in-place — preserving
+        original bounding boxes.  This avoids the destructive
+        delete-and-recreate cycle that grounded VLM OCR uses on regions.
 
         Parameters
         ----------
@@ -3250,16 +3245,71 @@ class ElementCollection(
         if function is None and "ocr_function" in kwargs:
             function = kwargs.pop("ocr_function")
 
+        # VLM correction path: when VLM params are present and ALL elements
+        # are existing OCR text, correct in-place via correct_ocr() instead
+        # of converting each to a tiny region and running grounded VLM OCR.
+        engine = kwargs.get("engine")
+        is_vlm = (
+            (engine is not None and str(engine).lower() == "vlm")
+            or kwargs.get("model") is not None
+            or kwargs.get("client") is not None
+        )
+        if is_vlm and function is None and self._elements:
+            all_ocr = all(
+                isinstance(getattr(el, "source", None), str)
+                and getattr(el, "source", "").startswith("ocr")
+                and hasattr(el, "text")
+                for el in self._elements
+            )
+            if all_ocr:
+                return self._apply_vlm_ocr_correction(**kwargs)
+
         def _process(el):
+            target = el
             if not hasattr(el, "apply_ocr"):
-                raise TypeError(f"Element of type {type(el).__name__} does not support apply_ocr")
+                # Convert bare elements (e.g. detect-only text) to regions
+                if hasattr(el, "to_region"):
+                    target = el.to_region()
+                else:
+                    raise TypeError(
+                        f"Element of type {type(el).__name__} does not support apply_ocr"
+                    )
             if function is not None:
-                return el.apply_ocr(function=function, **kwargs)
-            return el.apply_ocr(**kwargs)
+                return target.apply_ocr(function=function, **kwargs)
+            return target.apply_ocr(**kwargs)
 
         # Use collection's apply helper for optional progress bar
         self.apply(_process, show_progress=show_progress)
         return self
+
+    def _apply_vlm_ocr_correction(self, **kwargs) -> "ElementCollection":
+        """Build a VLM correction callback and delegate to correct_ocr()."""
+        from natural_pdf.core.vlm_client import generate
+        from natural_pdf.core.vlm_prompts import build_ocr_prompt
+        from natural_pdf.utils.locks import pdf_render_lock
+
+        model = kwargs.get("model")
+        client = kwargs.get("client")
+        instructions = kwargs.get("instructions")
+        resolution = kwargs.get("resolution", 150)
+
+        prompt = instructions if instructions else build_ocr_prompt(grounding=False)
+
+        def _vlm_correct(element):
+            region = element.expand(2) if hasattr(element, "expand") else element.to_region()
+            with pdf_render_lock:
+                image = region.render(resolution=resolution, crop=True)
+            if image is None:
+                return None
+            try:
+                result = generate(image, prompt, model=model, client=client)
+            except Exception as exc:
+                logger.warning("VLM correction failed: %s", exc)
+                return None
+            new_text = result.strip() if result else None
+            return new_text if new_text and new_text != element.text else None
+
+        return self.correct_ocr(_vlm_correct)
 
     def detect_checkboxes(
         self, *args, show_progress: bool = False, **kwargs

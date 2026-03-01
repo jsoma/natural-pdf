@@ -11,6 +11,7 @@ from PIL import Image
 
 from natural_pdf.core.vlm_prompts import build_ocr_prompt, detect_model_family
 from natural_pdf.ocr.vlm_ocr import (
+    normalize_gemini_coordinates,
     normalize_qwen_coordinates,
     parse_grounding_response,
     scale_ocr_results,
@@ -231,6 +232,115 @@ class TestApplyOCRVLMPath:
         mock_client.chat.completions.create.assert_called_once()
         pdf.close()
 
+    def test_engine_vlm_routes_to_vlm_ocr(self):
+        """apply_ocr(engine='vlm', ...) should route to _apply_vlm_ocr."""
+        import natural_pdf
+
+        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        mock_client = MagicMock()
+        mock_response = json.dumps(
+            [{"bbox": [10, 20, 200, 45], "text": "Engine VLM", "confidence": 0.9}]
+        )
+        mock_client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=mock_response))]
+        )
+
+        page.apply_ocr(engine="vlm", model="test-model", client=mock_client)
+
+        mock_client.chat.completions.create.assert_called_once()
+        pdf.close()
+
+    def test_engine_vlm_without_client_raises(self):
+        """apply_ocr(engine='vlm') without model/client should raise ValueError."""
+        import natural_pdf
+
+        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        with pytest.raises(ValueError, match='engine="vlm"'):
+            page.apply_ocr(engine="vlm")
+
+        pdf.close()
+
+    def test_engine_vlm_uses_default_client(self):
+        """apply_ocr(engine='vlm') should work if a default client is set."""
+        import natural_pdf
+        from natural_pdf.core.vlm_client import set_default_client
+
+        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        mock_client = MagicMock()
+        mock_response = json.dumps(
+            [{"bbox": [10, 20, 200, 45], "text": "Default Client", "confidence": 0.9}]
+        )
+        mock_client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=mock_response))]
+        )
+
+        set_default_client(mock_client, model="test-default-model")
+
+        page.apply_ocr(engine="vlm")
+        mock_client.chat.completions.create.assert_called_once()
+        pdf.close()
+
+    def test_region_engine_vlm_routes_correctly(self):
+        """Region.apply_ocr(engine='vlm', ...) should route to _apply_vlm_ocr."""
+        import natural_pdf
+
+        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        mock_client = MagicMock()
+        mock_response = json.dumps(
+            [{"bbox": [5, 10, 100, 30], "text": "Region VLM", "confidence": 0.85}]
+        )
+        mock_client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=mock_response))]
+        )
+
+        region = page.create_region(50, 50, 300, 200)
+        region.apply_ocr(engine="vlm", model="test-model", client=mock_client)
+
+        mock_client.chat.completions.create.assert_called_once()
+        pdf.close()
+
+    def test_region_engine_vlm_without_client_raises(self):
+        """Region.apply_ocr(engine='vlm') without model/client should raise."""
+        import natural_pdf
+
+        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+        region = page.create_region(50, 50, 300, 200)
+
+        with pytest.raises(ValueError, match='engine="vlm"'):
+            region.apply_ocr(engine="vlm")
+
+        pdf.close()
+
+    def test_region_model_kwarg_routes_to_vlm(self):
+        """Region.apply_ocr(model=...) should route to VLM OCR."""
+        import natural_pdf
+
+        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        mock_client = MagicMock()
+        mock_response = json.dumps(
+            [{"bbox": [5, 10, 100, 30], "text": "Region Model", "confidence": 0.85}]
+        )
+        mock_client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=mock_response))]
+        )
+
+        region = page.create_region(50, 50, 300, 200)
+        region.apply_ocr(model="test-model", client=mock_client)
+
+        mock_client.chat.completions.create.assert_called_once()
+        pdf.close()
+
 
 # ---------------------------------------------------------------------------
 # detect_model_family
@@ -261,6 +371,15 @@ class TestDetectModelFamily:
         assert detect_model_family("QWEN3-VL-2B") == "qwen_vl"
         assert detect_model_family("GUTENOCR-3b") == "gutenocr"
 
+    def test_gemini_flash(self):
+        assert detect_model_family("gemini-2.5-flash") == "gemini"
+
+    def test_gemini_pro(self):
+        assert detect_model_family("gemini-2.5-pro") == "gemini"
+
+    def test_gemini_case_insensitive(self):
+        assert detect_model_family("GEMINI-2.0-FLASH") == "gemini"
+
 
 # ---------------------------------------------------------------------------
 # build_ocr_prompt with family
@@ -282,6 +401,12 @@ class TestBuildOCRPromptFamily:
         prompt = build_ocr_prompt(grounding=True, family="gutenocr")
         assert "TEXT2D" in prompt
 
+    def test_gemini_prompt_contains_box_2d(self):
+        prompt = build_ocr_prompt(grounding=True, family="gemini")
+        assert "box_2d" in prompt
+        assert "y_min, x_min, y_max, x_max" in prompt
+        assert "1000" in prompt
+
     def test_grounding_false_ignores_family(self):
         prompt_generic = build_ocr_prompt(grounding=False, family="generic")
         prompt_qwen = build_ocr_prompt(grounding=False, family="qwen_vl")
@@ -295,6 +420,18 @@ class TestBuildOCRPromptFamily:
 
 
 class TestParseGroundingResponseFamily:
+    def test_gemini_box_2d_parsed(self):
+        raw = json.dumps(
+            [
+                {"box_2d": [20, 100, 45, 500], "label": "Gemini Text"},
+            ]
+        )
+        results = parse_grounding_response(raw, family="gemini")
+        assert len(results) == 1
+        assert results[0]["bbox"] == [20.0, 100.0, 45.0, 500.0]
+        assert results[0]["text"] == "Gemini Text"
+        assert results[0]["confidence"] == 0.75  # gemini default
+
     def test_qwen_keys_parsed(self):
         raw = json.dumps(
             [
@@ -402,6 +539,41 @@ class TestNormalizeQwenCoordinates:
 
 
 # ---------------------------------------------------------------------------
+# normalize_gemini_coordinates (y,x → x,y swap + 0-1000 scaling)
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeGeminiCoordinates:
+    def test_full_page_coords(self):
+        # Gemini: [y_min, x_min, y_max, x_max] → should become [x0, y0, x1, y1]
+        results = [{"bbox": [0, 0, 1000, 1000], "text": "Full", "confidence": 0.9}]
+        scaled = normalize_gemini_coordinates(results, 800, 600)
+        assert scaled[0]["bbox"] == [0.0, 0.0, 800.0, 600.0]
+
+    def test_yx_swap(self):
+        # Gemini input: [y_min=200, x_min=100, y_max=400, x_max=500]
+        # Expected output: [x0=100/1000*800, y0=200/1000*600, x1=500/1000*800, y1=400/1000*600]
+        #                = [80.0, 120.0, 400.0, 240.0]
+        results = [{"bbox": [200, 100, 400, 500], "text": "Swapped", "confidence": 0.8}]
+        scaled = normalize_gemini_coordinates(results, 800, 600)
+        assert scaled[0]["bbox"] == [80.0, 120.0, 400.0, 240.0]
+
+    def test_clamped_values(self):
+        results = [{"bbox": [-50, -10, 1200, 1100], "text": "Clamped", "confidence": 0.7}]
+        scaled = normalize_gemini_coordinates(results, 800, 600)
+        assert scaled[0]["bbox"] == [0.0, 0.0, 800.0, 600.0]
+
+    def test_other_fields_preserved(self):
+        results = [
+            {"bbox": [0, 0, 1000, 1000], "text": "Keep", "confidence": 0.95, "extra": "data"}
+        ]
+        scaled = normalize_gemini_coordinates(results, 100, 100)
+        assert scaled[0]["text"] == "Keep"
+        assert scaled[0]["confidence"] == 0.95
+        assert scaled[0]["extra"] == "data"
+
+
+# ---------------------------------------------------------------------------
 # run_vlm_ocr with family detection (integration with mocks)
 # ---------------------------------------------------------------------------
 
@@ -490,6 +662,31 @@ class TestRunVLMOCRFamily:
         assert len(results) == 1
         # Full-page coords normalized: 1000/1000 * 800, 1000/1000 * 600
         assert results[0]["bbox"] == [0.0, 0.0, 800.0, 600.0]
+
+    def test_gemini_model_uses_gemini_prompt_and_swaps_yx(self):
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
+
+        host, img = self._make_mock_host()
+        # Gemini returns box_2d with [y_min, x_min, y_max, x_max]
+        gemini_response = json.dumps(
+            [
+                {"box_2d": [0, 0, 500, 500], "label": "Top-left"},
+            ]
+        )
+        client = self._make_mock_client(gemini_response)
+
+        results, size = run_vlm_ocr(host, model="gemini-2.5-flash", client=client)
+
+        # Should have called with Gemini prompt containing box_2d
+        call_args = client.chat.completions.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
+        assert "box_2d" in prompt_text
+        assert "y_min, x_min" in prompt_text
+
+        # Coordinates: [y_min=0, x_min=0, y_max=500, x_max=500]
+        # After swap+scale: x0=0, y0=0, x1=500/1000*800=400, y1=500/1000*600=300
+        assert len(results) == 1
+        assert results[0]["bbox"] == [0.0, 0.0, 400.0, 300.0]
 
     def test_generic_model_no_normalization(self):
         from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
@@ -602,3 +799,214 @@ class TestRunVLMOCRLanguages:
         call_args = client.chat.completions.create.call_args
         prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
         assert "The document is in" not in prompt_text
+
+
+# ---------------------------------------------------------------------------
+# instructions parameter
+# ---------------------------------------------------------------------------
+
+
+class TestRunVLMOCRInstructions:
+    def _make_mock_host(self):
+        host = MagicMock()
+        img = Image.new("RGB", (800, 600), "white")
+        host.render.return_value = img
+        return host, img
+
+    def _make_mock_client(self, response_json):
+        client = MagicMock()
+        client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=response_json))]
+        )
+        return client
+
+    def test_instructions_appended_to_prompt(self):
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
+
+        host, _ = self._make_mock_host()
+        response = json.dumps([{"bbox": [10, 20, 200, 45], "text": "Test", "confidence": 0.9}])
+        client = self._make_mock_client(response)
+
+        run_vlm_ocr(
+            host,
+            model="some-model",
+            client=client,
+            instructions="Focus on handwritten text only.",
+        )
+
+        call_args = client.chat.completions.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
+        assert "Focus on handwritten text only." in prompt_text
+        # The base prompt should still be there
+        assert "bbox" in prompt_text or "text" in prompt_text
+
+    def test_instructions_ignored_when_prompt_set(self):
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
+
+        host, _ = self._make_mock_host()
+        response = json.dumps([{"bbox": [10, 20, 200, 45], "text": "Test", "confidence": 0.9}])
+        client = self._make_mock_client(response)
+
+        run_vlm_ocr(
+            host,
+            model="some-model",
+            client=client,
+            prompt="My full custom prompt",
+            instructions="This should be ignored",
+        )
+
+        call_args = client.chat.completions.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
+        assert prompt_text == "My full custom prompt"
+        assert "This should be ignored" not in prompt_text
+
+
+# ---------------------------------------------------------------------------
+# ElementCollection VLM correction mode
+# ---------------------------------------------------------------------------
+
+
+class TestElementCollectionVLMCorrection:
+    """When apply_ocr(engine='vlm') is called on a collection of existing OCR
+    elements, it should correct text in-place rather than deleting elements
+    and running grounded VLM OCR on tiny regions."""
+
+    def _make_mock_client(self, response_text):
+        client = MagicMock()
+        client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=response_text))]
+        )
+        return client
+
+    def test_vlm_correction_updates_text_in_place(self):
+        """OCR elements should have their text updated, not be deleted."""
+        import natural_pdf
+
+        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        page.apply_ocr(engine="easyocr")
+        ocr_elements = page.find_all("text[source=ocr]")
+        if not ocr_elements:
+            pdf.close()
+            pytest.skip("No OCR elements created — cannot test correction")
+
+        original_count = len(ocr_elements)
+
+        mock_client = self._make_mock_client("Corrected Text")
+
+        ocr_elements.apply_ocr(
+            engine="vlm",
+            model="gemini-2.5-flash",
+            client=mock_client,
+            instructions="Return corrected text.",
+        )
+
+        # Elements should still exist (not deleted)
+        remaining = page.find_all("text[source=ocr]")
+        assert len(remaining) >= original_count
+
+        # One API call per OCR element
+        assert mock_client.chat.completions.create.call_count == original_count
+
+        # First element's text should be updated
+        assert ocr_elements[0].text == "Corrected Text"
+        assert ocr_elements[0].source == "ocr"
+
+        pdf.close()
+
+    def test_vlm_correction_uses_instructions_as_prompt(self):
+        """User instructions should be used as the prompt, not the grounding prompt."""
+        import natural_pdf
+
+        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        page.apply_ocr(engine="easyocr")
+        ocr_elements = page.find_all("text[source=ocr]")
+        if not ocr_elements:
+            pdf.close()
+            pytest.skip("No OCR elements created")
+
+        mock_client = self._make_mock_client("Fixed")
+
+        ocr_elements.apply_ocr(
+            engine="vlm",
+            model="gemini-2.5-flash",
+            client=mock_client,
+            instructions="Return only the exact text.",
+        )
+
+        call_args = mock_client.chat.completions.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
+        assert prompt_text == "Return only the exact text."
+        assert "bbox" not in prompt_text
+        assert "JSON" not in prompt_text
+
+        pdf.close()
+
+    def test_non_ocr_elements_use_grounded_path(self):
+        """Non-OCR elements should still use the standard grounded VLM OCR path."""
+        import natural_pdf
+
+        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        # Create a region (not an OCR element)
+        region = page.create_region(50, 50, 300, 200)
+
+        mock_client = MagicMock()
+        grounded_response = json.dumps(
+            [{"bbox": [10, 20, 200, 45], "text": "Grounded", "confidence": 0.9}]
+        )
+        mock_client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=grounded_response))]
+        )
+
+        # Calling apply_ocr on a region should use the grounded path
+        region.apply_ocr(engine="vlm", model="gemini-2.5-flash", client=mock_client)
+
+        # The prompt should contain grounding instructions
+        call_args = mock_client.chat.completions.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
+        assert "box_2d" in prompt_text  # Gemini grounding prompt
+
+        pdf.close()
+
+
+# ---------------------------------------------------------------------------
+# Region._apply_vlm_ocr transactional replace
+# ---------------------------------------------------------------------------
+
+
+class TestRegionVLMOCRTransactional:
+    """Region._apply_vlm_ocr should not delete existing OCR elements when
+    the VLM returns no parseable results."""
+
+    def test_no_deletion_on_empty_results(self):
+        """If VLM returns unparseable text, original OCR elements survive."""
+        import natural_pdf
+
+        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        page.apply_ocr(engine="easyocr")
+        before_count = len(page.find_all("text[source=ocr]"))
+        if before_count == 0:
+            pdf.close()
+            pytest.skip("No OCR elements created")
+
+        # Mock client that returns plain text (not JSON) — simulates the bug
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="Just plain text, no JSON"))]
+        )
+
+        region = page.create_region(0, 0, float(page.width), float(page.height))
+        region._apply_vlm_ocr(model="some-model", client=mock_client, replace=True)
+
+        # Original OCR elements should still be there
+        after_count = len(page.find_all("text[source=ocr]"))
+        assert after_count == before_count
+
+        pdf.close()
