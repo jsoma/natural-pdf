@@ -72,7 +72,8 @@ Natural PDF supports multiple OCR engines:
 | `easyocr` | Good starting point. Supports 80+ languages. | `pip install easyocr` |
 | `surya` | Handles multi-language and dense layouts. | `pip install "surya-ocr<0.15"` |
 | `paddle` | Best CJK (Chinese/Japanese/Korean) support. | `pip install paddlepaddle paddleocr` |
-| `paddlevl` | VLM-based — understands charts and complex layouts. | `pip install paddlepaddle paddleocr` |
+| `rapidocr` | PaddleOCR models via ONNX (~15MB). Easier install than full PaddlePaddle. | `pip install rapidocr` |
+| `paddlevl` | VLM-based — understands charts and complex layouts. | `pip install paddlepaddle paddleocr "paddlex[ocr]"` |
 | `doctr` | Smaller model footprint. | `pip install python-doctr` |
 
 ```python
@@ -134,19 +135,19 @@ for elem in all_text[:10]:
 page.find_all('text').show()
 ```
 
-### Multiple OCR Passes
+### Try a Different Engine or Resolution
 
-For difficult documents, try different engines:
+If results don't look right, try increasing resolution or switching engines. Re-applying OCR removes previous results automatically:
 
 ```python
-# First pass with EasyOCR
 page.apply_ocr(engine="easyocr")
-easyocr_text = page.extract_text()
+page.extract_text()  # check the output
 
-# If results are poor, try Surya
-if len(easyocr_text) < 100:  # Suspiciously short
-    page.clear_ocr()  # Remove previous results
-    page.apply_ocr(engine="surya")
+# Not good enough — try higher resolution
+page.apply_ocr(engine="easyocr", resolution=300)
+
+# Still not great — try a different engine
+page.apply_ocr(engine="surya")
 ```
 
 ## Extracting Form Fields
@@ -259,7 +260,7 @@ def process_scanned_batch(pdf_dir, ocr_engine="easyocr"):
 ### "OCR returns garbage text"
 
 - Increase resolution: `apply_ocr(resolution=300)`
-- Try a different engine: `apply_ocr(engine="surya")`
+- Try a different engine: `apply_ocr(engine="surya")` or `apply_ocr(engine="rapidocr")`
 - Check the scan quality - very poor scans may need preprocessing
 
 ### "Can't find labels after OCR"

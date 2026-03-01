@@ -74,29 +74,17 @@ The general workflow is: try different layout analyzers to locate your table, th
 
 ## Using Guides for Borderless Tables
 
-When tables lack visible borders, use the `Guides` class to define structure based on content:
+When tables lack visible borders, use guides to define column and row structure manually. See the [Guides cookbook](../cookbook/guides.md) for full details.
 
 ```python
 from natural_pdf import PDF
-from natural_pdf.analyzers.guides import Guides
 
 pdf = PDF("document.pdf")
 page = pdf.pages[0]
 
-# Create guides for the page
-guides = Guides(page)
-
-# Define columns from header text positions
-headers = (
-    page
-    .find(text="NUMBER")
-    .right(include_source=True)
-    .expand(top=3, bottom=3)
-    .find_all('text')
-)
-guides.vertical.from_content(headers, align='left')
-
-# Define rows from zebra stripes or content patterns
+# Create guides and detect structure
+guides = page.guides()
+guides.vertical.from_content(['Number', 'Date', 'Location', 'Description'])
 guides.horizontal.from_stripes()
 
 # Preview the grid
@@ -106,42 +94,24 @@ guides.show()
 df = guides.extract_table(include_outer_boundaries=True).to_df()
 ```
 
-## Guides from Content Patterns
-
 For tables where rows start with a specific pattern:
 
 ```python
-from natural_pdf.analyzers.guides import Guides
-
-guides = Guides(page)
-
-# Define columns from header names
-columns = ['Number', 'Date', 'Location', 'Description', 'Disposition']
-guides.vertical.from_content(columns, outer="last")
-
-# Define rows based on content that starts each row
+guides = page.guides()
+guides.vertical.from_content(['Number', 'Date', 'Location', 'Description', 'Disposition'], outer="last")
 guides.horizontal.from_content(
     lambda p: p.find_all('text:starts-with(NF-)')
 )
 
-# Extract with first row as header
-table_result = guides.extract_table(header="first")
-df = table_result.to_df()
+df = guides.extract_table(header="first").to_df()
 ```
 
-## Multi-Page Table Extraction
-
-Extract tables that span multiple pages:
+For multi-page tables, create guides on one page and pass all pages to `extract_table()`:
 
 ```python
-# Find headers on first page
-headers = page.find_all('text[y0=min()]')
+guides = page.guides()
+guides.vertical.from_headers(page.find_all('text:bold[size>=11]'))
 
-# Create guides from headers
-guides = Guides(page)
-guides.vertical.from_headers(headers)
-
-# Extract across all pages
 df = guides.extract_table(pdf.pages).to_df()
 print(f"Found {len(df)} rows across all pages")
 ```
@@ -175,7 +145,19 @@ df['Amount'] = df['Amount'].str.replace('$', '').str.replace(',', '').astype(flo
 df['Percentage'] = df['Percentage'].str.rstrip('%').astype(float) / 100
 ```
 
+## Tables with Checkboxes
+
+If a table contains checkboxes, run `detect_checkboxes()` before extracting. Each detected checkbox gets `alt_text` (`[CHECKED]` or `[UNCHECKED]`) that flows into `extract_text()`, so checkbox cells appear in the extracted table instead of being empty.
+
+```python
+page.detect_checkboxes()
+df = guides.extract_table().to_df()
+```
+
+See the [Guides cookbook](../cookbook/guides.md#tables-with-checkboxes) for a full example. Requires `pip install onnxruntime huggingface_hub`.
+
 ## Related Tutorials
 
+- **[Guides](../cookbook/guides.md)** – Define table structure manually for borderless or complex tables
 - **[Spatial Navigation](08-spatial-navigation.md)** – Use `.below()` to extract just the table region
 - **[Layout Analysis](07-layout-analysis.md)** – Detect tables automatically with AI models

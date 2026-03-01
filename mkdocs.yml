@@ -70,6 +70,7 @@ nav:
   - Cookbook:
     - One Page = One Row: cookbook/one-page-one-row.md
     - Label-Value Extraction: cookbook/label-value-extraction.md
+    - Guides: cookbook/guides.md
     - Messy Tables: cookbook/messy-tables.md
     - Multi-Column Layouts: cookbook/multi-column-layouts.md
     - OCR Then Navigate: cookbook/ocr-then-navigate.md

@@ -152,30 +152,19 @@ data = page.extract_table(table_settings=table_settings)
 
 ### Use Guides for Complex Tables
 
-When automatic detection fails, manually define table structure:
+When automatic detection fails, manually define table structure with [guides](guides.md):
 
 ```python
-from natural_pdf.analyzers import Guides
-
-# Create guides from content
 region = page.find('text:contains("Column Header")').below()
-guides = Guides(region)
 
-# Define columns based on header text
+guides = region.guides()
 guides.vertical.from_content(
-    markers=['Name', 'Date', 'Amount', 'Status'],
+    ['Name', 'Date', 'Amount', 'Status'],
     align='between'
 )
-
-# Snap to whitespace for clean alignment
 guides.vertical.snap_to_whitespace()
 
-# Build the table structure
-guides.build_grid(source='manual')
-
-# Extract using the manual structure
-table = page.find('table[source=manual]')
-data = table.extract_table()
+df = guides.extract_table().to_df()
 ```
 
 ---

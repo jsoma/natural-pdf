@@ -66,7 +66,7 @@ page.apply_ocr(engine='paddle', languages=['en'])
 print(f"Found {len(page.find_all('text[source=ocr]'))} elements after English OCR.")
 
 # Apply OCR using PaddleOCR for Chinese
-page.apply_ocr(engine='paddle', languages=['ch'])
+page.apply_ocr(engine='paddle', languages=['zh'])
 print(f"Found {len(page.find_all('text[source=ocr]'))} elements after Chinese OCR.")
 
 text_with_ocr = page.extract_text()
@@ -98,7 +98,7 @@ npdf.options.ocr.min_confidence = 0.7      # Default confidence threshold
 
 # Now all OCR calls use these defaults
 pdf = npdf.PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf")
-pdf.pages[0].apply_ocr()  # Uses: engine='surya', languages=['en', 'es'], min_confidence=0.7
+pdf.pages[0].apply_ocr()  # Uses: engine='surya', min_confidence=0.7
 
 # You can still override defaults for specific calls
 pdf.pages[0].apply_ocr(engine='easyocr', languages=['fr'])  # Override engine and languages
@@ -111,7 +111,7 @@ This is especially useful when processing many documents with the same OCR setti
 For more control, import and use the specific `Options` class for your chosen engine within the `apply_ocr` call.
 
 ```python
-from natural_pdf.ocr import PaddleOCROptions, EasyOCROptions, SuryaOCROptions
+from natural_pdf.ocr import PaddleOCROptions, EasyOCROptions, SuryaOCROptions, RapidOCROptions
 
 # Re-apply OCR using EasyOCR with specific options
 easy_opts = EasyOCROptions(
@@ -123,8 +123,17 @@ paddle_opts = PaddleOCROptions()
 page.apply_ocr(engine='paddle', languages=['en'], options=paddle_opts)
 
 surya_opts = SuryaOCROptions()
-page.apply_ocr(engine='surya', languages=['en'], min_confidence=0.5, detect_only=True, options=surya_opts)
+page.apply_ocr(engine='surya', languages=['en'], min_confidence=0.5, options=surya_opts)
 ```
+
+RapidOCR is a lightweight alternative that uses ONNX-converted PaddleOCR models (~15MB vs ~500MB):
+
+```python
+# Lightweight OCR — no heavy framework needed
+page.apply_ocr(engine='rapidocr', languages=['en'])
+```
+
+**Install:** `pip install rapidocr`.
 
 ## PaddleOCR-VL (VLM-Based OCR)
 
@@ -144,7 +153,75 @@ vl_opts = PaddleOCRVLOptions(
 page.apply_ocr(engine='paddlevl', options=vl_opts)
 ```
 
-**Install:** `pip install paddlepaddle paddleocr` (same as regular PaddleOCR).
+**Install:** `pip install paddlepaddle paddleocr "paddlex[ocr]"`.
+
+## VLM-Based OCR
+
+You can use any OpenAI-compatible vision model for OCR. Pass `engine="vlm"` with a `model` and `client`. The model returns grounded bounding boxes with text — best results come from Qwen-VL family models.
+
+```python
+from openai import OpenAI
+
+client = OpenAI()  # or any OpenAI-compatible client
+
+page.apply_ocr(
+    engine="vlm",
+    model="Qwen/Qwen3-VL-2B-Instruct",
+    client=client,
+)
+```
+
+Gemini models also work:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="your-api-key",
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+)
+
+page.apply_ocr(engine="vlm", model="gemini-2.5-flash", client=client)
+```
+
+Use `instructions` to append hints to the auto-generated prompt (e.g., expected language or document type):
+
+```python
+page.apply_ocr(
+    engine="vlm",
+    model="gemini-2.5-flash",
+    client=client,
+    instructions="The text is from a Greek legal document."
+)
+```
+
+### Detect Then Correct with VLM
+
+A common pattern: use a fast engine to detect text locations, then use a VLM to correct the text per-element. This combines fast detection with high-quality recognition.
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="your-api-key",
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+)
+
+# Step 1: detect text bounding boxes (no recognition)
+page.apply_ocr(detect_only=True)
+
+# Step 2: correct each detected element with a VLM
+page.find_all('text').apply_ocr(
+    engine="vlm",
+    model="gemini-2.5-flash-lite",
+    client=client,
+    instructions="Return only the exact text visible. Fix OCR misspellings."
+)
+```
+
+When called on an `ElementCollection` of OCR elements with a VLM, each element is rendered individually and sent to the model for correction. The original bounding boxes are preserved — only the text is updated.
+
+The `detect_only=True` parameter runs detection without recognition. This is useful when you want a fast engine (EasyOCR, Surya) to find where text is, then a separate step to read it.
 
 ## Language Codes
 
