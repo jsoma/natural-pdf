@@ -184,12 +184,9 @@ class PaddleOCRVLOptions(BaseOCROptions):
 class SuryaOCROptions(BaseOCROptions):
     """Specific options for the Surya OCR engine."""
 
-    # Currently, Surya example shows languages passed at prediction time.
-
-    def __post_init__(self):
-        """Validate Surya OCR options."""
-        # Surya has minimal options - validation reserved for future expansion
-        pass
+    strip_math: bool = True
+    """Remove ``<math>…</math>`` tags and their content from OCR output.
+    HTML formatting tags (``<b>``, etc.) are always stripped."""
 
 
 # --- Doctr Specific Options ---

@@ -202,7 +202,9 @@ class OCREngine(ABC):
             raw_results = self._process_single_image(processed_img, detect_only, options)
 
             # Convert results to standardized format
-            text_regions = self._standardize_results(raw_results, effective_confidence, detect_only)
+            text_regions = self._standardize_results(
+                raw_results, effective_confidence, detect_only, options=options
+            )
 
             # Convert TextRegion objects to dictionaries for backward compatibility
             region_dicts = [region.to_dict() for region in text_regions]
@@ -240,7 +242,7 @@ class OCREngine(ABC):
 
     @abstractmethod
     def _standardize_results(
-        self, raw_results: Any, min_confidence: float, detect_only: bool
+        self, raw_results: Any, min_confidence: float, detect_only: bool, **kwargs
     ) -> List[TextRegion]:
         """Convert engine-specific results to standardized TextRegion objects."""
         raise NotImplementedError("Subclasses must implement this method")

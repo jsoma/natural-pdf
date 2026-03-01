@@ -1,6 +1,7 @@
 # ocr_engine_surya.py
 import importlib.util
 import logging
+import re
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Union
 
 from PIL import Image
@@ -139,10 +140,30 @@ class SuryaOCREngine(OCREngine):
         # Return the result as-is and handle the extraction in _standardize_results
         return results
 
+    _RE_MATH = re.compile(r"<math>.*?</math>", re.DOTALL)
+    _RE_BOLD = re.compile(r"</?b>")
+    _RE_MULTI_SPACE = re.compile(r"  +")
+
+    @classmethod
+    def _clean_text(cls, text: str, strip_math: bool = True) -> str:
+        """Strip Surya markup from OCR text.
+
+        ``<b>``/``</b>`` tags are always removed.
+        ``<math>…</math>`` blocks are removed when *strip_math* is True (the default).
+        """
+        if strip_math:
+            text = cls._RE_MATH.sub("", text)
+        text = cls._RE_BOLD.sub("", text)
+        text = cls._RE_MULTI_SPACE.sub(" ", text)
+        return text.strip()
+
     def _standardize_results(
-        self, raw_results: Any, min_confidence: float, detect_only: bool
+        self, raw_results: Any, min_confidence: float, detect_only: bool, **kwargs
     ) -> List[TextRegion]:
         """Convert Surya results to standardized TextRegion objects."""
+        opts = kwargs.get("options")
+        strip_math = getattr(opts, "strip_math", True)
+
         standardized_regions: List[TextRegion] = []
 
         raw_result: Any
@@ -184,9 +205,9 @@ class SuryaOCREngine(OCREngine):
             if detect_only:
                 standardized_regions.append(TextRegion(bbox, "", 0.0))
             else:
-                text = getattr(line, "text", "")
+                text = self._clean_text(getattr(line, "text", ""), strip_math=strip_math)
                 confidence = float(getattr(line, "confidence", 0.0))
-                if confidence >= min_confidence:
+                if confidence >= min_confidence and text:
                     standardized_regions.append(TextRegion(bbox, text, confidence))
 
         return standardized_regions
