@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 _FAMILY_DEFAULT_CONFIDENCE = {
     "qwen_vl": 0.75,
+    "gemini": 0.75,
+    "openai": 0.5,
     "gutenocr": 0.8,
     "generic": 0.5,
 }
@@ -48,6 +50,42 @@ def normalize_qwen_coordinates(
         y0 = max(0.0, min(float(bbox[1]), 1000.0)) / 1000.0 * image_height
         x1 = max(0.0, min(float(bbox[2]), 1000.0)) / 1000.0 * image_width
         y1 = max(0.0, min(float(bbox[3]), 1000.0)) / 1000.0 * image_height
+        scaled.append({**r, "bbox": [x0, y0, x1, y1]})
+    return scaled
+
+
+def normalize_gemini_coordinates(
+    results: List[Dict[str, Any]],
+    image_width: float,
+    image_height: float,
+) -> List[Dict[str, Any]]:
+    """Convert Gemini box_2d coordinates to image pixel coordinates.
+
+    Gemini uses ``[y_min, x_min, y_max, x_max]`` in 0-1000 normalized range.
+    This swaps the axes to ``[x_min, y_min, x_max, y_max]`` and scales to
+    image pixel coordinates.
+
+    Args:
+        results: OCR result dicts with ``bbox`` in Gemini's ``[y, x, y, x]`` order.
+        image_width: Width of the rendered image in pixels.
+        image_height: Height of the rendered image in pixels.
+
+    Returns:
+        New list with ``bbox`` values as ``[x0, y0, x1, y1]`` in pixel coordinates.
+    """
+    scaled = []
+    for r in results:
+        bbox = r["bbox"]
+        # Gemini order: [y_min, x_min, y_max, x_max] → swap to [x_min, y_min, x_max, y_max]
+        y0_norm = max(0.0, min(float(bbox[0]), 1000.0))
+        x0_norm = max(0.0, min(float(bbox[1]), 1000.0))
+        y1_norm = max(0.0, min(float(bbox[2]), 1000.0))
+        x1_norm = max(0.0, min(float(bbox[3]), 1000.0))
+
+        x0 = x0_norm / 1000.0 * image_width
+        y0 = y0_norm / 1000.0 * image_height
+        x1 = x1_norm / 1000.0 * image_width
+        y1 = y1_norm / 1000.0 * image_height
         scaled.append({**r, "bbox": [x0, y0, x1, y1]})
     return scaled
 
@@ -90,8 +128,9 @@ def _extract_item(item: dict, family: str) -> Optional[Dict[str, Any]]:
     default_conf = _FAMILY_DEFAULT_CONFIDENCE.get(family, 0.5)
 
     # Define key schemas in priority order based on family
-    if family == "qwen_vl":
+    if family in ("qwen_vl", "gemini"):
         schemas = [
+            ("box_2d", "label"),
             ("bbox_2d", "label"),
             ("bbox", "text"),
         ]
@@ -99,6 +138,7 @@ def _extract_item(item: dict, family: str) -> Optional[Dict[str, Any]]:
         schemas = [
             ("bbox", "text"),
             ("bbox_2d", "label"),
+            ("box_2d", "label"),
         ]
 
     bbox = None
@@ -256,6 +296,7 @@ def run_vlm_ocr(
     render_kwargs: Optional[Dict[str, Any]] = None,
     max_new_tokens: int = 4096,
     prompt: Optional[str] = None,
+    instructions: Optional[str] = None,
     languages: Optional[List[str]] = None,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
     """Run VLM-based OCR on a page/region and return scaled results.
@@ -268,6 +309,9 @@ def run_vlm_ocr(
         render_kwargs: Extra kwargs for ``host.render()``.
         max_new_tokens: Max tokens for VLM generation.
         prompt: Custom prompt (default uses the grounding prompt).
+            Overrides the auto-generated prompt entirely.
+        instructions: Additional instructions appended to the auto-generated
+            prompt (ignored when *prompt* is set).
         languages: Optional language codes for VLM hint (ignored when *prompt* is set).
 
     Returns:
@@ -292,12 +336,20 @@ def run_vlm_ocr(
             "Qwen-VL family model (e.g. Qwen/Qwen3-VL-2B-Instruct).",
             effective_model,
         )
+    elif family == "openai":
+        logger.info(
+            "VLM OCR: OpenAI models are not optimized for bounding-box "
+            "grounding. Coordinates may be imprecise. For accurate bbox "
+            "output, use a Qwen-VL model via OpenRouter.",
+        )
 
     # Use family-specific prompt unless the caller supplied a custom one
     if prompt is not None:
         effective_prompt = prompt
     else:
         effective_prompt = build_ocr_prompt(grounding=True, family=family, languages=languages)
+        if instructions:
+            effective_prompt = f"{effective_prompt}\n\n{instructions}"
 
     # Render page/region to image
     render_fn = getattr(host, "render", None)
@@ -319,10 +371,28 @@ def run_vlm_ocr(
         max_new_tokens=max_new_tokens,
     )
 
+    logger.info(
+        "VLM OCR: received %d-char response from %s (family=%s).",
+        len(raw_response),
+        effective_model,
+        family,
+    )
+    logger.debug("VLM OCR raw response (first 500 chars): %s", raw_response[:500])
+
     results = parse_grounding_response(raw_response, family=family)
 
-    # Convert Qwen-VL 0-1000 normalized coords to image pixel coords
-    if family == "qwen_vl":
+    if not results and raw_response.strip():
+        logger.warning(
+            "VLM OCR: model returned text but parser found 0 results. "
+            "The model may not support grounded/bbox output. "
+            "Raw response (first 300 chars): %s",
+            raw_response[:300],
+        )
+
+    # Convert normalized coords to image pixel coords
+    if family == "gemini":
+        results = normalize_gemini_coordinates(results, image.size[0], image.size[1])
+    elif family == "qwen_vl":
         results = normalize_qwen_coordinates(results, image.size[0], image.size[1])
 
     return results, image.size

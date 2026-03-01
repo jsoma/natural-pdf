@@ -92,7 +92,7 @@ def languages_to_hint(languages: Optional[List[str]]) -> str:
 def detect_model_family(model_name: str | None) -> str:
     """Detect the VLM model family from the model name string.
 
-    Returns ``"gutenocr"``, ``"qwen_vl"``, or ``"generic"``.
+    Returns ``"gutenocr"``, ``"qwen_vl"``, ``"gemini"``, or ``"generic"``.
     GutenOCR is checked first because it's built on Qwen2.5-VL and contains
     "qwen" in some paths.
     """
@@ -102,6 +102,10 @@ def detect_model_family(model_name: str | None) -> str:
         return "gutenocr"
     if re.search(r"(?i)qwen.*vl", model_name):
         return "qwen_vl"
+    if re.search(r"(?i)gemini", model_name):
+        return "gemini"
+    if re.search(r"(?i)(gpt-|o[134]-|openai)", model_name):
+        return "openai"
     return "generic"
 
 
@@ -133,6 +137,33 @@ QWEN_VL_OCR_PROMPT = (
     "Example:\n"
     '[{"bbox_2d": [10, 20, 500, 45], "label": "Hello World"}]\n\n'
     "Output ONLY the JSON array, no other text."
+)
+
+GEMINI_OCR_PROMPT = (
+    "Extract all visible text from this document image. "
+    "For each text segment, detect the 2D bounding box as box_2d using "
+    "normalized coordinates in 0-1000 range [y_min, x_min, y_max, x_max], "
+    "along with the text content as label.\n\n"
+    "Return the results as a JSON array of objects with keys: "
+    '"box_2d", "label".\n'
+    "Example:\n"
+    '[{"box_2d": [20, 10, 45, 500], "label": "Hello World"}]\n\n'
+    "Output ONLY the JSON array, no other text."
+)
+
+OPENAI_OCR_PROMPT = (
+    "Extract all visible text from this document image. "
+    "For each text segment, provide the bounding box coordinates as "
+    "[x_min, y_min, x_max, y_max] in pixel values relative to the image dimensions, "
+    "along with the text content and your confidence (0.0–1.0).\n\n"
+    "Return the results as a JSON array of objects with keys: "
+    '"bbox", "text", "confidence".\n'
+    "Example:\n"
+    "```json\n"
+    '[{"bbox": [10, 20, 200, 45], "text": "Hello World", "confidence": 0.95}]\n'
+    "```\n\n"
+    "IMPORTANT: Output ONLY a valid JSON array. No explanation, no markdown "
+    "headers, no extra text. Just the JSON array."
 )
 
 GUTENOCR_PROMPT = "Return a layout-sensitive TEXT2D representation of the image."
@@ -172,6 +203,10 @@ def build_ocr_prompt(
         return f"{hint} {base}" if hint else base
     if family == "qwen_vl":
         return f"{hint} {QWEN_VL_OCR_PROMPT}" if hint else QWEN_VL_OCR_PROMPT
+    if family == "gemini":
+        return f"{hint} {GEMINI_OCR_PROMPT}" if hint else GEMINI_OCR_PROMPT
+    if family == "openai":
+        return f"{hint} {OPENAI_OCR_PROMPT}" if hint else OPENAI_OCR_PROMPT
     if family == "gutenocr":
         return f"{hint} {GUTENOCR_PROMPT}" if hint else GUTENOCR_PROMPT
     return f"{hint} {OCR_GROUNDING_PROMPT}" if hint else OCR_GROUNDING_PROMPT

@@ -13,7 +13,7 @@ import base64
 import io
 import logging
 import threading
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from PIL import Image
 
@@ -191,6 +191,7 @@ def generate(
     model: Optional[str] = None,
     client: Optional[Any] = None,
     max_new_tokens: int = 4096,
+    response_format: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Run VLM inference and return the raw text response.
 
@@ -202,6 +203,8 @@ def generate(
             If ``None``, falls back to module-level defaults set via
             :func:`set_default_client`, then to local HF inference.
         max_new_tokens: Maximum tokens to generate.
+        response_format: Optional response format constraint for remote
+            clients, e.g. ``{"type": "json_object"}``.
 
     Returns:
         The model's text response as a plain string.
@@ -218,6 +221,7 @@ def generate(
             client=effective_client,
             model=effective_model,
             max_new_tokens=max_new_tokens,
+            response_format=response_format,
         )
 
     if effective_model is not None:
@@ -236,6 +240,7 @@ def _generate_remote(
     client: Any,
     model: Optional[str],
     max_new_tokens: int,
+    response_format: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Use an OpenAI-compatible client for inference."""
     if model is None:
@@ -246,27 +251,70 @@ def _generate_remote(
 
     data_uri = _encode_image_base64(image)
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": data_uri}},
-                    {"type": "text", "text": prompt},
-                ],
-            }
-        ],
-        max_tokens=max_new_tokens,
-    )
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": data_uri}},
+                {"type": "text", "text": prompt},
+            ],
+        }
+    ]
+
+    # OpenAI-compatible clients raise errors with status_code for bad
+    # request parameters (HTTP 400). We catch these to fall back on
+    # parameter incompatibilities (max_tokens vs max_completion_tokens,
+    # response_format support).
+    def _is_bad_request(exc: Exception) -> bool:
+        status = getattr(exc, "status_code", None) or getattr(exc, "status", None)
+        return status == 400
+
+    def _is_param_error(exc: Exception, param: str) -> bool:
+        """Check if a 400 error mentions a specific parameter."""
+        return _is_bad_request(exc) and param in str(exc)
+
+    def _call(*, use_response_format: bool = True, **overrides: Any) -> Any:
+        kwargs: Dict[str, Any] = {"model": model, "messages": messages}
+        kwargs.update(overrides)
+        if use_response_format and response_format is not None:
+            kwargs["response_format"] = response_format
+        return client.chat.completions.create(**kwargs)
+
+    # Try max_completion_tokens first (required by newer OpenAI models),
+    # then max_tokens, then max_tokens without response_format.
+    try:
+        response = _call(max_completion_tokens=max_new_tokens)
+    except Exception as exc:
+        if not _is_param_error(exc, "max_completion_tokens"):
+            raise
+        try:
+            response = _call(max_tokens=max_new_tokens)
+        except Exception as exc2:
+            if not _is_param_error(exc2, "response_format"):
+                raise
+            response = _call(use_response_format=False, max_tokens=max_new_tokens)
 
     # Validate response shape — some clients/models return None or empty choices
     if not getattr(response, "choices", None):
         raise RuntimeError(f"VLM remote call returned no choices (model={model!r}).")
-    content = response.choices[0].message.content
+    choice = response.choices[0]
+    content = choice.message.content
+    finish_reason = getattr(choice, "finish_reason", "unknown")
+    refusal = getattr(choice.message, "refusal", None)
+
+    if refusal:
+        logger.warning("VLM remote call refused (model=%s): %s", model, refusal)
+    if not content:
+        logger.warning(
+            "VLM remote call returned empty content (model=%s, finish_reason=%s). "
+            "The model may not support vision or JSON mode for this request.",
+            model,
+            finish_reason,
+        )
     if content is None:
         raise RuntimeError(
-            f"VLM remote call returned None content (model={model!r}). "
+            f"VLM remote call returned None content (model={model!r}, "
+            f"finish_reason={finish_reason!r}). "
             "The model may have refused the request or hit a filter."
         )
     return content
