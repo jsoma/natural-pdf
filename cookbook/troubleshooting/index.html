@@ -1,0 +1,2795 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A more intuitive interface for working with PDFs">
+      
+      
+      
+        <link rel="canonical" href="https://jsoma.github.io/natural-pdf/cookbook/troubleshooting/">
+      
+      
+        <link rel="prev" href="../../for-llms/common-patterns/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>Troubleshooting - Natural PDF</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CSFMono-Regular:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"SFMono-Regular"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#troubleshooting-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Natural PDF" class="md-header__button md-logo" aria-label="Natural PDF" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Natural PDF
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Troubleshooting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jsoma/natural-pdf" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jsoma/natural-pdf
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Natural PDF" class="md-nav__button md-logo" aria-label="Natural PDF" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Natural PDF
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jsoma/natural-pdf" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jsoma/natural-pdf
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../installation/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/choose-your-path/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Your Path
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/selectors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Selectors 101
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/01-loading-and-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loading and Basic Text Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/02-finding-elements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Finding Specific Elements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/08-spatial-navigation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/04-table-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic Table Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/05-excluding-content/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Excluding Content (Headers/Footers)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/12-ocr-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCR Integration for Scanned Documents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/07-layout-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/15-working-with-regions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Working with Regions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/06-document-qa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Question Answering (QA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/10-structured-extraction.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Structured Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../batch-processing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Batch Processing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cookbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../one-page-one-row/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    One Page = One Row
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../label-value-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Label-Value Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../messy-tables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Messy Tables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-column-layouts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Column Layouts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ocr-then-navigate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCR Then Navigate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multipage-content/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multipage Content
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../finding-sections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Finding Sections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Use Cases
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use-cases/idea-gallery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Idea Gallery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../quick-reference/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../for-llms/common-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patterns & Pitfalls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#my-text-looks-garbled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "My text looks garbled"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;My text looks garbled&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#check-if-pdf-is-scanned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check if PDF is Scanned
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apply-ocr-for-scanned-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Apply OCR for Scanned Documents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debug-whats-actually-in-the-pdf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debug What's Actually in the PDF
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-extraction-is-wrong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Table extraction is wrong"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;Table extraction is wrong&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-layout-analysis-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Layout Analysis First
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compare-extraction-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare Extraction Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#handle-borderless-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handle Borderless Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-guides-for-complex-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use Guides for Complex Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#selector-finds-nothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Selector finds nothing"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;Selector finds nothing&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#debug-by-seeing-all-elements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debug by Seeing All Elements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-case-sensitivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check Case Sensitivity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-regex-for-flexible-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use Regex for Flexible Matching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-element-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check Element Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combine-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combine Conditions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ocr-confidence-is-low" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "OCR confidence is low"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;OCR confidence is low&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#try-different-ocr-engines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Try Different OCR Engines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#increase-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Increase Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filter-by-confidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filter by Confidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#specify-languages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Specify Languages
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#text-includes-headersfooters-i-dont-want" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Text includes headers/footers I don't want"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;Text includes headers/footers I don&#39;t want&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#exclude-by-position" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exclude by Position
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exclude-by-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exclude by Content
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visualize-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visualize Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apply-exclusions-across-all-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Apply Exclusions Across All Pages
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layout-analysis-is-slow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Layout analysis is slow"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;Layout analysis is slow&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#use-yolo-for-speed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use YOLO for Speed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#process-selectively" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Process Selectively
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference-common-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Reference: Common Fixes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Help
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#my-text-looks-garbled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "My text looks garbled"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;My text looks garbled&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#check-if-pdf-is-scanned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check if PDF is Scanned
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apply-ocr-for-scanned-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Apply OCR for Scanned Documents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debug-whats-actually-in-the-pdf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debug What's Actually in the PDF
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-extraction-is-wrong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Table extraction is wrong"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;Table extraction is wrong&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-layout-analysis-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Layout Analysis First
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compare-extraction-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare Extraction Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#handle-borderless-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handle Borderless Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-guides-for-complex-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use Guides for Complex Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#selector-finds-nothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Selector finds nothing"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;Selector finds nothing&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#debug-by-seeing-all-elements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debug by Seeing All Elements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-case-sensitivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check Case Sensitivity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-regex-for-flexible-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use Regex for Flexible Matching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-element-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check Element Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combine-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combine Conditions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ocr-confidence-is-low" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "OCR confidence is low"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;OCR confidence is low&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#try-different-ocr-engines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Try Different OCR Engines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#increase-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Increase Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filter-by-confidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filter by Confidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#specify-languages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Specify Languages
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#text-includes-headersfooters-i-dont-want" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Text includes headers/footers I don't want"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;Text includes headers/footers I don&#39;t want&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#exclude-by-position" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exclude by Position
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exclude-by-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exclude by Content
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visualize-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visualize Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apply-exclusions-across-all-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Apply Exclusions Across All Pages
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layout-analysis-is-slow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Layout analysis is slow"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;Layout analysis is slow&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#use-yolo-for-speed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use YOLO for Speed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#process-selectively" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Process Selectively
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference-common-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Reference: Common Fixes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Help
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="troubleshooting-guide">Troubleshooting Guide</h1>
+<p>This guide provides decision trees for diagnosing and fixing common problems when working with Natural PDF.</p>
+<h2 id="my-text-looks-garbled">"My text looks garbled"</h2>
+<p>When extracted text appears corrupted, contains strange characters, or is completely empty, follow this decision tree:</p>
+<div class="highlight"><pre><span></span><code>Is text completely empty?
+├── Yes → PDF might be scanned (image-based)
+│   └── Try: page.apply_ocr()
+│
+└── No, but text is garbled
+    ├── Strange Unicode characters? → Font encoding issue
+    │   └── Try: page.apply_ocr() (re-reads from the rendered image)
+    │
+    ├── Text appears but wrong order? → Reading order issue
+    │   └── Try: page.extract_text(layout=True)
+    │
+    └── Characters appear but scrambled? → Might be a scanned PDF
+        └── Try: page.apply_ocr()
+</code></pre></div>
+<h3 id="check-if-pdf-is-scanned">Check if PDF is Scanned</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Check what&#39;s in the PDF</span>
+<span class="n">text_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">text_elements</span><span class="p">)</span><span class="si">}</span><span class="s2"> text elements&quot;</span><span class="p">)</span>
+
+<span class="c1"># If very few or zero text elements, it&#39;s likely scanned</span>
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">text_elements</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;This appears to be a scanned PDF - try OCR&quot;</span><span class="p">)</span>
+    <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">()</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="apply-ocr-for-scanned-documents">Apply OCR for Scanned Documents</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Default OCR (uses EasyOCR)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">()</span>
+
+<span class="c1"># If default doesn&#39;t work well, try different engines</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;paddle&#39;</span><span class="p">)</span>  <span class="c1"># Often better for forms</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;surya&#39;</span><span class="p">)</span>   <span class="c1"># Good for multi-language</span>
+
+<span class="c1"># For better quality, increase resolution</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;easyocr&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="debug-whats-actually-in-the-pdf">Debug What's Actually in the PDF</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Visualize all text elements</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># Check if there are images (indicating scanned content)</span>
+<span class="n">images</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">)</span><span class="si">}</span><span class="s2"> images&quot;</span><span class="p">)</span>
+
+<span class="c1"># If the page is one big image, definitely use OCR</span>
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">width</span> <span class="o">&gt;</span> <span class="n">page</span><span class="o">.</span><span class="n">width</span> <span class="o">*</span> <span class="mf">0.9</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Page is a full-page scan&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="table-extraction-is-wrong">"Table extraction is wrong"</h2>
+<p>Table extraction can fail for several reasons. Follow this decision tree:</p>
+<div class="highlight"><pre><span></span><code>Is the table detected at all?
+├── No → Run layout analysis first
+│   └── page.analyze_layout(engine=&#39;tatr&#39;)
+│
+└── Yes, but data is wrong
+    ├── Columns misaligned? → Try TATR extraction method
+    │   └── region.extract_table(method=&#39;tatr&#39;)
+    │
+    ├── Missing rows/columns? → Table might be borderless
+    │   └── Try: page.analyze_layout(engine=&#39;tatr&#39;)
+    │
+    └── Merged cells causing issues?
+        └── Use Guides for manual structure
+</code></pre></div>
+<h3 id="run-layout-analysis-first">Run Layout Analysis First</h3>
+<p>Layout analysis detects table regions before extraction:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Detect tables using TATR (Table Transformer)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">analyze_layout</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;tatr&#39;</span><span class="p">)</span>
+
+<span class="c1"># Find detected tables</span>
+<span class="n">tables</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=table]&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tables</span><span class="p">)</span><span class="si">}</span><span class="s2"> tables&quot;</span><span class="p">)</span>
+
+<span class="c1"># Visualize what was detected</span>
+<span class="n">tables</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># Extract from the first detected table</span>
+<span class="k">if</span> <span class="n">tables</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="compare-extraction-methods">Compare Extraction Methods</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Default extraction (uses pdfplumber)</span>
+<span class="n">data_default</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span>
+
+<span class="c1"># TATR-based extraction (uses detected structure)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">analyze_layout</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;tatr&#39;</span><span class="p">)</span>
+<span class="n">table</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;region[type=table][model=tatr]&#39;</span><span class="p">)</span>
+<span class="n">data_tatr</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;tatr&#39;</span><span class="p">)</span>
+
+<span class="c1"># Compare results</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Default method:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">data_default</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>  <span class="c1"># First 3 rows</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">TATR method:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">data_tatr</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
+</code></pre></div>
+<h3 id="handle-borderless-tables">Handle Borderless Tables</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># For tables without visible grid lines</span>
+<span class="n">table_settings</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;vertical_strategy&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span>    <span class="c1"># Use text alignment</span>
+    <span class="s2">&quot;horizontal_strategy&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span>  <span class="c1"># Instead of lines</span>
+<span class="p">}</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">table_settings</span><span class="o">=</span><span class="n">table_settings</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="use-guides-for-complex-tables">Use Guides for Complex Tables</h3>
+<p>When automatic detection fails, manually define table structure with <a href="../guides/">guides</a>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">region</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Column Header&quot;)&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">below</span><span class="p">()</span>
+
+<span class="n">guides</span> <span class="o">=</span> <span class="n">region</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">(</span>
+    <span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Date&#39;</span><span class="p">,</span> <span class="s1">&#39;Amount&#39;</span><span class="p">,</span> <span class="s1">&#39;Status&#39;</span><span class="p">],</span>
+    <span class="n">align</span><span class="o">=</span><span class="s1">&#39;between&#39;</span>
+<span class="p">)</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">snap_to_whitespace</span><span class="p">()</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<hr />
+<h2 id="selector-finds-nothing">"Selector finds nothing"</h2>
+<p>When <code>find()</code> or <code>find_all()</code> returns empty results:</p>
+<div class="highlight"><pre><span></span><code>Did you spell the selector correctly?
+├── Check for typos in attribute names
+│
+└── Try broader search first
+    └── page.find_all(&#39;text&#39;).show()
+</code></pre></div>
+<h3 id="debug-by-seeing-all-elements">Debug by Seeing All Elements</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># See ALL text elements on the page</span>
+<span class="n">all_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total text elements: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_text</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Visualize them</span>
+<span class="n">all_text</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># Print the actual text content</span>
+<span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">all_text</span><span class="p">[:</span><span class="mi">20</span><span class="p">]:</span>  <span class="c1"># First 20</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  &#39;</span><span class="si">{</span><span class="n">elem</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="check-case-sensitivity">Check Case Sensitivity</h3>
+<p>Selectors are case-sensitive by default:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># This might not find &quot;REVENUE&quot; or &quot;Revenue&quot;</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;revenue&quot;)&#39;</span><span class="p">)</span>
+
+<span class="c1"># Use case=False for case-insensitive search</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;revenue&quot;)&#39;</span><span class="p">,</span> <span class="n">case</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="c1"># Or use regex for flexible matching</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;(?i)revenue&quot;)&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="use-regex-for-flexible-matching">Use Regex for Flexible Matching</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Match variations in spacing or formatting</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Invoice</span><span class="se">\\</span><span class="s1">s*#&quot;)&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Match multiple possible values</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Total|Sum|Amount&quot;)&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Match partial text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Q[1-4] 2024&quot;)&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="check-element-attributes">Check Element Attributes</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find text of a specific size</span>
+<span class="n">large_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[size&gt;=14]&#39;</span><span class="p">)</span>
+
+<span class="c1"># Find bold text</span>
+<span class="n">bold_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>
+
+<span class="c1"># Debug: see what sizes exist</span>
+<span class="n">sizes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="s1">&#39;size&#39;</span><span class="p">):</span>
+        <span class="n">sizes</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">elem</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Text sizes on page: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">sizes</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="combine-conditions">Combine Conditions</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find bold text containing &quot;Summary&quot; that&#39;s at least size 12</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Summary&quot;):bold[size&gt;=12]&#39;</span><span class="p">)</span>
+
+<span class="c1"># Find text in the top half of the page</span>
+<span class="n">top_region</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">height</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">top_region</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Header&quot;)&#39;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="ocr-confidence-is-low">"OCR confidence is low"</h2>
+<p>When OCR produces poor results or low confidence scores:</p>
+<div class="highlight"><pre><span></span><code>Is the image quality poor?
+├── Yes → Increase resolution
+│   └── page.apply_ocr(resolution=300)
+│
+└── No, quality seems fine
+    ├── Wrong language? → Specify languages
+    │   └── page.apply_ocr(languages=[&#39;en&#39;, &#39;es&#39;])
+    │
+    └── Try a different OCR engine
+        └── paddle, paddlevl, surya, or doctr
+</code></pre></div>
+<h3 id="try-different-ocr-engines">Try Different OCR Engines</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># EasyOCR (default) - good general purpose</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;easyocr&#39;</span><span class="p">)</span>
+
+<span class="c1"># PaddleOCR - often better for structured documents</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;paddle&#39;</span><span class="p">)</span>
+
+<span class="c1"># Surya - good for multi-language documents</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;surya&#39;</span><span class="p">)</span>
+
+<span class="c1"># DocTR - good for dense text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;doctr&#39;</span><span class="p">)</span>
+
+<span class="c1"># PaddleOCR-VL - VLM-based, good for complex layouts and charts</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;paddlevl&#39;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="increase-resolution">Increase Resolution</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Default resolution might be too low for small text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">resolution</span><span class="o">=</span><span class="mi">150</span><span class="p">)</span>  <span class="c1"># Default</span>
+
+<span class="c1"># Try higher resolution</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>  <span class="c1"># Better quality</span>
+
+<span class="c1"># Even higher for very small text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">resolution</span><span class="o">=</span><span class="mi">400</span><span class="p">)</span>  <span class="c1"># Slower but more accurate</span>
+</code></pre></div>
+<h3 id="filter-by-confidence">Filter by Confidence</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Apply OCR first</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;paddle&#39;</span><span class="p">)</span>
+
+<span class="c1"># Get only high-confidence results</span>
+<span class="n">high_conf</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=ocr][confidence&gt;=0.8]&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;High confidence: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">high_conf</span><span class="p">)</span><span class="si">}</span><span class="s2"> elements&quot;</span><span class="p">)</span>
+
+<span class="c1"># Get medium confidence for review</span>
+<span class="n">medium_conf</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=ocr][confidence&gt;=0.5][confidence&lt;0.8]&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Medium confidence: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">medium_conf</span><span class="p">)</span><span class="si">}</span><span class="s2"> elements&quot;</span><span class="p">)</span>
+
+<span class="c1"># Visualize confidence levels</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=ocr]&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="s1">&#39;confidence&#39;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="specify-languages">Specify Languages</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Single language</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">languages</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;en&#39;</span><span class="p">])</span>
+
+<span class="c1"># Multiple languages</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">languages</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;en&#39;</span><span class="p">,</span> <span class="s1">&#39;es&#39;</span><span class="p">])</span>  <span class="c1"># English and Spanish</span>
+
+<span class="c1"># Standard language codes (en, fr, de, ja, zh, ko) work across all engines.</span>
+<span class="c1"># PaddleOCR auto-normalizes codes like &#39;ja&#39; → &#39;japan&#39;, &#39;zh&#39; → &#39;ch&#39;.</span>
+</code></pre></div>
+<hr />
+<h2 id="text-includes-headersfooters-i-dont-want">"Text includes headers/footers I don't want"</h2>
+<p>When extracted text contains repeated headers, footers, or watermarks:</p>
+<div class="highlight"><pre><span></span><code>Is the unwanted content in the same position on every page?
+├── Yes → Use fixed-region exclusions
+│   └── pdf.add_exclusion(lambda p: p.create_region(...))
+│
+└── No, position varies
+    └── Use content-based exclusions
+        └── page.add_exclusion(page.find(&#39;text:contains(&quot;Header&quot;)&#39;).above())
+</code></pre></div>
+<h3 id="exclude-by-position">Exclude by Position</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">)</span>
+
+<span class="c1"># Exclude top 50 points from all pages (headers)</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span>
+    <span class="k">lambda</span> <span class="n">page</span><span class="p">:</span> <span class="n">page</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span>
+    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Header&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Exclude bottom 40 points from all pages (footers)</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span>
+    <span class="k">lambda</span> <span class="n">page</span><span class="p">:</span> <span class="n">page</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">height</span> <span class="o">-</span> <span class="mi">40</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">height</span><span class="p">),</span>
+    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Footer&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Now extract clean text</span>
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">:</span>
+    <span class="n">clean_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>  <span class="c1"># Headers/footers excluded</span>
+</code></pre></div>
+<h3 id="exclude-by-content">Exclude by Content</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find and exclude specific text</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Exclude everything above &quot;CONFIDENTIAL&quot; watermark</span>
+<span class="n">watermark</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;CONFIDENTIAL&quot;)&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">watermark</span><span class="p">:</span>
+    <span class="n">page</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="n">watermark</span><span class="o">.</span><span class="n">above</span><span class="p">())</span>
+
+<span class="c1"># Exclude page numbers (usually small text with just digits)</span>
+<span class="n">page_nums</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;^</span><span class="se">\\</span><span class="s1">d+$&quot;)&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="n">page_nums</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">num</span><span class="o">.</span><span class="n">top</span> <span class="o">&gt;</span> <span class="n">page</span><span class="o">.</span><span class="n">height</span> <span class="o">*</span> <span class="mf">0.9</span><span class="p">:</span>  <span class="c1"># Only if near bottom</span>
+        <span class="n">page</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="visualize-exclusions">Visualize Exclusions</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Add exclusions</span>
+<span class="n">page</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="mi">50</span><span class="p">))</span>
+
+<span class="c1"># See what will be excluded (shown in red)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">exclusions</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+
+<span class="c1"># Compare with and without exclusions</span>
+<span class="n">full_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">(</span><span class="n">use_exclusions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">clean_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">(</span><span class="n">use_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Full: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">full_text</span><span class="p">)</span><span class="si">}</span><span class="s2"> chars&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Clean: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">clean_text</span><span class="p">)</span><span class="si">}</span><span class="s2"> chars&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="apply-exclusions-across-all-pages">Apply Exclusions Across All Pages</h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">smart_exclusion</span><span class="p">(</span><span class="n">page</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exclude headers/footers dynamically.&quot;&quot;&quot;</span>
+    <span class="c1"># Try to find specific header text</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Company Name&quot;)&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">header</span> <span class="ow">and</span> <span class="n">header</span><span class="o">.</span><span class="n">top</span> <span class="o">&lt;</span> <span class="n">page</span><span class="o">.</span><span class="n">height</span> <span class="o">*</span> <span class="mf">0.15</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">header</span><span class="o">.</span><span class="n">above</span><span class="p">()</span>
+
+    <span class="c1"># Fallback to fixed region</span>
+    <span class="k">return</span> <span class="n">page</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Apply to entire PDF</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="n">smart_exclusion</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Headers&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="layout-analysis-is-slow">"Layout analysis is slow"</h2>
+<p>When <code>analyze_layout()</code> takes too long:</p>
+<div class="highlight"><pre><span></span><code>Are you processing many pages?
+├── Yes → Process only pages that need it
+│
+└── No, single page is slow
+    ├── Using TATR? → Try YOLO (faster)
+    │   └── page.analyze_layout(engine=&#39;yolo&#39;)
+    │
+    └── High resolution? → Lower it
+        └── page.analyze_layout(resolution=150)
+</code></pre></div>
+<h3 id="use-yolo-for-speed">Use YOLO for Speed</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># YOLO is faster but less precise</span>
+<span class="n">page</span><span class="o">.</span><span class="n">analyze_layout</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;yolo&#39;</span><span class="p">)</span>
+
+<span class="c1"># TATR is slower but understands table structure</span>
+<span class="n">page</span><span class="o">.</span><span class="n">analyze_layout</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;tatr&#39;</span><span class="p">)</span>
+
+<span class="c1"># For most use cases, YOLO is sufficient</span>
+<span class="n">tables</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=table][model=yolo]&#39;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="process-selectively">Process Selectively</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Don&#39;t analyze every page if you don&#39;t need to</span>
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">:</span>
+    <span class="c1"># Only analyze if page likely has tables</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
+    <span class="k">if</span> <span class="s2">&quot;total&quot;</span> <span class="ow">in</span> <span class="n">text</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">or</span> <span class="s2">&quot;|&quot;</span> <span class="ow">in</span> <span class="n">text</span><span class="p">:</span>
+        <span class="n">page</span><span class="o">.</span><span class="n">analyze_layout</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;tatr&#39;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="quick-reference-common-fixes">Quick Reference: Common Fixes</h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>What to Try</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Empty text</td>
+<td><code>page.apply_ocr()</code> — the PDF is likely scanned</td>
+</tr>
+<tr>
+<td>Garbled text</td>
+<td><code>page.apply_ocr()</code> — re-reads from the rendered image, bypassing broken font encoding</td>
+</tr>
+<tr>
+<td>Table not detected</td>
+<td><code>page.analyze_layout(engine='tatr')</code> then <code>page.find('region[type=table]')</code></td>
+</tr>
+<tr>
+<td>Table columns wrong</td>
+<td>Try <code>region.extract_table(method='tatr')</code> or use <code>Guides</code> for manual columns</td>
+</tr>
+<tr>
+<td>Selector returns None</td>
+<td><code>page.find_all('text').show()</code> — see what text actually exists</td>
+</tr>
+<tr>
+<td>Case mismatch</td>
+<td><code>page.find('text:contains("x")', case=False)</code></td>
+</tr>
+<tr>
+<td>Low OCR quality</td>
+<td><code>page.apply_ocr(resolution=300)</code> or try a different engine</td>
+</tr>
+<tr>
+<td>Headers in text</td>
+<td><code>page.add_exclusion(region)</code> — see <a href="../tutorials/05-excluding-content.md">Excluding Content</a></td>
+</tr>
+<tr>
+<td>Slow layout</td>
+<td><code>engine='yolo'</code> is faster than <code>'tatr'</code> (but only detects region types, not table structure)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="getting-help">Getting Help</h2>
+<p>If these solutions don't work:</p>
+<ol>
+<li><strong>Visualize the problem</strong>: Use <code>.show()</code> to see what Natural PDF is detecting</li>
+<li><strong>Check element attributes</strong>: Print element properties to understand the data</li>
+<li><strong>Simplify the selector</strong>: Start with <code>'text'</code> and add conditions incrementally</li>
+<li><strong>Try a different approach</strong>: OCR, layout analysis, and manual regions are all valid paths</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="c1"># General debugging approach</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># What&#39;s on this page?</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Text elements: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Images: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Lines: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;line&#39;</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Visualize everything</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      &copy; 2023-2025 Jonathan Soma
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/jsoma/natural-pdf" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/natural-pdf/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "navigation.tracking", "navigation.instant", "navigation.indexes", "search.suggest", "search.highlight", "content.tabs.link", "content.code.copy", "content.code.annotate", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2455 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A more intuitive interface for working with PDFs">
+      
+      
+      
+        <link rel="canonical" href="https://jsoma.github.io/natural-pdf/cookbook/guides/">
+      
+      
+        <link rel="prev" href="../label-value-extraction/">
+      
+      
+        <link rel="next" href="../messy-tables/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>Guides - Natural PDF</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CSFMono-Regular:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"SFMono-Regular"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#guides" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Natural PDF" class="md-header__button md-logo" aria-label="Natural PDF" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Natural PDF
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Guides
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jsoma/natural-pdf" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jsoma/natural-pdf
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Natural PDF" class="md-nav__button md-logo" aria-label="Natural PDF" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Natural PDF
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jsoma/natural-pdf" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jsoma/natural-pdf
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../installation/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/choose-your-path/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Your Path
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/selectors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Selectors 101
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/01-loading-and-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loading and Basic Text Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/02-finding-elements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Finding Specific Elements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/08-spatial-navigation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/04-table-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic Table Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/05-excluding-content/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Excluding Content (Headers/Footers)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/12-ocr-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCR Integration for Scanned Documents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/07-layout-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/15-working-with-regions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Working with Regions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/06-document-qa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Question Answering (QA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/10-structured-extraction.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Structured Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../batch-processing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Batch Processing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cookbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../one-page-one-row/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    One Page = One Row
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../label-value-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Label-Value Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#creating-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating Guides
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#detecting-columns-and-rows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detecting Columns and Rows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Detecting Columns and Rows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Lines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Content
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-whitespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Whitespace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-headers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Headers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-stripes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Stripes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dividing-evenly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dividing Evenly
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chaining" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chaining
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#refining-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refining Guides
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Refining Guides">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#snapping-to-whitespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snapping to Whitespace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#snapping-to-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snapping to Content
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-adjustments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Adjustments
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#previewing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Previewing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extracting-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extracting Tables
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extracting Tables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#header-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Header Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#outer-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outer Boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-regions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working with Regions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-page-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Page Tables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tables-with-checkboxes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tables with Checkboxes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#passing-guides-to-pdfplumber" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Passing Guides to pdfplumber
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../messy-tables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Messy Tables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-column-layouts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Column Layouts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ocr-then-navigate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCR Then Navigate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multipage-content/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multipage Content
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../finding-sections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Finding Sections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Use Cases
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use-cases/idea-gallery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Idea Gallery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../quick-reference/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../for-llms/common-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patterns & Pitfalls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#creating-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating Guides
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#detecting-columns-and-rows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detecting Columns and Rows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Detecting Columns and Rows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Lines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Content
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-whitespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Whitespace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-headers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Headers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-stripes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Stripes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dividing-evenly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dividing Evenly
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chaining" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chaining
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#refining-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refining Guides
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Refining Guides">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#snapping-to-whitespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snapping to Whitespace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#snapping-to-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snapping to Content
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-adjustments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Adjustments
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#previewing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Previewing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extracting-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extracting Tables
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extracting Tables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#header-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Header Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#outer-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outer Boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-regions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working with Regions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-page-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Page Tables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tables-with-checkboxes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tables with Checkboxes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#passing-guides-to-pdfplumber" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Passing Guides to pdfplumber
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="guides">Guides</h1>
+<p>Guides are manual column and row markers you place on a page or region to define table structure. They work like rulers in a design tool — you set vertical lines for columns and horizontal lines for rows, then extract a table from the grid they form.</p>
+<p>Use guides when:</p>
+<ul>
+<li>The table has no visible borders or ruling lines</li>
+<li>Automatic table extraction (<code>extract_table()</code>) merges or splits columns incorrectly</li>
+<li>You need precise control over where column and row boundaries fall</li>
+<li>The table spans multiple pages with consistent column layout</li>
+</ul>
+<h2 id="creating-guides">Creating Guides</h2>
+<p>Guides need a context — a page, region, or flow region that defines the coordinate space. All coordinates are in PDF points (1/72 inch), measured from the top-left corner of the context object.</p>
+<p><strong>From a page or region method:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+</code></pre></div>
+<p><strong>From the Guides class directly:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf.analyzers.guides</span><span class="w"> </span><span class="kn">import</span> <span class="n">Guides</span>
+
+<span class="n">guides</span> <span class="o">=</span> <span class="n">Guides</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+</code></pre></div>
+<p>Both are equivalent. The <code>.guides()</code> method is available on pages, regions, and flow regions.</p>
+<h2 id="detecting-columns-and-rows">Detecting Columns and Rows</h2>
+<p>Guides has two axis lists — <code>guides.vertical</code> (columns) and <code>guides.horizontal</code> (rows). Each has detection methods that analyze the content and place guides automatically.</p>
+<h3 id="from-lines">From Lines</h3>
+<p>Detect guides from ruling lines in the PDF (drawn borders, grid lines, separators):</p>
+<div class="highlight"><pre><span></span><code><span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_lines</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_lines</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+<p>The <code>threshold</code> parameter controls sensitivity for pixel-based line detection. Lower values detect fainter lines:</p>
+<div class="highlight"><pre><span></span><code><span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_lines</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_lines</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+</code></pre></div>
+<p>If <code>from_lines()</code> finds too few guides, try lowering <code>threshold</code> (e.g., <code>0.3</code> or <code>0.2</code>). If it finds nothing at all, the PDF may not have drawn lines — use <code>from_content()</code> or <code>from_whitespace()</code> instead.</p>
+<h3 id="from-content">From Content</h3>
+<p>Place guides aligned to text elements. Pass a list of strings to search for, a selector, an <code>ElementCollection</code>, or a callable:</p>
+<div class="highlight"><pre><span></span><code><span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+
+<span class="c1"># From header text — guides snap to the left edge of each match</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">([</span><span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Date&#39;</span><span class="p">,</span> <span class="s1">&#39;Amount&#39;</span><span class="p">,</span> <span class="s1">&#39;Status&#39;</span><span class="p">])</span>
+
+<span class="c1"># From a selector</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">(</span><span class="s1">&#39;text:bold[size&gt;=10]&#39;</span><span class="p">)</span>
+
+<span class="c1"># Align to right edges instead</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">([</span><span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Date&#39;</span><span class="p">],</span> <span class="n">align</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span>
+
+<span class="c1"># Align between elements (midpoints between adjacent matches)</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">([</span><span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Date&#39;</span><span class="p">,</span> <span class="s1">&#39;Amount&#39;</span><span class="p">],</span> <span class="n">align</span><span class="o">=</span><span class="s1">&#39;between&#39;</span><span class="p">)</span>
+</code></pre></div>
+<p>The <code>outer</code> parameter controls whether boundary guides are added at the edges of the context region. Set <code>outer=True</code> (default) to add both edges, <code>outer="first"</code> or <code>outer="last"</code> for just one side, or <code>outer=False</code> for none:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Only add a boundary after the last column, not before the first</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">([</span><span class="s1">&#39;Number&#39;</span><span class="p">,</span> <span class="s1">&#39;Date&#39;</span><span class="p">,</span> <span class="s1">&#39;Description&#39;</span><span class="p">],</span> <span class="n">outer</span><span class="o">=</span><span class="s2">&quot;last&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>For horizontal guides, you can use callables to find row markers dynamically:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Rows start with case numbers like &quot;NF-2024-001&quot;</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_content</span><span class="p">(</span>
+    <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:starts-with(NF-)&#39;</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="from-whitespace">From Whitespace</h3>
+<p>Detect gaps between text — places guides in empty space where no content exists:</p>
+<div class="highlight"><pre><span></span><code><span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_whitespace</span><span class="p">(</span><span class="n">min_gap</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_whitespace</span><span class="p">(</span><span class="n">min_gap</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+</code></pre></div>
+<p><code>min_gap</code> sets the minimum gap width (in points) to consider as a separator. If too few guides appear, try lowering <code>min_gap</code>. If too many appear, raise it.</p>
+<h3 id="from-headers">From Headers</h3>
+<p>Detect column boundaries by analyzing the whitespace valleys between header elements. Works only for vertical guides:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find the header row</span>
+<span class="n">headers</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:bold[size&gt;=11]&#39;</span><span class="p">)</span>
+
+<span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_headers</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
+</code></pre></div>
+<p>Two detection methods are available:</p>
+<ul>
+<li><code>'min_crossings'</code> (default) — fast, finds the x-position in each gap that crosses the fewest text bounding boxes. Works well for most tables.</li>
+<li><code>'seam_carving'</code> — slower, but better when columns aren't strictly vertical (e.g., text that drifts left/right at different rows).</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_headers</span><span class="p">(</span><span class="n">headers</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;seam_carving&#39;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="from-stripes">From Stripes</h3>
+<p>For zebra-striped tables with alternating row colors:</p>
+<div class="highlight"><pre><span></span><code><span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_stripes</span><span class="p">()</span>
+</code></pre></div>
+<p>Auto-detects the most common stripe color. To target a specific color:</p>
+<div class="highlight"><pre><span></span><code><span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_stripes</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;#e8f4f8&#39;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="dividing-evenly">Dividing Evenly</h3>
+<p>Split the context bounds into equal parts:</p>
+<div class="highlight"><pre><span></span><code><span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>    <span class="c1"># 3 vertical guides → 4 columns</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="c1"># 9 horizontal guides → 10 rows</span>
+</code></pre></div>
+<p>When called on a region, <code>divide()</code> splits that region's bounds, not the full page.</p>
+<h2 id="chaining">Chaining</h2>
+<p>Every detection and manipulation method returns the parent <code>Guides</code> object, so you can chain across axes:</p>
+<div class="highlight"><pre><span></span><code><span class="p">(</span><span class="n">table_area</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_lines</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_lines</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">show</span><span class="p">())</span>
+</code></pre></div>
+<p>A more involved example — detect columns from content, rows from stripes, then refine:</p>
+<div class="highlight"><pre><span></span><code><span class="p">(</span><span class="n">table_area</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">([</span><span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Date&#39;</span><span class="p">,</span> <span class="s1">&#39;Amount&#39;</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">snap_to_whitespace</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_stripes</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">show</span><span class="p">())</span>
+</code></pre></div>
+<h2 id="refining-guides">Refining Guides</h2>
+<p>After initial detection, you can adjust individual guides.</p>
+<h3 id="snapping-to-whitespace">Snapping to Whitespace</h3>
+<p>Move each guide to the nearest whitespace gap. Useful after <code>from_content()</code> or <code>from_lines()</code> when guides land slightly inside text. Works on both axes:</p>
+<div class="highlight"><pre><span></span><code><span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">snap_to_whitespace</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">snap_to_whitespace</span><span class="p">()</span>
+
+<span class="c1"># With options</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">snap_to_whitespace</span><span class="p">(</span><span class="n">min_gap</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">detection_method</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="snapping-to-content">Snapping to Content</h3>
+<p>Move each guide to the nearest text element edge:</p>
+<div class="highlight"><pre><span></span><code><span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">snap_to_content</span><span class="p">(</span><span class="n">align</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="manual-adjustments">Manual Adjustments</h3>
+<p>Coordinates are in the context's coordinate space — page coordinates for a page, region coordinates for a region. Use <code>guides.show()</code> to see where existing guides land before adding or shifting.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Add a guide at a specific coordinate</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mf">150.0</span><span class="p">)</span>
+
+<span class="c1"># Add multiple guides</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">add</span><span class="p">([</span><span class="mf">100.0</span><span class="p">,</span> <span class="mf">200.0</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">])</span>
+
+<span class="c1"># Shift the third guide 5 points to the right</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
+
+<span class="c1"># Remove the first guide</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">remove_at</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Clear all horizontal guides and start over</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">clear_all</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="previewing">Previewing</h2>
+<p><code>show()</code> returns a PIL Image with guides drawn over the page — blue for vertical, red for horizontal:</p>
+<div class="highlight"><pre><span></span><code><span class="n">img</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">img</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;guides_preview.png&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Check the guide count and positions:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="p">)</span><span class="si">}</span><span class="s2"> vertical guides, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="p">)</span><span class="si">}</span><span class="s2"> horizontal guides&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Vertical:&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Horizontal:&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="p">))</span>
+</code></pre></div>
+<p>Note: the number of columns is <code>len(guides.vertical) - 1</code> (guides are boundaries between columns, not columns themselves). If your guides don't include outer edges, use <code>include_outer_boundaries=True</code> when extracting.</p>
+<h2 id="extracting-tables">Extracting Tables</h2>
+<p>Once guides define the grid, extract a table:</p>
+<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<p><code>extract_table()</code> returns a <code>TableResult</code>. Call <code>.to_df()</code> to get a pandas DataFrame.</p>
+<h3 id="header-options">Header Options</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># First row becomes column headers (default)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+
+<span class="c1"># No headers</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+
+<span class="c1"># Custom headers</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ID&quot;</span><span class="p">,</span> <span class="s2">&quot;Name&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="outer-boundaries">Outer Boundaries</h3>
+<p>If your guides don't include the outer edges of the table, <code>include_outer_boundaries=True</code> adds them from the context bounds:</p>
+<div class="highlight"><pre><span></span><code><span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">include_outer_boundaries</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="working-with-regions">Working with Regions</h2>
+<p>Guides work best when scoped to the table area rather than the full page:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find the table area using spatial navigation</span>
+<span class="n">header</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Item&quot;)&#39;</span><span class="p">)</span>
+<span class="n">table_area</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">below</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="s1">&#39;text:contains(&quot;Total&quot;)&#39;</span><span class="p">,</span> <span class="n">include_source</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Create guides scoped to this region</span>
+<span class="n">guides</span> <span class="o">=</span> <span class="n">table_area</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">([</span><span class="s1">&#39;Item&#39;</span><span class="p">,</span> <span class="s1">&#39;Qty&#39;</span><span class="p">,</span> <span class="s1">&#39;Price&#39;</span><span class="p">])</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_whitespace</span><span class="p">()</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="multi-page-tables">Multi-Page Tables</h2>
+<p>For tables that continue across pages, create guides on one page and apply them to a collection:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set up guides from the first page</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">([</span><span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Date&#39;</span><span class="p">,</span> <span class="s1">&#39;Amount&#39;</span><span class="p">])</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_whitespace</span><span class="p">()</span>
+
+<span class="c1"># Extract across all pages</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<p>For multi-page flow regions (created with spatial navigation and <code>multipage=True</code>), guides work across the combined region automatically:</p>
+<div class="highlight"><pre><span></span><code><span class="n">header</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Item&quot;)&#39;</span><span class="p">)</span>
+<span class="n">flow</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">below</span><span class="p">(</span><span class="n">multipage</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">guides</span> <span class="o">=</span> <span class="n">flow</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">([</span><span class="s1">&#39;Item&#39;</span><span class="p">,</span> <span class="s1">&#39;Qty&#39;</span><span class="p">,</span> <span class="s1">&#39;Price&#39;</span><span class="p">])</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_whitespace</span><span class="p">()</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="tables-with-checkboxes">Tables with Checkboxes</h2>
+<p>When a table contains checkboxes, <code>detect_checkboxes()</code> finds them and sets <code>alt_text</code> on each region (<code>[CHECKED]</code> or <code>[UNCHECKED]</code>). This text flows into <code>extract_text()</code> automatically, so checkbox cells show up in table extraction instead of appearing empty.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># OCR first (this is a scanned PDF)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">()</span>
+
+<span class="c1"># Find the table area</span>
+<span class="n">table_area</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">page</span>
+    <span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Violations&quot;)&#39;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">below</span><span class="p">(</span>
+        <span class="n">until</span><span class="o">=</span><span class="s1">&#39;text:contains(&quot;Jungle&quot;)&#39;</span><span class="p">,</span>
+        <span class="n">include_endpoint</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Detect guides from ruling lines</span>
+<span class="n">guides</span> <span class="o">=</span> <span class="n">table_area</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_lines</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_lines</span><span class="p">()</span>
+
+<span class="c1"># Detect checkboxes — their alt_text fills in during extraction</span>
+<span class="n">page</span><span class="o">.</span><span class="n">detect_checkboxes</span><span class="p">()</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<p>Checkbox cells that would otherwise be empty now contain <code>[CHECKED]</code> or <code>[UNCHECKED]</code>. To change these labels:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">options</span>
+
+<span class="n">options</span><span class="o">.</span><span class="n">alt_text</span><span class="o">.</span><span class="n">checkbox_checked</span> <span class="o">=</span> <span class="s2">&quot;Yes&quot;</span>
+<span class="n">options</span><span class="o">.</span><span class="n">alt_text</span><span class="o">.</span><span class="n">checkbox_unchecked</span> <span class="o">=</span> <span class="s2">&quot;No&quot;</span>
+</code></pre></div>
+<p>Requires <code>pip install onnxruntime huggingface_hub</code> for the checkbox detection model.</p>
+<h2 id="passing-guides-to-pdfplumber">Passing Guides to pdfplumber</h2>
+<p>If you want to use guides as explicit line hints for pdfplumber's table extraction instead of the built-in grid extractor:</p>
+<div class="highlight"><pre><span></span><code><span class="n">settings</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+<span class="c1"># Returns: {&#39;explicit_vertical_lines&#39;: [...], &#39;explicit_horizontal_lines&#39;: [...]}</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;pdfplumber&quot;</span><span class="p">,</span> <span class="n">table_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="full-example">Full Example</h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;report.pdf&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Scope to the table area</span>
+<span class="n">table_header</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Account&quot;)&#39;</span><span class="p">)</span>
+<span class="n">table_area</span> <span class="o">=</span> <span class="n">table_header</span><span class="o">.</span><span class="n">below</span><span class="p">(</span>
+    <span class="n">until</span><span class="o">=</span><span class="s1">&#39;text:contains(&quot;Total&quot;)&#39;</span><span class="p">,</span>
+    <span class="n">include_source</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="c1"># Detect columns from headers, rows from whitespace</span>
+<span class="n">guides</span> <span class="o">=</span> <span class="n">table_area</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">([</span><span class="s1">&#39;Account&#39;</span><span class="p">,</span> <span class="s1">&#39;Description&#39;</span><span class="p">,</span> <span class="s1">&#39;Debit&#39;</span><span class="p">,</span> <span class="s1">&#39;Credit&#39;</span><span class="p">])</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">snap_to_whitespace</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_whitespace</span><span class="p">(</span><span class="n">min_gap</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="c1"># Preview</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">show</span><span class="p">()</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;temp/table_guides.png&quot;</span><span class="p">)</span>
+
+<span class="c1"># Extract</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+<span class="n">pdf</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div>
+<p>The same example with chaining:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;report.pdf&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">table_header</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Account&quot;)&#39;</span><span class="p">)</span>
+<span class="n">table_area</span> <span class="o">=</span> <span class="n">table_header</span><span class="o">.</span><span class="n">below</span><span class="p">(</span>
+    <span class="n">until</span><span class="o">=</span><span class="s1">&#39;text:contains(&quot;Total&quot;)&#39;</span><span class="p">,</span>
+    <span class="n">include_source</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="p">(</span><span class="n">table_area</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_content</span><span class="p">([</span><span class="s1">&#39;Account&#39;</span><span class="p">,</span> <span class="s1">&#39;Description&#39;</span><span class="p">,</span> <span class="s1">&#39;Debit&#39;</span><span class="p">,</span> <span class="s1">&#39;Credit&#39;</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">snap_to_whitespace</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_whitespace</span><span class="p">(</span><span class="n">min_gap</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">to_df</span><span class="p">())</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      &copy; 2023-2025 Jonathan Soma
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/jsoma/natural-pdf" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/natural-pdf/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "navigation.tracking", "navigation.instant", "navigation.indexes", "search.suggest", "search.highlight", "content.tabs.link", "content.code.copy", "content.code.annotate", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

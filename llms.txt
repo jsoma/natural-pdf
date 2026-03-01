@@ -1,0 +1,79 @@
+# Natural PDF
+
+> A Python library for intelligent PDF processing with jQuery-like selectors and spatial awareness.
+
+Natural PDF combines traditional PDF parsing with modern AI capabilities. It provides a fluent API for selecting and manipulating PDF elements, with spatial navigation, OCR integration, and AI-powered extraction.
+
+## Quick Start
+
+- [Installation](/docs/installation/): pip install natural-pdf
+- [Quick Reference](/docs/quick-reference/): Essential methods and patterns
+
+## Core Documentation
+
+- [Element Selection](/docs/element-selection/): CSS-like selector syntax for finding PDF elements
+- [Spatial Navigation](/docs/tutorials/08-spatial-navigation/): Directional methods like .below(), .above(), .left(), .right()
+- [Working with Regions](/docs/tutorials/07-working-with-regions/): Creating and using rectangular page areas
+- [Table Extraction](/docs/tutorials/04-table-extraction/): Extract tables using pdfplumber, TATR, or text methods
+
+## Tutorials
+
+- [Loading and Extraction](/docs/tutorials/01-loading-and-extraction/): Opening PDFs and extracting text
+- [Finding Elements](/docs/tutorials/02-finding-elements/): Using find() and find_all() with selectors
+- [Extracting Blocks](/docs/tutorials/03-extracting-blocks/): Working with text blocks
+- [Excluding Content](/docs/tutorials/05-excluding-content/): Headers, footers, and exclusion zones
+- [Document QA](/docs/tutorials/06-document-qa/): AI-powered question answering
+- [Layout Analysis](/docs/tutorials/07-layout-analysis/): YOLO, TATR, and other layout detection
+- [Section Extraction](/docs/tutorials/09-section-extraction/): Extracting document sections
+- [Form Fields](/docs/tutorials/10-form-field-extraction/): Extracting form data
+- [OCR Integration](/docs/tutorials/12-ocr-integration/): EasyOCR, PaddleOCR, Surya, DocTR
+- [Categorizing Documents](/docs/tutorials/14-categorizing-documents/): Document classification
+
+## For LLMs
+
+- [Common Patterns](/docs/for-llms/common-patterns/): The top 20 canonical code patterns with return types
+- [Anti-Patterns](/docs/for-llms/anti-patterns/): Common mistakes to avoid
+
+## API Reference
+
+- [API Documentation](/docs/api/): Full API reference for all classes and methods
+
+## Key Concepts
+
+### PDF Object Model
+- `PDF`: Document container, access pages via `pdf.pages`
+- `Page`: Single page with find/extract methods
+- `Element`: Text, line, rect, image on a page
+- `Region`: Rectangular area for scoped operations
+- `ElementCollection`: List-like container with PDF-specific methods
+
+### Selector Syntax
+- Element types: `text`, `line`, `rect`, `image`, `region`
+- Pseudo-classes: `:contains()`, `:bold`, `:italic`, `:above()`, `:below()`
+- Attributes: `[size>=12]`, `[fontname*=Arial]`, `[source=ocr]`
+- Aggregates: `[size=max()]`, `[x0=min()]`, `[fontname=mode()]`
+
+### Common Methods
+- `page.find(selector)` -> Element | None
+- `page.find_all(selector)` -> ElementCollection
+- `page.extract_text()` -> str
+- `page.extract_table()` -> TableResult
+- `page.extract_tables()` -> List[TableResult]
+- `page.to_markdown()` -> str (VLM-powered)
+- `pdf.search(query, top_k=5)` -> PageCollection (semantic search)
+- `element.below()` / `.above()` / `.left()` / `.right()` -> Region
+- `page.apply_ocr(engine='easyocr')` -> ElementCollection
+- `page.analyze_layout(engine='yolo')` -> ElementCollection
+
+### OCR Engines
+- `easyocr`: Default, good accuracy, supports many languages
+- `paddle`: Fast, CPU-friendly
+- `paddlevl`: VLM-based document understanding (charts, complex layouts)
+- `surya`: High accuracy for invoices/forms
+- `doctr`: Document-focused OCR
+
+### Layout Engines
+- `yolo`: Fast, good for standard documents
+- `tatr`: Table-focused (Microsoft Table Transformer)
+- `paddle`: Lightweight layout detection
+- `surya`: Tuned for invoices and forms
