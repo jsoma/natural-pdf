@@ -1811,6 +1811,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#words-are-joined-together-or-spaces-are-missing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Words are joined together" or "Spaces are missing"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;Words are joined together&#34; or &#34;Spaces are missing&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tune-text-tolerance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tune Text Tolerance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-text_tolerance-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available text_tolerance Keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-reference-common-fixes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2207,6 +2246,45 @@
     <span class="md-ellipsis">
       
         Process Selectively
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#words-are-joined-together-or-spaces-are-missing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Words are joined together" or "Spaces are missing"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="&#34;Words are joined together&#34; or &#34;Spaces are missing&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tune-text-tolerance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tune Text Tolerance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-text_tolerance-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available text_tolerance Keys
       
     </span>
   </a>
@@ -2631,6 +2709,87 @@
         <span class="n">page</span><span class="o">.</span><span class="n">analyze_layout</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;tatr&#39;</span><span class="p">)</span>
 </code></pre></div>
 <hr />
+<h2 id="words-are-joined-together-or-spaces-are-missing">"Words are joined together" or "Spaces are missing"</h2>
+<p>Some PDFs don't embed explicit space characters. Natural PDF handles this automatically with two mechanisms:</p>
+<ol>
+<li><strong><code>x_tolerance_ratio</code></strong> — controls how far apart characters can be and still merge into a single word element. Defaults to <code>0.35</code> (35% of each character's font size). Characters of different font sizes are never merged together.</li>
+<li><strong><code>space_gap_ratio</code></strong> — after characters merge into a word, any internal gap ≥ this ratio × font size gets a space injected. Defaults to <code>0.15</code> (15% of font size).</li>
+</ol>
+<div class="highlight"><pre><span></span><code>Are words stuck together (e.g. &quot;PublicFinancialDisclosure&quot;)?
+├── Yes, and all text is one font size
+│   └── Increase space_gap_ratio (default 0.15)
+│       pdf = PDF(&quot;doc.pdf&quot;, text_tolerance={&quot;space_gap_ratio&quot;: 0.2})
+│
+├── Yes, but only for larger text
+│   └── Increase x_tolerance_ratio so larger chars merge first
+│       pdf = PDF(&quot;doc.pdf&quot;, text_tolerance={&quot;x_tolerance_ratio&quot;: 0.4})
+│
+└── Words are split that should be together
+    └── Lower the tolerance
+        pdf = PDF(&quot;doc.pdf&quot;, text_tolerance={&quot;x_tolerance&quot;: 2.0})
+</code></pre></div>
+<h3 id="tune-text-tolerance">Tune Text Tolerance</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="c1"># Default: auto-scales tolerance based on font size</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">)</span>
+
+<span class="c1"># Wider merging (joins characters further apart into words)</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">,</span> <span class="n">text_tolerance</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;x_tolerance_ratio&quot;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">})</span>
+
+<span class="c1"># Inject more spaces (lower threshold = more spaces)</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">,</span> <span class="n">text_tolerance</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;space_gap_ratio&quot;</span><span class="p">:</span> <span class="mf">0.10</span><span class="p">})</span>
+
+<span class="c1"># Disable space injection entirely</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">,</span> <span class="n">text_tolerance</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;space_gap_ratio&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span>
+
+<span class="c1"># Disable auto-scaling and set a fixed tolerance in points</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">,</span> <span class="n">auto_text_tolerance</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+          <span class="n">text_tolerance</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;x_tolerance&quot;</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span> <span class="s2">&quot;y_tolerance&quot;</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">})</span>
+</code></pre></div>
+<h3 id="available-text_tolerance-keys">Available <code>text_tolerance</code> Keys</h3>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x_tolerance</code></td>
+<td>Auto (0.35 × median font size)</td>
+<td>Max horizontal gap (in points) for chars to merge into a word</td>
+</tr>
+<tr>
+<td><code>y_tolerance</code></td>
+<td>Auto (0.6 × median font size)</td>
+<td>Max vertical gap (in points) for chars on the same line</td>
+</tr>
+<tr>
+<td><code>x_tolerance_ratio</code></td>
+<td><code>0.35</code> when auto</td>
+<td>Per-character tolerance as a fraction of font size. Handles mixed font sizes.</td>
+</tr>
+<tr>
+<td><code>y_tolerance_ratio</code></td>
+<td><code>None</code></td>
+<td>Per-character vertical tolerance as a fraction of font size</td>
+</tr>
+<tr>
+<td><code>space_gap_ratio</code></td>
+<td><code>0.15</code></td>
+<td>Gap ≥ this × font size within a merged word gets a space injected. Set to <code>0</code> to disable.</td>
+</tr>
+<tr>
+<td><code>keep_blank_chars</code></td>
+<td><code>True</code></td>
+<td>Whether to keep blank characters in word extraction</td>
+</tr>
+</tbody>
+</table>
+<hr />
 <h2 id="quick-reference-common-fixes">Quick Reference: Common Fixes</h2>
 <table>
 <thead>
@@ -2655,6 +2814,10 @@
 <tr>
 <td>Table columns wrong</td>
 <td>Try <code>region.extract_table(method='tatr')</code> or use <code>Guides</code> for manual columns</td>
+</tr>
+<tr>
+<td>Words stuck together</td>
+<td><code>PDF("doc.pdf", text_tolerance={"space_gap_ratio": 0.2})</code> — increase space injection sensitivity</td>
 </tr>
 <tr>
 <td>Selector returns None</td>
