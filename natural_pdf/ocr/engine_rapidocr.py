@@ -33,6 +33,37 @@ class RapidOCREngine(OCREngine):
         """Check if the rapidocr library is installed."""
         return importlib.util.find_spec("rapidocr") is not None
 
+    # Map common language codes to RapidOCR LangRec enum values.
+    _LANG_MAP = {
+        "en": "EN",
+        "eng": "EN",
+        "english": "EN",
+        "ch": "CH",
+        "zh": "CH",
+        "chinese": "CH",
+        "chinese_cht": "CHINESE_CHT",
+        "ja": "JAPAN",
+        "japan": "JAPAN",
+        "japanese": "JAPAN",
+        "ko": "KOREAN",
+        "korean": "KOREAN",
+        "ar": "ARABIC",
+        "arabic": "ARABIC",
+        "th": "TH",
+        "thai": "TH",
+        "ta": "TA",
+        "tamil": "TA",
+        "te": "TE",
+        "telugu": "TE",
+        "ka": "KA",
+        "latin": "LATIN",
+        "la": "LATIN",
+        "cyrillic": "CYRILLIC",
+        "devanagari": "DEVANAGARI",
+        "el": "EL",
+        "greek": "EL",
+    }
+
     def _initialize_model(
         self, languages: List[str], device: str, options: Optional[BaseOCROptions]
     ):
@@ -41,27 +72,39 @@ class RapidOCREngine(OCREngine):
             raise ImportError("RapidOCR library is not installed or available.")
 
         from rapidocr import RapidOCR
+        from rapidocr.utils.typings import LangRec
 
         self.logger.info("Initializing RapidOCR engine...")
 
-        # Build initialization parameters
+        if options and isinstance(options, RapidOCROptions) and options.config_path:
+            self._engine = RapidOCR(config_path=options.config_path)
+            self.logger.info("RapidOCR initialized with custom config: %s", options.config_path)
+            return
+
+        # Build dot-notation params for RapidOCR constructor
         params = {}
-
         if options and isinstance(options, RapidOCROptions):
-            # If custom config path is provided, use that directly
-            if options.config_path:
-                self._engine = RapidOCR(config_path=options.config_path)
-                self.logger.info(f"RapidOCR initialized with custom config: {options.config_path}")
-                return
+            if options.det_model_type != "mobile":
+                params["Det.model_type"] = options.det_model_type
+            if options.rec_model_type != "mobile":
+                params["Rec.model_type"] = options.rec_model_type
 
-            # Map options to RapidOCR params
-            # Note: RapidOCR uses params dict for configuration
-            if options.det_model_type:
-                params["det_model_type"] = options.det_model_type
-            if options.rec_model_type:
-                params["rec_model_type"] = options.rec_model_type
+        # Map languages to RapidOCR recognition model
+        if languages:
+            lang_key = languages[0].lower().strip()
+            mapped = self._LANG_MAP.get(lang_key)
+            if mapped:
+                lang_enum = getattr(LangRec, mapped, None)
+                if lang_enum is not None:
+                    params["Rec.lang_type"] = lang_enum
+                    self.logger.info("RapidOCR using rec language: %s", mapped)
+            elif lang_key != "en":
+                self.logger.warning(
+                    "RapidOCR: language '%s' not mapped; using default (Chinese). " "Available: %s",
+                    lang_key,
+                    sorted(self._LANG_MAP.keys()),
+                )
 
-        # Initialize with params if any, otherwise use defaults
         if params:
             self._engine = RapidOCR(params=params)
         else:
@@ -87,12 +130,23 @@ class RapidOCREngine(OCREngine):
         use_det = True
         use_cls = not detect_only
         use_rec = not detect_only
+        call_kwargs = {}
 
         if options and isinstance(options, RapidOCROptions):
             use_det = options.use_det
             if not detect_only:
                 use_cls = options.use_cls
                 use_rec = options.use_rec
+            if options.return_word_box:
+                call_kwargs["return_word_box"] = True
+            if options.return_single_char_box:
+                call_kwargs["return_single_char_box"] = True
+            if options.text_score is not None:
+                call_kwargs["text_score"] = options.text_score
+            if options.box_thresh is not None:
+                call_kwargs["box_thresh"] = options.box_thresh
+            if options.unclip_ratio is not None:
+                call_kwargs["unclip_ratio"] = options.unclip_ratio
 
         # RapidOCR accepts PIL images directly
         result = self._engine(
@@ -100,6 +154,7 @@ class RapidOCREngine(OCREngine):
             use_det=use_det,
             use_cls=use_cls,
             use_rec=use_rec,
+            **call_kwargs,
         )
 
         return result

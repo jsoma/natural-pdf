@@ -236,24 +236,27 @@ class RapidOCROptions(BaseOCROptions):
     the same accuracy with simpler installation (~15MB vs ~500MB).
     """
 
-    # Detection settings
+    # Constructor settings
     det_model_type: str = "mobile"  # "mobile" or "server"
-    det_thresh: float = 0.3
-
-    # Recognition settings
     rec_model_type: str = "mobile"  # "mobile" or "server"
+    config_path: Optional[str] = None  # Path to custom config.yaml
 
-    # Engine settings
+    # Runtime settings (passed to __call__)
     use_det: bool = True
     use_cls: bool = True
     use_rec: bool = True
-
-    # Advanced (for power users)
-    config_path: Optional[str] = None  # Path to custom config.yaml
+    return_word_box: bool = False  # Split lines into individual word boxes
+    return_single_char_box: bool = False  # Return per-character boxes
+    text_score: Optional[float] = None  # Text confidence filter (default 0.5)
+    box_thresh: Optional[float] = None  # Detection box threshold (default 0.5)
+    unclip_ratio: Optional[float] = None  # Box expansion ratio (default 1.6)
 
     def __post_init__(self):
         """Validate RapidOCR options."""
-        self.det_thresh = validate_confidence(self.det_thresh, "det_thresh", "RapidOCROptions")
+        if self.text_score is not None:
+            self.text_score = validate_confidence(self.text_score, "text_score", "RapidOCROptions")
+        if self.box_thresh is not None:
+            self.box_thresh = validate_confidence(self.box_thresh, "box_thresh", "RapidOCROptions")
 
 
 # --- Union type for type hinting ---

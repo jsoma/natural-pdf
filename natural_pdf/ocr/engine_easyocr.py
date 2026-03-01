@@ -143,21 +143,27 @@ class EasyOCREngine(OCREngine):
         # Process differently based on detect_only flag
         if detect_only:
             # Returns tuple (horizontal_list, free_list)
-            # horizontal_list is a list containing one item: the list of boxes
-            # Each box is [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
-            bboxes_tuple = self._model.detect(
-                image, **readtext_args
-            )  # Pass args here too? Check EasyOCR docs if needed.
+            # horizontal_list[0] = list of [x_min, x_max, y_min, y_max] boxes
+            # free_list[0] = list of [[x1,y1],[x2,y2],[x3,y3],[x4,y4]] polygons
+            bboxes_tuple = self._model.detect(image, **readtext_args)
             if (
+                bboxes_tuple
+                and isinstance(bboxes_tuple, tuple)
+                and len(bboxes_tuple) >= 2
+                and isinstance(bboxes_tuple[0], list)
+                and isinstance(bboxes_tuple[1], list)
+            ):
+                return (bboxes_tuple[0], bboxes_tuple[1])
+            elif (
                 bboxes_tuple
                 and isinstance(bboxes_tuple, tuple)
                 and len(bboxes_tuple) > 0
                 and isinstance(bboxes_tuple[0], list)
             ):
-                return bboxes_tuple[0]  # Return the list of polygons directly
+                return (bboxes_tuple[0], [])
             else:
                 self.logger.warning(f"EasyOCR detect returned unexpected format: {bboxes_tuple}")
-                return []  # Return empty list on unexpected format
+                return ([], [])
         else:
             return self._model.readtext(image, **readtext_args)
 
@@ -168,38 +174,31 @@ class EasyOCREngine(OCREngine):
         standardized_regions: List[TextRegion] = []
 
         if detect_only:
-            results = raw_results[0]
-            # In detect_only mode, raw_results is already a list of bounding boxes
-            # Each bbox is in [x_min, x_max, y_min, y_max] format
-            if isinstance(results, list):
-                for detection in results:
-                    try:
-                        # This block expects 'detection' to be a list/tuple of 4 numbers
-                        if isinstance(detection, (list, tuple)) and len(detection) == 4:
-                            x_min, x_max, y_min, y_max = detection
-                            # Convert to standardized (x0, y0, x1, y1) format
-                            try:
-                                bbox = (float(x_min), float(y_min), float(x_max), float(y_max))
-                                standardized_regions.append(TextRegion(bbox, "", 0.0))
-                            except (ValueError, TypeError) as e:
-                                raise ValueError(
-                                    f"Invalid number format in EasyOCR detect bbox: {detection}"
-                                ) from e
-                        else:
-                            # This is where the error is raised if 'detection' is not a list/tuple of 4 numbers
-                            raise ValueError(f"Invalid detection format from EasyOCR: {detection}")
-                    except ValueError as e:
-                        # Re-raise any value errors from standardization or format checks
-                        raise e
-                    except Exception as e:
-                        # Catch other potential processing errors
-                        raise ValueError(
-                            f"Error processing EasyOCR detection item: {detection}"
-                        ) from e
-            else:
-                raise ValueError(
-                    f"Expected list of bounding boxes in detect_only mode, got: {type(raw_results)}"
-                )
+            # raw_results is (horizontal_list, free_list) from detect()
+            # horizontal_list[0] has [x_min, x_max, y_min, y_max] boxes
+            # free_list[0] has [[x1,y1],[x2,y2],[x3,y3],[x4,y4]] polygons
+            horizontal_list, free_list = raw_results
+
+            # Process horizontal detections
+            horiz_boxes = horizontal_list[0] if horizontal_list else []
+            for detection in horiz_boxes:
+                if isinstance(detection, (list, tuple)) and len(detection) == 4:
+                    x_min, x_max, y_min, y_max = detection
+                    bbox = (float(x_min), float(y_min), float(x_max), float(y_max))
+                    standardized_regions.append(TextRegion(bbox, "", 0.0))
+                else:
+                    raise ValueError(
+                        f"Invalid horizontal detection format from EasyOCR: {detection}"
+                    )
+
+            # Process free-form polygon detections
+            free_boxes = free_list[0] if free_list else []
+            for polygon in free_boxes:
+                try:
+                    bbox = self._standardize_bbox(polygon)
+                    standardized_regions.append(TextRegion(bbox, "", 0.0))
+                except ValueError:
+                    self.logger.warning(f"Skipping unrecognized free-form detection: {polygon}")
 
             return standardized_regions
 

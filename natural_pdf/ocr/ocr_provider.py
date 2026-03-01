@@ -80,10 +80,16 @@ def _create_engine_instance(engine_name: str) -> OCREngine:
     registry_entry = ENGINE_REGISTRY[engine_name]
     engine_instance = _instantiate_engine_provider(registry_entry["provider"])
     if not engine_instance.is_available():
-        raise RuntimeError(
-            f"OCR engine '{engine_name}' is not available. "
-            f"Install it with pip (e.g. pip install easyocr)."
-        )
+        install_hints = {
+            "easyocr": "pip install easyocr",
+            "paddle": "pip install paddleocr",
+            "surya": "pip install surya-ocr",
+            "doctr": "pip install python-doctr",
+            "rapidocr": "pip install rapidocr_onnxruntime",
+            "paddlevl": "pip install paddleocr",
+        }
+        hint = install_hints.get(engine_name, f"pip install {engine_name}")
+        raise RuntimeError(f"OCR engine '{engine_name}' is not available. Install it with: {hint}")
     return engine_instance
 
 
