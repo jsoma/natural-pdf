@@ -866,6 +866,7 @@ class TestRunVLMOCRInstructions:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.optional_deps
 class TestElementCollectionVLMCorrection:
     """When apply_ocr(engine='vlm') is called on a collection of existing OCR
     elements, it should correct text in-place rather than deleting elements
@@ -979,6 +980,7 @@ class TestElementCollectionVLMCorrection:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.optional_deps
 class TestRegionVLMOCRTransactional:
     """Region._apply_vlm_ocr should not delete existing OCR elements when
     the VLM returns no parseable results."""
