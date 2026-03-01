@@ -74,21 +74,20 @@ from natural_pdf.ocr.ocr_manager import (
     run_ocr_apply,
     run_ocr_extract,
 )
-from natural_pdf.services import conversion_service as _conversion_service  # noqa: F401
-from natural_pdf.services import exclusion_service as _exclusion_service  # noqa: F401
-from natural_pdf.services import extraction_service as _extraction_service  # noqa: F401
-from natural_pdf.services import guides_service as _guides_service  # noqa: F401
-from natural_pdf.services import ocr_service as _ocr_service  # noqa: F401
-from natural_pdf.services import qa_service as _qa_service  # noqa: F401
+
+# Service modules are loaded lazily via the registry in natural_pdf.services.registry
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 
 # # Import new utils
 from natural_pdf.text.operations import (
+    _create_alt_text_char_dict,
     apply_bidi_processing,
     filter_chars_spatially,
     generate_text_layout,
 )
-from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
+from natural_pdf.text.operations import normalize_whitespace as _normalize_whitespace
+
+# Viewer widget support is lazy-loaded to avoid importing ipywidgets/IPython at startup
 
 # End Deskew Imports
 
@@ -708,6 +707,7 @@ class Page(
         replace: bool = True,
         model: Optional[str] = None,
         client: Optional[Any] = None,
+        instructions: Optional[str] = None,
         function: Optional[Callable] = None,
         **kwargs,
     ) -> "Page":
@@ -715,7 +715,9 @@ class Page(
 
         Args:
             engine: OCR engine — ``"easyocr"`` (default), ``"surya"``,
-                ``"paddle"``, ``"paddlevl"``, or ``"doctr"``.
+                ``"paddle"``, ``"paddlevl"``, ``"doctr"``, or ``"vlm"``.
+                Use ``engine="vlm"`` with ``model=`` and/or ``client=``
+                for VLM-based OCR.
             options: Engine-specific option object.
             languages: Language codes, e.g. ``["en", "fr"]``.
             min_confidence: Discard results below this confidence (0–1).
@@ -726,6 +728,8 @@ class Page(
             replace: Remove existing OCR elements first.
             model: VLM model name — switches to VLM OCR pipeline.
             client: OpenAI-compatible client — switches to VLM OCR pipeline.
+            instructions: Additional instructions appended to the VLM prompt.
+                Ignored when ``prompt`` is passed directly via ``**kwargs``.
             function: Custom OCR callable that receives a Region and returns text.
             **kwargs: Extra engine-specific parameters.
 
@@ -751,7 +755,30 @@ class Page(
         if not apply_exclusions:
             params["apply_exclusions"] = apply_exclusions
 
-        # VLM OCR path: when model= or client= is provided
+        # VLM OCR path: explicit engine="vlm" or model=/client= provided
+        if engine is not None and engine.lower() == "vlm":
+            if model is None and client is None:
+                from natural_pdf.core.vlm_client import get_default_client
+
+                default_client, default_model = get_default_client()
+                if default_client is None:
+                    raise ValueError(
+                        'apply_ocr(engine="vlm") requires a model= and/or client= '
+                        "parameter, or a default client set via "
+                        "natural_pdf.set_default_client(). Example:\n"
+                        '  page.apply_ocr(engine="vlm", model="gemini-2.5-flash", client=client)'
+                    )
+            params.pop("engine", None)
+            return self._apply_vlm_ocr(
+                model=model,
+                client=client,
+                replace=replace,
+                resolution=resolution or 144,
+                min_confidence=min_confidence,
+                languages=languages,
+                instructions=instructions,
+            )
+
         if model is not None or client is not None:
             if engine is not None:
                 logger.warning(
@@ -763,6 +790,7 @@ class Page(
                 model=model,
                 client=client,
                 replace=replace,
+                instructions=instructions,
                 **{k: v for k, v in params.items() if k not in ("replace", "model", "client")},
             )
 
@@ -790,6 +818,7 @@ class Page(
         render_kwargs: Optional[Dict[str, Any]] = None,
         max_new_tokens: int = 4096,
         prompt: Optional[str] = None,
+        instructions: Optional[str] = None,
         min_confidence: Optional[float] = None,
         languages: Optional[List[str]] = None,
     ) -> "Page":
@@ -815,6 +844,7 @@ class Page(
             render_kwargs=render_kwargs,
             max_new_tokens=max_new_tokens,
             prompt=prompt,
+            instructions=instructions,
             languages=languages,
         )
 
@@ -924,14 +954,18 @@ class Page(
 
         removed = 0
 
-        # Remove from element manager, if available
-        if hasattr(self, "_element_mgr") and hasattr(self._element_mgr, "regions"):
-            regions_list = getattr(self._element_mgr, "regions")
-            if isinstance(regions_list, list):
-                to_remove = [region for region in regions_list if _matches(region)]
-                for region in to_remove:
-                    regions_list.remove(region)
-                removed += len(to_remove)
+        # Remove from element manager store (the authoritative source for
+        # iter_regions / selector queries).  We must write back via _store.set
+        # because the .regions property returns a copy.
+        if hasattr(self, "_element_mgr"):
+            store = self._element_mgr._element_store()
+            current = store.get("regions", [])
+            if current:
+                filtered = [r for r in current if not _matches(r)]
+                mgr_removed = len(current) - len(filtered)
+                if mgr_removed:
+                    self._element_mgr._store.set("regions", filtered)
+                    removed += mgr_removed
 
         # Remove from detected collection
         detected = self._regions.get("detected", [])
@@ -1966,10 +2000,26 @@ class Page(
         # 1. Get Word Elements (triggers load_elements if needed)
         word_elements = self.words
         if not word_elements:
-            logger.debug(f"Page {self.number}: No word elements found.")
+            # Even with no native words, alt_text regions may contribute text
+            alt_char_dicts = []
+            for region in self.iter_regions():
+                if getattr(region, "alt_text", None) is not None:
+                    alt_char_dicts.append(_create_alt_text_char_dict(region))
+            if not alt_char_dicts:
+                logger.debug(f"Page {self.number}: No word elements found.")
+                if return_textmap:
+                    return "", None
+                return ""
+            # Generate text from alt_text regions only
+            page_bbox = (0, 0, self.width, self.height)
+            result = generate_text_layout(
+                char_dicts=alt_char_dicts,
+                layout_context_bbox=page_bbox,
+                user_kwargs={"layout": layout},
+            )
             if return_textmap:
-                return "", None
-            return ""
+                return result, None
+            return result
 
         # 2. Apply element-based exclusions if enabled
         # Check both page-level and PDF-level exclusions
@@ -2006,6 +2056,11 @@ class Page(
         all_char_dicts = []
         for word in word_elements:
             all_char_dicts.extend(getattr(word, "_char_dicts", []))
+
+        # 4b. Inject alt_text from regions on this page
+        for region in self.iter_regions():
+            if region.alt_text is not None:
+                all_char_dicts.append(_create_alt_text_char_dict(region))
 
         # 5. Spatially Filter Characters (only by regions, elements already filtered above)
         filtered_chars = filter_chars_spatially(
@@ -2372,6 +2427,8 @@ class Page(
 
         return self.services.layout.analyze_layout(self, **kwargs)
 
+    detect_layout = analyze_layout
+
     def clear_detected_layout_regions(self) -> "Page":
         """
         Removes all regions from this page that were added by layout analysis
@@ -2510,7 +2567,9 @@ class Page(
             ImportError: If required dependencies (ipywidgets) are missing.
             ValueError: If image rendering or data preparation fails within from_page.
         """
-        # Check for availability using the imported flag and class variable
+        # Lazy import to avoid pulling in ipywidgets/IPython at startup
+        from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
+
         if not _IPYWIDGETS_AVAILABLE or InteractiveViewerWidget is None:
             raise ImportError(
                 "Interactive viewer requires 'ipywidgets'. "
@@ -2589,7 +2648,7 @@ class Page(
             )  # Simple join, ignore exclusions for classification
             if not text_content or text_content.isspace():
                 raise ValueError("Cannot classify page with 'text' model: No text content found.")
-            return text_content
+            return _normalize_whitespace(text_content)
         elif model_type == "vision":
             resolution = kwargs.get("resolution", 150)
             # Use render() for clean image without highlights

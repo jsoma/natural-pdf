@@ -62,6 +62,7 @@ from natural_pdf.ocr.ocr_manager import (
 )
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.text.operations import normalize_whitespace as _normalize_whitespace
 
 if TYPE_CHECKING:
     from natural_pdf.core.highlighting_service import HighlightContext
@@ -836,7 +837,9 @@ class PDF(
 
         Args:
             engine: OCR engine — ``"easyocr"`` (default), ``"surya"``,
-                ``"paddle"``, ``"paddlevl"``, ``"doctr"``, or ``"rapidocr"``.
+                ``"paddle"``, ``"paddlevl"``, ``"doctr"``, ``"rapidocr"``,
+                or ``"vlm"`` (requires ``model=``/``client=`` or a default
+                client via ``natural_pdf.set_default_client()``).
                 If None, uses the global default from natural_pdf.options.ocr.engine.
             languages: List of language codes for OCR recognition (e.g., ['en', 'es']).
                 If None, uses the global default from natural_pdf.options.ocr.languages.
@@ -2435,11 +2438,14 @@ class PDF(
         """
         if model_type == "text":
             try:
-                # Extract text from the whole document
-                text = self.extract_text(**kwargs)  # Pass relevant kwargs
+                # Extract text without layout spacing for cleaner NLI input
+                extract_kwargs = {
+                    k: v for k, v in kwargs.items() if k not in ("layout", "use_exclusions")
+                }
+                text = self.extract_text(layout=False, use_exclusions=False, **extract_kwargs)
                 if not text or text.isspace():
                     raise ValueError("PDF contains no extractable text for classification.")
-                return text
+                return _normalize_whitespace(text)
             except Exception as e:
                 logger.error(f"Error extracting text for PDF classification: {e}")
                 raise ValueError("Failed to extract text for classification.") from e
@@ -2520,6 +2526,8 @@ class PDF(
             An ElementCollection of all detected Region objects.
         """
         return resolve_service(self, "layout").analyze_layout(self, *args, **kwargs)
+
+    detect_layout = analyze_layout
 
     def highlights(self, show: bool = False) -> "HighlightContext":
         """

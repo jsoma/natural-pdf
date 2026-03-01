@@ -14,6 +14,21 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_MULTI_SPACE = re.compile(r"[^\S\n]+")  # runs of whitespace that aren't newlines
+_MULTI_NEWLINE = re.compile(r"\n{3,}")  # 3+ consecutive newlines
+
+
+def normalize_whitespace(text: str) -> str:
+    """Collapse redundant whitespace for feeding into NLI / classification models.
+
+    - Runs of spaces/tabs (but not newlines) → single space
+    - 3+ consecutive newlines → double newline
+    - Strip leading/trailing whitespace
+    """
+    text = _MULTI_SPACE.sub(" ", text)
+    text = _MULTI_NEWLINE.sub("\n\n", text)
+    return text.strip()
+
 
 def _get_layout_kwargs(
     layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
@@ -248,6 +263,35 @@ def apply_content_filter(
         logger.debug(f"Content filter removed {filtered_count} characters.")
 
     return filtered_chars
+
+
+def _create_alt_text_char_dict(region, source_label: str = "alt_text") -> Dict[str, Any]:
+    """Create a char_dict from a region's alt_text and bbox.
+
+    Produces a single character dictionary suitable for inclusion in the
+    char_dicts list passed to ``generate_text_layout``.  The format mirrors
+    what ``Region.to_text_element`` builds internally.
+    """
+    return {
+        "text": region.alt_text,
+        "x0": region.x0,
+        "top": region.top,
+        "x1": region.x1,
+        "bottom": region.bottom,
+        "width": region.x1 - region.x0,
+        "height": region.bottom - region.top,
+        "object_type": "char",
+        "page_number": getattr(region.page, "page_number", 0),
+        "fontname": "AltText",
+        "size": 10.0,
+        "upright": True,
+        "direction": 1,
+        "adv": region.x1 - region.x0,
+        "source": source_label,
+        "confidence": 1.0,
+        "stroking_color": (0, 0, 0),
+        "non_stroking_color": (0, 0, 0),
+    }
 
 
 def generate_text_layout(

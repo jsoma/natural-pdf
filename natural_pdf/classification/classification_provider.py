@@ -46,7 +46,7 @@ class ClassificationEngine(Protocol):
     def classify_batch(
         self,
         *,
-        item_contents: Sequence[Union[str, "Image.Image"]],
+        contents: Sequence[Union[str, "Image.Image"]],
         labels: List[str],
         model_id: Optional[str],
         using: Optional[str],
@@ -143,7 +143,7 @@ def run_classification_batch(
 ) -> List[ClassificationResult]:
     engine = _get_engine(context, engine_name)
     return engine.classify_batch(
-        item_contents=contents,
+        contents=contents,
         labels=labels,
         model_id=model_id,
         using=using,
