@@ -42,14 +42,13 @@ class ExtractionService:
         """Run structured extraction and store the result on *host*.
 
         Keyword Args:
-            citations (bool): When ``True`` and ``using='text'``, a shadow
-                schema is sent to the LLM so it returns verbatim source
-                quotes alongside each field.  The quotes are aligned back
+            citations (bool): When ``True`` and ``using='text'``, source
+                line numbers are collected alongside each field and resolved
                 to PDF elements via pdfplumber's TextMap provenance data,
                 producing an ``ElementCollection`` per field stored in
                 ``result.citations``.  Defaults to ``False``.
             confidence: Per-field confidence scoring. Accepts ``True`` or
-                ``'range'`` for default 0.0–1.0 numeric scale, a ``list``
+                ``'range'`` for default 1–5 numeric scale, a ``list``
                 for categorical levels, or a ``dict`` mapping values to
                 descriptions.  Results are available via
                 ``result["field"].confidence`` and ``result.confidences``.
@@ -57,6 +56,9 @@ class ExtractionService:
             instructions (str): Domain-specific guidance appended to the
                 LLM prompt.  Affects all reasoning (extraction, citations,
                 confidence).  Defaults to ``None``.
+            multipass (bool): When ``True``, uses two LLM calls (extraction
+                then combined meta for citations+confidence) instead of the
+                default single-pass approach.  Defaults to ``False``.
         """
         schema_model = self._normalize_schema(schema)
         key = analysis_key or DEFAULT_STRUCTURED_KEY
@@ -73,6 +75,7 @@ class ExtractionService:
         citations = kwargs.pop("citations", False)
         confidence = kwargs.pop("confidence", None)
         instructions = kwargs.pop("instructions", None)
+        multipass = kwargs.pop("multipass", False)
         resolved_engine = self._resolve_engine(engine, client)
         if resolved_engine == "doc_qa":
             self._perform_docqa_extraction(
@@ -105,6 +108,7 @@ class ExtractionService:
                 citations=citations,
                 confidence=confidence,
                 instructions=instructions,
+                multipass=multipass,
                 **kwargs,
             )
         return analyses[key]
@@ -366,19 +370,22 @@ class ExtractionService:
         citations: bool = False,
         confidence=None,
         instructions: Optional[str] = None,
+        multipass: bool = False,
         **kwargs,
     ) -> None:
         if not structured_data_is_available():
             raise RuntimeError("Structured data extraction requires Pydantic; please install it.")
 
         from natural_pdf.extraction.citations import (
-            ConfidenceConfig,
             add_line_numbers,
             build_char_to_element_map,
             build_extended_prompt,
             build_extended_schema,
+            build_meta_prompt,
+            build_meta_schema,
             normalize_confidence_config,
             resolve_citations,
+            resolve_source_lines_to_text,
             split_extended_result,
         )
 
@@ -389,15 +396,13 @@ class ExtractionService:
 
         if use_citations and using == "vision":
             logger.warning(
-                "Citations are not supported with using='vision'. " "Proceeding without citations."
+                "Citations are not supported with using='vision'. Proceeding without citations."
             )
             use_citations = False
 
-        # Determine whether we need the extended pipeline
-        need_extended = use_citations or use_confidence
-
         # Citations require textmap provenance (text mode only)
         need_textmap = use_citations and using == "text"
+        need_meta = use_citations or use_confidence
 
         # ---- Get content ---- #
         if need_textmap:
@@ -454,104 +459,87 @@ class ExtractionService:
             host.analyses[analysis_key] = result
             return result
 
-        # ---- Extended pipeline (citations and/or confidence) ---- #
-        if need_extended:
-            # Build extended schema and prompt
-            extended_schema = build_extended_schema(
-                schema,
-                with_sources=use_citations,
-                with_confidence=use_confidence,
-                confidence_config=confidence_config,
-            )
-            extended_prompt = build_extended_prompt(
-                prompt,
-                schema,
-                instructions=instructions,
-                with_sources=use_citations,
-                with_confidence=use_confidence,
-                confidence_config=confidence_config,
-            )
+        # Build numbered text if citations are needed
+        numbered_text = None
+        line_map = None
+        if use_citations and using == "text" and isinstance(content, str):
+            numbered_text, line_map = add_line_numbers(content)
 
-            # For citations, add line numbers to text content
-            line_map = None
-            char_to_elem = None
-            if use_citations and using == "text":
-                numbered_text, line_map = add_line_numbers(content)
-                char_to_elem = build_char_to_element_map(word_elements)
-                llm_content = numbered_text
-            else:
-                llm_content = content
-
-            # Call LLM with extended schema
-            extended_result = extract_structured_data(
-                content=llm_content,
-                schema=extended_schema,
+        # ---- Branch on multipass vs single-pass ---- #
+        if not need_meta:
+            # No meta requested — plain extraction
+            self._plain_extraction(
+                host=host,
+                schema=schema,
                 client=client,
-                prompt=extended_prompt,
+                analysis_key=analysis_key,
+                prompt=prompt,
                 using=using,
                 model=model,
+                content=content,
+                instructions=instructions,
+                **kwargs,
+            )
+        elif multipass:
+            # Two-pass: extract data, then combined meta
+            self._two_pass_extraction(
+                host=host,
+                schema=schema,
+                client=client,
+                analysis_key=analysis_key,
+                prompt=prompt,
+                using=using,
+                model=model,
+                content=content,
+                instructions=instructions,
+                use_citations=use_citations,
+                use_confidence=use_confidence,
+                confidence_config=confidence_config,
+                need_textmap=need_textmap,
+                numbered_text=numbered_text,
+                line_map=line_map,
+                textmap_info=textmap_info if need_textmap else None,
+                word_elements=word_elements if need_textmap else [],
+                **kwargs,
+            )
+        else:
+            # Single-pass: combined schema with user fields + meta
+            self._single_pass_extraction(
+                host=host,
+                schema=schema,
+                client=client,
+                analysis_key=analysis_key,
+                prompt=prompt,
+                using=using,
+                model=model,
+                content=content,
+                instructions=instructions,
+                use_citations=use_citations,
+                use_confidence=use_confidence,
+                confidence_config=confidence_config,
+                need_textmap=need_textmap,
+                numbered_text=numbered_text,
+                line_map=line_map,
+                textmap_info=textmap_info if need_textmap else None,
+                word_elements=word_elements if need_textmap else [],
                 **kwargs,
             )
 
-            if extended_result.success and extended_result.data is not None:
-                # Split extended result
-                ext_dict = (
-                    extended_result.data.model_dump()
-                    if hasattr(extended_result.data, "model_dump")
-                    else extended_result.data.dict()
-                )
-                user_data_dict, sources_dict, confidences_dict = split_extended_result(
-                    ext_dict,
-                    schema,
-                    with_sources=use_citations,
-                    with_confidence=use_confidence,
-                )
-
-                # Reconstruct user model
-                user_model_instance = schema(**user_data_dict)
-
-                # Resolve citations if active
-                citations_dict = None
-                if use_citations and line_map is not None and char_to_elem is not None:
-                    citations_dict = resolve_citations(
-                        shadow_data=extended_result.data,
-                        user_schema=schema,
-                        line_map=line_map,
-                        textmap_info=textmap_info,
-                        char_to_element_map=char_to_elem,
-                    )
-
-                # Clamp float confidences if active
-                if use_confidence and confidences_dict is not None:
-                    confidences_dict = self._clamp_confidences(confidences_dict, confidence_config)
-                    # Null confidence for null fields
-                    for fname, val in user_data_dict.items():
-                        if val is None and fname in confidences_dict:
-                            confidences_dict[fname] = None
-
-                result = StructuredDataResult(
-                    data=user_model_instance,
-                    success=True,
-                    error_message=None,
-                    raw_output=extended_result.raw_output,
-                    model_used=extended_result.model_used,
-                    citations=citations_dict,
-                    confidences=confidences_dict,
-                )
-            else:
-                result = StructuredDataResult(
-                    data=extended_result.data,
-                    success=extended_result.success,
-                    error_message=extended_result.error_message,
-                    raw_output=extended_result.raw_output,
-                    model_used=extended_result.model_used,
-                )
-
-            host.analyses[analysis_key] = result
-            return
-
-        # ---- Standard path (no citations, no confidence) ---- #
-        # If we only have instructions, just append to prompt
+    def _plain_extraction(
+        self,
+        *,
+        host,
+        schema: Type[BaseModel],
+        client: Any,
+        analysis_key: str,
+        prompt: Optional[str],
+        using: str,
+        model: Optional[str],
+        content: Any,
+        instructions: Optional[str] = None,
+        **kwargs,
+    ) -> None:
+        """Plain extraction with no citations or confidence."""
         effective_prompt = prompt
         if instructions:
             base = prompt or (
@@ -560,7 +548,7 @@ class ExtractionService:
             )
             effective_prompt = f"{base}\n\n{instructions}"
 
-        result = extract_structured_data(
+        pass1_result = extract_structured_data(
             content=content,
             schema=schema,
             client=client,
@@ -570,7 +558,297 @@ class ExtractionService:
             **kwargs,
         )
 
-        host.analyses[analysis_key] = result
+        host.analyses[analysis_key] = StructuredDataResult(
+            data=pass1_result.data,
+            success=pass1_result.success,
+            error_message=pass1_result.error_message,
+            raw_output=pass1_result.raw_output,
+            model_used=pass1_result.model_used,
+        )
+
+    def _single_pass_extraction(
+        self,
+        *,
+        host,
+        schema: Type[BaseModel],
+        client: Any,
+        analysis_key: str,
+        prompt: Optional[str],
+        using: str,
+        model: Optional[str],
+        content: Any,
+        instructions: Optional[str] = None,
+        use_citations: bool = False,
+        use_confidence: bool = False,
+        confidence_config=None,
+        need_textmap: bool = False,
+        numbered_text: Optional[str] = None,
+        line_map: Optional[Dict[int, str]] = None,
+        textmap_info: Any = None,
+        word_elements: list = None,
+        **kwargs,
+    ) -> None:
+        """Single LLM call with combined schema (user fields + source_lines + confidence)."""
+        from natural_pdf.extraction.citations import (
+            build_char_to_element_map,
+            build_extended_prompt,
+            build_extended_schema,
+            resolve_citations,
+            resolve_source_lines_to_text,
+            split_extended_result,
+        )
+
+        if word_elements is None:
+            word_elements = []
+
+        # Build extended schema with source_lines and/or confidence
+        extended_schema = build_extended_schema(
+            schema,
+            with_sources=use_citations,
+            with_confidence=use_confidence,
+            confidence_config=confidence_config,
+        )
+
+        # Build extended prompt
+        extended_prompt = build_extended_prompt(
+            prompt,
+            schema,
+            instructions=instructions,
+            with_sources=use_citations,
+            with_confidence=use_confidence,
+            confidence_config=confidence_config,
+        )
+
+        # Use numbered text as content if citations requested
+        llm_content = numbered_text if (use_citations and numbered_text) else content
+
+        result = extract_structured_data(
+            content=llm_content,
+            schema=extended_schema,
+            client=client,
+            prompt=extended_prompt,
+            using=using,
+            model=model,
+            **kwargs,
+        )
+
+        if not result.success or result.data is None:
+            host.analyses[analysis_key] = StructuredDataResult(
+                data=result.data,
+                success=result.success,
+                error_message=result.error_message,
+                raw_output=result.raw_output,
+                model_used=result.model_used,
+            )
+            return
+
+        # Split the extended result
+        data_dict = (
+            result.data.model_dump() if hasattr(result.data, "model_dump") else result.data.dict()
+        )
+        user_data, sources_dict, confidences_dict = split_extended_result(
+            data_dict, schema, with_sources=use_citations, with_confidence=use_confidence
+        )
+
+        # Re-create user model instance (model_construct bypasses alias
+        # validation so field-name keys work even when aliases are set)
+        user_model_instance = schema.model_construct(**user_data)
+
+        # Resolve citations to ElementCollections
+        citations_dict = None
+        resolved_sources = None
+        if use_citations and sources_dict and line_map:
+            # Resolve line numbers to text strings for FieldResult.sources
+            resolved_sources = resolve_source_lines_to_text(sources_dict, line_map)
+
+            if need_textmap:
+                char_to_elem = build_char_to_element_map(word_elements)
+                citations_dict = resolve_citations(
+                    shadow_data=data_dict,
+                    user_schema=schema,
+                    line_map=line_map,
+                    textmap_info=textmap_info,
+                    char_to_element_map=char_to_elem,
+                )
+
+        # Clamp confidences
+        if confidences_dict:
+            confidences_dict = self._clamp_confidences(confidences_dict, confidence_config)
+
+        host.analyses[analysis_key] = StructuredDataResult(
+            data=user_model_instance,
+            success=True,
+            error_message=None,
+            raw_output=result.raw_output,
+            model_used=result.model_used,
+            citations=citations_dict,
+            confidences=confidences_dict,
+            sources=resolved_sources,
+        )
+
+    def _two_pass_extraction(
+        self,
+        *,
+        host,
+        schema: Type[BaseModel],
+        client: Any,
+        analysis_key: str,
+        prompt: Optional[str],
+        using: str,
+        model: Optional[str],
+        content: Any,
+        instructions: Optional[str] = None,
+        use_citations: bool = False,
+        use_confidence: bool = False,
+        confidence_config=None,
+        need_textmap: bool = False,
+        numbered_text: Optional[str] = None,
+        line_map: Optional[Dict[int, str]] = None,
+        textmap_info: Any = None,
+        word_elements: list = None,
+        **kwargs,
+    ) -> None:
+        """Two LLM calls: extract data, then combined meta (citations+confidence)."""
+        from natural_pdf.extraction.citations import (
+            build_char_to_element_map,
+            build_meta_prompt,
+            build_meta_schema,
+            resolve_citations,
+            resolve_source_lines_to_text,
+        )
+
+        if word_elements is None:
+            word_elements = []
+
+        # ---- Pass 1: Plain extraction ---- #
+        effective_prompt = prompt
+        if instructions:
+            base = prompt or (
+                f"Extract the information corresponding to the fields in the "
+                f"{schema.__name__} schema. Respond only with the structured data."
+            )
+            effective_prompt = f"{base}\n\n{instructions}"
+
+        pass1_result = extract_structured_data(
+            content=content,
+            schema=schema,
+            client=client,
+            prompt=effective_prompt,
+            using=using,
+            model=model,
+            **kwargs,
+        )
+
+        if not pass1_result.success or pass1_result.data is None:
+            host.analyses[analysis_key] = StructuredDataResult(
+                data=pass1_result.data,
+                success=pass1_result.success,
+                error_message=pass1_result.error_message,
+                raw_output=pass1_result.raw_output,
+                model_used=pass1_result.model_used,
+            )
+            return
+
+        user_data_dict = (
+            pass1_result.data.model_dump()
+            if hasattr(pass1_result.data, "model_dump")
+            else pass1_result.data.dict()
+        )
+
+        # ---- Pass 2: Combined meta (citations + confidence) ---- #
+        meta_schema = build_meta_schema(
+            schema,
+            with_sources=use_citations,
+            with_confidence=use_confidence,
+            confidence_config=confidence_config,
+        )
+        meta_prompt = build_meta_prompt(
+            schema,
+            user_data_dict,
+            with_sources=use_citations,
+            with_confidence=use_confidence,
+            confidence_config=confidence_config,
+        )
+
+        # Use numbered text as content for pass 2 if citations requested
+        llm_content = numbered_text if (use_citations and numbered_text) else content
+
+        sources_dict = None
+        citations_dict = None
+        confidences_dict = None
+        resolved_sources = None
+
+        try:
+            meta_result = extract_structured_data(
+                content=llm_content,
+                schema=meta_schema,
+                client=client,
+                prompt=meta_prompt,
+                using=using,
+                model=model,
+                **kwargs,
+            )
+            if meta_result.success and meta_result.data is not None:
+                meta_dict = (
+                    meta_result.data.model_dump()
+                    if hasattr(meta_result.data, "model_dump")
+                    else meta_result.data.dict()
+                )
+
+                # Extract sources (strip _source_lines suffix)
+                if use_citations:
+                    sources_dict = {}
+                    for key, val in meta_dict.items():
+                        if key.endswith("_source_lines"):
+                            field_name = key[: -len("_source_lines")]
+                            sources_dict[field_name] = val
+
+                    # Resolve line numbers to text strings
+                    if line_map:
+                        resolved_sources = resolve_source_lines_to_text(sources_dict, line_map)
+
+                    # Resolve to ElementCollections
+                    if need_textmap and line_map:
+                        char_to_elem = build_char_to_element_map(word_elements)
+                        citations_dict = resolve_citations(
+                            shadow_data=meta_dict,
+                            user_schema=schema,
+                            line_map=line_map,
+                            textmap_info=textmap_info,
+                            char_to_element_map=char_to_elem,
+                        )
+
+                # Extract confidences (strip _confidence suffix)
+                if use_confidence:
+                    confidences_dict = {}
+                    for key, val in meta_dict.items():
+                        if key.endswith("_confidence"):
+                            field_name = key[: -len("_confidence")]
+                            confidences_dict[field_name] = val
+                    confidences_dict = self._clamp_confidences(confidences_dict, confidence_config)
+        except Exception:
+            logger.warning(
+                "Meta pass failed; returning extraction without meta.",
+                exc_info=True,
+            )
+            # Graceful degradation for confidence
+            if use_confidence:
+                if hasattr(schema, "model_fields"):
+                    field_names = list(schema.model_fields.keys())
+                else:
+                    field_names = list(schema.__fields__.keys())
+                confidences_dict = {fname: None for fname in field_names}
+
+        host.analyses[analysis_key] = StructuredDataResult(
+            data=pass1_result.data,
+            success=True,
+            error_message=None,
+            raw_output=pass1_result.raw_output,
+            model_used=pass1_result.model_used,
+            citations=citations_dict,
+            confidences=confidences_dict,
+            sources=resolved_sources,
+        )
 
     @staticmethod
     def _clamp_confidences(

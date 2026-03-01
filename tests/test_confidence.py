@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from natural_pdf.extraction.citations import (
     DEFAULT_CONFIDENCE_SCALE,
     ConfidenceConfig,
+    build_confidence_prompt,
+    build_confidence_schema,
     build_extended_prompt,
     build_extended_schema,
     normalize_confidence_config,
@@ -46,16 +48,16 @@ class TestNormalizeConfidenceConfig:
         cfg = normalize_confidence_config(True)
         assert cfg is not None
         assert cfg.is_numeric is True
-        assert cfg.min_value == 0.0
-        assert cfg.max_value == 1.0
+        assert cfg.min_value == 1
+        assert cfg.max_value == 5
         assert cfg.scale == DEFAULT_CONFIDENCE_SCALE
 
     def test_range_string_returns_default_numeric(self):
         cfg = normalize_confidence_config("range")
         assert cfg is not None
         assert cfg.is_numeric is True
-        assert cfg.min_value == 0.0
-        assert cfg.max_value == 1.0
+        assert cfg.min_value == 1
+        assert cfg.max_value == 5
 
     def test_list_categorical(self):
         cfg = normalize_confidence_config(["low", "medium", "high"])
@@ -121,15 +123,92 @@ class TestNormalizeConfidenceConfig:
 
 
 # ------------------------------------------------------------------ #
-# build_extended_schema
+# build_confidence_schema (pass-2 schema)
+# ------------------------------------------------------------------ #
+class TestBuildConfidenceSchema:
+    def test_has_only_confidence_fields(self):
+        cfg = normalize_confidence_config(True)
+        ConfSchema = build_confidence_schema(SimpleSchema, cfg)
+        fields = set(ConfSchema.model_fields.keys())
+        assert fields == {"name_confidence", "age_confidence"}
+
+    def test_no_user_data_fields(self):
+        cfg = normalize_confidence_config(True)
+        ConfSchema = build_confidence_schema(SimpleSchema, cfg)
+        fields = set(ConfSchema.model_fields.keys())
+        assert "name" not in fields
+        assert "age" not in fields
+
+    def test_fields_are_optional_int(self):
+        cfg = normalize_confidence_config(True)
+        ConfSchema = build_confidence_schema(SimpleSchema, cfg)
+        instance = ConfSchema(name_confidence=4, age_confidence=None)
+        assert instance.name_confidence == 4
+        assert instance.age_confidence is None
+
+    def test_categorical_confidence_schema(self):
+        cfg = normalize_confidence_config(["low", "medium", "high"])
+        ConfSchema = build_confidence_schema(SimpleSchema, cfg)
+        instance = ConfSchema(name_confidence="high", age_confidence="low")
+        assert instance.name_confidence == "high"
+
+
+# ------------------------------------------------------------------ #
+# build_confidence_prompt (pass-2 prompt)
+# ------------------------------------------------------------------ #
+class TestBuildConfidencePrompt:
+    def test_contains_extracted_values(self):
+        cfg = normalize_confidence_config(True)
+        prompt = build_confidence_prompt(
+            SimpleSchema,
+            {"name": "Alice", "age": "30"},
+            cfg,
+        )
+        assert "Alice" in prompt
+        assert "30" in prompt
+
+    def test_no_embedded_source_text(self):
+        """Source text is no longer embedded in the confidence prompt."""
+        cfg = normalize_confidence_config(True)
+        prompt = build_confidence_prompt(
+            SimpleSchema,
+            {"name": "Alice", "age": "30"},
+            cfg,
+        )
+        assert "Source text:" not in prompt
+
+    def test_contains_scale_description(self):
+        cfg = normalize_confidence_config(True)
+        prompt = build_confidence_prompt(
+            SimpleSchema,
+            {"name": "Alice", "age": "30"},
+            cfg,
+        )
+        assert "Explicitly Supported" in prompt
+        assert "Barely Related" in prompt
+        assert "document support" in prompt
+
+    def test_contains_abstention_rule(self):
+        cfg = normalize_confidence_config(True)
+        prompt = build_confidence_prompt(
+            SimpleSchema,
+            {"name": "Alice", "age": "30"},
+            cfg,
+        )
+        assert "null" in prompt
+        assert "outside knowledge" in prompt.lower()
+
+
+# ------------------------------------------------------------------ #
+# build_extended_schema (single-pass combined schema)
 # ------------------------------------------------------------------ #
 class TestBuildExtendedSchema:
     def test_sources_only(self):
         Extended = build_extended_schema(SimpleSchema, with_sources=True)
         fields = set(Extended.model_fields.keys())
         assert "name" in fields
-        assert "name_source" in fields
-        assert "age_source" in fields
+        assert "name_source_lines" in fields
+        assert "age_source_lines" in fields
         assert "name_confidence" not in fields
 
     def test_confidence_only_numeric(self):
@@ -139,7 +218,7 @@ class TestBuildExtendedSchema:
         assert "name" in fields
         assert "name_confidence" in fields
         assert "age_confidence" in fields
-        assert "name_source" not in fields
+        assert "name_source_lines" not in fields
 
     def test_both_sources_and_confidence(self):
         cfg = normalize_confidence_config(True)
@@ -151,9 +230,9 @@ class TestBuildExtendedSchema:
         )
         fields = set(Extended.model_fields.keys())
         assert "name" in fields
-        assert "name_source" in fields
+        assert "name_source_lines" in fields
         assert "name_confidence" in fields
-        assert "age_source" in fields
+        assert "age_source_lines" in fields
         assert "age_confidence" in fields
 
     def test_categorical_confidence(self):
@@ -165,9 +244,9 @@ class TestBuildExtendedSchema:
     def test_schema_instantiation_numeric(self):
         cfg = normalize_confidence_config(True)
         Extended = build_extended_schema(SimpleSchema, with_confidence=True, confidence_config=cfg)
-        instance = Extended(name="Alice", age="30", name_confidence=0.9, age_confidence=0.8)
+        instance = Extended(name="Alice", age="30", name_confidence=4, age_confidence=3)
         assert instance.name == "Alice"
-        assert instance.name_confidence == 0.9
+        assert instance.name_confidence == 4
 
     def test_schema_instantiation_null_confidence(self):
         cfg = normalize_confidence_config(True)
@@ -185,6 +264,31 @@ class TestBuildExtendedSchema:
         Extended = build_extended_schema(SimpleSchema)
         fields = set(Extended.model_fields.keys())
         assert fields == {"name", "age"}
+
+    def test_confidence_type_is_optional_int(self):
+        """Confidence fields use Optional[int], not confloat."""
+        cfg = normalize_confidence_config(True)
+        Extended = build_extended_schema(SimpleSchema, with_confidence=True, confidence_config=cfg)
+        # Should accept out-of-range values without validation error
+        instance = Extended(name="Alice", age="30", name_confidence=99, age_confidence=0)
+        assert instance.name_confidence == 99
+
+    def test_evidence_first_ordering(self):
+        """Source lines appear before value in field order."""
+        cfg = normalize_confidence_config(True)
+        Extended = build_extended_schema(
+            SimpleSchema,
+            with_sources=True,
+            with_confidence=True,
+            confidence_config=cfg,
+        )
+        field_names = list(Extended.model_fields.keys())
+        # For each user field, source_lines should come before value,
+        # and value before confidence
+        name_sl_idx = field_names.index("name_source_lines")
+        name_idx = field_names.index("name")
+        name_conf_idx = field_names.index("name_confidence")
+        assert name_sl_idx < name_idx < name_conf_idx
 
 
 # ------------------------------------------------------------------ #
@@ -206,8 +310,8 @@ class TestBuildExtendedPrompt:
 
     def test_citation_block(self):
         prompt = build_extended_prompt(None, SimpleSchema, with_sources=True)
-        assert "_source" in prompt
-        assert "verbatim" in prompt.lower()
+        assert "_source_lines" in prompt
+        assert "line numbers" in prompt.lower()
 
     def test_confidence_block_numeric(self):
         cfg = normalize_confidence_config(True)
@@ -215,8 +319,8 @@ class TestBuildExtendedPrompt:
             None, SimpleSchema, with_confidence=True, confidence_config=cfg
         )
         assert "_confidence" in prompt
-        assert "0.0" in prompt
-        assert "1.0" in prompt
+        assert "1" in prompt
+        assert "5" in prompt
 
     def test_confidence_block_categorical(self):
         cfg = normalize_confidence_config(
@@ -261,7 +365,7 @@ class TestBuildExtendedPrompt:
             None, SimpleSchema, with_confidence=True, confidence_config=cfg
         )
         # Default scale should have descriptions
-        assert "Explicitly stated" in prompt
+        assert "Explicitly supported" in prompt or "directly and clearly stated" in prompt
 
 
 # ------------------------------------------------------------------ #
@@ -272,47 +376,47 @@ class TestSplitExtendedResult:
         data = {
             "name": "Alice",
             "age": "30",
-            "name_confidence": 0.9,
-            "age_confidence": 0.7,
+            "name_confidence": 4,
+            "age_confidence": 3,
         }
         user_data, sources, confidences = split_extended_result(
             data, SimpleSchema, with_confidence=True
         )
         assert user_data == {"name": "Alice", "age": "30"}
         assert sources is None
-        assert confidences == {"name": 0.9, "age": 0.7}
+        assert confidences == {"name": 4, "age": 3}
 
     def test_sources_only(self):
         data = {
             "name": "Alice",
             "age": "30",
-            "name_source": ["L0: Alice"],
-            "age_source": ["L1: 30"],
+            "name_source_lines": [0],
+            "age_source_lines": [1],
         }
         user_data, sources, confidences = split_extended_result(
             data, SimpleSchema, with_sources=True
         )
         assert user_data == {"name": "Alice", "age": "30"}
-        assert sources == {"name": ["L0: Alice"], "age": ["L1: 30"]}
+        assert sources == {"name": [0], "age": [1]}
         assert confidences is None
 
     def test_both_sources_and_confidence(self):
         data = {
             "name": "Alice",
             "age": "30",
-            "name_source": ["L0: Alice"],
-            "age_source": None,
-            "name_confidence": 0.9,
-            "age_confidence": 0.5,
+            "name_source_lines": [0],
+            "age_source_lines": None,
+            "name_confidence": 5,
+            "age_confidence": 3,
         }
         user_data, sources, confidences = split_extended_result(
             data, SimpleSchema, with_sources=True, with_confidence=True
         )
         assert user_data == {"name": "Alice", "age": "30"}
-        assert sources["name"] == ["L0: Alice"]
+        assert sources["name"] == [0]
         assert sources["age"] is None
-        assert confidences["name"] == 0.9
-        assert confidences["age"] == 0.5
+        assert confidences["name"] == 5
+        assert confidences["age"] == 3
 
     def test_neither(self):
         data = {"name": "Alice", "age": "30"}
@@ -331,13 +435,13 @@ class TestFieldResultWithConfidence:
         assert fr.confidence is None
 
     def test_confidence_set(self):
-        fr = FieldResult(value="hello", citations=None, confidence=0.95)
-        assert fr.confidence == 0.95
+        fr = FieldResult(value="hello", citations=None, confidence=4)
+        assert fr.confidence == 4
 
     def test_repr_with_confidence(self):
-        fr = FieldResult(value="hello", citations=[], confidence=0.9)
+        fr = FieldResult(value="hello", citations=[], confidence=4)
         r = repr(fr)
-        assert "confidence=0.9" in r
+        assert "confidence=4" in r
 
     def test_repr_without_confidence(self):
         fr = FieldResult(value="hello", citations=[])
@@ -355,7 +459,7 @@ class TestStructuredDataResultConfidences:
 
         confidences = None
         if with_confidences:
-            confidences = {"name": 0.9, "age": 0.7}
+            confidences = {"name": 4, "age": 3}
         return StructuredDataResult(
             data=data,
             success=True,
@@ -370,19 +474,105 @@ class TestStructuredDataResultConfidences:
     def test_confidences_property_with(self):
         result = self._make_result(with_confidences=True)
         confs = result.confidences
-        assert confs == {"name": 0.9, "age": 0.7}
+        assert confs == {"name": 4, "age": 3}
 
     def test_field_result_confidence_access(self):
         result = self._make_result(with_confidences=True)
-        assert result["name"].confidence == 0.9
-        assert result["age"].confidence == 0.7
+        assert result["name"].confidence == 4
+        assert result["age"].confidence == 3
+
+
+# ------------------------------------------------------------------ #
+# to_dict() with confidence
+# ------------------------------------------------------------------ #
+class TestToDictWithConfidence:
+    def test_to_dict_includes_confidence(self):
+        data = SimpleSchema(name="Alice", age="30")
+        result = StructuredDataResult(data=data, success=True, confidences={"name": 5, "age": 3})
+        d = result.to_dict()
+        assert d == {"name": "Alice", "name_confidence": 5, "age": "30", "age_confidence": 3}
+
+    def test_to_dict_confidence_false_omits(self):
+        data = SimpleSchema(name="Alice", age="30")
+        result = StructuredDataResult(data=data, success=True, confidences={"name": 5, "age": 3})
+        d = result.to_dict(confidence=False)
+        assert d == {"name": "Alice", "age": "30"}
+
+    def test_to_dict_no_confidence_no_extra_keys(self):
+        data = SimpleSchema(name="Alice", age="30")
+        result = StructuredDataResult(data=data, success=True)
+        d = result.to_dict()
+        assert d == {"name": "Alice", "age": "30"}
+
+    def test_to_dict_includes_sources_when_requested(self):
+        data = SimpleSchema(name="Alice", age="30")
+        result = StructuredDataResult(
+            data=data,
+            success=True,
+            sources={"name": ["Alice"], "age": ["Age: 30"]},
+        )
+        d = result.to_dict(citations=True)
+        assert d["name_sources"] == ["Alice"]
+        assert d["age_sources"] == ["Age: 30"]
+
+    def test_to_dict_omits_sources_by_default(self):
+        data = SimpleSchema(name="Alice", age="30")
+        result = StructuredDataResult(
+            data=data,
+            success=True,
+            sources={"name": ["Alice"], "age": ["Age: 30"]},
+        )
+        d = result.to_dict()
+        assert "name_sources" not in d
+        assert "age_sources" not in d
+
+    def test_to_dict_all_features(self):
+        data = SimpleSchema(name="Alice", age="30")
+        result = StructuredDataResult(
+            data=data,
+            success=True,
+            confidences={"name": 5, "age": 3},
+            sources={"name": ["Alice"], "age": None},
+        )
+        d = result.to_dict(citations=True)
+        assert d["name"] == "Alice"
+        assert d["name_confidence"] == 5
+        assert d["name_sources"] == ["Alice"]
+        assert d["age"] == "30"
+        assert d["age_confidence"] == 3
+        assert "age_sources" not in d  # None sources are omitted
+
+    def test_sources_property(self):
+        data = SimpleSchema(name="Alice", age="30")
+        result = StructuredDataResult(
+            data=data,
+            success=True,
+            sources={"name": ["Alice"], "age": None},
+        )
+        assert result.sources == {"name": ["Alice"], "age": None}
+
+    def test_sources_property_without(self):
+        data = SimpleSchema(name="Alice", age="30")
+        result = StructuredDataResult(data=data, success=True)
+        assert result.sources == {"name": None, "age": None}
 
 
 # ------------------------------------------------------------------ #
 # End-to-end mock tests
 # ------------------------------------------------------------------ #
 class TestExtractWithConfidenceMock:
+    @staticmethod
+    def _mock_completion(model_dump_data):
+        """Create a mock completion whose .choices[0].message.parsed.model_dump() returns *data*."""
+        parsed = MagicMock()
+        parsed.model_dump.return_value = model_dump_data
+        completion = MagicMock()
+        completion.choices = [MagicMock()]
+        completion.choices[0].message.parsed = parsed
+        return completion
+
     def _make_mock_client(self, schema_class, response_data):
+        """Single-pass mock (no confidence)."""
         mock_client = MagicMock()
         parsed_instance = schema_class(**response_data)
         mock_completion = MagicMock()
@@ -391,22 +581,16 @@ class TestExtractWithConfidenceMock:
         mock_client.beta.chat.completions.parse.return_value = mock_completion
         return mock_client
 
-    def test_confidence_true(self):
+    def test_confidence_single_pass_default(self):
+        """confidence=True with default single-pass: 1 LLM call with extended schema."""
         from natural_pdf import PDF
 
         pdf = PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        cfg = normalize_confidence_config(True)
-        Extended = build_extended_schema(SimpleSchema, with_confidence=True, confidence_config=cfg)
-        mock_client = self._make_mock_client(
-            Extended,
-            {
-                "name": "Jungle Health",
-                "age": "1905",
-                "name_confidence": 0.95,
-                "age_confidence": 0.6,
-            },
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = self._mock_completion(
+            {"name": "Jungle Health", "name_confidence": 5, "age": "1905", "age_confidence": 3}
         )
 
         result = page.extract(SimpleSchema, client=mock_client, confidence=True)
@@ -414,9 +598,52 @@ class TestExtractWithConfidenceMock:
         assert isinstance(result, StructuredDataResult)
         assert result.success
         assert result.name == "Jungle Health"
-        assert result["name"].confidence == 0.95
-        assert result["age"].confidence == 0.6
-        assert result.confidences == {"name": 0.95, "age": 0.6}
+        assert result["name"].confidence == 5
+        assert result["age"].confidence == 3
+        assert result.confidences == {"name": 5, "age": 3}
+        # Single pass: only 1 LLM call
+        assert mock_client.beta.chat.completions.parse.call_count == 1
+        pdf.close()
+
+    def test_confidence_multipass_two_calls(self):
+        """confidence=True with multipass=True: 2 LLM calls."""
+        from natural_pdf import PDF
+
+        pdf = PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.side_effect = [
+            self._mock_completion({"name": "Jungle Health", "age": "1905"}),
+            self._mock_completion({"name_confidence": 5, "age_confidence": 3}),
+        ]
+
+        result = page.extract(SimpleSchema, client=mock_client, confidence=True, multipass=True)
+
+        assert result.success
+        assert result["name"].confidence == 5
+        assert result["age"].confidence == 3
+        assert mock_client.beta.chat.completions.parse.call_count == 2
+        pdf.close()
+
+    def test_no_confidence_single_pass(self):
+        """Without confidence, only one LLM call is made."""
+        from natural_pdf import PDF
+
+        pdf = PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        mock_client = self._make_mock_client(
+            SimpleSchema,
+            {"name": "Jungle Health", "age": "1905"},
+        )
+
+        result = page.extract(SimpleSchema, client=mock_client)
+
+        assert result.success
+        assert result["name"].confidence is None
+        # Only one call
+        assert mock_client.beta.chat.completions.parse.call_count == 1
         pdf.close()
 
     def test_categorical_confidence(self):
@@ -426,16 +653,14 @@ class TestExtractWithConfidenceMock:
         page = pdf.pages[0]
 
         levels = ["low", "medium", "high"]
-        cfg = normalize_confidence_config(levels)
-        Extended = build_extended_schema(SimpleSchema, with_confidence=True, confidence_config=cfg)
-        mock_client = self._make_mock_client(
-            Extended,
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = self._mock_completion(
             {
                 "name": "Jungle Health",
-                "age": "1905",
                 "name_confidence": "high",
+                "age": "1905",
                 "age_confidence": "medium",
-            },
+            }
         )
 
         result = page.extract(SimpleSchema, client=mock_client, confidence=levels)
@@ -445,38 +670,70 @@ class TestExtractWithConfidenceMock:
         assert result["age"].confidence == "medium"
         pdf.close()
 
-    def test_confidence_and_citations(self):
+    def test_confidence_and_citations_single_pass(self):
+        """citations=True + confidence=True default: 1 call with combined schema."""
         from natural_pdf import PDF
-        from natural_pdf.extraction.citations import build_shadow_schema
+        from natural_pdf.extraction.citations import add_line_numbers
 
         pdf = PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        cfg = normalize_confidence_config(True)
-        Extended = build_extended_schema(
-            SimpleSchema,
-            with_sources=True,
-            with_confidence=True,
-            confidence_config=cfg,
-        )
-        mock_client = self._make_mock_client(
-            Extended,
+        # Find a line with actual content for reliable resolution
+        text = page.extract_text(layout=True)
+        _, line_map = add_line_numbers(text)
+        content_line = next((i for i, t in line_map.items() if "Jungle" in t), 0)
+
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = self._mock_completion(
             {
+                "name_source_lines": [content_line],
                 "name": "Jungle Health and Safety Inspection Service",
+                "name_confidence": 5,
+                "age_source_lines": [content_line + 2],
                 "age": "1905",
-                "name_source": ["L0: Jungle Health and Safety Inspection Service"],
-                "age_source": ["L2: Date: February 3, 1905"],
-                "name_confidence": 0.95,
-                "age_confidence": 0.6,
-            },
+                "age_confidence": 3,
+            }
         )
 
         result = page.extract(SimpleSchema, client=mock_client, citations=True, confidence=True)
 
         assert result.success
-        assert result["name"].confidence == 0.95
-        assert result["name"].citations is not None
-        assert len(result["name"].citations) > 0
+        assert result["name"].confidence == 5
+        assert result["name"].sources is not None
+        d = result.to_dict(citations=True)
+        assert "name_sources" in d
+        assert mock_client.beta.chat.completions.parse.call_count == 1
+        pdf.close()
+
+    def test_confidence_and_citations_multipass(self):
+        """citations=True + confidence=True + multipass=True: 2 calls."""
+        from natural_pdf import PDF
+
+        pdf = PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.side_effect = [
+            # Pass 1: extraction
+            self._mock_completion({"name": "Jungle Health", "age": "1905"}),
+            # Pass 2: combined meta
+            self._mock_completion(
+                {
+                    "name_source_lines": [0],
+                    "name_confidence": 5,
+                    "age_source_lines": [2],
+                    "age_confidence": 3,
+                }
+            ),
+        ]
+
+        result = page.extract(
+            SimpleSchema, client=mock_client, citations=True, confidence=True, multipass=True
+        )
+
+        assert result.success
+        assert result["name"].confidence == 5
+        assert mock_client.beta.chat.completions.parse.call_count == 2
         pdf.close()
 
     def test_confidence_with_vision(self):
@@ -485,22 +742,36 @@ class TestExtractWithConfidenceMock:
         pdf = PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        cfg = normalize_confidence_config(True)
-        Extended = build_extended_schema(SimpleSchema, with_confidence=True, confidence_config=cfg)
-        mock_client = self._make_mock_client(
-            Extended,
-            {
-                "name": "Jungle Health",
-                "age": "1905",
-                "name_confidence": 0.9,
-                "age_confidence": 0.7,
-            },
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = self._mock_completion(
+            {"name": "Jungle Health", "name_confidence": 4, "age": "1905", "age_confidence": 3}
         )
 
         result = page.extract(SimpleSchema, client=mock_client, using="vision", confidence=True)
 
         assert result.success
-        assert result["name"].confidence == 0.9
+        assert result["name"].confidence == 4
+        pdf.close()
+
+    def test_multipass_meta_failure_graceful_degradation(self):
+        """If pass 2 (meta) fails in multipass mode, extraction result is still returned."""
+        from natural_pdf import PDF
+
+        pdf = PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.side_effect = [
+            self._mock_completion({"name": "Jungle Health", "age": "1905"}),
+            Exception("LLM error on meta pass"),
+        ]
+
+        result = page.extract(SimpleSchema, client=mock_client, confidence=True, multipass=True)
+
+        assert result.success
+        assert result.name == "Jungle Health"
+        assert result["name"].confidence is None
+        assert result["age"].confidence is None
         pdf.close()
 
     def test_instructions_parameter(self):
@@ -552,18 +823,17 @@ class TestExtractWithConfidenceMock:
         pdf = PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        cfg = normalize_confidence_config(True)
-        Extended = build_extended_schema(InvoiceSchema, with_confidence=True, confidence_config=cfg)
-        mock_client = self._make_mock_client(
-            Extended,
+        # Single-pass with confidence
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = self._mock_completion(
             {
                 "invoice_number": "INV-001",
+                "invoice_number_confidence": 5,
                 "date": None,
+                "date_confidence": 2,  # LLM returned a score but field is null
                 "total": "$100",
-                "invoice_number_confidence": 0.95,
-                "date_confidence": 0.3,  # LLM returned a score but field is null
-                "total_confidence": 0.9,
-            },
+                "total_confidence": 4,
+            }
         )
 
         result = page.extract(InvoiceSchema, client=mock_client, confidence=True)
@@ -572,7 +842,7 @@ class TestExtractWithConfidenceMock:
         assert result.date is None
         # Null field should have null confidence
         assert result["date"].confidence is None
-        assert result["invoice_number"].confidence == 0.95
+        assert result["invoice_number"].confidence == 5
         pdf.close()
 
 
@@ -647,30 +917,20 @@ class TestClampConfidences:
         pdf = PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        cfg = normalize_confidence_config(True)
-        Extended = build_extended_schema(SimpleSchema, with_confidence=True, confidence_config=cfg)
-
         mock_client = MagicMock()
-        # Build a mock parsed object that bypasses Pydantic validation
-        # (simulating an LLM that returns out-of-range values)
-        parsed = MagicMock()
-        parsed.model_dump.return_value = {
-            "name": "Test",
-            "age": "25",
-            "name_confidence": 1.5,
-            "age_confidence": 0.8,
-        }
-        mock_completion = MagicMock()
-        mock_completion.choices = [MagicMock()]
-        mock_completion.choices[0].message.parsed = parsed
-        mock_client.beta.chat.completions.parse.return_value = mock_completion
+        # Single-pass with confidence
+        mock_client.beta.chat.completions.parse.return_value = (
+            TestExtractWithConfidenceMock._mock_completion(
+                {"name": "Test", "name_confidence": 7, "age": "25", "age_confidence": 4}
+            )
+        )
 
         with caplog.at_level(logging.WARNING):
             result = page.extract(SimpleSchema, client=mock_client, confidence=True)
 
         assert result.success
-        assert result["name"].confidence == 1.0  # clamped from 1.5
-        assert result["age"].confidence == 0.8  # unchanged
+        assert result["name"].confidence == 5  # clamped from 7 to max=5
+        assert result["age"].confidence == 4  # unchanged
         assert "clamping" in caplog.text.lower()
         pdf.close()
 

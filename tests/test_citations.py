@@ -88,39 +88,39 @@ class TestBuildShadowSchema:
         Shadow = build_shadow_schema(SimpleSchema)
         fields = set(Shadow.model_fields.keys())
         assert "name" in fields
-        assert "name_source" in fields
+        assert "name_source_lines" in fields
         assert "age" in fields
-        assert "age_source" in fields
+        assert "age_source_lines" in fields
 
     def test_optional_fields(self):
         Shadow = build_shadow_schema(InvoiceSchema)
         fields = set(Shadow.model_fields.keys())
         assert "invoice_number" in fields
-        assert "invoice_number_source" in fields
+        assert "invoice_number_source_lines" in fields
         assert "date" in fields
-        assert "date_source" in fields
+        assert "date_source_lines" in fields
 
     def test_list_fields(self):
         Shadow = build_shadow_schema(ListSchema)
         fields = set(Shadow.model_fields.keys())
         assert "items" in fields
-        assert "items_source" in fields
+        assert "items_source_lines" in fields
 
-    def test_source_fields_are_optional_list_str(self):
+    def test_source_fields_are_optional_list_int(self):
         Shadow = build_shadow_schema(SimpleSchema)
         instance = Shadow(name="test", age="25")
-        assert instance.name_source is None
+        assert instance.name_source_lines is None
 
     def test_shadow_schema_instantiation(self):
         Shadow = build_shadow_schema(SimpleSchema)
         instance = Shadow(
             name="Alice",
-            name_source=["L01: Name: Alice"],
+            name_source_lines=[1],
             age="30",
-            age_source=["L02: Age: 30"],
+            age_source_lines=[2],
         )
         assert instance.name == "Alice"
-        assert instance.name_source == ["L01: Name: Alice"]
+        assert instance.name_source_lines == [1]
 
 
 # ------------------------------------------------------------------ #
@@ -130,18 +130,17 @@ class TestBuildCitationPrompt:
     def test_default_prompt(self):
         prompt = build_citation_prompt(None, SimpleSchema)
         assert "SimpleSchema" in prompt
-        assert "_source" in prompt
-        assert "verbatim" in prompt.lower()
+        assert "line numbers" in prompt.lower() or "_source_lines" in prompt
 
     def test_custom_prompt_preserved(self):
         custom = "Extract invoice details carefully."
         prompt = build_citation_prompt(custom, InvoiceSchema)
         assert prompt.startswith(custom)
-        assert "_source" in prompt
+        assert "_source_lines" in prompt
 
     def test_contains_example(self):
         prompt = build_citation_prompt(None, SimpleSchema)
-        assert "L03:" in prompt or "Lnn:" in prompt or "line prefix" in prompt.lower()
+        assert "L03:" in prompt or "Lnn:" in prompt or "line" in prompt.lower()
 
 
 # ------------------------------------------------------------------ #
@@ -179,25 +178,25 @@ class TestSplitShadowResult:
         Shadow = build_shadow_schema(SimpleSchema)
         shadow_instance = Shadow(
             name="Alice",
-            name_source=["L01: Alice"],
+            name_source_lines=[1],
             age="30",
-            age_source=["L02: Age 30"],
+            age_source_lines=[2],
         )
         user_data = split_shadow_result(shadow_instance, SimpleSchema)
         assert isinstance(user_data, SimpleSchema)
         assert user_data.name == "Alice"
         assert user_data.age == "30"
-        assert not hasattr(user_data, "name_source")
+        assert not hasattr(user_data, "name_source_lines")
 
     def test_preserves_optional_none(self):
         Shadow = build_shadow_schema(InvoiceSchema)
         shadow_instance = Shadow(
             invoice_number="INV-001",
-            invoice_number_source=["L01: INV-001"],
+            invoice_number_source_lines=[1],
             date=None,
-            date_source=None,
+            date_source_lines=None,
             total="$100",
-            total_source=["L05: Total: $100"],
+            total_source_lines=[5],
         )
         user_data = split_shadow_result(shadow_instance, InvoiceSchema)
         assert user_data.invoice_number == "INV-001"
@@ -279,13 +278,11 @@ class TestResolveCitations:
         text = "Invoice #12345\nDate: 2024-01-01"
         _, line_map = add_line_numbers(text)
 
-        Shadow = build_shadow_schema(SimpleSchema)
-        shadow_data = Shadow(
-            name="12345",
-            name_source=["L0: Invoice #12345"],
-            age="2024-01-01",
-            age_source=["L1: Date: 2024-01-01"],
-        )
+        # Use dict with _source_lines (line numbers)
+        shadow_data = {
+            "name_source_lines": [0],
+            "age_source_lines": [1],
+        }
 
         citations = resolve_citations(
             shadow_data=shadow_data,
@@ -303,13 +300,10 @@ class TestResolveCitations:
         text = "Invoice #12345\nDate: 2024-01-01"
         _, line_map = add_line_numbers(text)
 
-        Shadow = build_shadow_schema(SimpleSchema)
-        shadow_data = Shadow(
-            name="12345",
-            name_source=None,
-            age="2024-01-01",
-            age_source=None,
-        )
+        shadow_data = {
+            "name_source_lines": None,
+            "age_source_lines": None,
+        }
 
         citations = resolve_citations(
             shadow_data=shadow_data,
@@ -514,33 +508,42 @@ class TestGetExtractionContent:
 
 
 # ------------------------------------------------------------------ #
-# End-to-end mock test
+# End-to-end mock test (single-pass default)
 # ------------------------------------------------------------------ #
 class TestExtractWithCitationsMock:
-    def _make_mock_client(self, schema_class, response_data):
-        mock_client = MagicMock()
-        parsed_instance = schema_class(**response_data)
-        mock_completion = MagicMock()
-        mock_completion.choices = [MagicMock()]
-        mock_completion.choices[0].message.parsed = parsed_instance
-        mock_client.beta.chat.completions.parse.return_value = mock_completion
-        return mock_client
+    @staticmethod
+    def _mock_completion(data):
+        """Create a mock completion whose .choices[0].message.parsed.model_dump() returns *data*."""
+        parsed = MagicMock()
+        parsed.model_dump.return_value = data
+        completion = MagicMock()
+        completion.choices = [MagicMock()]
+        completion.choices[0].message.parsed = parsed
+        return completion
 
     def test_page_extract_returns_result(self):
+        """Single-pass default: citations=True makes one LLM call with extended schema."""
         from natural_pdf import PDF
+        from natural_pdf.extraction.citations import add_line_numbers
 
         pdf = PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        Shadow = build_shadow_schema(SimpleSchema)
-        mock_client = self._make_mock_client(
-            Shadow,
+        # Find a line number that has actual content for reliable textmap resolution
+        text = page.extract_text(layout=True)
+        _, line_map = add_line_numbers(text)
+        # Pick a non-empty line
+        content_line = next((i for i, t in line_map.items() if "Jungle" in t), 0)
+
+        # Single-pass: mock returns extended schema data with source_lines
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = self._mock_completion(
             {
+                "name_source_lines": [content_line],
                 "name": "Jungle Health and Safety Inspection Service",
-                "name_source": ["L0: Jungle Health and Safety Inspection Service"],
+                "age_source_lines": [content_line + 2],
                 "age": "1905",
-                "age_source": ["L2: Date: February 3, 1905"],
-            },
+            }
         )
 
         result = page.extract(SimpleSchema, client=mock_client, citations=True)
@@ -550,6 +553,8 @@ class TestExtractWithCitationsMock:
         assert result.name == "Jungle Health and Safety Inspection Service"
         assert result["name"].citations is not None
         assert len(result["name"].citations) > 0
+        # Single pass: only 1 LLM call
+        assert mock_client.beta.chat.completions.parse.call_count == 1
         pdf.close()
 
     def test_extract_without_citations(self):
@@ -558,12 +563,12 @@ class TestExtractWithCitationsMock:
         pdf = PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        mock_client = self._make_mock_client(
-            SimpleSchema,
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = self._mock_completion(
             {
                 "name": "Test",
                 "age": "25",
-            },
+            }
         )
 
         result = page.extract(SimpleSchema, client=mock_client)
@@ -580,12 +585,12 @@ class TestExtractWithCitationsMock:
         pdf = PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        mock_client = self._make_mock_client(
-            SimpleSchema,
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = self._mock_completion(
             {
                 "name": "Test",
                 "age": "25",
-            },
+            }
         )
 
         result1 = page.extract(SimpleSchema, client=mock_client)
@@ -601,12 +606,12 @@ class TestExtractWithCitationsMock:
         pdf = PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        mock_client = self._make_mock_client(
-            SimpleSchema,
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = self._mock_completion(
             {
                 "name": "Alice",
                 "age": "30",
-            },
+            }
         )
 
         result = page.extract(SimpleSchema, client=mock_client)
@@ -619,12 +624,12 @@ class TestExtractWithCitationsMock:
         pdf = PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        mock_client = self._make_mock_client(
-            SimpleSchema,
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = self._mock_completion(
             {
                 "name": "Alice",
                 "age": "30",
-            },
+            }
         )
 
         result = page.extract(SimpleSchema, client=mock_client)

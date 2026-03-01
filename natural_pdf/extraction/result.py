@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import textwrap
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, Optional, Tuple, Type
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Type
 
 from pydantic import BaseModel
 
@@ -44,11 +44,15 @@ class FieldResult:
             collection when citations were not requested.
         confidence: Per-field confidence score (float or str), or ``None``
             when confidence was not requested.
+        sources: Resolved source text strings (e.g.
+            ``["Invoice #12345", "Date: 2024"]``), or ``None`` when
+            citations were not requested.
     """
 
     value: Any
     citations: Any  # ElementCollection — typed as Any to avoid circular import
     confidence: Optional[Any] = None
+    sources: Optional[List[str]] = None
 
     def __str__(self) -> str:
         return str(self.value)
@@ -98,6 +102,7 @@ class StructuredDataResult:
         model_used: Optional[str] = None,
         citations: Optional[Dict[str, Any]] = None,
         confidences: Optional[Dict[str, Any]] = None,
+        sources: Optional[Dict[str, Any]] = None,
     ):
         self.data = data
         self.success = success
@@ -105,7 +110,7 @@ class StructuredDataResult:
         self.raw_output = raw_output
         self.model_used = model_used
 
-        # Build FieldResult map from data + citations + confidences
+        # Build FieldResult map from data + citations + confidences + sources
         self._fields: Dict[str, FieldResult] = {}
         if data is not None:
             from natural_pdf.elements.element_collection import ElementCollection
@@ -114,12 +119,23 @@ class StructuredDataResult:
             data_dict = data.model_dump() if hasattr(data, "model_dump") else data.dict()
             citations = citations or {}
             confidences = confidences or {}
+            sources = sources or {}
             for field_name, value in data_dict.items():
-                self._fields[field_name] = FieldResult(
-                    value=value,
-                    citations=citations.get(field_name, empty),
-                    confidence=confidences.get(field_name),
-                )
+                # Null-valued fields get no confidence, sources, or citations
+                if value is None:
+                    self._fields[field_name] = FieldResult(
+                        value=None,
+                        citations=empty,
+                        confidence=None,
+                        sources=None,
+                    )
+                else:
+                    self._fields[field_name] = FieldResult(
+                        value=value,
+                        citations=citations.get(field_name, empty),
+                        confidence=confidences.get(field_name),
+                        sources=sources.get(field_name),
+                    )
 
     # ------------------------------------------------------------------
     # Value access via attribute
@@ -178,9 +194,28 @@ class StructuredDataResult:
     # Convenience methods
     # ------------------------------------------------------------------
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Return a plain dict of ``{field_name: value}``."""
-        return {name: fr.value for name, fr in self._fields.items()}
+    def to_dict(self, confidence: bool = True, citations: bool = False) -> Dict[str, Any]:
+        """Return a plain dict of ``{field_name: value}``.
+
+        When *confidence* is ``True`` (the default) and confidence scores
+        exist, each field's confidence is included as a
+        ``{field_name}_confidence`` key.
+
+        When *citations* is ``True`` and raw source quotes exist, they are
+        included as ``{field_name}_sources`` keys (lists of strings as
+        returned by the LLM).  Defaults to ``False`` since source quotes
+        can be verbose.
+
+        Pass ``confidence=False`` to also omit confidence scores.
+        """
+        d: Dict[str, Any] = {}
+        for name, fr in self._fields.items():
+            d[name] = fr.value
+            if confidence and fr.confidence is not None:
+                d[f"{name}_confidence"] = fr.confidence
+            if citations and fr.sources is not None:
+                d[f"{name}_sources"] = fr.sources
+        return d
 
     @property
     def citations(self) -> Dict[str, Any]:
@@ -191,6 +226,11 @@ class StructuredDataResult:
     def confidences(self) -> Dict[str, Any]:
         """Dict mapping field names to their confidence scores."""
         return {name: fr.confidence for name, fr in self._fields.items()}
+
+    @property
+    def sources(self) -> Dict[str, Any]:
+        """Dict mapping field names to their raw LLM source quote strings."""
+        return {name: fr.sources for name, fr in self._fields.items()}
 
     def show(self, **kwargs):
         """Highlight all citation elements on page(s), labeled by field name.
