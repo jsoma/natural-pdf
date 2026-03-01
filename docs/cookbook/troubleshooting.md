@@ -470,6 +470,63 @@ for page in pdf.pages:
 
 ---
 
+## "Words are joined together" or "Spaces are missing"
+
+Some PDFs don't embed explicit space characters. Natural PDF handles this automatically with two mechanisms:
+
+1. **`x_tolerance_ratio`** — controls how far apart characters can be and still merge into a single word element. Defaults to `0.35` (35% of each character's font size). Characters of different font sizes are never merged together.
+2. **`space_gap_ratio`** — after characters merge into a word, any internal gap ≥ this ratio × font size gets a space injected. Defaults to `0.15` (15% of font size).
+
+```
+Are words stuck together (e.g. "PublicFinancialDisclosure")?
+├── Yes, and all text is one font size
+│   └── Increase space_gap_ratio (default 0.15)
+│       pdf = PDF("doc.pdf", text_tolerance={"space_gap_ratio": 0.2})
+│
+├── Yes, but only for larger text
+│   └── Increase x_tolerance_ratio so larger chars merge first
+│       pdf = PDF("doc.pdf", text_tolerance={"x_tolerance_ratio": 0.4})
+│
+└── Words are split that should be together
+    └── Lower the tolerance
+        pdf = PDF("doc.pdf", text_tolerance={"x_tolerance": 2.0})
+```
+
+### Tune Text Tolerance
+
+```python
+from natural_pdf import PDF
+
+# Default: auto-scales tolerance based on font size
+pdf = PDF("document.pdf")
+
+# Wider merging (joins characters further apart into words)
+pdf = PDF("document.pdf", text_tolerance={"x_tolerance_ratio": 0.4})
+
+# Inject more spaces (lower threshold = more spaces)
+pdf = PDF("document.pdf", text_tolerance={"space_gap_ratio": 0.10})
+
+# Disable space injection entirely
+pdf = PDF("document.pdf", text_tolerance={"space_gap_ratio": 0})
+
+# Disable auto-scaling and set a fixed tolerance in points
+pdf = PDF("document.pdf", auto_text_tolerance=False,
+          text_tolerance={"x_tolerance": 3.0, "y_tolerance": 3.0})
+```
+
+### Available `text_tolerance` Keys
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `x_tolerance` | Auto (0.35 × median font size) | Max horizontal gap (in points) for chars to merge into a word |
+| `y_tolerance` | Auto (0.6 × median font size) | Max vertical gap (in points) for chars on the same line |
+| `x_tolerance_ratio` | `0.35` when auto | Per-character tolerance as a fraction of font size. Handles mixed font sizes. |
+| `y_tolerance_ratio` | `None` | Per-character vertical tolerance as a fraction of font size |
+| `space_gap_ratio` | `0.15` | Gap ≥ this × font size within a merged word gets a space injected. Set to `0` to disable. |
+| `keep_blank_chars` | `True` | Whether to keep blank characters in word extraction |
+
+---
+
 ## Quick Reference: Common Fixes
 
 | Problem | What to Try |
@@ -478,6 +535,7 @@ for page in pdf.pages:
 | Garbled text | `page.apply_ocr()` — re-reads from the rendered image, bypassing broken font encoding |
 | Table not detected | `page.analyze_layout(engine='tatr')` then `page.find('region[type=table]')` |
 | Table columns wrong | Try `region.extract_table(method='tatr')` or use `Guides` for manual columns |
+| Words stuck together | `PDF("doc.pdf", text_tolerance={"space_gap_ratio": 0.2})` — increase space injection sensitivity |
 | Selector returns None | `page.find_all('text').show()` — see what text actually exists |
 | Case mismatch | `page.find('text:contains("x")', case=False)` |
 | Low OCR quality | `page.apply_ocr(resolution=300)` or try a different engine |

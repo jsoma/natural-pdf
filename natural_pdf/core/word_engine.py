@@ -25,6 +25,7 @@ class WordEngineOptions:
     x_tolerance_ratio: Optional[float]
     y_tolerance_ratio: Optional[float]
     use_text_flow: bool
+    space_gap_ratio: Optional[float] = None
 
 
 class NaturalWordExtractor(WordExtractor):
@@ -190,7 +191,40 @@ class WordEngine:
                 word_dict["_char_indices"] = char_indices
                 word_dict["_char_dicts"] = char_list
 
+                # --- Space injection ----------------------------------------
+                # When chars are merged into a single word but have a gap that
+                # would normally be a space, inject a space character into the
+                # word text.  This handles PDFs that lack explicit space chars.
+                spaces_injected = False
+                sgr = options.space_gap_ratio
+                if sgr is None:
+                    sgr = 0.15  # default threshold in em-units
+                if sgr > 0 and len(char_list) > 1:
+                    parts: List[str] = [char_list[0].get("text", "")]
+                    for i in range(1, len(char_list)):
+                        prev = char_list[i - 1]
+                        curr = char_list[i]
+                        gap = curr.get("x0", 0) - prev.get("x1", 0)
+                        font_size = curr.get("size") or prev.get("size") or 10
+                        # Skip RTL characters – they have different spacing rules
+                        curr_bidi = unicodedata.bidirectional((curr.get("text") or " ")[0])
+                        if gap >= sgr * font_size and curr_bidi not in ("R", "AL", "AN"):
+                            parts.append(" ")
+                            spaces_injected = True
+                        parts.append(curr.get("text", ""))
+                    if spaces_injected:
+                        word_dict["text"] = "".join(parts)
+                # --- End space injection ------------------------------------
+
                 word_element = create_word_element(word_dict)
+
+                # Mark text as manually set so the text property getter
+                # returns the space-injected text instead of re-deriving
+                # it from char positions (which would lose the spaces).
+                if spaces_injected:
+                    word_element._text_manually_set = True
+                    word_element._layout_text_cache = None
+
                 word_elements.append(word_element)
 
                 rtl_in_word = any(

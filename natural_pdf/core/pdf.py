@@ -643,6 +643,7 @@ class PDF(
                 "y_tolerance",
                 "y_tolerance_ratio",
                 "keep_blank_chars",  # passthrough convenience
+                "space_gap_ratio",
             }
             for k, v in text_tolerance.items():
                 if k in allowed:

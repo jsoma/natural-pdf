@@ -282,7 +282,7 @@ class ElementManager:
             if sizes:
                 median_size = statistics.median(sizes)
                 if xt is None:
-                    xt = 0.25 * median_size
+                    xt = 0.35 * median_size
                     page_config["x_tolerance"] = xt
                 if yt is None:
                     yt = 0.6 * median_size
@@ -293,14 +293,26 @@ class ElementManager:
         if yt is None:
             yt = 3.0
 
+        # Resolve space_gap_ratio: None means use default (0.15), 0 disables
+        sgr = _resolve_numeric("space_gap_ratio")
+
+        # When auto_text_tolerance is active and the user hasn't set an
+        # explicit x_tolerance_ratio, use a ratio so that the tolerance
+        # scales with each character's font size.  This handles documents
+        # with mixed font sizes (e.g. 9pt body + 15pt titles).
+        xtr = _resolve_numeric("x_tolerance_ratio")
+        if xtr is None and auto_text_tolerance:
+            xtr = 0.35
+
         options = WordEngineOptions(
             page_number=self._page.number,
             x_tolerance=xt,
             y_tolerance=yt,
-            x_tolerance_ratio=_resolve_numeric("x_tolerance_ratio"),
+            x_tolerance_ratio=xtr,
             y_tolerance_ratio=_resolve_numeric("y_tolerance_ratio"),
             keep_blank_chars=_resolve_bool("keep_blank_chars", True),
             use_text_flow=bool(pdf_config.get("use_text_flow", False)),
+            space_gap_ratio=sgr,
         )
         return options
 
