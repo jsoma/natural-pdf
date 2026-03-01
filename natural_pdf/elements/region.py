@@ -1939,47 +1939,60 @@ class Region(
         # overlap_mode == "center"
         return [el for el in elements if self.is_element_center_inside(el)]
 
-    def apply_ocr(self, *args, **kwargs) -> "Region":
-        """
-        Apply OCR to this region and return the created text elements.
-
-        This method supports two modes:
-        1. **Built-in/registered OCR engines** – pass parameters like ``engine='easyocr'`` or
-           ``languages=['en']`` and the request is routed through the shared
-           :class:`~natural_pdf.engine_provider.EngineProvider` registry.
-        2. **Custom OCR Function** – pass a *callable* under the keyword ``function`` (or
-           ``ocr_function``). The callable will receive *this* Region instance and should
-           return the extracted text (``str``) or ``None``.  Internally the call is
-           delegated to :pymeth:`apply_custom_ocr` so the same logic (replacement, element
-           creation, etc.) is re-used.
-
-        Examples
-        ---------
-        ```python
-        def llm_ocr(region):
-            image = region.render(resolution=300, crop=True)
-            return my_llm_client.ocr(image)
-        region.apply_ocr(function=llm_ocr)
-        ```
+    def apply_ocr(
+        self,
+        engine: Optional[str] = None,
+        *,
+        options: Optional[Any] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        resolution: Optional[int] = None,
+        detect_only: bool = False,
+        apply_exclusions: bool = True,
+        replace: bool = True,
+        function: Optional[Callable] = None,
+        **kwargs,
+    ) -> "Region":
+        """Apply OCR to this region.
 
         Args:
-            replace: Whether to remove existing OCR elements first (default ``True``).
-            **ocr_params: Parameters for the built-in OCR manager *or* the special
-                          ``function``/``ocr_function`` keyword to trigger custom mode.
+            engine: OCR engine — ``"easyocr"`` (default), ``"surya"``,
+                ``"paddle"``, ``"paddlevl"``, or ``"doctr"``.
+            options: Engine-specific option object.
+            languages: Language codes, e.g. ``["en", "fr"]``.
+            min_confidence: Discard results below this confidence (0–1).
+            device: Compute device, e.g. ``"cpu"`` or ``"cuda"``.
+            resolution: DPI for the region image sent to the engine.
+            detect_only: Detect text regions without recognizing characters.
+            apply_exclusions: Mask exclusion zones before OCR.
+            replace: Remove existing OCR elements first.
+            function: Custom OCR callable that receives this Region and returns text.
+            **kwargs: Extra engine-specific parameters.
 
-        Returns
-        -------
-            Self – for chaining.
+        Returns:
+            Self for chaining.
         """
-        params = dict(kwargs)
-        if args and len(args) > 0:
-            if len(args) > 1:
-                raise TypeError("apply_ocr accepts at most one positional argument (replace).")
-            params.setdefault("replace", args[0])
 
-        replace = params.get("replace", True)
+        params: dict = dict(kwargs)
+        if engine is not None:
+            params["engine"] = engine
+        if options is not None:
+            params["options"] = options
+        if languages is not None:
+            params["languages"] = languages
+        if min_confidence is not None:
+            params["min_confidence"] = min_confidence
+        if device is not None:
+            params["device"] = device
+        if resolution is not None:
+            params["resolution"] = resolution
+        if detect_only:
+            params["detect_only"] = detect_only
+        if not apply_exclusions:
+            params["apply_exclusions"] = apply_exclusions
 
-        custom_func_candidate = params.pop("function", None) or params.pop("ocr_function", None)
+        custom_func_candidate = function or params.pop("ocr_function", None)
         if callable(custom_func_candidate):
             custom_func = cast(CustomOCRCallable, custom_func_candidate)
             # Delegate to the specialised helper while preserving key kwargs

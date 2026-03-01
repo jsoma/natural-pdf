@@ -835,9 +835,9 @@ class PDF(
         supports multiple OCR engines and provides batch processing for efficiency.
 
         Args:
-            engine: Name of the OCR engine to use. Supported engines include
-                'easyocr' (default), 'surya', 'paddle', and 'doctr'. If None,
-                uses the global default from natural_pdf.options.ocr.engine.
+            engine: OCR engine — ``"easyocr"`` (default), ``"surya"``,
+                ``"paddle"``, ``"paddlevl"``, ``"doctr"``, or ``"rapidocr"``.
+                If None, uses the global default from natural_pdf.options.ocr.engine.
             languages: List of language codes for OCR recognition (e.g., ['en', 'es']).
                 If None, uses the global default from natural_pdf.options.ocr.languages.
             min_confidence: Minimum confidence threshold (0.0-1.0) for accepting

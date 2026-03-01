@@ -36,7 +36,10 @@ def test_flow_region_apply_and_extract_ocr_delegate_to_all_regions():
     flow_region.apply_ocr(engine="easyocr", resolution=150)
     for stub in flow_region.constituent_regions:
         assert len(stub.apply_calls) == 1
-        assert stub.apply_calls[0][1] == {"engine": "easyocr", "resolution": 150}
+        call_kwargs = stub.apply_calls[0][1]
+        assert call_kwargs["engine"] == "easyocr"
+        assert call_kwargs["resolution"] == 150
+        assert call_kwargs["replace"] is True  # default
 
     extracted = flow_region.extract_ocr_elements(engine="surya")
     assert len(extracted) == 2

@@ -369,12 +369,50 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
     # Analysis helpers (delegated to a FlowRegion spanning all segments)
     # ------------------------------------------------------------------
 
-    def apply_ocr(self, *args: Any, **kwargs: Any) -> "Flow":
-        """
-        Apply OCR across every segment in the flow.
-        """
+    def apply_ocr(
+        self,
+        engine: Optional[str] = None,
+        *,
+        options: Optional[Any] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        resolution: Optional[int] = None,
+        detect_only: bool = False,
+        apply_exclusions: bool = True,
+        replace: bool = True,
+        **kwargs: Any,
+    ) -> "Flow":
+        """Apply OCR across every segment in the flow.
 
-        self._analysis_region().apply_ocr(*args, **kwargs)
+        Args:
+            engine: OCR engine — ``"easyocr"``, ``"surya"``, ``"paddle"``,
+                ``"paddlevl"``, or ``"doctr"``.
+            options: Engine-specific option object.
+            languages: Language codes, e.g. ``["en", "fr"]``.
+            min_confidence: Discard results below this confidence (0–1).
+            device: Compute device, e.g. ``"cpu"`` or ``"cuda"``.
+            resolution: DPI for the image sent to the engine.
+            detect_only: Detect text regions without recognizing characters.
+            apply_exclusions: Mask exclusion zones before OCR.
+            replace: Remove existing OCR elements first.
+            **kwargs: Extra engine-specific parameters.
+
+        Returns:
+            Self for chaining.
+        """
+        self._analysis_region().apply_ocr(
+            engine=engine,
+            replace=replace,
+            options=options,
+            languages=languages,
+            min_confidence=min_confidence,
+            device=device,
+            resolution=resolution,
+            detect_only=detect_only,
+            apply_exclusions=apply_exclusions,
+            **kwargs,
+        )
         return self
 
     def extract_ocr_elements(self, *args: Any, **kwargs: Any) -> List[Any]:

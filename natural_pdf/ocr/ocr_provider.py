@@ -139,8 +139,17 @@ def resolve_ocr_engine_name(
     if not available:
         raise RuntimeError("No OCR engines are registered.")
 
+    # If an engine was explicitly requested, it must exist — fail fast.
+    normalized_requested = _normalize_engine_name(requested)
+    if normalized_requested is not None:
+        if normalized_requested in available:
+            return normalized_requested
+        raise LookupError(
+            f"OCR engine '{requested}' is not registered. " f"Available engines: {available}"
+        )
+
+    # Otherwise, try inference from options, context, and global defaults.
     candidates = (
-        _normalize_engine_name(requested),
         _normalize_engine_name(infer_engine_from_options(options)),
         _normalize_engine_name(_context_option(context, "ocr", "ocr_engine", scope)),
         _normalize_engine_name(_global_ocr_option("engine")),
@@ -149,11 +158,6 @@ def resolve_ocr_engine_name(
     for candidate in candidates:
         if candidate and candidate in available:
             return candidate
-
-    if requested:
-        raise LookupError(
-            f"OCR engine '{requested}' is not registered. Available engines: {available}"
-        )
 
     return available[0]
 

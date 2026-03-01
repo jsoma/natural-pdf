@@ -291,17 +291,56 @@ class PageCollection(
             **kwargs,
         )
 
-    def apply_ocr(self, *, replace: bool = True, **ocr_params):
-        """Apply OCR uniformly across all pages in the collection."""
+    def apply_ocr(
+        self,
+        engine: Optional[str] = None,
+        *,
+        options: Optional[Any] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        resolution: Optional[int] = None,
+        detect_only: bool = False,
+        apply_exclusions: bool = True,
+        replace: bool = True,
+        **kwargs,
+    ):
+        """Apply OCR uniformly across all pages in the collection.
 
+        Args:
+            engine: OCR engine — ``"easyocr"``, ``"surya"``, ``"paddle"``,
+                ``"paddlevl"``, or ``"doctr"``.
+            options: Engine-specific option object.
+            languages: Language codes, e.g. ``["en", "fr"]``.
+            min_confidence: Discard results below this confidence (0–1).
+            device: Compute device, e.g. ``"cpu"`` or ``"cuda"``.
+            resolution: DPI for the image sent to the engine.
+            detect_only: Detect text regions without recognizing characters.
+            apply_exclusions: Mask exclusion zones before OCR.
+            **kwargs: Extra engine-specific parameters.
+
+        Returns:
+            Self for chaining.
+        """
         if not self.pages:
             logger.warning("Cannot apply OCR to an empty PageCollection.")
             return self
 
         logger.info("Applying OCR to %d page(s) directly from PageCollection.", len(self.pages))
         for page in self.pages:
-            page.apply_ocr(replace=replace, **ocr_params)
-        return self  # chaining helper
+            page.apply_ocr(
+                engine=engine,
+                replace=replace,
+                options=options,
+                languages=languages,
+                min_confidence=min_confidence,
+                device=device,
+                resolution=resolution,
+                detect_only=detect_only,
+                apply_exclusions=apply_exclusions,
+                **kwargs,
+            )
+        return self
 
     def _iter_sections(self) -> Iterable["_SectionHost"]:
         return cast(Iterable["_SectionHost"], iter(self.pages))

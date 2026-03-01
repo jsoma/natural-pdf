@@ -694,49 +694,90 @@ class Page(
     def _ocr_render_kwargs(self, *, apply_exclusions: bool = True) -> Dict[str, Any]:
         return {"apply_exclusions": apply_exclusions}
 
-    def apply_ocr(self, *args, **kwargs) -> "Page":
-        """Apply OCR to the entire page via the shared OCR service.
+    def apply_ocr(
+        self,
+        engine: Optional[str] = None,
+        *,
+        options: Optional[Any] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        resolution: Optional[int] = None,
+        detect_only: bool = False,
+        apply_exclusions: bool = True,
+        replace: bool = True,
+        model: Optional[str] = None,
+        client: Optional[Any] = None,
+        function: Optional[Callable] = None,
+        **kwargs,
+    ) -> "Page":
+        """Apply OCR to the entire page.
 
-        When ``model=`` or ``client=`` is passed, routes to the VLM OCR
-        pipeline instead of the traditional engine-based OCR.
+        Args:
+            engine: OCR engine — ``"easyocr"`` (default), ``"surya"``,
+                ``"paddle"``, ``"paddlevl"``, or ``"doctr"``.
+            options: Engine-specific option object.
+            languages: Language codes, e.g. ``["en", "fr"]``.
+            min_confidence: Discard results below this confidence (0–1).
+            device: Compute device, e.g. ``"cpu"`` or ``"cuda"``.
+            resolution: DPI for the page image sent to the engine.
+            detect_only: Detect text regions without recognizing characters.
+            apply_exclusions: Mask exclusion zones before OCR.
+            replace: Remove existing OCR elements first.
+            model: VLM model name — switches to VLM OCR pipeline.
+            client: OpenAI-compatible client — switches to VLM OCR pipeline.
+            function: Custom OCR callable that receives a Region and returns text.
+            **kwargs: Extra engine-specific parameters.
+
+        Returns:
+            Self for chaining.
         """
 
-        params = dict(kwargs)
-        if args and len(args) > 0:
-            if len(args) > 1:
-                raise TypeError("apply_ocr accepts at most one positional argument (replace).")
-            params.setdefault("replace", args[0])
-
-        replace = params.get("replace", True)
+        params: dict = dict(kwargs)
+        if engine is not None:
+            params["engine"] = engine
+        if options is not None:
+            params["options"] = options
+        if languages is not None:
+            params["languages"] = languages
+        if min_confidence is not None:
+            params["min_confidence"] = min_confidence
+        if device is not None:
+            params["device"] = device
+        if resolution is not None:
+            params["resolution"] = resolution
+        if detect_only:
+            params["detect_only"] = detect_only
+        if not apply_exclusions:
+            params["apply_exclusions"] = apply_exclusions
 
         # VLM OCR path: when model= or client= is provided
-        vlm_model = params.pop("model", None)
-        vlm_client = params.pop("client", None)
-        if vlm_model is not None or vlm_client is not None:
-            ignored_engine = params.pop("engine", None)
-            if ignored_engine is not None:
+        if model is not None or client is not None:
+            if engine is not None:
                 logger.warning(
-                    "apply_ocr: model=/client= switches to VLM OCR; " "engine=%r is ignored.",
-                    ignored_engine,
+                    "apply_ocr: model=/client= switches to VLM OCR; engine=%r is ignored.",
+                    engine,
                 )
+            params.pop("engine", None)
             return self._apply_vlm_ocr(
-                model=vlm_model,
-                client=vlm_client,
+                model=model,
+                client=client,
                 replace=replace,
-                **{k: v for k, v in params.items() if k != "replace"},
+                **{k: v for k, v in params.items() if k not in ("replace", "model", "client")},
             )
 
-        custom_func = params.pop("function", None) or params.pop("ocr_function", None)
+        custom_func = function or params.pop("ocr_function", None)
         if callable(custom_func):
+            params.pop("function", None)
             region = self._full_page_region()
             region.apply_ocr(
                 replace=replace,
                 function=custom_func,
-                **params,
+                **{k: v for k, v in params.items() if k not in ("replace",)},
             )
             return self
 
-        self.services.ocr.apply_ocr(self, **params)
+        self.services.ocr.apply_ocr(self, replace=replace, **params)
         return self
 
     def _apply_vlm_ocr(
