@@ -65,23 +65,30 @@ class ElementSummary:
 
         return lines
 
+    @staticmethod
+    def _escape_md(text: str) -> str:
+        """Escape text that could be misinterpreted as markdown (e.g. #hex colors as headers)."""
+        if isinstance(text, str) and text.startswith("#"):
+            return f"`{text}`"
+        return text
+
     def _format_dict(self, data: Dict[str, Any], indent: str = "") -> List[str]:
         """Format dictionary as markdown list."""
         lines = []
 
         for key, value in data.items():
-            key_display = key.replace("_", " ")
+            key_display = self._escape_md(key.replace("_", " "))
 
             if isinstance(value, dict):
                 # Nested dict - always format as list items
                 lines.append(f"{indent}- **{key_display}**:")
                 for subkey, subvalue in value.items():
-                    subkey_display = subkey.replace("_", " ")
+                    subkey_display = self._escape_md(subkey.replace("_", " "))
                     if isinstance(subvalue, dict):
                         # Another level of nesting
                         lines.append(f"{indent}  - **{subkey_display}**:")
                         for subsubkey, subsubvalue in subvalue.items():
-                            subsubkey_display = subsubkey.replace("_", " ")
+                            subsubkey_display = self._escape_md(subsubkey.replace("_", " "))
                             lines.append(f"{indent}    - {subsubkey_display}: {subsubvalue}")
                     else:
                         lines.append(f"{indent}  - {subkey_display}: {subvalue}")
