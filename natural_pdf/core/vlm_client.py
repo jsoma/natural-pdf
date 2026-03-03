@@ -81,6 +81,8 @@ class _LocalVLMAdapter:
             self._do_load()
 
     def _do_load(self) -> None:
+        import time
+
         try:
             import torch
             from transformers import AutoProcessor
@@ -95,8 +97,6 @@ class _LocalVLMAdapter:
                 "Install with: pip install transformers torch"
             ) from exc
 
-        logger.info("Loading VLM model %r (this may take a moment)…", self.model_name)
-
         if torch.cuda.is_available():
             device = "cuda"
             dtype = torch.float16
@@ -109,6 +109,9 @@ class _LocalVLMAdapter:
             device = "cpu"
             dtype = torch.float32
             device_map = None
+
+        logger.info("Loading VLM model %r on %s...", self.model_name, device)
+        t0 = time.perf_counter()
 
         processor_kwargs: dict[str, Any] = {}
         from natural_pdf.core.vlm_prompts import detect_model_family
@@ -129,9 +132,13 @@ class _LocalVLMAdapter:
         if device_map is None:
             self._model = self._model.to(device)
         self._model.eval()
-        logger.info("VLM model %r loaded on %s.", self.model_name, device)
+
+        elapsed = time.perf_counter() - t0
+        logger.info("VLM model %r loaded on %s in %.1fs.", self.model_name, device, elapsed)
 
     def generate(self, image: Image.Image, prompt: str, *, max_new_tokens: int = 4096) -> str:
+        import time
+
         import torch
 
         self._ensure_loaded()
@@ -153,9 +160,37 @@ class _LocalVLMAdapter:
             self._model.device
         )
 
+        # Log image dimension info for coordinate debugging
+        pixel_values = inputs.get("pixel_values")
+        if pixel_values is not None:
+            tensor_shape = pixel_values.shape
+            logger.info(
+                "VLM input: original image %dx%d, tensor shape %s.",
+                image.size[0],
+                image.size[1],
+                list(tensor_shape),
+            )
+            # Check for image_grid_thw (Qwen-VL specific)
+            grid_thw = inputs.get("image_grid_thw")
+            if grid_thw is not None:
+                logger.info("VLM input: image_grid_thw=%s.", grid_thw.tolist())
+
+        logger.info(
+            "VLM generation started (model=%r, max_new_tokens=%d).", self.model_name, max_new_tokens
+        )
+        t0 = time.perf_counter()
+
         with torch.inference_mode():
             output_ids = self._model.generate(**inputs, max_new_tokens=max_new_tokens)
+
         generated = output_ids[0][inputs.input_ids.shape[1] :]
+        n_tokens = len(generated)
+        elapsed = time.perf_counter() - t0
+        tps = n_tokens / elapsed if elapsed > 0 else 0
+        logger.info(
+            "VLM generation finished: %d tokens in %.1fs (%.1f tok/s).", n_tokens, elapsed, tps
+        )
+
         return self._processor.decode(generated, skip_special_tokens=True)
 
 

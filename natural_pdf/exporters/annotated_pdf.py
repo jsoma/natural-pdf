@@ -125,7 +125,6 @@ def _draw_sidebar_legend(target_doc, target_page, legend_items, sidebar_width):
         lines = label.split("\n")
 
         # Draw color swatch aligned to first line of text
-        # Use full saturated color to match how PDF viewers render highlights
         swatch_x = sidebar_x + _SWATCH_X_OFFSET
         swatch_top = cursor_y
         swatch_bottom = swatch_top - _SWATCH_SIZE
@@ -139,6 +138,7 @@ def _draw_sidebar_legend(target_doc, target_page, legend_items, sidebar_width):
         ops.append("0 0 0 rg")  # black text
         ops.append("BT")
         ops.append(f"/HelvLegend {_FONT_SIZE} Tf")
+        ops.append("0 Tr")  # Fill mode (reset from possible invisible text layer)
         # Position at first line baseline (approx font_size * 0.8 below top)
         baseline_y = cursor_y - _FONT_SIZE * 0.8
         ops.append(f"{text_x:.2f} {baseline_y:.2f} Td")
@@ -191,13 +191,34 @@ def create_annotated_pdf(
 
     color_cycle = list(_BASE_HIGHLIGHT_COLORS)
 
+    # Try to reuse colors assigned during .show() so PDF matches interactive view
+    interactive_colors: dict = {}
+    try:
+        for fr in fields.values():
+            if fr.citations and len(fr.citations) > 0:
+                page = getattr(fr.citations[0], "page", None)
+                if page and hasattr(page, "_pdf"):
+                    hs = getattr(page._pdf, "highlighter", None)
+                    if hs:
+                        interactive_colors = hs.get_labels_and_colors()
+                    break
+    except Exception:
+        pass
+
     for field_idx, (field_name, fr) in enumerate(fields.items()):
         if fr.citations is None or len(fr.citations) == 0:
             continue
 
-        rgb = color_cycle[field_idx % len(color_cycle)]
-        alpha = DEFAULT_FILL_ALPHA
-        rgba = (*rgb, alpha)
+        # Check if .show() already assigned a color for this field's label
+        label = build_enriched_label(field_name, fr.value)
+        existing = interactive_colors.get(label)
+        rgb = existing[:3] if existing else color_cycle[field_idx % len(color_cycle)]
+        # Compute pastel color by alpha-blending with white, matching .show() appearance
+        blend = DEFAULT_FILL_ALPHA / 255.0
+        pastel_rgb = tuple(int(c * blend + 255 * (1 - blend)) for c in rgb)
+        # Use moderate opacity for PDF highlights (colors are already soft)
+        pdf_alpha = 128
+        rgba = (*pastel_rgb, 255)  # Full opacity for legend swatches
 
         # Build popup text for highlight annotation
         parts = [f"{field_name}: {fr.value}"]
@@ -216,8 +237,8 @@ def create_annotated_pdf(
             page_annotations[page.index].append(
                 {
                     "bbox": bbox,
-                    "rgb": rgb,
-                    "alpha": alpha,
+                    "rgb": pastel_rgb,
+                    "alpha": pdf_alpha,
                     "field_name": field_name,
                     "popup_text": popup_text,
                 }
@@ -225,7 +246,6 @@ def create_annotated_pdf(
 
             # Track field for this page's legend
             if field_name not in page_fields[page.index]:
-                label = build_enriched_label(field_name, fr.value)
                 page_fields[page.index][field_name] = {
                     "label": label,
                     "rgba": rgba,

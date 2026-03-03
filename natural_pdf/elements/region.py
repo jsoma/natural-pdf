@@ -1783,15 +1783,9 @@ class Region(
         # Optimization: Could use spatial query if page elements were indexed
         page_words = self.page.words  # Get all words from the page
 
-        # 2. Gather all character dicts from words potentially in region
-        # We filter precisely in filter_chars_spatially
-        all_char_dicts = []
-        for word in page_words:
-            # Quick bbox check to avoid processing words clearly outside
-            if get_bbox_overlap(self.bbox, word.bbox) is not None:
-                all_char_dicts.extend(getattr(word, "_char_dicts", []))
-
-        # 2b. Inject alt_text from overlapping child regions
+        # 2a. Identify alt_text regions overlapping this region (before word
+        #     collection so we can suppress underlying characters).
+        alt_text_regions = []
         for region in self.page.iter_regions():
             region_alt = getattr(region, "alt_text", None)
             if region is self or region_alt is None:
@@ -1800,7 +1794,26 @@ class Region(
             cx = (region.x0 + region.x1) / 2
             cy = (region.top + region.bottom) / 2
             if self.x0 <= cx <= self.x1 and self.top <= cy <= self.bottom:
-                all_char_dicts.append(_create_alt_text_char_dict(region))
+                alt_text_regions.append(region)
+
+        # 2b. Gather char dicts, suppressing words covered by alt_text regions
+        all_char_dicts = []
+        for word in page_words:
+            # Quick bbox check to avoid processing words clearly outside
+            if get_bbox_overlap(self.bbox, word.bbox) is not None:
+                # Skip words whose center falls inside an alt_text region
+                if alt_text_regions:
+                    wcx = (word.x0 + word.x1) / 2
+                    wcy = (word.top + word.bottom) / 2
+                    if any(
+                        r.x0 <= wcx <= r.x1 and r.top <= wcy <= r.bottom for r in alt_text_regions
+                    ):
+                        continue
+                all_char_dicts.extend(getattr(word, "_char_dicts", []))
+
+        # 2c. Inject alt_text from those regions
+        for region in alt_text_regions:
+            all_char_dicts.append(_create_alt_text_char_dict(region))
 
         if not all_char_dicts:
             logger.debug(f"Region {self.bbox}: No character dicts found overlapping region bbox.")

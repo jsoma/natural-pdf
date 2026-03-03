@@ -901,6 +901,13 @@ class HighlightingService:
         if render_ocr:
             page_image = render_ocr_overlay(page, page_image, scale_factor)
 
+        # Resize content to target width BEFORE adding legend so the legend
+        # stays at its natural (readable) size regardless of the requested width.
+        if target_width is not None and page_image.width != target_width:
+            aspect = page_image.height / page_image.width
+            target_height = int(target_width * aspect)
+            page_image = page_image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+
         # Add legend or colorbar if labels are enabled
         if spec.highlights and labels:
             from natural_pdf.utils.visualization import (
@@ -957,13 +964,6 @@ class HighlightingService:
                         logger.debug(
                             f"Added legend with {len(spec_labels)} labels for spec {spec_index}."
                         )
-
-        # If we rendered at higher resolution than needed for the target width,
-        # resize down with LANCZOS for sharp output.
-        if target_width is not None and page_image.width != target_width:
-            aspect = page_image.height / page_image.width
-            target_height = int(target_width * aspect)
-            page_image = page_image.resize((target_width, target_height), Image.Resampling.LANCZOS)
 
         return page_image
 

@@ -18,6 +18,11 @@ from .classifier import CheckboxClassifier
 
 logger = logging.getLogger(__name__)
 
+# Unicode ballot box characters
+_UNICODE_CHECKED = frozenset("\u2611\u2612")  # ☑ ☒
+_UNICODE_UNCHECKED = frozenset("\u2610")  # ☐
+_UNICODE_CHECKBOXES = _UNICODE_CHECKED | _UNICODE_UNCHECKED
+
 
 class CheckboxAnalyzer:
     """Unified orchestrator for checkbox detection."""
@@ -119,6 +124,19 @@ class CheckboxAnalyzer:
             elif region.is_checked is False:
                 region.alt_text = getattr(_alt_cfg, "checkbox_unchecked", "[UNCHECKED]")
             # is_checked=None → leave alt_text as None
+
+        # Detect Unicode checkbox characters
+        unicode_regions = self._detect_unicode_checkboxes()
+        if unicode_regions:
+            # Dedup against visual results
+            unicode_regions = self._dedup_unicode(unicode_regions, regions)
+            # Set alt_text on Unicode regions
+            for region in unicode_regions:
+                if region.is_checked is True:
+                    region.alt_text = getattr(_alt_cfg, "checkbox_checked", "[CHECKED]")
+                elif region.is_checked is False:
+                    region.alt_text = getattr(_alt_cfg, "checkbox_unchecked", "[UNCHECKED]")
+            regions.extend(unicode_regions)
 
         # Apply limit
         if limit is not None and len(regions) > limit:
@@ -347,6 +365,51 @@ class CheckboxAnalyzer:
 
         logger.info("Checkbox detection complete. Found %d checkboxes.", len(regions))
         return regions
+
+    def _detect_unicode_checkboxes(self) -> List[Region]:
+        """Scan page words for Unicode ballot box characters."""
+        regions = []
+        for word in self._page.words:
+            char = word.text.strip()
+            if len(char) != 1 or char not in _UNICODE_CHECKBOXES:
+                continue
+            checked = char in _UNICODE_CHECKED
+            region = self._page.create_region(word.x0, word.top, word.x1, word.bottom)
+            region.region_type = "checkbox"
+            region.normalized_type = "checkbox"
+            region.is_checked = checked
+            region.checkbox_state = "checked" if checked else "unchecked"
+            region.confidence = 1.0
+            region.model = "unicode"
+            region.source = "checkbox"
+            region.analyses["checkbox"] = {
+                "is_checked": checked,
+                "state": region.checkbox_state,
+                "confidence": 1.0,
+                "model": "unicode",
+                "engine": "unicode",
+            }
+            regions.append(region)
+        return regions
+
+    def _dedup_unicode(
+        self, unicode_regions: List[Region], visual_regions: List[Region]
+    ) -> List[Region]:
+        """Remove Unicode regions that overlap with existing visual detections."""
+        if not visual_regions:
+            return unicode_regions
+        kept = []
+        for ur in unicode_regions:
+            ucx = (ur.x0 + ur.x1) / 2
+            ucy = (ur.top + ur.bottom) / 2
+            duplicate = False
+            for vr in visual_regions:
+                if vr.x0 <= ucx <= vr.x1 and vr.top <= ucy <= vr.bottom:
+                    duplicate = True
+                    break
+            if not duplicate:
+                kept.append(ur)
+        return kept
 
     def _build_options(
         self,

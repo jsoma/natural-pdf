@@ -11,11 +11,30 @@ logger = logging.getLogger(__name__)
 from .engine import OCREngine, TextRegion
 from .ocr_options import BaseOCROptions, SuryaOCROptions
 
-_SURYA_COMPAT_HINT = (
-    "Your version of surya-ocr is not compatible with your installed transformers. "
-    'Install a compatible version: pip install "surya-ocr<0.15"\n'
-    "See: https://github.com/datalab-to/surya/issues/484"
-)
+
+def _surya_compat_hint() -> str:
+    """Build a version-aware compatibility hint."""
+    tf_ver = ""
+    try:
+        import transformers
+
+        tf_ver = getattr(transformers, "__version__", "")
+    except ImportError:
+        pass
+
+    if tf_ver and tf_ver.startswith("5"):
+        return (
+            f"surya-ocr is not yet compatible with transformers {tf_ver}. "
+            "Surya requires transformers 4.x. If other dependencies need transformers 5, "
+            "you may need to use a different OCR engine (easyocr, paddlevl, or vlm) "
+            "until surya releases a compatible update.\n"
+            'To downgrade: pip install "transformers<5"'
+        )
+    return (
+        "Your version of surya-ocr is not compatible with your installed transformers. "
+        "Try: pip install --upgrade surya-ocr transformers\n"
+        "See: https://github.com/datalab-to/surya/issues/484"
+    )
 
 
 class SuryaOCREngine(OCREngine):
@@ -35,7 +54,7 @@ class SuryaOCREngine(OCREngine):
         """Initialize Surya predictors."""
         if not self.is_available():
             raise ImportError(
-                'Surya OCR library is not installed. Install with: pip install "surya-ocr<0.15"'
+                "Surya OCR library is not installed. Install with: pip install surya-ocr"
             )
 
         self._langs = languages or self.DEFAULT_LANGUAGES
@@ -47,29 +66,33 @@ class SuryaOCREngine(OCREngine):
         self._surya_detection = DetectionPredictor
         self.logger.info("Surya modules imported successfully.")
 
-        predictor_args: Dict[str, Any] = {}
-        # Filter only allowed Surya args (currently none, but placeholder for future)
-        allowed_args: Set[str] = set()
-        filtered_args = {k: v for k, v in predictor_args.items() if k in allowed_args}
-        dropped = set(predictor_args) - allowed_args
-        if dropped:
-            self.logger.warning(f"Dropped unsupported Surya args: {dropped}")
-
-        if self._surya_detection is None or self._surya_recognition is None:
-            raise RuntimeError("Failed to load Surya predictors.")
-
         try:
             self.logger.info("Instantiating Surya DetectionPredictor...")
-            self._detection_predictor = self._surya_detection(**filtered_args)
+            self._detection_predictor = DetectionPredictor()
+
             self.logger.info("Instantiating Surya RecognitionPredictor...")
-            self._recognition_predictor = self._surya_recognition(**filtered_args)
+            # Surya >= 0.17: RecognitionPredictor requires a FoundationPredictor
+            # Surya < 0.17: RecognitionPredictor takes no required args
+            try:
+                from surya.foundation import FoundationPredictor  # type: ignore[import-untyped]
+
+                foundation = FoundationPredictor()
+                self._recognition_predictor = RecognitionPredictor(foundation)
+            except ImportError:
+                # Older surya without FoundationPredictor
+                self._recognition_predictor = RecognitionPredictor()
+        except TypeError as exc:
+            # Handle case where API changed in unexpected ways
+            raise RuntimeError(
+                f"Failed to initialize Surya predictors: {exc}\n{_surya_compat_hint()}"
+            ) from exc
         except AttributeError as exc:
             if "pad_token_id" in str(exc) or "rope" in str(exc).lower():
-                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+                raise RuntimeError(_surya_compat_hint()) from exc
             raise
         except KeyError as exc:
             if "rope" in str(exc).lower() or "default" in str(exc).lower():
-                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+                raise RuntimeError(_surya_compat_hint()) from exc
             raise
 
         self.logger.info("Surya predictors initialized.")
@@ -129,11 +152,11 @@ class SuryaOCREngine(OCREngine):
                     )
         except AttributeError as exc:
             if "pad_token_id" in str(exc) or "rope" in str(exc).lower():
-                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+                raise RuntimeError(_surya_compat_hint()) from exc
             raise
         except KeyError as exc:
             if "rope" in str(exc).lower() or "default" in str(exc).lower():
-                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+                raise RuntimeError(_surya_compat_hint()) from exc
             raise
 
         # Surya may return a list with one result per image or a single result object

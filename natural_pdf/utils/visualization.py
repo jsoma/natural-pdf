@@ -438,6 +438,12 @@ def merge_images_with_legend(
             legend, (image.width, 0), legend if legend.mode == "RGBA" else None
         )  # Handle transparency
     elif position == "bottom":
+        # Scale legend down if wider than content to avoid blowup
+        if legend.width > image.width:
+            scale = image.width / legend.width
+            legend = legend.resize(
+                (image.width, int(legend.height * scale)), Image.Resampling.LANCZOS
+            )
         # Create a new image with extra height for the legend
         merged_width = max(image.width, legend.width)
         merged_height = image.height + legend.height
@@ -445,6 +451,12 @@ def merge_images_with_legend(
         merged.paste(image, (0, 0))
         merged.paste(legend, (0, image.height), legend if legend.mode == "RGBA" else None)
     elif position == "top":
+        # Scale legend down if wider than content to avoid blowup
+        if legend.width > image.width:
+            scale = image.width / legend.width
+            legend = legend.resize(
+                (image.width, int(legend.height * scale)), Image.Resampling.LANCZOS
+            )
         # Create a new image with extra height for the legend
         merged_width = max(image.width, legend.width)
         merged_height = image.height + legend.height

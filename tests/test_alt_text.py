@@ -287,3 +287,114 @@ def test_region_no_alt_text_extract_text_unchanged(page):
     # Should not raise and should return whatever the normal path returns
     text = region.extract_text()
     assert isinstance(text, str)
+
+
+# ---- 9. alt_text suppresses underlying text ----
+
+
+def test_alt_text_suppresses_underlying_text(page):
+    """When a child region has alt_text, it replaces (not duplicates) underlying chars."""
+    # Find a word on the page to use as a target
+    word = page.find("text")
+    assert word is not None, "Test PDF must have at least one text element"
+    original_text = word.text
+
+    # Create a child region exactly covering the word, with alt_text
+    child = page.create_region(word.x0, word.top, word.x1, word.bottom)
+    child.alt_text = "[REPLACED]"
+    page.add_region(child, source="test")
+
+    # Create a parent region that encloses the word
+    parent = page.create_region(word.x0 - 1, word.top - 1, word.x1 + 1, word.bottom + 1)
+    text = parent.extract_text()
+
+    # The replacement text must appear
+    assert "[REPLACED]" in text
+    # The original word text must NOT appear (suppression, not addition)
+    assert original_text not in text
+
+    page.remove_regions(source="test")
+
+
+# ---- 10. Unicode checkbox detection ----
+
+
+def test_unicode_checkbox_detection(page, monkeypatch):
+    """_detect_unicode_checkboxes finds Unicode ballot box characters."""
+    from natural_pdf.analyzers.checkbox.checkbox_analyzer import CheckboxAnalyzer
+    from natural_pdf.elements.text import TextElement
+
+    # Create fake word elements for Unicode checkboxes
+    fake_words = []
+    for i, (char, should_be_checked) in enumerate(
+        [("\u2610", False), ("\u2611", True), ("\u2612", True)]
+    ):
+        obj = {
+            "text": char,
+            "x0": 10.0,
+            "top": 10.0 + i * 20,
+            "x1": 20.0,
+            "bottom": 20.0 + i * 20,
+            "width": 10.0,
+            "height": 10.0,
+            "object_type": "text",
+            "page_number": 0,
+            "fontname": "TestFont",
+            "size": 12.0,
+            "upright": True,
+            "direction": 1,
+            "source": "pdf",
+            "_char_dicts": [],
+        }
+        elem = TextElement(obj, page)
+        fake_words.append(elem)
+
+    monkeypatch.setattr(type(page), "words", property(lambda self: fake_words))
+
+    analyzer = CheckboxAnalyzer(page)
+    regions = analyzer._detect_unicode_checkboxes()
+
+    assert len(regions) == 3
+    assert regions[0].is_checked is False
+    assert regions[0].checkbox_state == "unchecked"
+    assert regions[0].confidence == 1.0
+    assert regions[0].model == "unicode"
+    assert regions[1].is_checked is True
+    assert regions[2].is_checked is True
+
+
+# ---- 11. Unicode checkbox dedup ----
+
+
+def test_unicode_checkbox_dedup(page):
+    """When visual and Unicode regions overlap, visual region wins."""
+    from natural_pdf.analyzers.checkbox.checkbox_analyzer import CheckboxAnalyzer
+
+    analyzer = CheckboxAnalyzer(page)
+
+    # Create a Unicode region
+    ur = page.create_region(10, 10, 20, 20)
+    ur.is_checked = False
+
+    # Create a visual region overlapping the same spot
+    vr = page.create_region(8, 8, 22, 22)
+    vr.is_checked = True
+
+    result = analyzer._dedup_unicode([ur], [vr])
+    assert len(result) == 0, "Unicode region should be deduped when visual region overlaps"
+
+
+def test_unicode_checkbox_dedup_no_overlap(page):
+    """Non-overlapping Unicode regions survive dedup."""
+    from natural_pdf.analyzers.checkbox.checkbox_analyzer import CheckboxAnalyzer
+
+    analyzer = CheckboxAnalyzer(page)
+
+    ur = page.create_region(100, 100, 110, 110)
+    ur.is_checked = False
+
+    vr = page.create_region(10, 10, 20, 20)
+    vr.is_checked = True
+
+    result = analyzer._dedup_unicode([ur], [vr])
+    assert len(result) == 1, "Non-overlapping Unicode region should survive dedup"

@@ -13,11 +13,31 @@ from .layout_options import BaseLayoutOptions, SuryaLayoutOptions
 
 logger = logging.getLogger(__name__)
 
-_SURYA_COMPAT_HINT = (
-    "Your version of surya-ocr is not compatible with your installed transformers. "
-    'Install a compatible version: pip install "surya-ocr<0.15"\n'
-    "See: https://github.com/datalab-to/surya/issues/484"
-)
+
+def _surya_compat_hint() -> str:
+    """Build a version-aware compatibility hint."""
+    tf_ver = ""
+    try:
+        import transformers
+
+        tf_ver = getattr(transformers, "__version__", "")
+    except ImportError:
+        pass
+
+    if tf_ver and tf_ver.startswith("5"):
+        return (
+            f"surya-ocr is not yet compatible with transformers {tf_ver}. "
+            "Surya requires transformers 4.x. If other dependencies need transformers 5, "
+            "you may need to use a different layout engine "
+            "until surya releases a compatible update.\n"
+            'To downgrade: pip install "transformers<5"'
+        )
+    return (
+        "Your version of surya-ocr is not compatible with your installed transformers. "
+        "Try: pip install --upgrade surya-ocr transformers\n"
+        "See: https://github.com/datalab-to/surya/issues/484"
+    )
+
 
 # Check for dependencies
 surya_spec = importlib.util.find_spec("surya")
@@ -40,12 +60,19 @@ if surya_spec:
             getattr(surya_common, "rescale_bbox", None),
         )
         surya_layout = importlib.import_module("surya.layout")
-        surya_table_rec = importlib.import_module("surya.table_rec")
-
         LayoutPredictor = cast(Type[Any], getattr(surya_layout, "LayoutPredictor", None))
-        TableRecPredictor = cast(Type[Any], getattr(surya_table_rec, "TableRecPredictor", None))
+
+        try:
+            surya_table_rec = importlib.import_module("surya.table_rec")
+            TableRecPredictor = cast(Type[Any], getattr(surya_table_rec, "TableRecPredictor", None))
+        except (ImportError, Exception) as e:
+            logger.warning(
+                "Could not import Surya TableRecPredictor: %s. "
+                "Table structure recognition will be unavailable.",
+                e,
+            )
     except ImportError as e:  # pragma: no cover - optional dependency
-        logger.warning(f"Could not import Surya dependencies (layout and/or table_rec): {e}")
+        logger.warning(f"Could not import Surya dependencies: {e}")
 else:  # pragma: no cover - optional dependency
     logger.warning("surya not found. SuryaLayoutDetector will not be available.")
 
@@ -103,27 +130,43 @@ class SuryaLayoutDetector(LayoutDetector):
     def _load_model_from_options(self, options: BaseLayoutOptions) -> Dict[str, Any]:
         if not self.is_available():
             raise RuntimeError(
-                "Surya dependencies (surya.layout and surya.table_rec) not installed. "
-                'Install with: pip install "surya-ocr<0.15"'
+                "Surya dependencies (surya.layout) not installed. "
+                "Install with: pip install surya-ocr"
             )
         if not isinstance(options, SuryaLayoutOptions):
             raise TypeError("Incorrect options type provided for Surya model loading.")
         self.logger.info(f"Loading Surya models (device={options.device})...")
-        models = {}
+        models: Dict[str, Any] = {}
         assert LayoutPredictor is not None
-        assert TableRecPredictor is not None
         try:
-            models["layout"] = LayoutPredictor()
-            models["table_rec"] = TableRecPredictor()
+            # Surya >= 0.17: LayoutPredictor requires a FoundationPredictor
+            try:
+                from surya.foundation import FoundationPredictor  # type: ignore[import-untyped]
+
+                foundation = FoundationPredictor()
+                models["layout"] = LayoutPredictor(foundation)
+            except ImportError:
+                models["layout"] = LayoutPredictor()
+
+            if TableRecPredictor is not None:
+                models["table_rec"] = TableRecPredictor()
+            else:
+                self.logger.warning(
+                    "TableRecPredictor not available — table structure recognition disabled."
+                )
+        except TypeError as exc:
+            raise RuntimeError(
+                f"Failed to initialize Surya predictors: {exc}\n{_surya_compat_hint()}"
+            ) from exc
         except AttributeError as exc:
             if "pad_token_id" in str(exc) or "rope" in str(exc).lower():
-                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+                raise RuntimeError(_surya_compat_hint()) from exc
             raise
         except KeyError as exc:
             if "rope" in str(exc).lower() or "default" in str(exc).lower():
-                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+                raise RuntimeError(_surya_compat_hint()) from exc
             raise
-        self.logger.info("Surya LayoutPredictor and TableRecPredictor loaded.")
+        self.logger.info("Surya layout models loaded.")
         return models
 
     def detect(
@@ -173,7 +216,12 @@ class SuryaLayoutDetector(LayoutDetector):
 
         models = self._get_model(options)
         layout_predictor = cast(Any, models["layout"])
-        table_rec_predictor = cast(Any, models["table_rec"])
+        table_rec_predictor = cast(Any, models.get("table_rec"))
+        if table_rec_predictor is None and options.recognize_table_structure:
+            self.logger.warning(
+                "TableRecPredictor not loaded; disabling table structure recognition."
+            )
+            options.recognize_table_structure = False
 
         input_image = image.convert("RGB")
 

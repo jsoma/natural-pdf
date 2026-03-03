@@ -60,19 +60,6 @@ text_elements.show(group_by='confidence', bins=[0, 0.5, 0.8, 1.0])  # Low/medium
 
 This makes it easy to spot low-confidence OCR results that might need manual review or correction. You'll automatically get a color scale showing the confidence range instead of a discrete legend.
 
-```python
-# Apply OCR using PaddleOCR for English
-page.apply_ocr(engine='paddle', languages=['en'])
-print(f"Found {len(page.find_all('text[source=ocr]'))} elements after English OCR.")
-
-# Apply OCR using PaddleOCR for Chinese
-page.apply_ocr(engine='paddle', languages=['zh'])
-print(f"Found {len(page.find_all('text[source=ocr]'))} elements after Chinese OCR.")
-
-text_with_ocr = page.extract_text()
-print(f"\nExtracted text after OCR:\n{text_with_ocr[:150]}...")
-```
-
 You can also use `.describe()` to see a summary of the OCR outcome...
 
 ```python
@@ -137,7 +124,7 @@ page.apply_ocr(engine='rapidocr', languages=['en'])
 
 ## PaddleOCR-VL (VLM-Based OCR)
 
-PaddleOCR-VL uses a Vision Language Model for document understanding. It can handle complex layouts, charts, and mixed content better than traditional OCR.
+PaddleOCR-VL uses a Vision Language Model for document understanding. It can handle complex layouts, charts, and mixed content better than traditional OCR. It's heavy, though, so it'll take a lot to install and a lot to run. **I've found Qwen3 (see below) is a more flexible alternative most of the time.**
 
 ```python
 from natural_pdf.ocr import PaddleOCRVLOptions
@@ -157,30 +144,42 @@ page.apply_ocr(engine='paddlevl', options=vl_opts)
 
 ## VLM-Based OCR
 
-You can use any OpenAI-compatible vision model for OCR. Pass `engine="vlm"` with a `model` and `client`. The model returns grounded bounding boxes with text — best results come from Qwen-VL family models.
+Uses a vision-language model to return grounded bounding boxes with text. Best results come from Qwen-VL family models.
+
+### Local model (no API needed)
+
+Pass just `model=` with a HuggingFace model ID. The model is downloaded and run locally — requires `transformers` and `torch`.
 
 ```python
-from openai import OpenAI
-
-client = OpenAI()  # or any OpenAI-compatible client
-
 page.apply_ocr(
     engine="vlm",
     model="Qwen/Qwen3-VL-2B-Instruct",
-    client=client,
 )
 ```
 
-Gemini models also work:
+**Install:** `pip install transformers torch`
+
+Small models (2B–4B) produce good text content but imprecise bounding boxes — expect highlights that are slightly too wide or tall. Qwen3-VL comes in 2B, 4B, 8B, 32B, and 235B sizes ([full list](https://huggingface.co/collections/Qwen/qwen3-vl)). The 8B model is a good local balance between speed and coordinate accuracy. For the best bounding boxes, use a larger model via API.
+
+### Remote model via API
+
+Pass `client=` with any OpenAI-compatible client pointing at a service that hosts the model. The `openai` Python package works as a client for any compatible endpoint. Larger models produce more accurate bounding boxes.
 
 ```python
 from openai import OpenAI
 
+# OpenRouter — access large models without local GPU
 client = OpenAI(
-    api_key="your-api-key",
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+    base_url="https://openrouter.ai/api/v1",
+    api_key="your-openrouter-key",
 )
+page.apply_ocr(engine="vlm", model="qwen/qwen2.5-vl-72b-instruct", client=client)
 
+# Gemini
+client = OpenAI(
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    api_key="your-google-key",
+)
 page.apply_ocr(engine="vlm", model="gemini-2.5-flash", client=client)
 ```
 
