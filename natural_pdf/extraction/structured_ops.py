@@ -14,6 +14,23 @@ logger = logging.getLogger(__name__)
 DEFAULT_TEXT_MODEL = "gpt-4o-mini"
 DEFAULT_VISION_MODEL = "gpt-4o"
 
+# Typographic → ASCII replacements.  Some LLM providers (notably Gemini)
+# intermittently mangle smart-quote / em-dash UTF-8 sequences, returning
+# mojibake in structured output.  Normalising to plain ASCII before sending
+# the text avoids that entire class of problems.
+_TYPOGRAPHY_TABLE = str.maketrans(
+    {
+        "\u2018": "'",  # '
+        "\u2019": "'",  # '
+        "\u201c": '"',  # "
+        "\u201d": '"',  # "
+        "\u2013": "-",  # –  en dash
+        "\u2014": "-",  # —  em dash
+        "\u2026": "...",  # …
+        "\u00a0": " ",  # non-breaking space
+    }
+)
+
 # Errors that indicate transport / auth problems — never swallow these.
 _TRANSPORT_ERRORS = (ConnectionError, TimeoutError, OSError)
 
@@ -41,7 +58,8 @@ def _prepare_llm_messages(
     messages: List[Dict[str, Any]] = [{"role": "system", "content": system_prompt}]
 
     if using == "text":
-        messages.append({"role": "user", "content": str(content)})
+        text = str(content).translate(_TYPOGRAPHY_TABLE)
+        messages.append({"role": "user", "content": text})
     elif using == "vision":
         if isinstance(content, Image.Image):
             buffered = io.BytesIO()
