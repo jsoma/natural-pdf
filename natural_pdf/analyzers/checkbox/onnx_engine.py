@@ -175,6 +175,7 @@ class OnnxCheckboxDetector(CheckboxDetector):
                     repo_id=options.model_repo,
                     filename=options.model_file or "model.onnx",
                     revision=options.model_revision,
+                    token=False,
                 )
                 return path
             except ImportError:

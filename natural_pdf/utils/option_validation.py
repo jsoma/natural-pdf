@@ -281,6 +281,9 @@ def validate_option_type(
         Tuple of (options, was_default_used) - if wrong type, returns
         a new instance of expected_type and True
     """
+    if options is None:
+        return expected_type(), True
+
     if isinstance(options, expected_type):
         return options, False
 

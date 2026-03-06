@@ -272,16 +272,19 @@ def _create_alt_text_char_dict(region, source_label: str = "alt_text") -> Dict[s
     char_dicts list passed to ``generate_text_layout``.  The format mirrors
     what ``Region.to_text_element`` builds internally.
     """
+    page = region.page
+    initial_doctop = getattr(getattr(page, "_page", None), "initial_doctop", 0)
     return {
         "text": region.alt_text,
         "x0": region.x0,
         "top": region.top,
         "x1": region.x1,
         "bottom": region.bottom,
+        "doctop": region.top + initial_doctop,
         "width": region.x1 - region.x0,
         "height": region.bottom - region.top,
         "object_type": "char",
-        "page_number": getattr(region.page, "page_number", 0),
+        "page_number": getattr(page, "page_number", 0),
         "fontname": "AltText",
         "size": 10.0,
         "upright": True,
