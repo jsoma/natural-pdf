@@ -160,6 +160,9 @@ class _LocalVLMAdapter:
             self._model.device
         )
 
+        # GLM models include token_type_ids which must be removed before generate()
+        inputs.pop("token_type_ids", None)
+
         # Log image dimension info for coordinate debugging
         pixel_values = inputs.get("pixel_values")
         if pixel_values is not None:

@@ -76,6 +76,8 @@ Natural PDF supports multiple OCR engines:
 | `paddlevl` | VLM-based — understands charts and complex layouts. | `pip install paddlepaddle paddleocr "paddlex[ocr]"` |
 | `doctr` | Smaller model footprint. | `pip install python-doctr` |
 
+GLM-OCR (0.9B VLM) is also available via `engine="vlm"` with automatic layout detection — see the [OCR tutorial](../tutorials/12-ocr-integration.md#glm-ocr).
+
 ```python
 # Use a specific engine
 page.apply_ocr(engine="surya")

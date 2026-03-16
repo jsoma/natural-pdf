@@ -12,6 +12,7 @@ from natural_pdf.engine_registry import register_builtin, register_layout_engine
 from .base import LayoutDetector
 from .layout_options import (
     BaseLayoutOptions,
+    DocLayoutOptions,
     LayoutOptions,
     PaddleLayoutOptions,
     SuryaLayoutOptions,
@@ -58,6 +59,12 @@ def _lazy_import_vlm_detector() -> Type[LayoutDetector]:
     return cast(Type[LayoutDetector], VLMLayoutDetector)
 
 
+def _lazy_import_doclayout_detector() -> Type[LayoutDetector]:
+    from .doclayout import DocLayoutDetector
+
+    return cast(Type[LayoutDetector], DocLayoutDetector)
+
+
 # ---------------------------------------------------------------------------
 # Engine definitions (name -> lazy class factory + options class)
 # ---------------------------------------------------------------------------
@@ -68,6 +75,7 @@ _ENGINE_DEFS: list[tuple[str, Any, type]] = [
     ("paddle", _lazy_import_paddle_detector, PaddleLayoutOptions),
     ("surya", _lazy_import_surya_detector, SuryaLayoutOptions),
     ("vlm", _lazy_import_vlm_detector, VLMLayoutOptions),
+    ("doclayout", _lazy_import_doclayout_detector, DocLayoutOptions),
 ]
 
 # Deprecated alias: "gemini" -> "vlm"
@@ -158,6 +166,7 @@ def _create_engine_instance(engine_name: str) -> LayoutDetector:
             "yolo": "pip install doclayout_yolo",
             "paddle": 'pip install "natural-pdf[paddle]"',
             "surya": 'pip install "surya-ocr<0.15"',
+            "doclayout": "pip install transformers torch",
         }
         install_hint = install_map.get(engine_name, "")
         raise RuntimeError(

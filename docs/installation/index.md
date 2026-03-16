@@ -22,7 +22,7 @@ pip install "natural-pdf[all]"      # Everything
 pip install easyocr                 # EasyOCR engine
 pip install "surya-ocr<0.15"         # Surya OCR engine
 pip install doclayout_yolo          # YOLO layout detection
-pip install torch transformers      # QA, classification, semantic search
+pip install torch transformers      # QA, classification, semantic search, VLM OCR (GLM-OCR, Qwen-VL)
 ```
 
 If you attempt to use an engine that is missing, the library will raise an

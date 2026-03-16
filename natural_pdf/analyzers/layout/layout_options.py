@@ -160,6 +160,24 @@ class SuryaLayoutOptions(BaseLayoutOptions):
         # Surya has minimal configuration - validation reserved for future expansion
 
 
+# --- DocLayout (PP-DocLayoutV3) Specific Options ---
+@dataclass
+class DocLayoutOptions(BaseLayoutOptions):
+    """Options specific to PP-DocLayout-V3 layout detection.
+
+    A lightweight (~45MB) transformers model that detects 25 document
+    region classes. No PaddlePaddle framework needed.
+
+    Install: pip install transformers torch
+    """
+
+    model_name: str = "PaddlePaddle/PP-DocLayoutV3_safetensors"
+
+    def __post_init__(self):
+        """Validate DocLayout options."""
+        super().__post_init__()
+
+
 # --- VLM Specific Options ---
 @dataclass
 class VLMLayoutOptions(BaseLayoutOptions):
@@ -187,6 +205,7 @@ LayoutOptions = Union[
     TATRLayoutOptions,
     PaddleLayoutOptions,
     SuryaLayoutOptions,
+    DocLayoutOptions,
     VLMLayoutOptions,
     BaseLayoutOptions,  # Include base for typing flexibility
 ]

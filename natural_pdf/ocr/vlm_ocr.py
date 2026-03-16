@@ -24,6 +24,7 @@ _FAMILY_DEFAULT_CONFIDENCE = {
     "gemini": 0.75,
     "openai": 0.5,
     "gutenocr": 0.8,
+    "glm_ocr": 0.9,
     "generic": 0.5,
 }
 
@@ -287,6 +288,200 @@ def scale_ocr_results(
     return scaled
 
 
+# ---------------------------------------------------------------------------
+# GLM-OCR: in-process layout detection + text recognition
+# ---------------------------------------------------------------------------
+
+_LAYOUT_MODEL = "PaddlePaddle/PP-DocLayoutV3_safetensors"
+_GLM_OCR_PROMPT = "Text Recognition:"
+
+# Labels that carry text content (matches glmocr SDK label_task_mapping)
+_GLM_TEXT_LABELS = {
+    "text",
+    "title",
+    "paragraph_title",
+    "header",
+    "footer",
+    "reference",
+    "table_title",
+    "figure_title",
+}
+
+_layout_detector_cache: Dict[str, Any] = {}
+_layout_cache_lock = __import__("threading").Lock()
+
+
+def _get_layout_detector(model_name: str = _LAYOUT_MODEL) -> Any:
+    """Load and cache the PP-DocLayout-V3 layout detector."""
+    with _layout_cache_lock:
+        if model_name not in _layout_detector_cache:
+            try:
+                import torch
+                from transformers import (
+                    PPDocLayoutV3ForObjectDetection,
+                    PPDocLayoutV3ImageProcessorFast,
+                )
+            except ImportError as exc:
+                raise RuntimeError(
+                    "Layout detection for GLM-OCR requires transformers and torch. "
+                    "Install with: pip install transformers torch"
+                ) from exc
+
+            logger.info("Loading layout model %r ...", model_name)
+            processor = PPDocLayoutV3ImageProcessorFast.from_pretrained(model_name)
+            model = PPDocLayoutV3ForObjectDetection.from_pretrained(model_name)
+            model.eval()
+
+            if torch.cuda.is_available():
+                device = "cuda"
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                device = "mps"
+            else:
+                device = "cpu"
+            model = model.to(device)
+
+            _layout_detector_cache[model_name] = {
+                "processor": processor,
+                "model": model,
+                "device": device,
+            }
+            logger.info("Layout model loaded on %s.", device)
+        return _layout_detector_cache[model_name]
+
+
+def _detect_layout_regions(
+    image: Image.Image,
+    threshold: float = 0.4,
+) -> List[Dict[str, Any]]:
+    """Run PP-DocLayout-V3 on an image, return detected regions.
+
+    Each region is a dict with keys: ``label``, ``bbox`` (pixel coords),
+    ``confidence``.
+    """
+    import torch
+
+    det = _get_layout_detector()
+    processor = det["processor"]
+    model = det["model"]
+    device = det["device"]
+
+    inputs = processor(images=[image], return_tensors="pt")
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    target_sizes = torch.tensor([image.size[::-1]], device=device)
+    raw = processor.post_process_object_detection(
+        outputs, threshold=threshold, target_sizes=target_sizes
+    )[0]
+
+    id2label = model.config.id2label
+    regions = []
+    for score, label_id, box in zip(
+        raw["scores"].tolist(), raw["labels"].tolist(), raw["boxes"].tolist()
+    ):
+        label = id2label.get(label_id, str(label_id)).lower()
+        regions.append(
+            {
+                "label": label,
+                "bbox": box,  # [x0, y0, x1, y1] in pixels
+                "confidence": score,
+            }
+        )
+    return regions
+
+
+def _run_glm_ocr_with_layout(
+    host: Any,
+    *,
+    image: Any,
+    model: Optional[str],
+    client: Optional[Any],
+    resolution: int,
+    render_kwargs: Optional[Dict[str, Any]],
+    max_new_tokens: int,
+) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
+    """Run layout detection + GLM-OCR text recognition, fully in-process.
+
+    1. Render the page/region to an image.
+    2. Run PP-DocLayout-V3 to detect layout regions with bounding boxes.
+    3. For each text region, crop the image and run GLM-OCR.
+    4. Return results with bboxes from layout + text from GLM-OCR.
+    """
+    from natural_pdf.core.vlm_client import generate
+
+    # Render the page/region
+    render_fn = getattr(host, "render", None)
+    if not callable(render_fn):
+        raise AttributeError("Host object does not support render() for VLM OCR.")
+
+    kwargs = dict(render_kwargs or {})
+    with pdf_render_lock:
+        image = render_fn(resolution=resolution, **kwargs)
+
+    if not isinstance(image, Image.Image):
+        raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
+
+    img_w, img_h = image.size
+
+    # Step 1: Layout detection
+    logger.info("GLM-OCR: running layout detection on %dx%d image ...", img_w, img_h)
+    regions = _detect_layout_regions(image)
+    text_regions = [r for r in regions if r["label"] in _GLM_TEXT_LABELS]
+
+    if not text_regions:
+        # No layout regions found — fall back to full-page OCR
+        logger.info("GLM-OCR: no text regions detected, running on full page.")
+        text_regions = [{"label": "text", "bbox": [0, 0, img_w, img_h], "confidence": 1.0}]
+
+    logger.info(
+        "GLM-OCR: detected %d text regions (of %d total). Running OCR on each ...",
+        len(text_regions),
+        len(regions),
+    )
+
+    # Step 2: Run GLM-OCR on each text region
+    results = []
+    default_conf = _FAMILY_DEFAULT_CONFIDENCE["glm_ocr"]
+
+    for region in text_regions:
+        bbox = region["bbox"]
+        x0, y0, x1, y1 = [int(round(v)) for v in bbox]
+
+        # Clamp to image bounds
+        x0 = max(0, min(x0, img_w))
+        y0 = max(0, min(y0, img_h))
+        x1 = max(0, min(x1, img_w))
+        y1 = max(0, min(y1, img_h))
+
+        if x1 - x0 < 2 or y1 - y0 < 2:
+            continue
+
+        crop = image.crop((x0, y0, x1, y1))
+        raw_text = generate(
+            crop,
+            _GLM_OCR_PROMPT,
+            model=model,
+            client=client,
+            max_new_tokens=max_new_tokens,
+        ).strip()
+
+        if not raw_text:
+            continue
+
+        results.append(
+            {
+                "bbox": [float(x0), float(y0), float(x1), float(y1)],
+                "text": raw_text,
+                "confidence": default_conf,
+            }
+        )
+
+    logger.info("GLM-OCR: recognized text in %d regions.", len(results))
+    return results, (img_w, img_h)
+
+
 def run_vlm_ocr(
     host: Any,
     *,
@@ -329,7 +524,17 @@ def run_vlm_ocr(
 
     family = detect_model_family(effective_model)
 
-    if family == "generic":
+    if family == "glm_ocr":
+        return _run_glm_ocr_with_layout(
+            host,
+            image=None,  # will be rendered inside
+            model=model,
+            client=client,
+            resolution=resolution,
+            render_kwargs=render_kwargs,
+            max_new_tokens=max_new_tokens,
+        )
+    elif family == "generic":
         logger.warning(
             "VLM OCR: model %r is not a recognized grounding model. "
             "Bounding-box accuracy may be poor. For best results use a "

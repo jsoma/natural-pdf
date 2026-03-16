@@ -142,6 +142,25 @@ page.apply_ocr(engine='paddlevl', options=vl_opts)
 
 **Install:** `pip install paddlepaddle paddleocr "paddlex[ocr]"`.
 
+## GLM-OCR
+
+GLM-OCR is a 0.9B VLM from Zhipu AI. It scores well on document OCR benchmarks despite its small size. Runs fully locally — no API key or external server needed.
+
+When you use GLM-OCR via `engine="vlm"`, natural-pdf automatically runs a two-step pipeline:
+
+1. **Layout detection** — PP-DocLayout-V3 (~45MB) finds text blocks, titles, headers, tables, etc. with bounding boxes.
+2. **Text recognition** — GLM-OCR (0.9B) reads the text in each detected region.
+
+Both models are loaded from HuggingFace and run in-process.
+
+```python
+page.apply_ocr(engine="vlm", model="zai-org/GLM-OCR")
+```
+
+**Install:** `pip install transformers torch`
+
+Use `resolution=72` or `resolution=100` to keep memory usage reasonable. The default 144 DPI can cause OOM on machines with limited GPU/MPS memory.
+
 ## VLM-Based OCR
 
 Uses a vision-language model to return grounded bounding boxes with text. Best results come from Qwen-VL family models.

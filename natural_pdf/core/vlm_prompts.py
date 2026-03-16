@@ -92,7 +92,8 @@ def languages_to_hint(languages: Optional[List[str]]) -> str:
 def detect_model_family(model_name: str | None) -> str:
     """Detect the VLM model family from the model name string.
 
-    Returns ``"gutenocr"``, ``"qwen_vl"``, ``"gemini"``, or ``"generic"``.
+    Returns ``"gutenocr"``, ``"glm_ocr"``, ``"qwen_vl"``, ``"gemini"``,
+    ``"openai"``, or ``"generic"``.
     GutenOCR is checked first because it's built on Qwen2.5-VL and contains
     "qwen" in some paths.
     """
@@ -100,6 +101,8 @@ def detect_model_family(model_name: str | None) -> str:
         return "generic"
     if re.search(r"(?i)gutenocr", model_name):
         return "gutenocr"
+    if re.search(r"(?i)glm.?ocr", model_name):
+        return "glm_ocr"
     if re.search(r"(?i)qwen.*vl", model_name):
         return "qwen_vl"
     if re.search(r"(?i)gemini", model_name):
@@ -168,6 +171,8 @@ OPENAI_OCR_PROMPT = (
 
 GUTENOCR_PROMPT = "Return a layout-sensitive TEXT2D representation of the image."
 
+GLM_OCR_PROMPT = "Text Recognition:"
+
 
 def build_conversion_prompt(*, format: str = "markdown") -> str:
     """Return a prompt for document-to-text conversion.
@@ -209,4 +214,7 @@ def build_ocr_prompt(
         return f"{hint} {OPENAI_OCR_PROMPT}" if hint else OPENAI_OCR_PROMPT
     if family == "gutenocr":
         return f"{hint} {GUTENOCR_PROMPT}" if hint else GUTENOCR_PROMPT
+    if family == "glm_ocr":
+        # GLM-OCR uses a fixed prompt; language hints are not applicable.
+        return GLM_OCR_PROMPT
     return f"{hint} {OCR_GROUNDING_PROMPT}" if hint else OCR_GROUNDING_PROMPT
