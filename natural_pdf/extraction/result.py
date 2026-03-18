@@ -232,18 +232,29 @@ class StructuredDataResult:
         """Dict mapping field names to their raw LLM source quote strings."""
         return {name: fr.sources for name, fr in self._fields.items()}
 
-    def show(self, **kwargs):
+    def show(self, *, pages="cited", **kwargs):
         """Highlight all citation elements on page(s), labeled by field name.
 
         Each field's source elements are highlighted with the field name as
         the annotation label.  Returns the rendered image.  When citations
         span multiple pages, all affected pages are rendered.
+
+        Args:
+            pages: Which pages to include. ``"cited"`` (default) shows only
+                pages with citation elements. ``"all"`` shows every page in
+                the source PDF. A list of page numbers is reserved for future
+                use and currently raises :class:`NotImplementedError`.
         """
+        if isinstance(pages, list):
+            raise NotImplementedError(
+                "Passing a list of page numbers to pages= is not yet supported."
+            )
+
         if not self._fields:
             return None
 
         # Collect all citation elements and track unique pages
-        pages_seen = {}  # page -> order index (preserves first-seen order)
+        pages_seen = set()
         has_any = False
         for name, fr in self._fields.items():
             if fr.citations is not None and len(fr.citations) > 0:
@@ -252,26 +263,37 @@ class StructuredDataResult:
                 fr.citations.highlight(label=label)
                 for elem in fr.citations:
                     if hasattr(elem, "page") and elem.page is not None:
-                        if elem.page not in pages_seen:
-                            pages_seen[elem.page] = len(pages_seen)
+                        pages_seen.add(elem.page)
 
         if not has_any or not pages_seen:
             logger.warning("No citation elements to show.")
             return None
 
-        pages = sorted(pages_seen, key=pages_seen.get)
+        if pages == "all":
+            # Find the source PDF and include all its pages
+            source_pdf = None
+            for p in pages_seen:
+                if hasattr(p, "_pdf"):
+                    source_pdf = p._pdf
+                    break
+            if source_pdf is not None:
+                page_list = list(source_pdf.pages)
+            else:
+                page_list = sorted(pages_seen, key=lambda p: getattr(p, "index", 0))
+        else:
+            page_list = sorted(pages_seen, key=lambda p: getattr(p, "index", 0))
 
-        if len(pages) == 1:
-            return pages[0].show(**kwargs)
+        if len(page_list) == 1:
+            return page_list[0].show(**kwargs)
 
         # Multiple pages — render them all via a PageCollection
         from natural_pdf.core.page_collection import PageCollection
 
-        collection = PageCollection(pages)
+        collection = PageCollection(page_list)
         kwargs.setdefault("columns", 1)
         return collection.show(**kwargs)
 
-    def save_pdf(self, path: str, **kwargs) -> None:
+    def save_pdf(self, path: str, *, pages="all", **kwargs) -> None:
         """Save an annotated PDF with highlight annotations for all citations.
 
         Each field's citation elements become ``/Highlight`` annotations on the
@@ -280,11 +302,20 @@ class StructuredDataResult:
 
         Args:
             path: Output file path for the annotated PDF.
+            pages: Which pages to include. ``"all"`` (default) includes every
+                page from the source PDF. ``"cited"`` includes only pages that
+                have citation annotations. A list of page numbers is reserved
+                for future use and currently raises :class:`NotImplementedError`.
             **kwargs: Forwarded to :func:`create_annotated_pdf`.
         """
+        if isinstance(pages, list):
+            raise NotImplementedError(
+                "Passing a list of page numbers to pages= is not yet supported."
+            )
+
         from natural_pdf.exporters.annotated_pdf import create_annotated_pdf
 
-        create_annotated_pdf(self._fields, path, **kwargs)
+        create_annotated_pdf(self._fields, path, pages=pages, **kwargs)
 
     # ------------------------------------------------------------------
     # Display

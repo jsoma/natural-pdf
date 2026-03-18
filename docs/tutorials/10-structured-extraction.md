@@ -161,6 +161,20 @@ You can also visualize inline:
 result.show()  # Displays enriched legend labels (field name + value)
 ```
 
+### Controlling which pages appear
+
+Both `.show()` and `.save_pdf()` accept a `pages` parameter:
+
+```python
+# .show() defaults to pages="cited" — only pages with citation elements
+result.show()                     # cited pages only
+result.show(pages="all")          # every page in the source PDF
+
+# .save_pdf() defaults to pages="all" — the full source PDF with annotations
+result.save_pdf("annotated.pdf")                   # all pages
+result.save_pdf("annotated.pdf", pages="cited")    # only annotated pages
+```
+
 ## Extracting from Regions, Pages, and PDFs
 
 `.extract()` works on pages, regions, and entire PDFs:

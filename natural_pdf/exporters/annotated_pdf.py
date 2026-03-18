@@ -162,6 +162,7 @@ def _draw_sidebar_legend(target_doc, target_page, legend_items, sidebar_width):
 def create_annotated_pdf(
     fields: Dict[str, "FieldResult"],
     output_path: str,
+    pages: str = "all",
 ) -> None:
     """Create a PDF with /Highlight annotations and a native sidebar legend.
 
@@ -260,18 +261,27 @@ def create_annotated_pdf(
 
     target_doc = pikepdf.Pdf.new()
 
+    # Determine which source pages to include
+    cited_indices = set(page_annotations.keys())
+    if pages == "cited":
+        include_indices = sorted(cited_indices)
+    else:
+        include_indices = list(range(len(source_doc.pages)))
+
+    # Map from original page index to target page index
+    idx_map = {}
     try:
-        # Copy all pages from source
-        for page_idx in range(len(source_doc.pages)):
-            target_doc.pages.append(source_doc.pages[page_idx])
+        for target_idx, source_idx in enumerate(include_indices):
+            target_doc.pages.append(source_doc.pages[source_idx])
+            idx_map[source_idx] = target_idx
 
         # Add annotations + sidebar per page
         for page_idx, annots_info in page_annotations.items():
-            if page_idx >= len(target_doc.pages):
-                logger.warning(f"Page index {page_idx} out of bounds. Skipping annotations.")
+            if page_idx not in idx_map:
+                logger.warning(f"Page index {page_idx} not in output. Skipping annotations.")
                 continue
 
-            target_page = target_doc.pages[page_idx]
+            target_page = target_doc.pages[idx_map[page_idx]]
 
             # --- Highlight annotations ---
             if "/Annots" in target_page:
