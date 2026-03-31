@@ -40,6 +40,7 @@ _CAPABILITY_MODULES = {
     "layout": "natural_pdf.services.layout_service",
     "navigation": "natural_pdf.services.navigation_service",
     "ocr": "natural_pdf.services.ocr_service",
+    "ocr_comparison": "natural_pdf.services.ocr_comparison_service",
     "qa": "natural_pdf.services.qa_service",
     "rendering": "natural_pdf.services.rendering_service",
     "selector": "natural_pdf.services.selector_service",

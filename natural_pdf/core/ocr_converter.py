@@ -19,6 +19,7 @@ class OCRConverter:
         scale_y: float = 1.0,
         offset_x: float = 0.0,
         offset_y: float = 0.0,
+        engine_name: str | None = None,
     ) -> Tuple[List[TextElement], List[TextElement]]:
         words: List[TextElement] = []
         chars: List[TextElement] = []
@@ -54,6 +55,7 @@ class OCRConverter:
                 "height": pdf_height,
                 "object_type": "word",
                 "source": "ocr",
+                "ocr_engine": engine_name,
                 "confidence": confidence_value,
                 "fontname": "OCR",
                 "size": round(pdf_height) if pdf_height > 0 else 10.0,

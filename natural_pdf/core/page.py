@@ -716,8 +716,9 @@ class Page(
         Args:
             engine: OCR engine — ``"easyocr"`` (default), ``"surya"``,
                 ``"paddle"``, ``"paddlevl"``, ``"doctr"``, ``"vlm"``,
-                or ``"dots"`` (dots.mocr — auto-selects MLX on Apple
-                Silicon, HF transformers elsewhere).
+                ``"dots"`` (dots.mocr), ``"glm_ocr"``, or ``"chandra"``.
+                ``"dots"``, ``"glm_ocr"``, and ``"chandra"`` auto-select MLX on Apple
+                Silicon, HF transformers elsewhere.
                 Use ``engine="vlm"`` with ``model=`` and/or ``client=``
                 for VLM-based OCR.
             options: Engine-specific option object.
@@ -757,12 +758,44 @@ class Page(
         if not apply_exclusions:
             params["apply_exclusions"] = apply_exclusions
 
+        # VLM engine shorthands
+        if engine is not None and engine.lower() == "glm_ocr":
+            if model is None:
+                from natural_pdf.ocr.vlm_ocr import resolve_glm_ocr_model
+
+                model = resolve_glm_ocr_model()
+            return self._apply_vlm_ocr(
+                model=model,
+                client=client,
+                replace=replace,
+                resolution=resolution or 144,
+                min_confidence=min_confidence,
+                languages=languages,
+                instructions=instructions,
+            )
+
         # dots.mocr shorthand: auto-select the right model variant
         if engine is not None and engine.lower() == "dots":
             if model is None:
                 from natural_pdf.ocr.vlm_ocr import resolve_dots_model
 
                 model = resolve_dots_model()
+            return self._apply_vlm_ocr(
+                model=model,
+                client=client,
+                replace=replace,
+                resolution=resolution or 144,
+                min_confidence=min_confidence,
+                languages=languages,
+                instructions=instructions,
+            )
+
+        # chandra shorthand: auto-select MLX 4-bit on Apple Silicon
+        if engine is not None and engine.lower() == "chandra":
+            if model is None:
+                from natural_pdf.ocr.vlm_ocr import resolve_chandra_model
+
+                model = resolve_chandra_model()
             return self._apply_vlm_ocr(
                 model=model,
                 client=client,
@@ -826,6 +859,55 @@ class Page(
         self.services.ocr.apply_ocr(self, replace=replace, **params)
         return self
 
+    def compare_ocr(
+        self,
+        engines: List[str],
+        *,
+        normalize: str = "collapse",
+        strategy: str = "auto",
+        resolution: int = 150,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        engine_options: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ):
+        """Compare multiple OCR engines on this page.
+
+        Runs each engine and produces a comparison without modifying
+        the page's element store. Use ``.apply(engine=...)`` on the
+        result to persist the chosen engine's output.
+
+        Args:
+            engines: Engine names to compare, e.g. ``["easyocr", "surya"]``.
+            normalize: Text normalization — ``"collapse"`` (default),
+                ``"strict"``, or ``"ignore"`` (strip spaces).
+            strategy: Alignment — ``"auto"`` (default), ``"rows"``, ``"tiles"``.
+            resolution: Render DPI (default 150).
+            languages: Language codes for OCR.
+            min_confidence: Minimum confidence filter.
+            device: ``"cpu"``, ``"cuda"``, or ``"mps"``.
+            engine_options: Per-engine overrides, e.g.
+                ``{"glm_ocr": {"resolution": 200}}``.
+
+        Returns:
+            :class:`~natural_pdf.ocr.comparison.OcrComparison` with
+            ``.summary()``, ``.show()``, ``.heatmap()``, ``.diff()``,
+            and ``.apply(engine=...)``.
+        """
+        return self.services.ocr_comparison.compare_ocr(
+            self,
+            engines=engines,
+            normalize=normalize,
+            strategy=strategy,
+            resolution=resolution,
+            languages=languages,
+            min_confidence=min_confidence,
+            device=device,
+            engine_options=engine_options,
+            **kwargs,
+        )
+
     def _apply_vlm_ocr(
         self,
         *,
@@ -834,7 +916,7 @@ class Page(
         replace: bool = True,
         resolution: int = 144,
         render_kwargs: Optional[Dict[str, Any]] = None,
-        max_new_tokens: int = 4096,
+        max_new_tokens: Optional[int] = None,
         prompt: Optional[str] = None,
         instructions: Optional[str] = None,
         min_confidence: Optional[float] = None,
@@ -1898,7 +1980,7 @@ class Page(
         client: Optional[Any] = None,
         resolution: int = 144,
         render_kwargs: Optional[Dict[str, Any]] = None,
-        max_new_tokens: int = 4096,
+        max_new_tokens: Optional[int] = None,
         prompt: Optional[str] = None,
     ) -> str:
         """Convert this page to Markdown using a VLM.

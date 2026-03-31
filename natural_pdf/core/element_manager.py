@@ -374,6 +374,7 @@ class ElementManager:
         *,
         offset_x: float = 0.0,
         offset_y: float = 0.0,
+        engine_name: str | None = None,
     ):
         """
         Convert OCR results to TextElement objects AND adds them to the manager's
@@ -407,6 +408,7 @@ class ElementManager:
             scale_y=scale_y,
             offset_x=offset_x,
             offset_y=offset_y,
+            engine_name=engine_name,
         )
 
         if word_elements:

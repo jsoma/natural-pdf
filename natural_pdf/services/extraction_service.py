@@ -329,7 +329,9 @@ class ExtractionService:
             f"{schema.__name__} schema from this document image."
         )
 
-        max_new_tokens = kwargs.pop("max_new_tokens", 512)
+        from natural_pdf.core.vlm_client import DEFAULT_VLM_MAX_TOKENS
+
+        max_new_tokens = kwargs.pop("max_new_tokens", DEFAULT_VLM_MAX_TOKENS)
 
         try:
             parsed = adapter.generate(

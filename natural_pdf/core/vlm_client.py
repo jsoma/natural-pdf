@@ -19,6 +19,10 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
+#: Default max tokens for VLM generation.  OCR grounding and layout models
+#: produce verbose structured output, so this needs to be generous.
+DEFAULT_VLM_MAX_TOKENS = 32768
+
 # ---------------------------------------------------------------------------
 # Module-level defaults
 # ---------------------------------------------------------------------------
@@ -126,21 +130,21 @@ class _LocalVLMAdapter:
         from natural_pdf.core.vlm_prompts import detect_model_family
 
         family = detect_model_family(self.model_name)
-        if family in ("qwen_vl", "gutenocr", "dots_mocr"):
+        if family in ("qwen_vl", "gutenocr", "dots_mocr", "chandra"):
             # Qwen-VL defaults have no real pixel cap (longest_edge=16M),
             # which causes OOM on even modest document images.  Use the
             # values recommended in the Qwen-VL documentation.
             processor_kwargs["min_pixels"] = 256 * 28 * 28  # ~200k
             processor_kwargs["max_pixels"] = 1280 * 28 * 28  # ~1M
 
-        trust_remote = family in ("qwen_vl", "gutenocr", "dots_mocr", "glm_ocr")
+        trust_remote = family in ("qwen_vl", "gutenocr", "dots_mocr", "glm_ocr", "chandra")
 
         self._processor = AutoProcessor.from_pretrained(
             self.model_name, trust_remote_code=trust_remote, **processor_kwargs
         )
         self._model = AutoVLM.from_pretrained(
             self.model_name,
-            torch_dtype=dtype,
+            dtype=dtype,
             device_map=device_map,
             trust_remote_code=trust_remote,
         )
@@ -151,7 +155,9 @@ class _LocalVLMAdapter:
         elapsed = time.perf_counter() - t0
         logger.info("VLM model %r loaded on %s in %.1fs.", self.model_name, device, elapsed)
 
-    def generate(self, image: Image.Image, prompt: str, *, max_new_tokens: int = 4096) -> str:
+    def generate(
+        self, image: Image.Image, prompt: str, *, max_new_tokens: int = DEFAULT_VLM_MAX_TOKENS
+    ) -> str:
         import time
 
         import torch
@@ -209,6 +215,13 @@ class _LocalVLMAdapter:
             "VLM generation finished: %d tokens in %.1fs (%.1f tok/s).", n_tokens, elapsed, tps
         )
 
+        if n_tokens >= max_new_tokens:
+            logger.warning(
+                "VLM output was truncated (generated %d tokens = max_new_tokens). "
+                "Output may be incomplete — consider increasing max_new_tokens.",
+                n_tokens,
+            )
+
         return self._processor.decode(generated, skip_special_tokens=True)
 
 
@@ -250,7 +263,9 @@ class _MLXVLMAdapter:
         elapsed = time.perf_counter() - t0
         logger.info("MLX VLM model %r loaded in %.1fs.", self.model_name, elapsed)
 
-    def generate(self, image: Image.Image, prompt: str, *, max_new_tokens: int = 4096) -> str:
+    def generate(
+        self, image: Image.Image, prompt: str, *, max_new_tokens: int = DEFAULT_VLM_MAX_TOKENS
+    ) -> str:
         import tempfile
         import time
 
@@ -301,6 +316,13 @@ class _MLXVLMAdapter:
                 tps,
             )
 
+            if n_tokens >= max_new_tokens:
+                logger.warning(
+                    "MLX VLM output was truncated (generated %d tokens = max_new_tokens). "
+                    "Output may be incomplete — consider increasing max_new_tokens.",
+                    n_tokens,
+                )
+
             return output
         finally:
             if tmp_path:
@@ -343,7 +365,7 @@ def generate(
     *,
     model: Optional[str] = None,
     client: Optional[Any] = None,
-    max_new_tokens: int = 4096,
+    max_new_tokens: int = DEFAULT_VLM_MAX_TOKENS,
     response_format: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Run VLM inference and return the raw text response.
@@ -455,6 +477,14 @@ def _generate_remote(
     finish_reason = getattr(choice, "finish_reason", "unknown")
     refusal = getattr(choice.message, "refusal", None)
 
+    if finish_reason == "length":
+        logger.warning(
+            "VLM output was truncated (finish_reason='length', model=%s, "
+            "max_new_tokens=%d). Output may be incomplete — consider increasing "
+            "max_new_tokens.",
+            model,
+            max_new_tokens,
+        )
     if refusal:
         logger.warning("VLM remote call refused (model=%s): %s", model, refusal)
     if not content:

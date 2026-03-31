@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from natural_pdf.services.guides_service import GuidesService
     from natural_pdf.services.layout_service import LayoutService
     from natural_pdf.services.navigation_service import NavigationService
+    from natural_pdf.services.ocr_comparison_service import OcrComparisonService
     from natural_pdf.services.ocr_service import OCRService
     from natural_pdf.services.qa_service import QAService
     from natural_pdf.services.rendering_service import RenderingService
@@ -68,6 +69,10 @@ class ServiceNamespace:
     @property
     def ocr(self) -> OCRService:
         return self._context.get_service("ocr")
+
+    @property
+    def ocr_comparison(self) -> OcrComparisonService:
+        return self._context.get_service("ocr_comparison")
 
     @property
     def qa(self) -> QAService:

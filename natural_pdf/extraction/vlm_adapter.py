@@ -84,7 +84,7 @@ class HFVLMAdapter:
         self._processor = AutoProcessor.from_pretrained(self.model_name)
         self._model = AutoModelForVision2Seq.from_pretrained(
             self.model_name,
-            torch_dtype=dtype,
+            dtype=dtype,
             device_map=device_map,
         )
         if device_map is None:
@@ -107,7 +107,7 @@ class HFVLMAdapter:
         prompt: str,
         schema: Type[BaseModel],
         *,
-        max_new_tokens: int = 512,
+        max_new_tokens: Optional[int] = None,
     ) -> BaseModel:
         """Run inference and parse the output into *schema*.
 
@@ -120,7 +120,11 @@ class HFVLMAdapter:
         Returns:
             A validated Pydantic model instance.
         """
+        from natural_pdf.core.vlm_client import DEFAULT_VLM_MAX_TOKENS
         from natural_pdf.extraction.json_parser import parse_json_response
+
+        if max_new_tokens is None:
+            max_new_tokens = DEFAULT_VLM_MAX_TOKENS
 
         self._ensure_loaded()
 

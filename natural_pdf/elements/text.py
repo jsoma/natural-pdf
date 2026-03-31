@@ -157,6 +157,11 @@ class TextElement(Element):
         return self._obj.get("source", "pdf")
 
     @property
+    def ocr_engine(self) -> Optional[str]:
+        """Get the OCR engine that produced this element, if any."""
+        return self._obj.get("ocr_engine")
+
+    @property
     def confidence(self) -> float:
         """Get the confidence score for OCR text elements."""
         return self._obj.get("confidence", 1.0)

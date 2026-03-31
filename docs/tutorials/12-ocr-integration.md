@@ -252,6 +252,131 @@ page.apply_ocr(engine='paddle', languages=['ja'])   # auto-normalized to 'japan'
 page.apply_ocr(engine='surya', languages=['ja'])
 ```
 
+## Comparing OCR Engines
+
+When working with scanned documents, different OCR engines produce different results. `compare_ocr()` runs multiple engines on the same page and shows you where they agree and disagree — without modifying the page's elements.
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("scanned_document.pdf")
+page = pdf.pages[0]
+
+result = page.compare_ocr(engines=["rapidocr", "easyocr"])
+result
+```
+
+The result object displays a summary: how many regions the engines agreed on, how many had near-misses or catastrophic disagreements, which engine missed text, and the runtime difference.
+
+### Viewing the Results
+
+**Side-by-side grid** — see each engine's bounding boxes and recognized text overlaid on the page:
+
+```python
+result.show()
+
+# For 2 engines, use toggle mode: hover to swap between engines
+result.show(mode="toggle")
+```
+
+**Disagreement heatmap** — quickly find problem areas on the page:
+
+```python
+result.heatmap()
+```
+
+Green = agreement, orange = near-miss, red = catastrophic disagreement.
+
+**Detection coverage** — see where each engine found text (regardless of what it read):
+
+```python
+result.coverage()
+```
+
+This answers "did the fast engine even see the text?" Regions detected by only one engine are highlighted in that engine's color.
+
+### Inspecting Differences
+
+**Diff table** — per-region text comparison with character-level highlighting:
+
+```python
+result.diff()
+
+# Filter to specific categories
+result.diff(only="catastrophic")
+result.diff(only="near_miss")
+result.diff(only="all")  # include agreements
+```
+
+Each row shows the image crop, both engines' text (disagreements highlighted in yellow), and the classification. For 2-engine comparisons, both engines are diffed against each other — no artificial "consensus."
+
+**Interactive magnifier** — hover over the page to zoom in and see per-engine text for each region:
+
+```python
+result.loupe()
+```
+
+The loupe follows your cursor with a 3x magnified view. When you hover over a comparison region, it shows each engine's text and the classification. Click to pin the loupe in place, click again to release.
+
+### Using the Results
+
+**Summary DataFrame** for programmatic access:
+
+```python
+result.summary()
+```
+
+Returns a pandas DataFrame with per-engine stats: regions found, agreement/near-miss/catastrophic counts, average confidence, and runtime.
+
+**Apply the chosen engine** — once you've decided which engine to use, persist its results to the page:
+
+```python
+result.apply("rapidocr")
+
+# Now the page has rapidocr's elements — continue with normal workflow
+page.extract_text()
+```
+
+### Available Engines
+
+Any engine that works with `apply_ocr()` works with `compare_ocr()`:
+
+| Engine | Install | Speed | Notes |
+|--------|---------|-------|-------|
+| `easyocr` | `pip install easyocr` | Fast | Good default, word-level boxes |
+| `rapidocr` | `pip install rapidocr` | Fast | Lightweight ONNX models (~15MB) |
+| `surya` | `pip install surya-ocr` | Medium | Line-level boxes |
+| `paddle` | `pip install paddleocr` | Medium | Word-level boxes |
+| `doctr` | `pip install python-doctr` | Medium | Word→line merged boxes |
+
+VLM-based engines (`engine="vlm"`) can also be compared but produce block-level output and are much slower.
+
+```python
+# Compare a fast local engine against a VLM
+from openai import OpenAI
+client = OpenAI(base_url="https://generativelanguage.googleapis.com/v1beta/openai/", api_key="...")
+
+result = page.compare_ocr(
+    engines=["rapidocr", "easyocr"],
+    resolution=150,
+)
+```
+
+### Options
+
+```python
+result = page.compare_ocr(
+    engines=["rapidocr", "easyocr"],
+    resolution=150,              # render DPI (default 150)
+    normalize="collapse",        # whitespace handling: "collapse" (default), "strict", "ignore"
+    strategy="auto",             # alignment: "auto" (default), "rows", "tiles"
+    languages=["en"],            # language codes for OCR
+    engine_options={             # per-engine overrides
+        "easyocr": {"resolution": 200},
+    },
+)
+```
+
 ## Interactive OCR Correction / Debugging
 
 If OCR results aren't perfect, you can use the bundled interactive web application (SPA) to review and correct them.

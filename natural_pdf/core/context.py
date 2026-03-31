@@ -48,6 +48,8 @@ class PDFContext:
             factories["rendering"] = self._default_rendering_factory()
         if "conversion" not in factories:
             factories["conversion"] = self._default_conversion_factory()
+        if "ocr_comparison" not in factories:
+            factories["ocr_comparison"] = self._default_ocr_comparison_factory()
         self._service_factories: Dict[str, ServiceFactory] = factories
         self._options: Dict[str, Mapping[str, Any]] = dict(self.options or {})
 
@@ -228,5 +230,14 @@ class PDFContext:
 
         def factory(context: "PDFContext") -> ConversionService:
             return ConversionService(context)
+
+        return factory
+
+    @staticmethod
+    def _default_ocr_comparison_factory() -> ServiceFactory:
+        from natural_pdf.services.ocr_comparison_service import OcrComparisonService
+
+        def factory(context: "PDFContext") -> OcrComparisonService:
+            return OcrComparisonService(context)
 
         return factory

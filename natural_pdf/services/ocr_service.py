@@ -27,6 +27,7 @@ class _OCRElementManager(Protocol):
         ocr_results: Any,
         scale_x: Optional[float] = None,
         scale_y: Optional[float] = None,
+        engine_name: Optional[str] = None,
     ) -> List[Any]: ...
 
 
@@ -124,6 +125,7 @@ class OCRService:
         scale_y: Optional[float] = None,
         offset_x: float = 0.0,
         offset_y: float = 0.0,
+        engine_name: Optional[str] = None,
     ):
         mgr = host._ocr_element_manager()
         return mgr.create_text_elements_from_ocr(
@@ -132,6 +134,7 @@ class OCRService:
             scale_y=scale_y,
             offset_x=offset_x,
             offset_y=offset_y,
+            engine_name=engine_name,
         )
 
     @register_delegate("ocr", "apply_ocr")
@@ -203,6 +206,7 @@ class OCRService:
             scale_y=scale_y,
             offset_x=offset_x,
             offset_y=offset_y,
+            engine_name=engine_name,
         )
         logger.info("Added %d OCR elements using '%s'.", len(created_elements), engine_name)
         return host

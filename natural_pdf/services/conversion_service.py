@@ -39,7 +39,7 @@ class ConversionService:
         client: Optional[Any] = None,
         resolution: int = 144,
         render_kwargs: Optional[Dict[str, Any]] = None,
-        max_new_tokens: int = 4096,
+        max_new_tokens: Optional[int] = None,
         prompt: Optional[str] = None,
     ) -> str:
         """Convert a page/region to Markdown using a VLM.
@@ -90,10 +90,8 @@ class ConversionService:
 
         image = self._render_page_image(host, resolution, render_kwargs)
 
-        return generate(
-            image,
-            effective_prompt,
-            model=model,
-            client=client,
-            max_new_tokens=max_new_tokens,
-        )
+        gen_kwargs: Dict[str, Any] = dict(model=model, client=client)
+        if max_new_tokens is not None:
+            gen_kwargs["max_new_tokens"] = max_new_tokens
+
+        return generate(image, effective_prompt, **gen_kwargs)
