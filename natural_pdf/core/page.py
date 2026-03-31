@@ -740,128 +740,47 @@ class Page(
             Self for chaining.
         """
 
-        params: dict = dict(kwargs)
-        if engine is not None:
-            params["engine"] = engine
-        if options is not None:
-            params["options"] = options
-        if languages is not None:
-            params["languages"] = languages
-        if min_confidence is not None:
-            params["min_confidence"] = min_confidence
-        if device is not None:
-            params["device"] = device
-        if resolution is not None:
-            params["resolution"] = resolution
-        if detect_only:
-            params["detect_only"] = detect_only
-        if not apply_exclusions:
-            params["apply_exclusions"] = apply_exclusions
-
-        # VLM engine shorthands
-        if engine is not None and engine.lower() == "glm_ocr":
-            if model is None:
-                from natural_pdf.ocr.vlm_ocr import resolve_glm_ocr_model
-
-                model = resolve_glm_ocr_model()
-            return self._apply_vlm_ocr(
-                model=model,
-                client=client,
-                replace=replace,
-                resolution=resolution or 144,
-                min_confidence=min_confidence,
-                languages=languages,
-                instructions=instructions,
-            )
-
-        # dots.mocr shorthand: auto-select the right model variant
-        if engine is not None and engine.lower() == "dots":
-            if model is None:
-                from natural_pdf.ocr.vlm_ocr import resolve_dots_model
-
-                model = resolve_dots_model()
-            return self._apply_vlm_ocr(
-                model=model,
-                client=client,
-                replace=replace,
-                resolution=resolution or 144,
-                min_confidence=min_confidence,
-                languages=languages,
-                instructions=instructions,
-            )
-
-        # chandra shorthand: auto-select MLX 4-bit on Apple Silicon
-        if engine is not None and engine.lower() == "chandra":
-            if model is None:
-                from natural_pdf.ocr.vlm_ocr import resolve_chandra_model
-
-                model = resolve_chandra_model()
-            return self._apply_vlm_ocr(
-                model=model,
-                client=client,
-                replace=replace,
-                resolution=resolution or 144,
-                min_confidence=min_confidence,
-                languages=languages,
-                instructions=instructions,
-            )
-
-        # VLM OCR path: explicit engine="vlm" or model=/client= provided
-        if engine is not None and engine.lower() == "vlm":
-            if model is None and client is None:
-                from natural_pdf.core.vlm_client import get_default_client
-
-                default_client, default_model = get_default_client()
-                if default_client is None:
-                    raise ValueError(
-                        'apply_ocr(engine="vlm") requires a model= and/or client= '
-                        "parameter, or a default client set via "
-                        "natural_pdf.set_default_client(). Example:\n"
-                        '  page.apply_ocr(engine="vlm", model="gemini-2.5-flash", client=client)'
-                    )
-            params.pop("engine", None)
-            return self._apply_vlm_ocr(
-                model=model,
-                client=client,
-                replace=replace,
-                resolution=resolution or 144,
-                min_confidence=min_confidence,
-                languages=languages,
-                instructions=instructions,
-            )
-
-        if model is not None or client is not None:
-            if engine is not None:
-                logger.warning(
-                    "apply_ocr: model=/client= switches to VLM OCR; engine=%r is ignored.",
-                    engine,
-                )
-            params.pop("engine", None)
-            return self._apply_vlm_ocr(
-                model=model,
-                client=client,
-                replace=replace,
-                instructions=instructions,
-                **{k: v for k, v in params.items() if k not in ("replace", "model", "client")},
-            )
-
-        custom_func = function or params.pop("ocr_function", None)
+        # Custom OCR function path
+        custom_func = function or kwargs.pop("ocr_function", None)
         if callable(custom_func):
-            params.pop("function", None)
             region = self._full_page_region()
             region.apply_ocr(
                 replace=replace,
                 function=custom_func,
-                **{k: v for k, v in params.items() if k not in ("replace",)},
+                engine=engine,
+                options=options,
+                languages=languages,
+                min_confidence=min_confidence,
+                device=device,
+                resolution=resolution,
+                detect_only=detect_only,
+                apply_exclusions=apply_exclusions,
             )
             return self
 
-        self.services.ocr.apply_ocr(self, replace=replace, **params)
+        # Unified dispatch — handles all engines (classic + VLM)
+        self.services.ocr.apply_ocr(
+            self,
+            engine=engine,
+            options=options,
+            languages=languages,
+            min_confidence=min_confidence,
+            device=device,
+            resolution=resolution,
+            detect_only=detect_only,
+            apply_exclusions=apply_exclusions,
+            replace=replace,
+            model=model,
+            client=client,
+            instructions=instructions,
+            prompt=kwargs.get("prompt"),
+            max_new_tokens=kwargs.get("max_new_tokens"),
+        )
         return self
 
     def compare_ocr(
         self,
-        engines: List[str],
+        engines: List,
         *,
         normalize: str = "collapse",
         strategy: str = "auto",
@@ -879,7 +798,9 @@ class Page(
         result to persist the chosen engine's output.
 
         Args:
-            engines: Engine names to compare, e.g. ``["easyocr", "surya"]``.
+            engines: Engine specs to compare. Each can be a string
+                (e.g. ``"easyocr"``) or a dict with ``"engine"`` key plus
+                overrides (e.g. ``{"engine": "rapidocr", "resolution": 72}``).
             normalize: Text normalization — ``"collapse"`` (default),
                 ``"strict"``, or ``"ignore"`` (strip spaces).
             strategy: Alignment — ``"auto"`` (default), ``"rows"``, ``"tiles"``.
@@ -887,8 +808,7 @@ class Page(
             languages: Language codes for OCR.
             min_confidence: Minimum confidence filter.
             device: ``"cpu"``, ``"cuda"``, or ``"mps"``.
-            engine_options: Per-engine overrides, e.g.
-                ``{"glm_ocr": {"resolution": 200}}``.
+            engine_options: Per-engine overrides (deprecated — use dict specs).
 
         Returns:
             :class:`~natural_pdf.ocr.comparison.OcrComparison` with
@@ -907,84 +827,6 @@ class Page(
             engine_options=engine_options,
             **kwargs,
         )
-
-    def _apply_vlm_ocr(
-        self,
-        *,
-        model: Optional[str] = None,
-        client: Optional[Any] = None,
-        replace: bool = True,
-        resolution: int = 144,
-        render_kwargs: Optional[Dict[str, Any]] = None,
-        max_new_tokens: Optional[int] = None,
-        prompt: Optional[str] = None,
-        instructions: Optional[str] = None,
-        min_confidence: Optional[float] = None,
-        languages: Optional[List[str]] = None,
-    ) -> "Page":
-        """Run VLM-based OCR and create text elements from the results."""
-        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr, scale_ocr_results
-
-        # Resolve languages from config chain if not explicitly provided
-        if languages is None:
-            resolved = resolve_ocr_languages(self, None)
-            if resolved:
-                languages = resolved
-
-        if replace:
-            removed = self.services.ocr.remove_ocr_elements(self)
-            if removed:
-                logger.info("Removed %d OCR elements before VLM OCR run.", removed)
-
-        results, (img_w, img_h) = run_vlm_ocr(
-            self,
-            model=model,
-            client=client,
-            resolution=resolution,
-            render_kwargs=render_kwargs,
-            max_new_tokens=max_new_tokens,
-            prompt=prompt,
-            instructions=instructions,
-            languages=languages,
-        )
-
-        if not results:
-            logger.warning("VLM OCR returned no results for page %s.", self.number)
-            return self
-
-        page_width = getattr(self, "width", 0) or 0
-        page_height = getattr(self, "height", 0) or 0
-
-        scaled = scale_ocr_results(
-            results,
-            image_width=float(img_w),
-            image_height=float(img_h),
-            page_width=float(page_width),
-            page_height=float(page_height),
-        )
-
-        # Filter by min_confidence if requested
-        if min_confidence is not None:
-            scaled = [r for r in scaled if r.get("confidence", 0) >= min_confidence]
-
-        # Split table results into regions with alt_text
-        from natural_pdf.ocr.vlm_ocr import create_table_regions_from_ocr
-
-        text_results, table_regions = create_table_regions_from_ocr(self, scaled)
-
-        self.services.ocr.create_text_elements_from_ocr(
-            self,
-            ocr_results=text_results,
-        )
-
-        n_tables = len(table_regions)
-        logger.info(
-            "VLM OCR created %d text elements and %d table regions on page %s.",
-            len(text_results),
-            n_tables,
-            self.number,
-        )
-        return self
 
     def extract_ocr_elements(self, *args, **kwargs):
         """Extract OCR results without mutating the page."""

@@ -149,13 +149,24 @@ def resolve_ocr_engine_name(
     if not available:
         raise RuntimeError("No OCR engines are registered.")
 
+    # Also check the unified registry (includes VLM engines)
+    try:
+        from natural_pdf.ocr.unified_dispatch import get_registry
+
+        unified_names = set(get_registry().keys())
+    except Exception:
+        unified_names = set()
+
+    all_available = set(available) | unified_names
+
     # If an engine was explicitly requested, it must exist — fail fast.
     normalized_requested = _normalize_engine_name(requested)
     if normalized_requested is not None:
-        if normalized_requested in available:
+        if normalized_requested in all_available:
             return normalized_requested
         raise LookupError(
-            f"OCR engine '{requested}' is not registered. " f"Available engines: {available}"
+            f"OCR engine '{requested}' is not registered. "
+            f"Available engines: {sorted(all_available)}"
         )
 
     # Otherwise, try inference from options, context, and global defaults.
@@ -166,10 +177,10 @@ def resolve_ocr_engine_name(
     )
 
     for candidate in candidates:
-        if candidate and candidate in available:
+        if candidate and candidate in all_available:
             return candidate
 
-    return available[0]
+    return available[0] if available else sorted(all_available)[0]
 
 
 def _normalize_engine_name(name: Optional[Any]) -> Optional[str]:
@@ -489,7 +500,7 @@ def _normalize_engine_output(
 
 
 def cleanup_engine(engine_name: Optional[str] = None) -> int:
-    """Clean up OCR engine instances from the provider cache."""
+    """Clean up OCR engine instances from the provider cache and unified cache."""
     provider = get_provider()
     cleaned = 0
     targets = [engine_name.lower()] if engine_name else list(ENGINE_REGISTRY.keys())
@@ -508,6 +519,15 @@ def cleanup_engine(engine_name: Optional[str] = None) -> int:
                         logger.debug("Cleanup for OCR engine %s failed", target)
                 cleaned += 1
         _engine_inference_locks.pop(target, None)
+
+    # Also clear the unified dispatch cache
+    try:
+        from natural_pdf.ocr.unified_dispatch import get_engine_cache
+
+        cleaned += get_engine_cache().clear()
+    except Exception:  # pragma: no cover
+        pass
+
     return cleaned
 
 

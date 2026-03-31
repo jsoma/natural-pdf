@@ -386,36 +386,22 @@ def _detect_layout_regions(
     return regions
 
 
-def _run_glm_ocr_with_layout(
-    host: Any,
+def _run_glm_ocr_on_image(
+    image: Image.Image,
     *,
-    image: Any,
     model: Optional[str],
     client: Optional[Any],
-    resolution: int,
-    render_kwargs: Optional[Dict[str, Any]],
     max_new_tokens: int,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
-    """Run layout detection + GLM-OCR text recognition, fully in-process.
+    """Run layout detection + GLM-OCR text recognition on a pre-rendered image.
 
-    1. Render the page/region to an image.
-    2. Run PP-DocLayout-V3 to detect layout regions with bounding boxes.
-    3. For each text region, crop the image and run GLM-OCR.
-    4. Return results with bboxes from layout + text from GLM-OCR.
+    1. Run PP-DocLayout-V3 to detect layout regions with bounding boxes.
+    2. For each text region, crop the image and run GLM-OCR.
+    3. Return results with bboxes from layout + text from GLM-OCR.
+
+    Returns results in image pixel coordinates.
     """
     from natural_pdf.core.vlm_client import generate
-
-    # Render the page/region
-    render_fn = getattr(host, "render", None)
-    if not callable(render_fn):
-        raise AttributeError("Host object does not support render() for VLM OCR.")
-
-    kwargs = dict(render_kwargs or {})
-    with pdf_render_lock:
-        image = render_fn(resolution=resolution, **kwargs)
-
-    if not isinstance(image, Image.Image):
-        raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
 
     img_w, img_h = image.size
 
@@ -481,6 +467,34 @@ def _run_glm_ocr_with_layout(
 
     logger.info("GLM-OCR: recognized text in %d regions.", len(results))
     return results, (img_w, img_h)
+
+
+def _run_glm_ocr_with_layout(
+    host: Any,
+    *,
+    image: Any,
+    model: Optional[str],
+    client: Optional[Any],
+    resolution: int,
+    render_kwargs: Optional[Dict[str, Any]],
+    max_new_tokens: int,
+) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
+    """Run layout detection + GLM-OCR on a host (renders internally).
+
+    Thin wrapper around :func:`_run_glm_ocr_on_image`.
+    """
+    render_fn = getattr(host, "render", None)
+    if not callable(render_fn):
+        raise AttributeError("Host object does not support render() for VLM OCR.")
+
+    kwargs = dict(render_kwargs or {})
+    with pdf_render_lock:
+        image = render_fn(resolution=resolution, **kwargs)
+
+    if not isinstance(image, Image.Image):
+        raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
+
+    return _run_glm_ocr_on_image(image, model=model, client=client, max_new_tokens=max_new_tokens)
 
 
 def resolve_glm_ocr_model() -> str:
@@ -659,35 +673,19 @@ def _parse_dots_mocr_response(raw: str) -> List[Dict[str, Any]]:
     return results
 
 
-def _run_dots_mocr(
-    host: Any,
+def _run_dots_mocr_on_image(
+    image: Image.Image,
     *,
     model: Optional[str],
     client: Optional[Any],
-    resolution: int,
-    render_kwargs: Optional[Dict[str, Any]],
     max_new_tokens: int,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
-    """Run dots.mocr for combined layout detection + OCR.
+    """Run dots.mocr on a pre-rendered image.
 
-    dots.mocr handles layout detection internally — no separate layout
-    model is needed. The model returns structured JSON with bounding boxes
-    in pixel coordinates.
+    Returns results in image pixel coordinates.
     """
     from natural_pdf.core.vlm_client import generate
     from natural_pdf.core.vlm_prompts import DOTS_MOCR_PROMPT
-
-    # Render the page/region
-    render_fn = getattr(host, "render", None)
-    if not callable(render_fn):
-        raise AttributeError("Host object does not support render() for VLM OCR.")
-
-    kwargs = dict(render_kwargs or {})
-    with pdf_render_lock:
-        image = render_fn(resolution=resolution, **kwargs)
-
-    if not isinstance(image, Image.Image):
-        raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
 
     img_w, img_h = image.size
     logger.info("dots.mocr: running on %dx%d image ...", img_w, img_h)
@@ -707,6 +705,33 @@ def _run_dots_mocr(
     logger.info("dots.mocr: parsed %d text regions.", len(results))
 
     return results, (img_w, img_h)
+
+
+def _run_dots_mocr(
+    host: Any,
+    *,
+    model: Optional[str],
+    client: Optional[Any],
+    resolution: int,
+    render_kwargs: Optional[Dict[str, Any]],
+    max_new_tokens: int,
+) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
+    """Run dots.mocr on a host (renders internally).
+
+    Thin wrapper around :func:`_run_dots_mocr_on_image`.
+    """
+    render_fn = getattr(host, "render", None)
+    if not callable(render_fn):
+        raise AttributeError("Host object does not support render() for VLM OCR.")
+
+    kwargs = dict(render_kwargs or {})
+    with pdf_render_lock:
+        image = render_fn(resolution=resolution, **kwargs)
+
+    if not isinstance(image, Image.Image):
+        raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
+
+    return _run_dots_mocr_on_image(image, model=model, client=client, max_new_tokens=max_new_tokens)
 
 
 def create_table_regions_from_ocr(
@@ -859,34 +884,19 @@ def _parse_chandra_response(raw: str, img_w: int, img_h: int) -> List[Dict[str, 
     return results
 
 
-def _run_chandra(
-    host: Any,
+def _run_chandra_on_image(
+    image: Image.Image,
     *,
     model: Optional[str],
     client: Optional[Any],
-    resolution: int,
-    render_kwargs: Optional[Dict[str, Any]],
     max_new_tokens: int,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
-    """Run Chandra VLM for combined layout detection + OCR.
+    """Run Chandra VLM on a pre-rendered image.
 
-    Chandra returns HTML with data-bbox attributes in 0-1000 normalized
-    coordinates. This function handles rendering, inference, parsing,
-    and coordinate conversion.
+    Returns results in image pixel coordinates.
     """
     from natural_pdf.core.vlm_client import generate
     from natural_pdf.core.vlm_prompts import CHANDRA_OCR_LAYOUT_PROMPT
-
-    render_fn = getattr(host, "render", None)
-    if not callable(render_fn):
-        raise AttributeError("Host object does not support render() for VLM OCR.")
-
-    kwargs = dict(render_kwargs or {})
-    with pdf_render_lock:
-        image = render_fn(resolution=resolution, **kwargs)
-
-    if not isinstance(image, Image.Image):
-        raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
 
     img_w, img_h = image.size
     logger.info("Chandra: running on %dx%d image ...", img_w, img_h)
@@ -908,36 +918,60 @@ def _run_chandra(
     return results, (img_w, img_h)
 
 
-def run_vlm_ocr(
+def _run_chandra(
     host: Any,
+    *,
+    model: Optional[str],
+    client: Optional[Any],
+    resolution: int,
+    render_kwargs: Optional[Dict[str, Any]],
+    max_new_tokens: int,
+) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
+    """Run Chandra VLM on a host (renders internally).
+
+    Thin wrapper around :func:`_run_chandra_on_image`.
+    """
+    render_fn = getattr(host, "render", None)
+    if not callable(render_fn):
+        raise AttributeError("Host object does not support render() for VLM OCR.")
+
+    kwargs = dict(render_kwargs or {})
+    with pdf_render_lock:
+        image = render_fn(resolution=resolution, **kwargs)
+
+    if not isinstance(image, Image.Image):
+        raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
+
+    return _run_chandra_on_image(image, model=model, client=client, max_new_tokens=max_new_tokens)
+
+
+def run_vlm_ocr_on_image(
+    image: Image.Image,
     *,
     model: Optional[str] = None,
     client: Optional[Any] = None,
-    resolution: int = 144,
-    render_kwargs: Optional[Dict[str, Any]] = None,
     max_new_tokens: Optional[int] = None,
     prompt: Optional[str] = None,
     instructions: Optional[str] = None,
     languages: Optional[List[str]] = None,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
-    """Run VLM-based OCR on a page/region and return scaled results.
+    """Run VLM-based OCR on a pre-rendered image.
+
+    Dispatches to family-specific handlers based on the detected model family.
 
     Args:
-        host: Page or Region with a ``render()`` method.
+        image: Pre-rendered PIL Image.
         model: HuggingFace model ID or remote model name.
         client: OpenAI-compatible client.
-        resolution: DPI for rendering.
-        render_kwargs: Extra kwargs for ``host.render()``.
         max_new_tokens: Max tokens for VLM generation.
-        prompt: Custom prompt (default uses the grounding prompt).
-            Overrides the auto-generated prompt entirely.
-        instructions: Additional instructions appended to the auto-generated
-            prompt (ignored when *prompt* is set).
-        languages: Optional language codes for VLM hint (ignored when *prompt* is set).
+        prompt: Custom prompt (overrides auto-generated prompt).
+        instructions: Additional instructions appended to auto-generated prompt
+            (ignored when *prompt* is set).
+        languages: Optional language codes for VLM hint.
 
     Returns:
         Tuple of (ocr_results, (image_width, image_height)).
-        ``ocr_results`` are in *image* pixel coordinates (not yet scaled).
+        ``ocr_results`` are in *image* pixel coordinates.
     """
     from natural_pdf.core.vlm_client import DEFAULT_VLM_MAX_TOKENS, generate, get_default_client
     from natural_pdf.core.vlm_prompts import build_ocr_prompt, detect_model_family
@@ -954,32 +988,16 @@ def run_vlm_ocr(
     family = detect_model_family(effective_model)
 
     if family == "glm_ocr":
-        return _run_glm_ocr_with_layout(
-            host,
-            image=None,  # will be rendered inside
-            model=model,
-            client=client,
-            resolution=resolution,
-            render_kwargs=render_kwargs,
-            max_new_tokens=max_new_tokens,
+        return _run_glm_ocr_on_image(
+            image, model=model, client=client, max_new_tokens=max_new_tokens
         )
     elif family == "dots_mocr":
-        return _run_dots_mocr(
-            host,
-            model=model,
-            client=client,
-            resolution=resolution,
-            render_kwargs=render_kwargs,
-            max_new_tokens=max_new_tokens,
+        return _run_dots_mocr_on_image(
+            image, model=model, client=client, max_new_tokens=max_new_tokens
         )
     elif family == "chandra":
-        return _run_chandra(
-            host,
-            model=model,
-            client=client,
-            resolution=resolution,
-            render_kwargs=render_kwargs,
-            max_new_tokens=max_new_tokens,
+        return _run_chandra_on_image(
+            image, model=model, client=client, max_new_tokens=max_new_tokens
         )
     elif family == "generic":
         logger.warning(
@@ -1002,18 +1020,6 @@ def run_vlm_ocr(
         effective_prompt = build_ocr_prompt(grounding=True, family=family, languages=languages)
         if instructions:
             effective_prompt = f"{effective_prompt}\n\n{instructions}"
-
-    # Render page/region to image
-    render_fn = getattr(host, "render", None)
-    if not callable(render_fn):
-        raise AttributeError("Host object does not support render() for VLM OCR.")
-
-    kwargs = dict(render_kwargs or {})
-    with pdf_render_lock:
-        image = render_fn(resolution=resolution, **kwargs)
-
-    if not isinstance(image, Image.Image):
-        raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
 
     raw_response = generate(
         image,
@@ -1048,3 +1054,41 @@ def run_vlm_ocr(
         results = normalize_qwen_coordinates(results, image.size[0], image.size[1])
 
     return results, image.size
+
+
+def run_vlm_ocr(
+    host: Any,
+    *,
+    model: Optional[str] = None,
+    client: Optional[Any] = None,
+    resolution: int = 144,
+    render_kwargs: Optional[Dict[str, Any]] = None,
+    max_new_tokens: Optional[int] = None,
+    prompt: Optional[str] = None,
+    instructions: Optional[str] = None,
+    languages: Optional[List[str]] = None,
+) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
+    """Run VLM-based OCR on a page/region (renders internally).
+
+    Thin wrapper around :func:`run_vlm_ocr_on_image`.
+    """
+    render_fn = getattr(host, "render", None)
+    if not callable(render_fn):
+        raise AttributeError("Host object does not support render() for VLM OCR.")
+
+    kwargs = dict(render_kwargs or {})
+    with pdf_render_lock:
+        image = render_fn(resolution=resolution, **kwargs)
+
+    if not isinstance(image, Image.Image):
+        raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
+
+    return run_vlm_ocr_on_image(
+        image,
+        model=model,
+        client=client,
+        max_new_tokens=max_new_tokens,
+        prompt=prompt,
+        instructions=instructions,
+        languages=languages,
+    )

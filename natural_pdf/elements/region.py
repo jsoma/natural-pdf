@@ -2034,97 +2034,9 @@ class Region(
         if not apply_exclusions:
             params["apply_exclusions"] = apply_exclusions
 
-        # VLM engine shorthands
-        if engine is not None and engine.lower() == "glm_ocr":
-            if model is None:
-                from natural_pdf.ocr.vlm_ocr import resolve_glm_ocr_model
-
-                model = resolve_glm_ocr_model()
-            return self._apply_vlm_ocr(
-                model=model,
-                client=client,
-                replace=replace,
-                resolution=resolution or 144,
-                min_confidence=min_confidence,
-                languages=languages,
-                instructions=instructions,
-            )
-
-        # dots.mocr shorthand: auto-select the right model variant
-        if engine is not None and engine.lower() == "dots":
-            if model is None:
-                from natural_pdf.ocr.vlm_ocr import resolve_dots_model
-
-                model = resolve_dots_model()
-            return self._apply_vlm_ocr(
-                model=model,
-                client=client,
-                replace=replace,
-                resolution=resolution or 144,
-                min_confidence=min_confidence,
-                languages=languages,
-                instructions=instructions,
-            )
-
-        # chandra shorthand: auto-select MLX 4-bit on Apple Silicon
-        if engine is not None and engine.lower() == "chandra":
-            if model is None:
-                from natural_pdf.ocr.vlm_ocr import resolve_chandra_model
-
-                model = resolve_chandra_model()
-            return self._apply_vlm_ocr(
-                model=model,
-                client=client,
-                replace=replace,
-                resolution=resolution or 144,
-                min_confidence=min_confidence,
-                languages=languages,
-                instructions=instructions,
-            )
-
-        # VLM OCR path: explicit engine="vlm" or model=/client= provided
-        if engine is not None and engine.lower() == "vlm":
-            if model is None and client is None:
-                from natural_pdf.core.vlm_client import get_default_client
-
-                default_client, _ = get_default_client()
-                if default_client is None:
-                    raise ValueError(
-                        'apply_ocr(engine="vlm") requires a model= and/or client= '
-                        "parameter, or a default client set via "
-                        "natural_pdf.set_default_client(). Example:\n"
-                        '  region.apply_ocr(engine="vlm", model="gemini-2.5-flash", client=client)'
-                    )
-            return self._apply_vlm_ocr(
-                model=model,
-                client=client,
-                replace=replace,
-                resolution=resolution or 144,
-                min_confidence=min_confidence,
-                languages=languages,
-                instructions=instructions,
-            )
-
-        if model is not None or client is not None:
-            if engine is not None:
-                logger.warning(
-                    "apply_ocr: model=/client= switches to VLM OCR; engine=%r is ignored.",
-                    engine,
-                )
-            return self._apply_vlm_ocr(
-                model=model,
-                client=client,
-                replace=replace,
-                resolution=resolution or 144,
-                min_confidence=min_confidence,
-                languages=languages,
-                instructions=instructions,
-            )
-
         custom_func_candidate = function or params.pop("ocr_function", None)
         if callable(custom_func_candidate):
             custom_func = cast(CustomOCRCallable, custom_func_candidate)
-            # Delegate to the specialised helper while preserving key kwargs
             return self.apply_custom_ocr(
                 ocr_function=custom_func,
                 source_label=params.pop("source_label", "custom-ocr"),
@@ -2133,115 +2045,23 @@ class Region(
                 add_to_page=params.pop("add_to_page", True),
             )
 
-        if replace:
-            removed = self.remove_ocr_elements()
-            if removed:
-                logger.info(
-                    f"Region {self.bbox}: Removed {removed} existing OCR elements before re-applying OCR."
-                )
-            else:
-                logger.debug(
-                    f"Region {self.bbox}: No overlapping OCR elements found before applying new OCR."
-                )
-
-        self.services.ocr.apply_ocr(self, replace=replace, **params)
-        return self
-
-    def _apply_vlm_ocr(
-        self,
-        *,
-        model: Optional[str] = None,
-        client: Optional[Any] = None,
-        replace: bool = True,
-        resolution: int = 144,
-        render_kwargs: Optional[Dict[str, Any]] = None,
-        max_new_tokens: Optional[int] = None,
-        prompt: Optional[str] = None,
-        instructions: Optional[str] = None,
-        min_confidence: Optional[float] = None,
-        languages: Optional[List[str]] = None,
-    ) -> "Region":
-        """Run VLM-based OCR on this region and create text elements."""
-        from natural_pdf.ocr.ocr_provider import resolve_ocr_languages
-        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr, scale_ocr_results
-
-        if languages is None:
-            resolved = resolve_ocr_languages(self, None)
-            if resolved:
-                languages = resolved
-
-        results, (img_w, img_h) = run_vlm_ocr(
+        # Unified dispatch — handles all engines (classic + VLM)
+        self.services.ocr.apply_ocr(
             self,
+            engine=engine,
+            options=options,
+            languages=languages,
+            min_confidence=min_confidence,
+            device=device,
+            resolution=resolution,
+            detect_only=detect_only,
+            apply_exclusions=apply_exclusions,
+            replace=replace,
             model=model,
             client=client,
-            resolution=resolution,
-            render_kwargs=render_kwargs,
-            max_new_tokens=max_new_tokens,
-            prompt=prompt,
             instructions=instructions,
-            languages=languages,
-        )
-
-        if not results:
-            logger.warning("VLM OCR returned no results for region %s.", self.bbox)
-            return self
-
-        region_width = float(self.width)
-        region_height = float(self.height)
-
-        scaled = scale_ocr_results(
-            results,
-            image_width=float(img_w),
-            image_height=float(img_h),
-            page_width=region_width,
-            page_height=region_height,
-            offset_x=float(self.x0),
-            offset_y=float(self.top),
-        )
-
-        if min_confidence is not None:
-            scaled = [r for r in scaled if r.get("confidence", 0) >= min_confidence]
-
-        if not scaled:
-            logger.warning("VLM OCR: all results filtered out for region %s.", self.bbox)
-            return self
-
-        # Transactional replace: only remove old OCR elements AFTER we have
-        # valid new results, so a parse failure never causes data loss.
-        if replace:
-            ocr_elements = [el for el in self.find_all("text[source=ocr]", apply_exclusions=False)]
-            if ocr_elements:
-                mgr = self.page._element_mgr
-                store = mgr._element_store()
-                if "words" in store:
-                    to_remove = {id(el) for el in ocr_elements}
-                    original = store["words"]
-                    filtered = [w for w in original if id(w) not in to_remove]
-                    removed = len(original) - len(filtered)
-                    if removed:
-                        mgr._store.set("words", filtered)
-                        logger.info(
-                            "Removed %d OCR elements in region %s before adding VLM results.",
-                            removed,
-                            self.bbox,
-                        )
-
-        # Split table results into regions with alt_text
-        from natural_pdf.ocr.vlm_ocr import create_table_regions_from_ocr
-
-        text_results, table_regions = create_table_regions_from_ocr(self.page, scaled)
-
-        self.services.ocr.create_text_elements_from_ocr(
-            self.page,
-            ocr_results=text_results,
-        )
-
-        n_tables = len(table_regions)
-        logger.info(
-            "VLM OCR created %d text elements and %d table regions on region %s.",
-            len(text_results),
-            n_tables,
-            self.bbox,
+            prompt=kwargs.get("prompt"),
+            max_new_tokens=kwargs.get("max_new_tokens"),
         )
         return self
 

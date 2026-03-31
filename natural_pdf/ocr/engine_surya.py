@@ -38,9 +38,25 @@ def _surya_compat_hint() -> str:
 
 
 class SuryaOCREngine(OCREngine):
-    """Surya OCR engine implementation."""
+    """Surya OCR engine implementation.
+
+    .. deprecated::
+        Surya is incompatible with transformers 5.x and is no longer maintained.
+        Use ``engine="chandra2"`` (same team, actively maintained) or
+        ``engine="chandra"`` (VLM shorthand) instead.
+    """
 
     def __init__(self):
+        import warnings
+
+        warnings.warn(
+            "Surya OCR is deprecated — it is incompatible with transformers 5.x "
+            "and no longer maintained by its authors. Use engine='chandra2' "
+            "(pip install chandra-ocr[hf]) as a drop-in replacement from the "
+            "same team, or engine='chandra' for the VLM shorthand.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super().__init__()
         self._recognition_predictor: Optional[Callable[..., Any]] = None
         self._detection_predictor: Optional[Callable[..., Any]] = None

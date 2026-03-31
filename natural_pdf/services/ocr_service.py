@@ -6,12 +6,11 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Tupl
 from natural_pdf.ocr.ocr_manager import (
     normalize_ocr_options,
     resolve_ocr_device,
-    resolve_ocr_engine_name,
     resolve_ocr_languages,
     resolve_ocr_min_confidence,
-    run_ocr_apply,
     run_ocr_extract,
 )
+from natural_pdf.ocr.unified_dispatch import get_registry, run_ocr
 from natural_pdf.services.registry import register_delegate
 
 logger = logging.getLogger(__name__)
@@ -137,6 +136,27 @@ class OCRService:
             engine_name=engine_name,
         )
 
+    def _resolve_engine_name(
+        self,
+        host,
+        requested: Optional[str],
+        options: Optional[Any],
+        scope: str,
+    ) -> str:
+        """Resolve engine name using the unified registry."""
+        registry = get_registry()
+        if requested is not None:
+            normalized = requested.strip().lower()
+            if normalized in registry:
+                return normalized
+
+        # Fall back to config/global defaults for classic engines
+        from natural_pdf.ocr.ocr_manager import resolve_ocr_engine_name
+
+        return resolve_ocr_engine_name(
+            context=host, requested=requested, options=options, scope=scope
+        )
+
     @register_delegate("ocr", "apply_ocr")
     def apply_ocr(
         self,
@@ -151,13 +171,22 @@ class OCRService:
         detect_only: bool = False,
         apply_exclusions: bool = True,
         replace: bool = True,
+        # VLM params:
+        model: Optional[str] = None,
+        client: Optional[Any] = None,
+        prompt: Optional[str] = None,
+        instructions: Optional[str] = None,
+        max_new_tokens: Optional[int] = None,
         **kwargs,
     ):
         normalized_options = normalize_ocr_options(options)
         scope = self._scope(host)
-        engine_name = resolve_ocr_engine_name(
-            context=host, requested=engine, options=normalized_options, scope=scope
-        )
+
+        # If model= or client= provided without engine, default to "vlm"
+        if engine is None and (model is not None or client is not None):
+            engine = "vlm"
+
+        engine_name = self._resolve_engine_name(host, engine, normalized_options, scope)
         resolved_languages = resolve_ocr_languages(host, languages, scope=scope)
         resolved_min_conf = resolve_ocr_min_confidence(host, min_confidence, scope=scope)
         resolved_device = resolve_ocr_device(host, device, scope=scope)
@@ -171,9 +200,8 @@ class OCRService:
         render_kwargs = self._render_kwargs(host, apply_exclusions=apply_exclusions)
         offset_x, offset_y = self._resolve_offsets(host, render_kwargs)
 
-        ocr_payload = run_ocr_apply(
+        ocr_payload = run_ocr(
             target=host,
-            context=host,
             engine_name=engine_name,
             resolution=final_resolution,
             languages=resolved_languages,
@@ -182,6 +210,12 @@ class OCRService:
             detect_only=detect_only,
             options=normalized_options,
             render_kwargs=render_kwargs,
+            context=host,
+            model=model,
+            client=client,
+            prompt=prompt,
+            instructions=instructions,
+            max_new_tokens=max_new_tokens,
         )
 
         image_width, image_height = ocr_payload.image_size
@@ -199,15 +233,53 @@ class OCRService:
         )
         scale_x = width / image_width if width else 1.0
         scale_y = height / image_height if height else 1.0
-        created_elements = self.create_text_elements_from_ocr(
-            host,
-            ocr_payload.results,
-            scale_x=scale_x,
-            scale_y=scale_y,
-            offset_x=offset_x,
-            offset_y=offset_y,
-            engine_name=engine_name,
-        )
+
+        results = ocr_payload.results
+
+        # For VLM engines, handle table region creation (dots.mocr, etc.)
+        if ocr_payload.engine_type == "vlm":
+            from natural_pdf.ocr.vlm_ocr import create_table_regions_from_ocr, scale_ocr_results
+
+            # Scale results to page coordinates first for table region creation
+            scaled = scale_ocr_results(
+                results,
+                image_width=image_width,
+                image_height=image_height,
+                page_width=width,
+                page_height=height,
+                offset_x=offset_x,
+                offset_y=offset_y,
+            )
+
+            # Filter by confidence
+            if resolved_min_conf is not None:
+                scaled = [r for r in scaled if r.get("confidence", 1.0) >= resolved_min_conf]
+
+            # Split table results from text results
+            page_obj = getattr(host, "page", host)
+            text_results, _table_regions = create_table_regions_from_ocr(page_obj, scaled)
+
+            # Create text elements from already-scaled results (scale=1.0, offset=0.0)
+            created_elements = self.create_text_elements_from_ocr(
+                host,
+                text_results,
+                scale_x=1.0,
+                scale_y=1.0,
+                offset_x=0.0,
+                offset_y=0.0,
+                engine_name=engine_name,
+            )
+        else:
+            created_elements = self.create_text_elements_from_ocr(
+                host,
+                results,
+                scale_x=scale_x,
+                scale_y=scale_y,
+                offset_x=offset_x,
+                offset_y=offset_y,
+                engine_name=engine_name,
+            )
+
         logger.info("Added %d OCR elements using '%s'.", len(created_elements), engine_name)
         return host
 

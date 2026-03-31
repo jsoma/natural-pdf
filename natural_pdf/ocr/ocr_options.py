@@ -16,6 +16,15 @@ class BaseOCROptions:
 
     extra_args: Dict[str, Any] = field(default_factory=dict)
 
+    def _init_key(self) -> str:
+        """Return a hashable string of init-time fields for engine caching.
+
+        The cache key determines when a cached engine instance can be reused.
+        Override in subclasses to include fields that affect model initialization
+        (not runtime inference params like thresholds or batch sizes).
+        """
+        return ""
+
 
 # --- EasyOCR Specific Options ---
 @dataclass
@@ -74,6 +83,14 @@ class EasyOCROptions(BaseOCROptions):
         )
         self.canvas_size = validate_positive_int(
             self.canvas_size, "canvas_size", "EasyOCROptions", default=2560
+        )
+
+    def _init_key(self) -> str:
+        return (
+            f"{self.recog_network}|{self.detect_network}|{self.quantize}|"
+            f"{self.cudnn_benchmark}|{self.model_storage_directory}|"
+            f"{self.user_network_directory}|{self.download_enabled}|"
+            f"{self.detector}|{self.recognizer}"
         )
 
 
@@ -161,6 +178,18 @@ class PaddleOCROptions(BaseOCROptions):
                 self.text_rec_score_thresh, "text_rec_score_thresh", "PaddleOCROptions"
             )
 
+    def _init_key(self) -> str:
+        return (
+            f"{self.text_detection_model_name}|{self.text_detection_model_dir}|"
+            f"{self.text_recognition_model_name}|{self.text_recognition_model_dir}|"
+            f"{self.doc_orientation_classify_model_name}|{self.doc_unwarping_model_name}|"
+            f"{self.textline_orientation_model_name}|{self.ocr_version}|"
+            f"{self.enable_hpi}|{self.use_tensorrt}|{self.precision}|"
+            f"{self.enable_mkldnn}|{self.cpu_threads}|{self.paddlex_config}|"
+            f"{self.text_det_limit_side_len}|{self.text_det_limit_type}|"
+            f"{self.textline_orientation_batch_size}|{self.text_recognition_batch_size}"
+        )
+
 
 # --- PaddleOCR-VL Specific Options ---
 @dataclass
@@ -177,6 +206,14 @@ class PaddleOCRVLOptions(BaseOCROptions):
     use_doc_orientation_classify: Optional[bool] = None
     use_doc_unwarping: Optional[bool] = None
     format_block_content: Optional[bool] = None
+
+    def _init_key(self) -> str:
+        return (
+            f"{self.pipeline_version}|{self.use_layout_detection}|"
+            f"{self.use_chart_recognition}|{self.use_seal_recognition}|"
+            f"{self.use_doc_orientation_classify}|{self.use_doc_unwarping}|"
+            f"{self.format_block_content}"
+        )
 
 
 # --- Surya Specific Options ---
@@ -205,6 +242,9 @@ class ChandraOCROptions(BaseOCROptions):
 
     max_output_tokens: int = 12384
     """Maximum number of tokens to generate per page."""
+
+    def _init_key(self) -> str:
+        return f"{self.method}|{self.vllm_url}"
 
 
 # --- Doctr Specific Options ---
@@ -240,6 +280,14 @@ class DoctrOCROptions(BaseOCROptions):
         if self.box_thresh is not None:
             self.box_thresh = validate_confidence(self.box_thresh, "box_thresh", "DoctrOCROptions")
 
+    def _init_key(self) -> str:
+        return (
+            f"{self.det_arch}|{self.reco_arch}|{self.pretrained}|"
+            f"{self.assume_straight_pages}|{self.export_as_straight_boxes}|"
+            f"{self.symmetric_pad}|{self.preserve_aspect_ratio}|{self.batch_size}|"
+            f"{self.bin_thresh}|{self.box_thresh}|{self.use_orientation_predictor}"
+        )
+
 
 # --- RapidOCR Specific Options ---
 @dataclass
@@ -272,6 +320,9 @@ class RapidOCROptions(BaseOCROptions):
             self.text_score = validate_confidence(self.text_score, "text_score", "RapidOCROptions")
         if self.box_thresh is not None:
             self.box_thresh = validate_confidence(self.box_thresh, "box_thresh", "RapidOCROptions")
+
+    def _init_key(self) -> str:
+        return f"{self.det_model_type}|{self.rec_model_type}|{self.config_path}"
 
 
 # --- Union type for type hinting ---
