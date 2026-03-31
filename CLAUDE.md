@@ -82,6 +82,7 @@ Multiple engines: `easyocr` (default), `surya`, `paddle`, `paddlevl`, `doctr`. A
 | `page.ask(question)` | `StructuredDataResult` | Has `.data`, `.success` |
 | `page.extract(Schema)` | `StructuredDataResult` | Has `.data`, `.success` |
 | `page.to_markdown()` | `str` | VLM-powered markdown conversion |
+| `page.compare_ocr(engines=[...])` | `OcrComparison` | Has `.show()`, `.heatmap()`, `.coverage()`, `.diff()`, `.loupe()`, `.summary()`, `.apply()` |
 | `pdf.search(query)` | `PageCollection` | Semantic search over pages |
 
 ## Common Mistakes

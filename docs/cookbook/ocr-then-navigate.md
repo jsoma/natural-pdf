@@ -75,8 +75,12 @@ Natural PDF supports multiple OCR engines:
 | `rapidocr` | PaddleOCR models via ONNX (~15MB). Easier install than full PaddlePaddle. | `pip install rapidocr` |
 | `paddlevl` | VLM-based — understands charts and complex layouts. | `pip install paddlepaddle paddleocr "paddlex[ocr]"` |
 | `doctr` | Smaller model footprint. | `pip install python-doctr` |
+| `dots` | dots.mocr — combined layout + OCR. MLX-optimized on Apple Silicon. | `pip install mlx-vlm` or `pip install transformers torch` |
+| `chandra` | VLM-based successor to Surya. | `pip install chandra-ocr[hf]` |
 
 GLM-OCR (0.9B VLM) is also available via `engine="vlm"` with automatic layout detection — see the [OCR tutorial](../tutorials/12-ocr-integration.md#glm-ocr).
+
+Not sure which engine to use? Compare them side by side with `page.compare_ocr(engines=["rapidocr", "easyocr"])` — see [Comparing OCR Engines](../tutorials/12-ocr-integration.md#comparing-ocr-engines).
 
 ```python
 # Use a specific engine

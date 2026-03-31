@@ -93,6 +93,22 @@ pdf.pages[0].apply_ocr(engine='easyocr', languages=['fr'])  # Override engine an
 
 This is especially useful when processing many documents with the same OCR settings, as you don't need to specify the parameters repeatedly.
 
+## GPU Acceleration
+
+OCR engines auto-detect the best available device by default (`device="auto"`). This uses CUDA on NVIDIA GPUs, MPS on Apple Silicon, or falls back to CPU.
+
+```python
+# Auto-detect (default behavior)
+page.apply_ocr(engine='easyocr')
+
+# Force a specific device
+page.apply_ocr(engine='easyocr', device='cpu')
+page.apply_ocr(engine='surya', device='mps')     # Apple Silicon
+page.apply_ocr(engine='doctr', device='cuda')     # NVIDIA GPU
+```
+
+Most engines support GPU acceleration: EasyOCR, Surya, DocTR, and VLM-based engines work with both CUDA and MPS. PaddleOCR uses its own GPU backend. RapidOCR runs on CPU only (ONNX runtime).
+
 ## Advanced OCR Configuration
 
 For more control, import and use the specific `Options` class for your chosen engine within the `apply_ocr` call.
@@ -348,8 +364,10 @@ Any engine that works with `apply_ocr()` works with `compare_ocr()`:
 | `surya` | `pip install surya-ocr` | Medium | Line-level boxes |
 | `paddle` | `pip install paddleocr` | Medium | Word-level boxes |
 | `doctr` | `pip install python-doctr` | Medium | Word→line merged boxes |
+| `dots` | `pip install mlx-vlm` or `pip install transformers torch` | Slow | dots.mocr — combined layout + OCR, MLX-optimized on Apple Silicon |
+| `chandra` | `pip install chandra-ocr[hf]` | Slow | VLM-based, successor to Surya |
 
-VLM-based engines (`engine="vlm"`) can also be compared but produce block-level output and are much slower.
+VLM-based engines (`engine="vlm"`, `"dots"`, `"chandra"`) can also be compared but produce block-level output and are slower.
 
 ```python
 # Compare a fast local engine against a VLM
