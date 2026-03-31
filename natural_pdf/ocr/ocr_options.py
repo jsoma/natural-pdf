@@ -189,6 +189,24 @@ class SuryaOCROptions(BaseOCROptions):
     HTML formatting tags (``<b>``, etc.) are always stripped."""
 
 
+# --- Chandra Specific Options ---
+@dataclass
+class ChandraOCROptions(BaseOCROptions):
+    """Specific options for the Chandra OCR engine (VLM-based successor to Surya).
+
+    Install: ``pip install chandra-ocr[hf]``
+    """
+
+    method: str = "hf"
+    """Inference backend: ``"hf"`` for local HuggingFace, ``"vllm"`` for remote vLLM server."""
+
+    vllm_url: Optional[str] = None
+    """URL for the vLLM server when ``method="vllm"``."""
+
+    max_output_tokens: int = 12384
+    """Maximum number of tokens to generate per page."""
+
+
 # --- Doctr Specific Options ---
 @dataclass
 class DoctrOCROptions(BaseOCROptions):
@@ -262,6 +280,7 @@ OCROptions = Union[
     PaddleOCROptions,
     PaddleOCRVLOptions,
     SuryaOCROptions,
+    ChandraOCROptions,
     DoctrOCROptions,
     RapidOCROptions,
     BaseOCROptions,

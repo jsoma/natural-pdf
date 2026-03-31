@@ -14,6 +14,7 @@ from natural_pdf.engine_registry import register_builtin, register_ocr_engine
 from natural_pdf.utils.locks import pdf_render_lock
 
 from .engine import OCREngine
+from .engine_chandra import ChandraOCREngine
 from .engine_doctr import DoctrOCREngine
 from .engine_easyocr import EasyOCREngine
 from .engine_paddle import PaddleOCREngine
@@ -22,6 +23,7 @@ from .engine_rapidocr import RapidOCREngine
 from .engine_surya import SuryaOCREngine
 from .ocr_options import (
     BaseOCROptions,
+    ChandraOCROptions,
     DoctrOCROptions,
     EasyOCROptions,
     PaddleOCROptions,
@@ -53,6 +55,7 @@ ENGINE_REGISTRY: Dict[str, EngineRegistryEntry] = {
     "easyocr": {"provider": EasyOCREngine, "options_class": EasyOCROptions},
     "paddle": {"provider": PaddleOCREngine, "options_class": PaddleOCROptions},
     "surya": {"provider": SuryaOCREngine, "options_class": SuryaOCROptions},
+    "chandra": {"provider": ChandraOCREngine, "options_class": ChandraOCROptions},
     "doctr": {"provider": DoctrOCREngine, "options_class": DoctrOCROptions},
     "rapidocr": {"provider": RapidOCREngine, "options_class": RapidOCROptions},
     "paddlevl": {"provider": PaddleOCRVLEngine, "options_class": PaddleOCRVLOptions},
@@ -84,6 +87,7 @@ def _create_engine_instance(engine_name: str) -> OCREngine:
             "easyocr": "pip install easyocr",
             "paddle": "pip install paddleocr",
             "surya": "pip install surya-ocr",
+            "chandra": "pip install chandra-ocr[hf]",
             "doctr": "pip install python-doctr",
             "rapidocr": "pip install rapidocr_onnxruntime",
             "paddlevl": "pip install paddleocr",

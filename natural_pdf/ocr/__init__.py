@@ -23,6 +23,7 @@ from .ocr_manager import (
 )
 from .ocr_options import (
     BaseOCROptions,
+    ChandraOCROptions,
     EasyOCROptions,
     OCROptions,
     PaddleOCROptions,
@@ -33,6 +34,7 @@ __all__ = [
     "OCREngine",
     "OCROptions",
     "BaseOCROptions",
+    "ChandraOCROptions",
     "EasyOCROptions",
     "PaddleOCROptions",
     "SuryaOCROptions",
