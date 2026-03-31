@@ -41,6 +41,34 @@ def _normalize_paddle_language(code: str) -> str:
     return lower
 
 
+def _translate_device_for_paddle(device: str, logger: logging.Logger) -> str:
+    """Translate standard device strings to PaddleOCR-compatible format.
+
+    PaddleOCR uses ``"gpu:0"`` instead of ``"cuda"`` and does not support
+    ``"mps"``.  This helper bridges the gap between the device strings
+    returned by ``resolve_auto_device()`` (``"cuda"``, ``"mps"``, ``"cpu"``)
+    and what PaddleOCR actually accepts.
+    """
+    if device is None:
+        return None
+
+    lower = device.strip().lower()
+    if lower == "cuda" or lower == "gpu":
+        logger.debug("Translating device '%s' -> 'gpu:0' for PaddleOCR", device)
+        return "gpu:0"
+    if lower.startswith("cuda:"):
+        # e.g. "cuda:1" -> "gpu:1"
+        idx = lower.split(":", 1)[1]
+        translated = f"gpu:{idx}"
+        logger.debug("Translating device '%s' -> '%s' for PaddleOCR", device, translated)
+        return translated
+    if lower == "mps":
+        logger.warning("PaddleOCR does not support MPS (Apple Silicon GPU). Falling back to CPU.")
+        return "cpu"
+    # Already a PaddleOCR-native string (e.g. "cpu", "gpu:0", "npu:0") — pass through.
+    return device
+
+
 class PaddleOCREngine(OCREngine):
     """PaddleOCR engine implementation."""
 
@@ -293,6 +321,10 @@ class PaddleOCREngine(OCREngine):
             "paddlex_config",
         }
 
+        # Translate device string for PaddleOCR compatibility
+        # (e.g. "cuda" -> "gpu:0", "mps" -> "cpu")
+        device = _translate_device_for_paddle(device, self.logger)
+
         # Start with defaults passed from the main apply_ocr call.
         ocr_config = {
             "lang": primary_lang,
@@ -310,6 +342,10 @@ class PaddleOCREngine(OCREngine):
                 value = getattr(paddle_options, arg)
                 if value is not None:
                     ocr_config[arg] = value
+
+        # If the user set device in PaddleOCROptions, it may also need translation
+        if "device" in ocr_config and ocr_config["device"]:
+            ocr_config["device"] = _translate_device_for_paddle(ocr_config["device"], self.logger)
 
         try:
             # The new API uses PaddleOCR as a pipeline object.

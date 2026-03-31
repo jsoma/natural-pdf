@@ -59,8 +59,9 @@ class DoctrOCREngine(OCREngine):
         # Cast to DoctrOCROptions or use default (with warning if wrong type)
         doctr_opts, _ = validate_option_type(options, DoctrOCROptions, "DoctrOCREngine")
 
-        # Check if CUDA is available in device string
-        use_cuda = device.lower().startswith("cuda") if device else False
+        # Determine if we should move models to a non-CPU device
+        use_gpu = device and device.lower() not in ("cpu", "")
+        gpu_device = device.lower() if use_gpu else None
 
         # Prepare OCR predictor arguments
         predictor_args = {
@@ -90,13 +91,15 @@ class DoctrOCREngine(OCREngine):
         try:
             self._model = doctr_models.ocr_predictor(**filtered_ocr_args)
 
-            # Apply CUDA if available
-            if use_cuda:
-                if self._model is not None and hasattr(self._model, "cuda"):
+            # Move model to requested device (cuda, mps, etc.)
+            if use_gpu and self._model is not None:
+                if hasattr(self._model, "to"):
+                    self._model = self._model.to(gpu_device)
+                elif hasattr(self._model, "cuda") and gpu_device.startswith("cuda"):
                     self._model = self._model.cuda()
                 else:
                     self.logger.warning(
-                        "CUDA requested but doctr OCR model does not support cuda(); continuing on CPU."
+                        f"Device '{gpu_device}' requested but doctr OCR model does not support .to(); continuing on CPU."
                     )
 
             self.logger.info("doctr ocr_predictor created successfully")
@@ -134,13 +137,15 @@ class DoctrOCREngine(OCREngine):
                 )
                 self._detection_model = doctr_models.detection_predictor(**filtered_det_args)
 
-                # Apply CUDA if available
-                if use_cuda:
-                    if self._detection_model is not None and hasattr(self._detection_model, "cuda"):
+                # Move detection model to requested device
+                if use_gpu and self._detection_model is not None:
+                    if hasattr(self._detection_model, "to"):
+                        self._detection_model = self._detection_model.to(gpu_device)
+                    elif hasattr(self._detection_model, "cuda") and gpu_device.startswith("cuda"):
                         self._detection_model = self._detection_model.cuda()
                     else:
                         self.logger.warning(
-                            "CUDA requested but doctr detection model does not support cuda(); continuing on CPU."
+                            f"Device '{gpu_device}' requested but doctr detection model does not support .to(); continuing on CPU."
                         )
 
                 # Configure postprocessing parameters if provided
@@ -167,14 +172,16 @@ class DoctrOCREngine(OCREngine):
                     self._orientation_model = doctr_models.page_orientation_predictor(
                         pretrained=True, batch_size=doctr_opts.batch_size
                     )
-                    if use_cuda:
-                        if self._orientation_model is not None and hasattr(
-                            self._orientation_model, "cuda"
+                    if use_gpu and self._orientation_model is not None:
+                        if hasattr(self._orientation_model, "to"):
+                            self._orientation_model = self._orientation_model.to(gpu_device)
+                        elif hasattr(self._orientation_model, "cuda") and gpu_device.startswith(
+                            "cuda"
                         ):
                             self._orientation_model = self._orientation_model.cuda()
                         else:
                             self.logger.warning(
-                                "CUDA requested but doctr orientation model does not support cuda(); continuing on CPU."
+                                f"Device '{gpu_device}' requested but doctr orientation model does not support .to(); continuing on CPU."
                             )
                     self.logger.info("doctr page_orientation_predictor created successfully")
                 except Exception as e:

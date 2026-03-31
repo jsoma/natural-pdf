@@ -10,6 +10,7 @@ from PIL import Image
 from natural_pdf.utils.option_validation import validate_option_type
 
 from .engine import OCREngine, TextRegion
+from .engine_paddle import _translate_device_for_paddle
 from .ocr_options import BaseOCROptions, PaddleOCRVLOptions
 
 logger = logging.getLogger(__name__)
@@ -74,10 +75,14 @@ class PaddleOCRVLEngine(OCREngine):
 
         vl_options, _ = validate_option_type(options, PaddleOCRVLOptions, "PaddleOCRVLEngine")
 
+        # Translate device string for PaddleOCR compatibility
+        # (e.g. "cuda" -> "gpu:0", "mps" -> "cpu")
+        paddle_device = _translate_device_for_paddle(device, self.logger)
+
         # Build constructor kwargs from options
         init_kwargs: Dict[str, Any] = {}
-        if device:
-            init_kwargs["device"] = device
+        if paddle_device:
+            init_kwargs["device"] = paddle_device
 
         option_fields = {
             "pipeline_version",

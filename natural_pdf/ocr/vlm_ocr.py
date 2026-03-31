@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from PIL import Image
 
 from natural_pdf.utils.locks import pdf_render_lock
+from natural_pdf.utils.option_validation import resolve_auto_device
 
 logger = logging.getLogger(__name__)
 
@@ -330,12 +331,7 @@ def _get_layout_detector(model_name: str = _LAYOUT_MODEL) -> Any:
             model = PPDocLayoutV3ForObjectDetection.from_pretrained(model_name)
             model.eval()
 
-            if torch.cuda.is_available():
-                device = "cuda"
-            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-                device = "mps"
-            else:
-                device = "cpu"
+            device = resolve_auto_device()
             model = model.to(device)
 
             _layout_detector_cache[model_name] = {

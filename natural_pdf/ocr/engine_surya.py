@@ -67,16 +67,16 @@ class SuryaOCREngine(OCREngine):
         self.logger.info("Surya modules imported successfully.")
 
         try:
-            self.logger.info("Instantiating Surya DetectionPredictor...")
-            self._detection_predictor = DetectionPredictor()
+            self.logger.info("Instantiating Surya DetectionPredictor (device=%s)...", device)
+            self._detection_predictor = DetectionPredictor(device=device)
 
-            self.logger.info("Instantiating Surya RecognitionPredictor...")
+            self.logger.info("Instantiating Surya RecognitionPredictor (device=%s)...", device)
             # Surya >= 0.17: RecognitionPredictor requires a FoundationPredictor
             # Surya < 0.17: RecognitionPredictor takes no required args
             try:
                 from surya.foundation import FoundationPredictor  # type: ignore[import-untyped]
 
-                foundation = FoundationPredictor()
+                foundation = FoundationPredictor(device=device)
                 self._recognition_predictor = RecognitionPredictor(foundation)
             except ImportError:
                 # Older surya without FoundationPredictor

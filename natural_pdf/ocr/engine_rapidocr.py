@@ -68,6 +68,9 @@ class RapidOCREngine(OCREngine):
         self, languages: List[str], device: str, options: Optional[BaseOCROptions]
     ):
         """Initialize RapidOCR engine."""
+        if device not in ("cpu",):
+            self.logger.info(f"RapidOCR is ONNX-based and runs on CPU; ignoring device={device!r}")
+
         if not self.is_available():
             raise ImportError("RapidOCR library is not installed or available.")
 

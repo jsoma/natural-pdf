@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PIL import Image
 
+from natural_pdf.utils.option_validation import resolve_auto_device
+
 # Assuming ocr_options defines BaseOCROptions
 from .ocr_options import BaseOCROptions
 
@@ -140,7 +142,7 @@ class OCREngine(ABC):
     # Default values as class constants
     DEFAULT_MIN_CONFIDENCE = 0.2
     DEFAULT_LANGUAGES = ["en"]
-    DEFAULT_DEVICE = "cpu"
+    DEFAULT_DEVICE = "auto"
 
     def __init__(self):
         """Initializes the base OCR engine."""
@@ -188,6 +190,9 @@ class OCREngine(ABC):
             min_confidence if min_confidence is not None else self.DEFAULT_MIN_CONFIDENCE
         )
         effective_device = device or self.DEFAULT_DEVICE
+        if effective_device == "auto":
+            effective_device = resolve_auto_device()
+            self.logger.debug(f"Auto-detected device: {effective_device}")
 
         # Ensure the model is initialized
         self._ensure_initialized(effective_languages, effective_device, options)

@@ -29,7 +29,17 @@ class ChandraOCREngine(OCREngine):
     def _initialize_model(
         self, languages: List[str], device: str, options: Optional[BaseOCROptions]
     ):
-        """Initialize the Chandra InferenceManager."""
+        """Initialize the Chandra InferenceManager.
+
+        For the ``"hf"`` method, Chandra uses HuggingFace transformers
+        (``Qwen3VLForConditionalGeneration``) with ``device_map`` controlled by
+        ``chandra.settings.settings.TORCH_DEVICE``.  We forward the resolved
+        *device* value so the model is placed on the correct device.
+
+        Note: the upstream ``chandra`` library hardcodes ``inputs.to("cuda")``
+        in its ``generate_hf`` function, so non-CUDA devices (e.g. MPS) may
+        not work until that is fixed upstream.
+        """
         if not self.is_available():
             raise ImportError(
                 "Chandra OCR is not installed. Install with: pip install chandra-ocr[hf]"
@@ -40,6 +50,22 @@ class ChandraOCREngine(OCREngine):
         opts = options if isinstance(options, ChandraOCROptions) else ChandraOCROptions()
 
         method = opts.method
+
+        # Forward the resolved device to the chandra library for model placement.
+        if method == "hf" and device:
+            from chandra.settings import (
+                settings as chandra_settings,  # type: ignore[import-untyped]
+            )
+
+            chandra_settings.TORCH_DEVICE = device
+            self.logger.info("Set chandra TORCH_DEVICE=%s", device)
+
+            if device == "mps":
+                self.logger.warning(
+                    "Chandra's HF backend currently hardcodes inputs.to('cuda'). "
+                    "MPS support may fail until the upstream chandra-ocr library is updated."
+                )
+
         kwargs: Dict[str, Any] = {}
         if method == "vllm" and opts.vllm_url:
             kwargs["url"] = opts.vllm_url

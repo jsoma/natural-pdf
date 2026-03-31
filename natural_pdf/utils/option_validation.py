@@ -14,6 +14,7 @@ Design philosophy:
 
 import logging
 import os
+import warnings
 from pathlib import Path
 from typing import Any, List, Optional, Tuple, Union
 
@@ -21,6 +22,42 @@ logger = logging.getLogger(__name__)
 
 # Valid device options
 VALID_DEVICES = {"cpu", "cuda", "mps", "auto"}
+
+_colab_gpu_warning_issued = False
+
+
+def _is_colab() -> bool:
+    """Check if we're running inside Google Colab."""
+    return "COLAB_RELEASE_TAG" in os.environ or "COLAB_GPU" in os.environ
+
+
+def resolve_auto_device() -> str:
+    """Resolve 'auto' device to the best available: cuda > mps > cpu.
+
+    Returns:
+        One of "cuda", "mps", or "cpu".
+    """
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            return "cuda"
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "mps"
+    except ImportError:
+        pass
+
+    global _colab_gpu_warning_issued
+    if _is_colab() and not _colab_gpu_warning_issued:
+        _colab_gpu_warning_issued = True
+        warnings.warn(
+            "You're running on Google Colab without a GPU. OCR and layout detection "
+            "will be much faster with a GPU runtime. To switch: "
+            "Runtime → Change runtime type → T4 GPU.",
+            stacklevel=3,
+        )
+
+    return "cpu"
 
 
 def is_strict_mode() -> bool:
