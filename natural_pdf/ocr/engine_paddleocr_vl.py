@@ -14,8 +14,8 @@ from .ocr_options import BaseOCROptions, PaddleOCRVLOptions
 
 logger = logging.getLogger(__name__)
 
-# Block labels that contain text content
-_TEXT_LABELS = {"text", "paragraph_title", "header", "footer"}
+# Block labels to skip — purely visual content with no text to extract.
+_SKIP_LABELS = {"image", "figure", "chart", "seal"}
 
 # Pre-compiled regexes for HTML stripping
 _TAG_RE = re.compile(r"<[^>]+>")
@@ -165,10 +165,10 @@ class PaddleOCRVLEngine(OCREngine):
                     label = block.get("label", "")
                 label = str(label).lower() if label else ""
 
-                # Only process known text-like labels (and table)
-                is_table = label == "table"
-                if label not in _TEXT_LABELS and not is_table:
+                # Skip purely visual labels
+                if label in _SKIP_LABELS:
                     continue
+                is_table = label == "table"
 
                 # Get bounding box
                 bbox_raw = getattr(block, "bbox", None)

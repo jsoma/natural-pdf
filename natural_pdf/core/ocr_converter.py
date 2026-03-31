@@ -68,6 +68,11 @@ class OCRConverter:
                 "highlight_color": None,
             }
 
+            # Pass through extra metadata from OCR engines (e.g. source_category)
+            source_category = result.get("source_category")
+            if source_category:
+                word_element_data["source_category"] = source_category
+
             ocr_char_dict = word_element_data.copy()
             ocr_char_dict["object_type"] = "char"
             ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))

@@ -47,6 +47,13 @@ class ConversionService:
         If no *model* and no *client* (and no defaults), falls back to
         ``host.extract_text()`` with a warning.
 
+        Recommended models (olmOCR-bench scores):
+
+        - **Local:** ``"rednote-hilab/dots.mocr"`` (83.9, 3B),
+          ``"lightonai/LightOnOCR-2-1B"`` (83.2, 1B — ``pip install transformers>=5.0.0``),
+          ``"Qwen/Qwen2.5-VL-7B-Instruct"`` (65.5, 7B).
+        - **Remote:** ``"gpt-4o"`` (69.9), ``"gemini-2.0-flash"`` (63.8).
+
         Args:
             host: Page or Region object.
             model: HuggingFace model ID or remote model name.

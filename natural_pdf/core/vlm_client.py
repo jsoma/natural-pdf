@@ -52,14 +52,23 @@ def get_default_client() -> Tuple[Optional[Any], Optional[str]]:
 # Local HF adapter cache (reuses pattern from vlm_adapter.py)
 # ---------------------------------------------------------------------------
 
-_local_cache: dict[str, "_LocalVLMAdapter"] = {}
+_local_cache: dict[str, Any] = {}
 _cache_lock = threading.Lock()
 
 
-def _get_local_adapter(model_name: str) -> "_LocalVLMAdapter":
+def _is_mlx_model(model_name: str) -> bool:
+    """Check if a model name refers to an MLX model."""
+    name = model_name.lower()
+    return name.startswith("mlx-community/") or "/mlx-" in name or name.endswith("-mlx")
+
+
+def _get_local_adapter(model_name: str) -> "_LocalVLMAdapter | _MLXVLMAdapter":
     with _cache_lock:
         if model_name not in _local_cache:
-            _local_cache[model_name] = _LocalVLMAdapter(model_name)
+            if _is_mlx_model(model_name):
+                _local_cache[model_name] = _MLXVLMAdapter(model_name)
+            else:
+                _local_cache[model_name] = _LocalVLMAdapter(model_name)
         return _local_cache[model_name]
 
 
@@ -116,18 +125,24 @@ class _LocalVLMAdapter:
         processor_kwargs: dict[str, Any] = {}
         from natural_pdf.core.vlm_prompts import detect_model_family
 
-        if detect_model_family(self.model_name) in ("qwen_vl", "gutenocr"):
+        family = detect_model_family(self.model_name)
+        if family in ("qwen_vl", "gutenocr", "dots_mocr"):
             # Qwen-VL defaults have no real pixel cap (longest_edge=16M),
             # which causes OOM on even modest document images.  Use the
             # values recommended in the Qwen-VL documentation.
             processor_kwargs["min_pixels"] = 256 * 28 * 28  # ~200k
             processor_kwargs["max_pixels"] = 1280 * 28 * 28  # ~1M
 
-        self._processor = AutoProcessor.from_pretrained(self.model_name, **processor_kwargs)
+        trust_remote = family in ("qwen_vl", "gutenocr", "dots_mocr", "glm_ocr")
+
+        self._processor = AutoProcessor.from_pretrained(
+            self.model_name, trust_remote_code=trust_remote, **processor_kwargs
+        )
         self._model = AutoVLM.from_pretrained(
             self.model_name,
             torch_dtype=dtype,
             device_map=device_map,
+            trust_remote_code=trust_remote,
         )
         if device_map is None:
             self._model = self._model.to(device)
@@ -195,6 +210,106 @@ class _LocalVLMAdapter:
         )
 
         return self._processor.decode(generated, skip_special_tokens=True)
+
+
+class _MLXVLMAdapter:
+    """Thin wrapper around mlx-vlm for local VLM inference on Apple Silicon."""
+
+    def __init__(self, model_name: str) -> None:
+        self.model_name = model_name
+        self._model: Any = None
+        self._processor: Any = None
+        self._config: Any = None
+        self._load_lock = threading.Lock()
+
+    def _ensure_loaded(self) -> None:
+        if self._model is not None:
+            return
+        with self._load_lock:
+            if self._model is not None:
+                return
+            self._do_load()
+
+    def _do_load(self) -> None:
+        import time
+
+        try:
+            from mlx_vlm import load
+            from mlx_vlm.utils import load_config
+        except ImportError as exc:
+            raise RuntimeError(
+                "MLX VLM inference requires 'mlx-vlm'. " "Install with: pip install mlx-vlm"
+            ) from exc
+
+        logger.info("Loading MLX VLM model %r...", self.model_name)
+        t0 = time.perf_counter()
+
+        self._model, self._processor = load(self.model_name)
+        self._config = load_config(self.model_name)
+
+        elapsed = time.perf_counter() - t0
+        logger.info("MLX VLM model %r loaded in %.1fs.", self.model_name, elapsed)
+
+    def generate(self, image: Image.Image, prompt: str, *, max_new_tokens: int = 4096) -> str:
+        import tempfile
+        import time
+
+        from mlx_vlm import generate as mlx_generate
+        from mlx_vlm.prompt_utils import apply_chat_template
+
+        self._ensure_loaded()
+
+        # mlx-vlm expects file paths, not PIL images — write to a temp file
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                tmp_path = tmp.name
+                if image.mode in ("RGBA", "LA", "P"):
+                    image = image.convert("RGB")
+                image.save(tmp, format="JPEG", quality=95)
+
+            formatted_prompt = apply_chat_template(
+                self._processor, self._config, prompt, num_images=1
+            )
+
+            logger.info(
+                "MLX VLM generation started (model=%r, max_new_tokens=%d).",
+                self.model_name,
+                max_new_tokens,
+            )
+            t0 = time.perf_counter()
+
+            result = mlx_generate(
+                self._model,
+                self._processor,
+                formatted_prompt,
+                [tmp_path],
+                max_tokens=max_new_tokens,
+                verbose=False,
+            )
+
+            # mlx-vlm returns a GenerationResult dataclass; extract the text
+            output = result.text if hasattr(result, "text") else str(result)
+
+            elapsed = time.perf_counter() - t0
+            tps = getattr(result, "generation_tps", 0.0)
+            n_tokens = getattr(result, "generation_tokens", 0)
+            logger.info(
+                "MLX VLM generation finished: %d tokens in %.1fs (%.1f tok/s).",
+                n_tokens,
+                elapsed,
+                tps,
+            )
+
+            return output
+        finally:
+            if tmp_path:
+                import os
+
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
 
 
 # ---------------------------------------------------------------------------

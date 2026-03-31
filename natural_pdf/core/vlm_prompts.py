@@ -92,10 +92,10 @@ def languages_to_hint(languages: Optional[List[str]]) -> str:
 def detect_model_family(model_name: str | None) -> str:
     """Detect the VLM model family from the model name string.
 
-    Returns ``"gutenocr"``, ``"glm_ocr"``, ``"qwen_vl"``, ``"gemini"``,
-    ``"openai"``, or ``"generic"``.
-    GutenOCR is checked first because it's built on Qwen2.5-VL and contains
-    "qwen" in some paths.
+    Returns ``"gutenocr"``, ``"glm_ocr"``, ``"dots_mocr"``, ``"qwen_vl"``,
+    ``"gemini"``, ``"openai"``, or ``"generic"``.
+    GutenOCR and dots.mocr are checked before qwen_vl because they are
+    built on Qwen architectures and would otherwise match the qwen pattern.
     """
     if model_name is None:
         return "generic"
@@ -103,6 +103,8 @@ def detect_model_family(model_name: str | None) -> str:
         return "gutenocr"
     if re.search(r"(?i)glm.?ocr", model_name):
         return "glm_ocr"
+    if re.search(r"(?i)dots[\.\-_]?mocr", model_name):
+        return "dots_mocr"
     if re.search(r"(?i)qwen.*vl", model_name):
         return "qwen_vl"
     if re.search(r"(?i)gemini", model_name):
@@ -173,6 +175,25 @@ GUTENOCR_PROMPT = "Return a layout-sensitive TEXT2D representation of the image.
 
 GLM_OCR_PROMPT = "Text Recognition:"
 
+DOTS_MOCR_PROMPT = (
+    "Please output the layout information from the PDF image, including each "
+    "layout element's bbox, its category, and the corresponding text content "
+    "within the bbox.\n\n"
+    "1. Bbox format: [x1, y1, x2, y2]\n\n"
+    "2. Layout Categories: The possible categories are ['Caption', 'Footnote', "
+    "'Formula', 'List-item', 'Page-footer', 'Page-header', 'Picture', "
+    "'Section-header', 'Table', 'Text', 'Title'].\n\n"
+    "3. Text Extraction & Formatting Rules:\n"
+    "    - Picture: For the 'Picture' category, the text field should be omitted.\n"
+    "    - Formula: Format its text as LaTeX.\n"
+    "    - Table: Format its text as HTML.\n"
+    "    - All Others (Text, Title, etc.): Format their text as Markdown.\n\n"
+    "4. Constraints:\n"
+    "    - The output text must be the original text from the image, with no translation.\n"
+    "    - All layout elements must be sorted according to human reading order.\n\n"
+    "5. Final Output: The entire output must be a single JSON object."
+)
+
 
 def build_conversion_prompt(*, format: str = "markdown") -> str:
     """Return a prompt for document-to-text conversion.
@@ -217,4 +238,6 @@ def build_ocr_prompt(
     if family == "glm_ocr":
         # GLM-OCR uses a fixed prompt; language hints are not applicable.
         return GLM_OCR_PROMPT
+    if family == "dots_mocr":
+        return DOTS_MOCR_PROMPT
     return f"{hint} {OCR_GROUNDING_PROMPT}" if hint else OCR_GROUNDING_PROMPT

@@ -1991,7 +1991,9 @@ class Region(
 
         Args:
             engine: OCR engine — ``"easyocr"`` (default), ``"surya"``,
-                ``"paddle"``, ``"paddlevl"``, ``"doctr"``, or ``"vlm"``.
+                ``"paddle"``, ``"paddlevl"``, ``"doctr"``, ``"vlm"``,
+                or ``"dots"`` (dots.mocr — auto-selects MLX on Apple
+                Silicon, HF transformers elsewhere).
                 Use ``engine="vlm"`` with ``model=`` and/or ``client=``
                 for VLM-based OCR.
             options: Engine-specific option object.
@@ -2030,6 +2032,22 @@ class Region(
             params["detect_only"] = detect_only
         if not apply_exclusions:
             params["apply_exclusions"] = apply_exclusions
+
+        # dots.mocr shorthand: auto-select the right model variant
+        if engine is not None and engine.lower() == "dots":
+            if model is None:
+                from natural_pdf.ocr.vlm_ocr import resolve_dots_model
+
+                model = resolve_dots_model()
+            return self._apply_vlm_ocr(
+                model=model,
+                client=client,
+                replace=replace,
+                resolution=resolution or 144,
+                min_confidence=min_confidence,
+                languages=languages,
+                instructions=instructions,
+            )
 
         # VLM OCR path: explicit engine="vlm" or model=/client= provided
         if engine is not None and engine.lower() == "vlm":
@@ -2175,12 +2193,23 @@ class Region(
                             self.bbox,
                         )
 
+        # Split table results into regions with alt_text
+        from natural_pdf.ocr.vlm_ocr import create_table_regions_from_ocr
+
+        text_results, table_regions = create_table_regions_from_ocr(self.page, scaled)
+
         self.services.ocr.create_text_elements_from_ocr(
             self.page,
-            ocr_results=scaled,
+            ocr_results=text_results,
         )
 
-        logger.info("VLM OCR created %d text elements on region %s.", len(scaled), self.bbox)
+        n_tables = len(table_regions)
+        logger.info(
+            "VLM OCR created %d text elements and %d table regions on region %s.",
+            len(text_results),
+            n_tables,
+            self.bbox,
+        )
         return self
 
     def extract_ocr_elements(

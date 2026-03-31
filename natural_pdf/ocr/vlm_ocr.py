@@ -25,6 +25,7 @@ _FAMILY_DEFAULT_CONFIDENCE = {
     "openai": 0.5,
     "gutenocr": 0.8,
     "glm_ocr": 0.9,
+    "dots_mocr": 0.9,
     "generic": 0.5,
 }
 
@@ -295,16 +296,12 @@ def scale_ocr_results(
 _LAYOUT_MODEL = "PaddlePaddle/PP-DocLayoutV3_safetensors"
 _GLM_OCR_PROMPT = "Text Recognition:"
 
-# Labels that carry text content (matches glmocr SDK label_task_mapping)
-_GLM_TEXT_LABELS = {
-    "text",
-    "title",
-    "paragraph_title",
-    "header",
-    "footer",
-    "reference",
-    "table_title",
-    "figure_title",
+# Layout labels to skip — purely visual content with no text to recognize.
+_GLM_SKIP_LABELS = {
+    "figure",
+    "image",
+    "chart",
+    "seal",
 }
 
 _layout_detector_cache: Dict[str, Any] = {}
@@ -427,8 +424,15 @@ def _run_glm_ocr_with_layout(
 
     # Step 1: Layout detection
     logger.info("GLM-OCR: running layout detection on %dx%d image ...", img_w, img_h)
-    regions = _detect_layout_regions(image)
-    text_regions = [r for r in regions if r["label"] in _GLM_TEXT_LABELS]
+    regions = _detect_layout_regions(image, threshold=0.15)
+    text_regions = [r for r in regions if r["label"] not in _GLM_SKIP_LABELS]
+
+    skipped = [r for r in regions if r["label"] in _GLM_SKIP_LABELS]
+    if skipped:
+        skipped_summary = {}
+        for r in skipped:
+            skipped_summary[r["label"]] = skipped_summary.get(r["label"], 0) + 1
+        logger.info("GLM-OCR: skipped %d visual-only regions: %s", len(skipped), skipped_summary)
 
     if not text_regions:
         # No layout regions found — fall back to full-page OCR
@@ -482,6 +486,253 @@ def _run_glm_ocr_with_layout(
     return results, (img_w, img_h)
 
 
+def resolve_dots_model() -> str:
+    """Pick the best dots.mocr model variant for the current platform.
+
+    Returns the MLX 4-bit model on Apple Silicon (requires ``pip install
+    mlx-vlm``), otherwise the full HuggingFace model for GPU/CPU.
+    """
+    import platform
+
+    if platform.machine() == "arm64" and platform.system() == "Darwin":
+        return "mlx-community/dots.mocr-4bit"
+    return "rednote-hilab/dots.mocr"
+
+
+# ---------------------------------------------------------------------------
+# dots.mocr: single-model layout detection + text recognition
+# ---------------------------------------------------------------------------
+
+# Layout labels that contain no useful text to return as OCR results.
+_DOTS_SKIP_LABELS = {"Picture"}
+
+
+def _html_table_to_tsv(html: str) -> str:
+    """Convert an HTML table to tab-separated values."""
+    from html.parser import HTMLParser
+
+    class _TableParser(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.rows: List[List[str]] = []
+            self._current_row: List[str] = []
+            self._current_cell: List[str] = []
+            self._in_cell = False
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "tr":
+                self._current_row = []
+            elif tag in ("td", "th"):
+                self._in_cell = True
+                self._current_cell = []
+
+        def handle_endtag(self, tag):
+            if tag in ("td", "th"):
+                self._in_cell = False
+                self._current_row.append("".join(self._current_cell).strip())
+            elif tag == "tr":
+                if self._current_row:
+                    self.rows.append(self._current_row)
+
+        def handle_data(self, data):
+            if self._in_cell:
+                self._current_cell.append(data)
+
+    parser = _TableParser()
+    parser.feed(html)
+    return "\n".join("\t".join(cells) for cells in parser.rows)
+
+
+def _parse_dots_mocr_response(raw: str) -> List[Dict[str, Any]]:
+    """Parse dots.mocr structured JSON output into OCR result dicts.
+
+    dots.mocr returns a JSON object with a ``layouts`` array, where each
+    element has ``bbox`` ([x1, y1, x2, y2] in pixel coords), ``category``,
+    and ``text``.  Tables are converted from HTML to TSV.
+    """
+    text = raw.strip()
+
+    # Strip markdown code fences
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        # Try raw_decode from the first '{' (precise, avoids greedy regex)
+        decoder = json.JSONDecoder()
+        idx = text.find("{")
+        if idx != -1:
+            try:
+                data, _ = decoder.raw_decode(text, idx)
+            except json.JSONDecodeError:
+                logger.warning("dots.mocr: failed to parse response as JSON: %s", text[:200])
+                return []
+        else:
+            logger.warning("dots.mocr: no JSON object found in response: %s", text[:200])
+            return []
+
+    layouts = data.get("layouts") if isinstance(data, dict) else None
+    if not isinstance(layouts, list):
+        # Maybe the response is the array directly
+        if isinstance(data, list):
+            layouts = data
+        else:
+            logger.warning("dots.mocr: response has no 'layouts' array.")
+            return []
+
+    default_conf = _FAMILY_DEFAULT_CONFIDENCE["dots_mocr"]
+    results = []
+    for item in layouts:
+        if not isinstance(item, dict):
+            continue
+
+        category = str(item.get("category") or item.get("type") or "")
+        if category.strip().lower() in {"picture"}:
+            continue
+
+        bbox = item.get("bbox")
+        if not bbox or not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+            continue
+
+        item_text = item.get("text") or item.get("content") or ""
+        if not item_text:
+            continue
+
+        # For tables, keep raw HTML and convert to TSV for display
+        raw_html = None
+        if category.strip().lower() == "table" and "<table" in item_text.lower():
+            raw_html = item_text
+            item_text = _html_table_to_tsv(item_text)
+
+        try:
+            x0, y0, x1, y1 = [float(v) for v in bbox]
+        except (TypeError, ValueError):
+            continue
+
+        # Normalize inverted coordinates
+        if x0 > x1:
+            x0, x1 = x1, x0
+        if y0 > y1:
+            y0, y1 = y1, y0
+
+        # Skip degenerate boxes
+        if x1 - x0 < 0.1 or y1 - y0 < 0.1:
+            continue
+
+        result_dict = {
+            "bbox": [x0, y0, x1, y1],
+            "text": str(item_text),
+            "confidence": default_conf,
+        }
+        cat = category.strip()
+        if cat:
+            result_dict["source_category"] = cat
+        if raw_html:
+            result_dict["raw_html"] = raw_html
+        results.append(result_dict)
+
+    return results
+
+
+def _run_dots_mocr(
+    host: Any,
+    *,
+    model: Optional[str],
+    client: Optional[Any],
+    resolution: int,
+    render_kwargs: Optional[Dict[str, Any]],
+    max_new_tokens: int,
+) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
+    """Run dots.mocr for combined layout detection + OCR.
+
+    dots.mocr handles layout detection internally — no separate layout
+    model is needed. The model returns structured JSON with bounding boxes
+    in pixel coordinates.
+    """
+    from natural_pdf.core.vlm_client import generate
+    from natural_pdf.core.vlm_prompts import DOTS_MOCR_PROMPT
+
+    # Render the page/region
+    render_fn = getattr(host, "render", None)
+    if not callable(render_fn):
+        raise AttributeError("Host object does not support render() for VLM OCR.")
+
+    kwargs = dict(render_kwargs or {})
+    with pdf_render_lock:
+        image = render_fn(resolution=resolution, **kwargs)
+
+    if not isinstance(image, Image.Image):
+        raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
+
+    img_w, img_h = image.size
+    logger.info("dots.mocr: running on %dx%d image ...", img_w, img_h)
+
+    # dots.mocr outputs dense layout JSON that easily exceeds 4096 tokens
+    if max_new_tokens <= 4096:
+        max_new_tokens = 24000
+
+    raw_response = generate(
+        image,
+        DOTS_MOCR_PROMPT,
+        model=model,
+        client=client,
+        max_new_tokens=max_new_tokens,
+    )
+
+    logger.info("dots.mocr: received %d-char response.", len(raw_response))
+    logger.debug("dots.mocr raw response (first 500 chars): %s", raw_response[:500])
+
+    results = _parse_dots_mocr_response(raw_response)
+    logger.info("dots.mocr: parsed %d text regions.", len(results))
+
+    return results, (img_w, img_h)
+
+
+def create_table_regions_from_ocr(
+    page: Any,
+    results: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], List[Any]]:
+    """Split OCR results: table items become regions, rest stay as text results.
+
+    Table results are converted into Region objects with ``region_type="table"``,
+    ``alt_text`` set to the TSV content (used by ``extract_text()``), and
+    ``raw_html`` stashed in ``region.metadata`` for ``extract_table()``.
+    Regions are registered on the page so they appear in selector queries.
+
+    Args:
+        page: The Page object to create regions on.
+        results: Scaled OCR result dicts (in PDF coordinates).
+
+    Returns:
+        Tuple of (non_table_results, created_regions).
+    """
+    from natural_pdf.elements.region import Region
+
+    non_table = []
+    regions = []
+
+    for r in results:
+        cat = r.get("source_category", "").lower()
+        if cat == "table":
+            bbox = r["bbox"]
+            region = Region(page, (bbox[0], bbox[1], bbox[2], bbox[3]))
+            region.region_type = "table"
+            region.source = "dots.mocr"
+            region.alt_text = r["text"]  # TSV content
+            raw_html = r.get("raw_html")
+            if raw_html:
+                region.metadata["raw_html"] = raw_html
+            # Register on the page so extract_text() and selectors can find it
+            page.add_region(region, source="dots.mocr")
+            regions.append(region)
+        else:
+            non_table.append(r)
+
+    return non_table, regions
+
+
 def run_vlm_ocr(
     host: Any,
     *,
@@ -528,6 +779,15 @@ def run_vlm_ocr(
         return _run_glm_ocr_with_layout(
             host,
             image=None,  # will be rendered inside
+            model=model,
+            client=client,
+            resolution=resolution,
+            render_kwargs=render_kwargs,
+            max_new_tokens=max_new_tokens,
+        )
+    elif family == "dots_mocr":
+        return _run_dots_mocr(
+            host,
             model=model,
             client=client,
             resolution=resolution,

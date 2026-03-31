@@ -715,7 +715,9 @@ class Page(
 
         Args:
             engine: OCR engine — ``"easyocr"`` (default), ``"surya"``,
-                ``"paddle"``, ``"paddlevl"``, ``"doctr"``, or ``"vlm"``.
+                ``"paddle"``, ``"paddlevl"``, ``"doctr"``, ``"vlm"``,
+                or ``"dots"`` (dots.mocr — auto-selects MLX on Apple
+                Silicon, HF transformers elsewhere).
                 Use ``engine="vlm"`` with ``model=`` and/or ``client=``
                 for VLM-based OCR.
             options: Engine-specific option object.
@@ -754,6 +756,22 @@ class Page(
             params["detect_only"] = detect_only
         if not apply_exclusions:
             params["apply_exclusions"] = apply_exclusions
+
+        # dots.mocr shorthand: auto-select the right model variant
+        if engine is not None and engine.lower() == "dots":
+            if model is None:
+                from natural_pdf.ocr.vlm_ocr import resolve_dots_model
+
+                model = resolve_dots_model()
+            return self._apply_vlm_ocr(
+                model=model,
+                client=client,
+                replace=replace,
+                resolution=resolution or 144,
+                min_confidence=min_confidence,
+                languages=languages,
+                instructions=instructions,
+            )
 
         # VLM OCR path: explicit engine="vlm" or model=/client= provided
         if engine is not None and engine.lower() == "vlm":
@@ -867,12 +885,23 @@ class Page(
         if min_confidence is not None:
             scaled = [r for r in scaled if r.get("confidence", 0) >= min_confidence]
 
+        # Split table results into regions with alt_text
+        from natural_pdf.ocr.vlm_ocr import create_table_regions_from_ocr
+
+        text_results, table_regions = create_table_regions_from_ocr(self, scaled)
+
         self.services.ocr.create_text_elements_from_ocr(
             self,
-            ocr_results=scaled,
+            ocr_results=text_results,
         )
 
-        logger.info("VLM OCR created %d text elements on page %s.", len(scaled), self.number)
+        n_tables = len(table_regions)
+        logger.info(
+            "VLM OCR created %d text elements and %d table regions on page %s.",
+            len(text_results),
+            n_tables,
+            self.number,
+        )
         return self
 
     def extract_ocr_elements(self, *args, **kwargs):
@@ -1875,6 +1904,17 @@ class Page(
         """Convert this page to Markdown using a VLM.
 
         Falls back to ``extract_text()`` when no model is configured.
+
+        Recommended models (olmOCR-bench scores):
+
+        - **Local (HuggingFace):**
+          ``"rednote-hilab/dots.mocr"`` (83.9) — 3B, needs GPU.
+          ``"lightonai/LightOnOCR-2-1B"`` (83.2) — 1B, runs on CPU/MPS/GPU.
+            Install: ``pip install transformers>=5.0.0``
+          ``"Qwen/Qwen2.5-VL-7B-Instruct"`` (65.5) — 7B, needs GPU.
+
+        - **Remote (via ``client=``):**
+          ``"gpt-4o"`` (69.9), ``"gemini-2.0-flash"`` (63.8).
 
         Args:
             model: HuggingFace model ID or remote model name.
