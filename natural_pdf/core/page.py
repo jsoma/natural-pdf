@@ -714,7 +714,7 @@ class Page(
         """Apply OCR to the entire page.
 
         Args:
-            engine: OCR engine — ``"easyocr"`` (default), ``"surya"``,
+            engine: OCR engine — ``"rapidocr"`` (default), ``"easyocr"``, ``"surya"``,
                 ``"paddle"``, ``"paddlevl"``, ``"doctr"``, ``"vlm"``,
                 ``"dots"`` (dots.mocr), ``"glm_ocr"``, or ``"chandra"``.
                 ``"dots"``, ``"glm_ocr"``, and ``"chandra"`` auto-select MLX on Apple

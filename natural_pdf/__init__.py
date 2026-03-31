@@ -60,7 +60,7 @@ class Options:
         self.image = ConfigSection(width=None, resolution=150)
 
         # OCR defaults
-        self.ocr = ConfigSection(engine="easyocr", languages=["en"], min_confidence=0.5)
+        self.ocr = ConfigSection(engine="rapidocr", languages=["en"], min_confidence=0.5)
 
         # Text extraction defaults (empty for now)
         self.text = ConfigSection()

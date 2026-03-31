@@ -837,8 +837,8 @@ class PDF(
         supports multiple OCR engines and provides batch processing for efficiency.
 
         Args:
-            engine: OCR engine — ``"easyocr"`` (default), ``"surya"``,
-                ``"paddle"``, ``"paddlevl"``, ``"doctr"``, ``"rapidocr"``,
+            engine: OCR engine — ``"rapidocr"`` (default), ``"easyocr"``, ``"surya"``,
+                ``"paddle"``, ``"paddlevl"``, ``"doctr"``,
                 or ``"vlm"`` (requires ``model=``/``client=`` or a default
                 client via ``natural_pdf.set_default_client()``).
                 If None, uses the global default from natural_pdf.options.ocr.engine.

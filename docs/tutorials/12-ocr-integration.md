@@ -27,7 +27,7 @@ The core method is `page.apply_ocr()`. This runs the OCR process and adds `TextE
 **Tip:** After applying OCR, you can use [spatial navigation](08-spatial-navigation.md) to extract values relative to labels. For example, find "Total:" with OCR, then use `.right()` to get the value next to it.
 
 ```python
-# Apply OCR using the default engine (EasyOCR) for English
+# Apply OCR using the default engine (RapidOCR) for English
 page.apply_ocr(languages=['en'])
 
 # Select all text pieces found by OCR
@@ -359,8 +359,8 @@ Any engine that works with `apply_ocr()` works with `compare_ocr()`:
 
 | Engine | Install | Speed | Notes |
 |--------|---------|-------|-------|
-| `easyocr` | `pip install easyocr` | Fast | Good default, word-level boxes |
-| `rapidocr` | `pip install rapidocr` | Fast | Lightweight ONNX models (~15MB) |
+| `rapidocr` | `pip install rapidocr` | Fast | Default engine, lightweight ONNX models (~15MB) |
+| `easyocr` | `pip install easyocr` | Fast | Word-level boxes |
 | `surya` | `pip install surya-ocr` | Medium | Line-level boxes |
 | `paddle` | `pip install paddleocr` | Medium | Word-level boxes |
 | `doctr` | `pip install python-doctr` | Medium | Word→line merged boxes |

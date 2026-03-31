@@ -50,7 +50,7 @@ Elements support directional methods that return Regions:
 - Exclusions can be added via `pdf.add_exclusion(lambda page: ...)` — supports Region, ElementCollection, or lists
 
 ### OCR
-Multiple engines: `easyocr` (default), `surya`, `paddle`, `paddlevl`, `doctr`. Applied via `page.apply_ocr(engine="easyocr")`. GLM-OCR (0.9B VLM) works via `engine="vlm"` with `model="zai-org/GLM-OCR"` — runs layout detection + per-region OCR in-process.
+Multiple engines: `rapidocr` (default), `easyocr`, `surya`, `paddle`, `paddlevl`, `doctr`. Applied via `page.apply_ocr(engine="rapidocr")`. GLM-OCR (0.9B VLM) works via `engine="vlm"` with `model="zai-org/GLM-OCR"` — runs layout detection + per-region OCR in-process.
 
 ### Extraction
 - **Structured data**: `page.extract(MyPydanticModel)` or `page.extract(MyPydanticModel, engine="llm", client=...)`
