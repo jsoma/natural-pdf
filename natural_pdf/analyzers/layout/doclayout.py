@@ -91,11 +91,11 @@ class DocLayoutDetector(LayoutDetector):
         options, _ = validate_option_type(options, DocLayoutOptions, "DocLayoutDetector")
 
         import torch
-        from transformers import PPDocLayoutV3ForObjectDetection, PPDocLayoutV3ImageProcessorFast
+        from transformers import PPDocLayoutV3ForObjectDetection, PPDocLayoutV3ImageProcessor
 
         self.logger.info("Loading DocLayout model: %s", options.model_name)
 
-        processor = PPDocLayoutV3ImageProcessorFast.from_pretrained(options.model_name)
+        processor = PPDocLayoutV3ImageProcessor.from_pretrained(options.model_name)
         model = PPDocLayoutV3ForObjectDetection.from_pretrained(options.model_name)
         model.eval()
 

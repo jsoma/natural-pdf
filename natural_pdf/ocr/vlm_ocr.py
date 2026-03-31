@@ -26,6 +26,7 @@ _FAMILY_DEFAULT_CONFIDENCE = {
     "gutenocr": 0.8,
     "glm_ocr": 0.9,
     "dots_mocr": 0.9,
+    "chandra": 0.9,
     "generic": 0.5,
 }
 
@@ -316,7 +317,7 @@ def _get_layout_detector(model_name: str = _LAYOUT_MODEL) -> Any:
                 import torch
                 from transformers import (
                     PPDocLayoutV3ForObjectDetection,
-                    PPDocLayoutV3ImageProcessorFast,
+                    PPDocLayoutV3ImageProcessor,
                 )
             except ImportError as exc:
                 raise RuntimeError(
@@ -325,7 +326,7 @@ def _get_layout_detector(model_name: str = _LAYOUT_MODEL) -> Any:
                 ) from exc
 
             logger.info("Loading layout model %r ...", model_name)
-            processor = PPDocLayoutV3ImageProcessorFast.from_pretrained(model_name)
+            processor = PPDocLayoutV3ImageProcessor.from_pretrained(model_name)
             model = PPDocLayoutV3ForObjectDetection.from_pretrained(model_name)
             model.eval()
 
@@ -484,6 +485,32 @@ def _run_glm_ocr_with_layout(
 
     logger.info("GLM-OCR: recognized text in %d regions.", len(results))
     return results, (img_w, img_h)
+
+
+def resolve_glm_ocr_model() -> str:
+    """Pick the best GLM-OCR model variant for the current platform.
+
+    Returns the MLX 4-bit model on Apple Silicon (requires ``pip install
+    mlx-vlm``), otherwise the full HuggingFace model for GPU/CPU.
+    """
+    import platform
+
+    if platform.machine() == "arm64" and platform.system() == "Darwin":
+        return "mlx-community/GLM-OCR-4bit"
+    return "zai-org/GLM-OCR"
+
+
+def resolve_chandra_model() -> str:
+    """Pick the best Chandra model variant for the current platform.
+
+    Returns the MLX 4-bit model on Apple Silicon (requires ``pip install
+    mlx-vlm``), otherwise the full HuggingFace model for GPU/CPU.
+    """
+    import platform
+
+    if platform.machine() == "arm64" and platform.system() == "Darwin":
+        return "mlx-community/chandra-4bit"
+    return "datalab-to/chandra"
 
 
 def resolve_dots_model() -> str:
@@ -669,10 +696,6 @@ def _run_dots_mocr(
     img_w, img_h = image.size
     logger.info("dots.mocr: running on %dx%d image ...", img_w, img_h)
 
-    # dots.mocr outputs dense layout JSON that easily exceeds 4096 tokens
-    if max_new_tokens <= 4096:
-        max_new_tokens = 24000
-
     raw_response = generate(
         image,
         DOTS_MOCR_PROMPT,
@@ -733,6 +756,162 @@ def create_table_regions_from_ocr(
     return non_table, regions
 
 
+# ---------------------------------------------------------------------------
+# Chandra: VLM-based OCR with HTML layout output
+# ---------------------------------------------------------------------------
+
+# Labels whose div content should be skipped (no useful text).
+_CHANDRA_SKIP_LABELS = {"image", "figure"}
+
+# Chandra v0.1.x uses data-bbox="[x0, y0, x1, y1]" (bracket notation).
+# We accept both bracket and bare formats for robustness.
+_RE_DIV_BBOX = re.compile(
+    r'<div[^>]*\bdata-bbox="([^"]+)"[^>]*\bdata-label="([^"]+)"[^>]*>(.*?)</div>',
+    re.DOTALL | re.IGNORECASE,
+)
+_RE_DIV_BBOX_ALT = re.compile(
+    r'<div[^>]*\bdata-label="([^"]+)"[^>]*\bdata-bbox="([^"]+)"[^>]*>(.*?)</div>',
+    re.DOTALL | re.IGNORECASE,
+)
+_RE_HTML_TAGS = re.compile(r"<[^>]+>")
+
+
+def _parse_bbox_str(bbox_str: str) -> Optional[Tuple[float, float, float, float]]:
+    """Parse a bbox string in either ``[x0, y0, x1, y1]`` or ``x0 y0 x1 y1`` format."""
+    s = bbox_str.strip().strip("[]")
+    # Handle both comma-separated and space-separated
+    if "," in s:
+        parts = [p.strip() for p in s.split(",")]
+    else:
+        parts = s.split()
+    if len(parts) != 4:
+        return None
+    try:
+        return tuple(float(p) for p in parts)  # type: ignore[return-value]
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_chandra_response(raw: str, img_w: int, img_h: int) -> List[Dict[str, Any]]:
+    """Parse Chandra's HTML layout output into OCR result dicts.
+
+    Chandra v0.1.x returns HTML divs with ``data-bbox="[x0, y0, x1, y1]"``
+    (normalized 0–1024) and ``data-label="Label"`` attributes.  We extract
+    the text content, strip HTML tags, and convert bbox to pixel coordinates.
+    """
+    default_conf = _FAMILY_DEFAULT_CONFIDENCE["chandra"]
+    results: List[Dict[str, Any]] = []
+
+    # Try both attribute orderings
+    matches = _RE_DIV_BBOX.findall(raw)
+    if matches:
+        parsed = [(bbox_str, label, content) for bbox_str, label, content in matches]
+    else:
+        matches_alt = _RE_DIV_BBOX_ALT.findall(raw)
+        parsed = [(bbox_str, label, content) for label, bbox_str, content in matches_alt]
+
+    for bbox_str, label, content in parsed:
+        label_lower = label.strip().lower()
+        if label_lower in _CHANDRA_SKIP_LABELS:
+            continue
+
+        # Parse bbox — "[x0, y0, x1, y1]" normalized 0-1024
+        coords = _parse_bbox_str(bbox_str)
+        if coords is None:
+            continue
+        nx0, ny0, nx1, ny1 = coords
+
+        # Convert from 0-1024 normalized to pixel coordinates
+        x0 = nx0 / 1024.0 * img_w
+        y0 = ny0 / 1024.0 * img_h
+        x1 = nx1 / 1024.0 * img_w
+        y1 = ny1 / 1024.0 * img_h
+
+        if x0 > x1:
+            x0, x1 = x1, x0
+        if y0 > y1:
+            y0, y1 = y1, y0
+        if x1 - x0 < 0.1 or y1 - y0 < 0.1:
+            continue
+
+        # Check if this is a table — keep raw HTML, convert to TSV for text
+        is_table = label_lower == "table" and "<table" in content.lower()
+        raw_html = None
+        if is_table:
+            raw_html = content.strip()
+            text = _html_table_to_tsv(content)
+        else:
+            # Strip HTML tags for plain text
+            text = _RE_HTML_TAGS.sub("", content)
+            text = re.sub(r"  +", " ", text)
+            text = re.sub(r"\n{3,}", "\n\n", text)
+            text = text.strip()
+
+        if not text:
+            continue
+
+        result_dict: Dict[str, Any] = {
+            "bbox": [x0, y0, x1, y1],
+            "text": text,
+            "confidence": default_conf,
+            "source_category": label.strip(),
+        }
+        if raw_html:
+            result_dict["raw_html"] = raw_html
+        results.append(result_dict)
+
+    return results
+
+
+def _run_chandra(
+    host: Any,
+    *,
+    model: Optional[str],
+    client: Optional[Any],
+    resolution: int,
+    render_kwargs: Optional[Dict[str, Any]],
+    max_new_tokens: int,
+) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
+    """Run Chandra VLM for combined layout detection + OCR.
+
+    Chandra returns HTML with data-bbox attributes in 0-1000 normalized
+    coordinates. This function handles rendering, inference, parsing,
+    and coordinate conversion.
+    """
+    from natural_pdf.core.vlm_client import generate
+    from natural_pdf.core.vlm_prompts import CHANDRA_OCR_LAYOUT_PROMPT
+
+    render_fn = getattr(host, "render", None)
+    if not callable(render_fn):
+        raise AttributeError("Host object does not support render() for VLM OCR.")
+
+    kwargs = dict(render_kwargs or {})
+    with pdf_render_lock:
+        image = render_fn(resolution=resolution, **kwargs)
+
+    if not isinstance(image, Image.Image):
+        raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
+
+    img_w, img_h = image.size
+    logger.info("Chandra: running on %dx%d image ...", img_w, img_h)
+
+    raw_response = generate(
+        image,
+        CHANDRA_OCR_LAYOUT_PROMPT,
+        model=model,
+        client=client,
+        max_new_tokens=max_new_tokens,
+    )
+
+    logger.info("Chandra: received %d-char response.", len(raw_response))
+    logger.debug("Chandra raw response (first 500 chars): %s", raw_response[:500])
+
+    results = _parse_chandra_response(raw_response, img_w, img_h)
+    logger.info("Chandra: parsed %d text regions.", len(results))
+
+    return results, (img_w, img_h)
+
+
 def run_vlm_ocr(
     host: Any,
     *,
@@ -740,7 +919,7 @@ def run_vlm_ocr(
     client: Optional[Any] = None,
     resolution: int = 144,
     render_kwargs: Optional[Dict[str, Any]] = None,
-    max_new_tokens: int = 4096,
+    max_new_tokens: Optional[int] = None,
     prompt: Optional[str] = None,
     instructions: Optional[str] = None,
     languages: Optional[List[str]] = None,
@@ -764,8 +943,11 @@ def run_vlm_ocr(
         Tuple of (ocr_results, (image_width, image_height)).
         ``ocr_results`` are in *image* pixel coordinates (not yet scaled).
     """
-    from natural_pdf.core.vlm_client import generate, get_default_client
+    from natural_pdf.core.vlm_client import DEFAULT_VLM_MAX_TOKENS, generate, get_default_client
     from natural_pdf.core.vlm_prompts import build_ocr_prompt, detect_model_family
+
+    if max_new_tokens is None:
+        max_new_tokens = DEFAULT_VLM_MAX_TOKENS
 
     # Resolve effective model name for family detection
     effective_model = model
@@ -787,6 +969,15 @@ def run_vlm_ocr(
         )
     elif family == "dots_mocr":
         return _run_dots_mocr(
+            host,
+            model=model,
+            client=client,
+            resolution=resolution,
+            render_kwargs=render_kwargs,
+            max_new_tokens=max_new_tokens,
+        )
+    elif family == "chandra":
+        return _run_chandra(
             host,
             model=model,
             client=client,

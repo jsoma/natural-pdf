@@ -399,37 +399,50 @@ class DoctrOCREngine(OCREngine):
             return standardized_regions
 
         # Process results page by page (we typically process one image at a time)
+        # Merge words into lines so that extract_text() gets proper spacing.
+        # doctr produces word-level boxes; other engines produce line-level.
+        # Without merging, adjacent words like "NAPLES," and "FLORIDA" get
+        # concatenated without spaces because the bbox gap is below x_tolerance.
         for page in cast(Iterable[Any], pages_obj):
-            # Extract information from blocks, lines, words
             for block in page.blocks:
                 for line in block.lines:
+                    line_words = []
                     for word in line.words:
                         if word.confidence >= min_confidence:
                             try:
-                                # doctr geometry is ((x_min, y_min), (x_max, y_max)) as relative coordinates
                                 x_min, y_min = word.geometry[0]
                                 x_max, y_max = word.geometry[1]
-
-                                # Denormalize coordinates to absolute pixel values
-                                bbox = (
-                                    float(x_min * image_width),
-                                    float(y_min * image_height),
-                                    float(x_max * image_width),
-                                    float(y_max * image_height),
-                                )
-
                                 text_value = "" if detect_only else str(getattr(word, "value", ""))
                                 confidence_raw = getattr(word, "confidence", 0.0)
-                                confidence_value = float(confidence_raw or 0.0)
-
-                                standardized_regions.append(
-                                    TextRegion(bbox, text_value, confidence_value)
+                                line_words.append(
+                                    {
+                                        "x_min": x_min,
+                                        "y_min": y_min,
+                                        "x_max": x_max,
+                                        "y_max": y_max,
+                                        "text": text_value,
+                                        "confidence": float(confidence_raw or 0.0),
+                                    }
                                 )
                             except (ValueError, TypeError, IndexError) as e:
                                 logger.error(
                                     f"Could not standardize bounding box/word from doctr result: {word}"
                                 )
                                 logger.error(f"Error: {e}")
+
+                    if not line_words:
+                        continue
+
+                    # Merge words into a single line-level TextRegion
+                    line_text = " ".join(w["text"] for w in line_words)
+                    line_bbox = (
+                        float(min(w["x_min"] for w in line_words) * image_width),
+                        float(min(w["y_min"] for w in line_words) * image_height),
+                        float(max(w["x_max"] for w in line_words) * image_width),
+                        float(max(w["y_max"] for w in line_words) * image_height),
+                    )
+                    avg_confidence = sum(w["confidence"] for w in line_words) / len(line_words)
+                    standardized_regions.append(TextRegion(line_bbox, line_text, avg_confidence))
 
         return standardized_regions
 

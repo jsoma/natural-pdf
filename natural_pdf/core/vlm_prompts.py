@@ -92,10 +92,11 @@ def languages_to_hint(languages: Optional[List[str]]) -> str:
 def detect_model_family(model_name: str | None) -> str:
     """Detect the VLM model family from the model name string.
 
-    Returns ``"gutenocr"``, ``"glm_ocr"``, ``"dots_mocr"``, ``"qwen_vl"``,
-    ``"gemini"``, ``"openai"``, or ``"generic"``.
-    GutenOCR and dots.mocr are checked before qwen_vl because they are
-    built on Qwen architectures and would otherwise match the qwen pattern.
+    Returns ``"gutenocr"``, ``"glm_ocr"``, ``"dots_mocr"``, ``"chandra"``,
+    ``"qwen_vl"``, ``"gemini"``, ``"openai"``, or ``"generic"``.
+    GutenOCR, dots.mocr, and Chandra are checked before qwen_vl because
+    they are built on Qwen architectures and would otherwise match the
+    qwen pattern.
     """
     if model_name is None:
         return "generic"
@@ -105,6 +106,8 @@ def detect_model_family(model_name: str | None) -> str:
         return "glm_ocr"
     if re.search(r"(?i)dots[\.\-_]?mocr", model_name):
         return "dots_mocr"
+    if re.search(r"(?i)chandra", model_name):
+        return "chandra"
     if re.search(r"(?i)qwen.*vl", model_name):
         return "qwen_vl"
     if re.search(r"(?i)gemini", model_name):
@@ -195,6 +198,94 @@ DOTS_MOCR_PROMPT = (
 )
 
 
+# Chandra v0.1.x prompt (matches mlx-community/chandra-4bit, datalab-to/chandra).
+# The v0.2.0+ prompt differs (0-1000 normalization, extra labels/tags) and
+# targets datalab-to/chandra-ocr-2 — the pip package (engine="chandra2")
+# handles that internally.
+_CHANDRA_ALLOWED_TAGS = [
+    "math",
+    "br",
+    "i",
+    "b",
+    "u",
+    "del",
+    "sup",
+    "sub",
+    "table",
+    "tr",
+    "td",
+    "p",
+    "th",
+    "div",
+    "pre",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "ul",
+    "ol",
+    "li",
+    "input",
+    "a",
+    "span",
+    "img",
+    "hr",
+    "tbody",
+    "small",
+    "caption",
+    "strong",
+    "thead",
+    "big",
+    "code",
+]
+_CHANDRA_ALLOWED_ATTRIBUTES = [
+    "class",
+    "colspan",
+    "rowspan",
+    "display",
+    "checked",
+    "type",
+    "border",
+    "value",
+    "style",
+    "href",
+    "alt",
+    "align",
+]
+
+CHANDRA_OCR_LAYOUT_PROMPT = f"""OCR this image to HTML, arranged as layout blocks.  Each layout block should be a div with the data-bbox attribute representing the bounding box of the block in [x0, y0, x1, y1] format.  Bboxes are normalized 0-1024. The data-label attribute is the label for the block.
+
+Use the following labels:
+- Caption
+- Footnote
+- Equation-Block
+- List-Group
+- Page-Header
+- Page-Footer
+- Image
+- Section-Header
+- Table
+- Text
+- Complex-Block
+- Code-Block
+- Form
+- Table-Of-Contents
+- Figure
+
+Only use these tags {_CHANDRA_ALLOWED_TAGS}, and these attributes {_CHANDRA_ALLOWED_ATTRIBUTES}.
+
+Guidelines:
+* Inline math: Surround math with <math>...</math> tags. Math expressions should be rendered in KaTeX-compatible LaTeX. Use display for block math.
+* Tables: Use colspan and rowspan attributes to match table structure.
+* Formatting: Maintain consistent formatting with the image, including spacing, indentation, subscripts/superscripts, and special characters.
+* Images: Include a description of any images in the alt attribute of an <img> tag. Do not fill out the src property.
+* Forms: Mark checkboxes and radio buttons properly.
+* Text: join lines together properly into paragraphs using <p>...</p> tags.  Use <br> tags for line breaks within paragraphs, but only when absolutely necessary to maintain meaning.
+* Use the simplest possible HTML structure that accurately represents the content of the block.
+* Make sure the text is accurate and easy for a human to read and interpret.  Reading order should be correct and natural."""
+
+
 def build_conversion_prompt(*, format: str = "markdown") -> str:
     """Return a prompt for document-to-text conversion.
 
@@ -240,4 +331,6 @@ def build_ocr_prompt(
         return GLM_OCR_PROMPT
     if family == "dots_mocr":
         return DOTS_MOCR_PROMPT
+    if family == "chandra":
+        return CHANDRA_OCR_LAYOUT_PROMPT
     return f"{hint} {OCR_GROUNDING_PROMPT}" if hint else OCR_GROUNDING_PROMPT
