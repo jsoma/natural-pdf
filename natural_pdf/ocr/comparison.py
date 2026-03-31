@@ -13,6 +13,28 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 logger = logging.getLogger(__name__)
 
 
+def _load_font(size: int):
+    """Load a TrueType font at the given size, with robust fallback chain."""
+    from PIL import ImageFont
+
+    for name in (
+        "Arial.ttf",
+        "DejaVuSans.ttf",
+        "Helvetica.ttc",
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ):
+        try:
+            return ImageFont.truetype(name, size)
+        except (OSError, IOError):
+            continue
+    # Pillow 10+ supports size param on load_default
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:
+        return ImageFont.load_default()
+
+
 # ---------------------------------------------------------------------------
 # Text normalization
 # ---------------------------------------------------------------------------
@@ -374,13 +396,7 @@ class OcrComparison:
                 if render_text and hasattr(elem, "text") and elem.text:
                     box_h = bottom - top
                     font_size = max(8, int(box_h * 0.7))
-                    try:
-                        font = ImageFont.truetype("DejaVuSans.ttf", font_size)
-                    except (OSError, IOError):
-                        try:
-                            font = ImageFont.truetype("Arial.ttf", font_size)
-                        except (OSError, IOError):
-                            font = ImageFont.load_default()
+                    font = _load_font(font_size)
                     draw.text((x0 + 1, top), elem.text, fill=(255, 255, 255, 255), font=font)
 
             panel = Image.alpha_composite(panel, overlay)
@@ -388,12 +404,11 @@ class OcrComparison:
             # Add engine label at top
             label_overlay = Image.new("RGBA", panel.size, (0, 0, 0, 0))
             label_draw = ImageDraw.Draw(label_overlay)
-            try:
-                label_font = ImageFont.truetype("DejaVuSans.ttf", max(14, int(res / 10)))
-            except (OSError, IOError):
-                label_font = ImageFont.load_default()
-            label_draw.rectangle([0, 0, panel.width, int(res / 5)], fill=(255, 255, 255, 200))
-            label_draw.text((5, 2), engine, fill=rgb + (255,), font=label_font)
+            label_size = max(18, int(res / 7))
+            label_font = _load_font(label_size)
+            banner_h = label_size + 8
+            label_draw.rectangle([0, 0, panel.width, banner_h], fill=(255, 255, 255, 200))
+            label_draw.text((8, 4), engine, fill=rgb + (255,), font=label_font)
             panel = Image.alpha_composite(panel, label_overlay)
             panels.append(panel.convert("RGB"))
 
@@ -431,13 +446,7 @@ class OcrComparison:
                 if render_text and hasattr(elem, "text") and elem.text:
                     box_h = bottom - top
                     font_size = max(8, int(box_h * 0.7))
-                    try:
-                        font = ImageFont.truetype("DejaVuSans.ttf", font_size)
-                    except (OSError, IOError):
-                        try:
-                            font = ImageFont.truetype("Arial.ttf", font_size)
-                        except (OSError, IOError):
-                            font = ImageFont.load_default()
+                    font = _load_font(font_size)
                     draw.text((x0 + 1, top), elem.text, fill=(255, 255, 255, 255), font=font)
 
             panel = Image.alpha_composite(panel, overlay).convert("RGB")
@@ -527,14 +536,10 @@ class OcrComparison:
         # Add legend
         from PIL import ImageFont
 
-        legend_h = 20
+        legend_font_size = max(18, int(res / 7))
+        legend_h = legend_font_size + 8
         legend_w = result.width
-        legend = Image.new("RGBA", (legend_w, legend_h * 4), (255, 255, 255, 240))
-        legend_draw = ImageDraw.Draw(legend)
-        try:
-            font = ImageFont.truetype("DejaVuSans.ttf", 12)
-        except (OSError, IOError):
-            font = ImageFont.load_default()
+        font = _load_font(legend_font_size)
 
         items = [
             ("Agreement", (76, 175, 80)),
@@ -544,15 +549,18 @@ class OcrComparison:
         if engine:
             items.append(("Missing", (158, 158, 158)))
 
+        legend = Image.new("RGBA", (legend_w, legend_h * len(items) + 20), (255, 255, 255, 240))
+        legend_draw = ImageDraw.Draw(legend)
+        swatch = max(14, legend_font_size - 2)
         for i, (label, rgb) in enumerate(items):
-            y = i * legend_h + 2
-            legend_draw.rectangle([5, y, 20, y + 14], fill=rgb + (200,))
-            legend_draw.text((25, y), label, fill=(0, 0, 0, 255), font=font)
+            y = i * legend_h + 10
+            legend_draw.rectangle([16, y, 16 + swatch, y + swatch], fill=rgb + (200,))
+            legend_draw.text((16 + swatch + 10, y), label, fill=(0, 0, 0, 255), font=font)
 
         # Stack result + legend
         final = Image.new("RGB", (result.width, result.height + legend.height), (255, 255, 255))
-        final.paste(result.convert("RGB"), (0, 0))
-        final.paste(legend.convert("RGB"), (0, result.height))
+        final.paste(legend.convert("RGB"), (0, 0))
+        final.paste(result.convert("RGB"), (0, legend.height))
         return final
 
     def coverage(self, *, resolution: int | None = None) -> "PIL.Image.Image":
@@ -627,10 +635,8 @@ class OcrComparison:
         result = Image.alpha_composite(base, overlay)
 
         # Legend
-        try:
-            font = ImageFont.truetype("DejaVuSans.ttf", 12)
-        except (OSError, IOError):
-            font = ImageFont.load_default()
+        legend_font_size = max(18, int(res / 7))
+        font = _load_font(legend_font_size)
 
         if is_pairwise:
             items = [
@@ -645,17 +651,18 @@ class OcrComparison:
                 ("1 engine only", (244, 67, 54)),
             ]
 
-        legend_h = 20
-        legend = Image.new("RGBA", (result.width, legend_h * len(items) + 4), (255, 255, 255, 240))
+        legend_h = legend_font_size + 8
+        swatch = max(14, legend_font_size - 2)
+        legend = Image.new("RGBA", (result.width, legend_h * len(items) + 20), (255, 255, 255, 240))
         legend_draw = ImageDraw.Draw(legend)
         for idx, (label, rgb) in enumerate(items):
-            y = idx * legend_h + 2
-            legend_draw.rectangle([5, y, 20, y + 14], fill=rgb + (200,))
-            legend_draw.text((25, y), label, fill=(0, 0, 0, 255), font=font)
+            y = idx * legend_h + 4
+            legend_draw.rectangle([8, y, 8 + swatch, y + swatch], fill=rgb + (200,))
+            legend_draw.text((8 + swatch + 8, y), label, fill=(0, 0, 0, 255), font=font)
 
         final = Image.new("RGB", (result.width, result.height + legend.height), (255, 255, 255))
-        final.paste(result.convert("RGB"), (0, 0))
-        final.paste(legend.convert("RGB"), (0, result.height))
+        final.paste(legend.convert("RGB"), (0, 0))
+        final.paste(result.convert("RGB"), (0, legend.height))
         return final
 
     def _crop_region_base64(
@@ -749,8 +756,8 @@ class OcrComparison:
                 )
             meta_cell = (
                 f'<td style="vertical-align:top;width:80px;background:{bg};color:#222;padding:6px">'
-                f'<b style="font-size:13px">#{i + 1}</b><br>'
-                f'<span style="font-size:11px">{cls}</span>'
+                f'<b style="font-size:15px">#{i + 1}</b><br>'
+                f'<span style="font-size:14px">{cls}</span>'
                 f"{outlier_html}"
                 f"</td>"
             )
@@ -768,14 +775,14 @@ class OcrComparison:
                     if txt is None:
                         lines.append(
                             f'<div style="margin-bottom:4px">'
-                            f'<span style="color:#666;font-size:10px">{eng}:</span> '
+                            f'<span style="color:#666;font-size:13px">{eng}:</span> '
                             f'<span style="color:#999">[missing]</span></div>'
                         )
                     elif other_txt is None:
                         # Other engine missing — show plain (nothing to diff against)
                         lines.append(
                             f'<div style="margin-bottom:4px">'
-                            f'<span style="color:#666;font-size:10px">{eng}:</span> '
+                            f'<span style="color:#666;font-size:13px">{eng}:</span> '
                             f'<span style="color:#222">{_html_escape(txt)}</span></div>'
                         )
                     else:
@@ -783,7 +790,7 @@ class OcrComparison:
                         diff_html = render_char_diff_html(other_txt, txt)
                         lines.append(
                             f'<div style="margin-bottom:4px">'
-                            f'<span style="color:#666;font-size:10px">{eng}:</span> '
+                            f'<span style="color:#666;font-size:13px">{eng}:</span> '
                             f"{diff_html}</div>"
                         )
                 text_content = "".join(lines)
@@ -796,14 +803,14 @@ class OcrComparison:
                     if raw is None:
                         lines.append(
                             f'<div style="margin-bottom:2px">'
-                            f'<span style="color:#666;font-size:10px">{engine}:</span> '
+                            f'<span style="color:#666;font-size:13px">{engine}:</span> '
                             f'<span style="color:#999">[missing]</span></div>'
                         )
                     else:
                         diff_html = render_char_diff_html(consensus, raw)
                         lines.append(
                             f'<div style="margin-bottom:2px">'
-                            f'<span style="color:#666;font-size:10px">{engine}:</span> '
+                            f'<span style="color:#666;font-size:13px">{engine}:</span> '
                             f"{diff_html}</div>"
                         )
                 lines.append(
@@ -823,7 +830,7 @@ class OcrComparison:
 
         html = f"""
         <style>
-            .ocr-diff-table {{ font-family: monospace; font-size: 12px; border-collapse: collapse; color: #222; width: 100%; table-layout: auto; }}
+            .ocr-diff-table {{ font-family: monospace; font-size: 15px; border-collapse: collapse; color: #222; width: 100%; table-layout: auto; }}
             .ocr-diff-table td {{ border: 1px solid #ccc; text-align: left; color: #222; }}
         </style>
         <table class="ocr-diff-table">
