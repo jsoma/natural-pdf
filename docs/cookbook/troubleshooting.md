@@ -539,7 +539,7 @@ pdf = PDF("document.pdf", auto_text_tolerance=False,
 | Selector returns None | `page.find_all('text').show()` — see what text actually exists |
 | Case mismatch | `page.find('text:contains("x")', case=False)` |
 | Low OCR quality | `page.apply_ocr(resolution=300)` or try a different engine |
-| Headers in text | `page.add_exclusion(region)` — see [Excluding Content](../tutorials/05-excluding-content.md) |
+| Headers in text | `page.add_exclusion(region)` — see [Excluding Content](../tutorials/05-excluding-content.ipynb) |
 | Slow layout | `engine='yolo'` is faster than `'tatr'` (but only detects region types, not table structure) |
 
 ## Getting Help

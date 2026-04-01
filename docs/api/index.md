@@ -5,3 +5,6 @@ This section provides detailed documentation for all the classes and methods in 
 ## Core Classes
 
 ::: natural_pdf
+    options:
+      show_source: false
+      show_bases: false

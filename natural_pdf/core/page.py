@@ -2865,6 +2865,9 @@ class Page(
     def detect_checkboxes(self, *args, **kwargs):
         return self.services.checkbox.detect_checkboxes(self, *args, **kwargs)
 
+    def detect_form_cells(self, *args, **kwargs):
+        return self.services.form_cell.detect_form_cells(self, *args, **kwargs)
+
     def annotate_checkboxes(self, resolution: int = 150):
         """Open an interactive widget for manual checkbox annotation.
 

@@ -3149,6 +3149,9 @@ class Region(
     def detect_checkboxes(self, *args, **kwargs):
         return self.services.checkbox.detect_checkboxes(self, *args, **kwargs)
 
+    def detect_form_cells(self, *args, **kwargs):
+        return self.services.form_cell.detect_form_cells(self, *args, **kwargs)
+
     def guides(self, *args, **kwargs):
         return self.services.guides.guides(self, *args, **kwargs)
 

@@ -65,12 +65,13 @@ nav:
     - 07 Layout Analysis: tutorials/07-layout-analysis.ipynb
     - 08 Regions & Flows: tutorials/15-working-with-regions.ipynb
     - 09 Document QA: tutorials/06-document-qa.ipynb
-    - 10 Structured Extraction: tutorials/10-structured-extraction.md
+    - 10 Structured Extraction: cookbook/structured-extraction.md
     - 11 Batch Processing: cookbook/batch-processing.md
   - Cookbook:
     - One Page = One Row: cookbook/one-page-one-row.md
     - Label-Value Extraction: cookbook/label-value-extraction.md
     - Guides: cookbook/guides.md
+    - Form Cells: cookbook/form-cells.md
     - Messy Tables: cookbook/messy-tables.md
     - Multi-Column Layouts: cookbook/multi-column-layouts.md
     - OCR Then Navigate: cookbook/ocr-then-navigate.md
@@ -157,7 +158,7 @@ plugins:
       handlers:
         python:
           options:
-            show_source: true
+            show_source: false
             show_category_heading: true
             show_root_heading: true
             show_object_full_path: true

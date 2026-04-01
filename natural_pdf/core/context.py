@@ -40,6 +40,8 @@ class PDFContext:
             factories["shapes"] = self._default_shape_factory()
         if "checkbox" not in factories:
             factories["checkbox"] = self._default_checkbox_factory()
+        if "form_cell" not in factories:
+            factories["form_cell"] = self._default_form_cell_factory()
         if "guides" not in factories:
             factories["guides"] = self._default_guides_factory()
         if "layout" not in factories:
@@ -185,6 +187,15 @@ class PDFContext:
 
         def factory(context: "PDFContext") -> ShapeDetectionService:
             return ShapeDetectionService(context)
+
+        return factory
+
+    @staticmethod
+    def _default_form_cell_factory() -> ServiceFactory:
+        from natural_pdf.services.form_cell_service import FormCellService
+
+        def factory(context: "PDFContext") -> FormCellService:
+            return FormCellService(context)
 
         return factory
 

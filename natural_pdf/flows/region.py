@@ -658,11 +658,16 @@ class FlowRegion(
         if not self.constituent_regions:
             return ""
 
-        from natural_pdf.elements.element_collection import ElementCollection
+        # Delegate to each constituent Region.extract_text() directly.
+        # This avoids mixing char-level and word-level elements in a single
+        # ElementCollection, which would cause doubled/interleaved text.
+        parts = []
+        for region in self.constituent_regions:
+            text = region.extract_text(apply_exclusions=apply_exclusions, **kwargs)
+            if text:
+                parts.append(text)
 
-        elements = self.elements(apply_exclusions=apply_exclusions)
-        # ElementCollection.extract_text handles ordering and layout-specific kwargs.
-        extracted = elements.extract_text(**kwargs)
+        extracted = "\n\n".join(parts)
 
         if not extracted:
             return ""

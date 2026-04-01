@@ -78,9 +78,9 @@ Natural PDF supports multiple OCR engines:
 | `dots` | dots.mocr — combined layout + OCR. MLX-optimized on Apple Silicon. | `pip install mlx-vlm` or `pip install transformers torch` |
 | `chandra` | VLM-based successor to Surya. | `pip install chandra-ocr[hf]` |
 
-GLM-OCR (0.9B VLM) is also available via `engine="vlm"` with automatic layout detection — see the [OCR tutorial](../tutorials/12-ocr-integration.md#glm-ocr).
+GLM-OCR (0.9B VLM) is also available via `engine="vlm"` with automatic layout detection — see the [OCR tutorial](../tutorials/12-ocr-integration.ipynb#glm-ocr).
 
-Not sure which engine to use? Compare them side by side with `page.compare_ocr(engines=["rapidocr", "easyocr"])` — see [Comparing OCR Engines](../tutorials/12-ocr-integration.md#comparing-ocr-engines).
+Not sure which engine to use? Compare them side by side with `page.compare_ocr(engines=["rapidocr", "easyocr"])` — see [Comparing OCR Engines](../tutorials/12-ocr-integration.ipynb#comparing-ocr-engines).
 
 ```python
 # Use a specific engine
@@ -170,7 +170,7 @@ for cb in checkboxes:
     print(f"  {status}: {label}")
 ```
 
-See the [OCR Integration tutorial](../tutorials/12-ocr-integration.md#detecting-checkboxes) for engine options and details.
+See the [OCR Integration tutorial](../tutorials/12-ocr-integration.ipynb#detecting-checkboxes) for engine options and details.
 
 ## Complete Example
 

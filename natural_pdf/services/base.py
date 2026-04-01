@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from natural_pdf.services.describe_service import DescribeService
     from natural_pdf.services.exclusion_service import ExclusionService
     from natural_pdf.services.extraction_service import ExtractionService
+    from natural_pdf.services.form_cell_service import FormCellService
     from natural_pdf.services.guides_service import GuidesService
     from natural_pdf.services.layout_service import LayoutService
     from natural_pdf.services.navigation_service import NavigationService
@@ -53,6 +54,10 @@ class ServiceNamespace:
     @property
     def extraction(self) -> ExtractionService:
         return self._context.get_service("extraction")
+
+    @property
+    def form_cell(self) -> FormCellService:
+        return self._context.get_service("form_cell")
 
     @property
     def guides(self) -> GuidesService:

@@ -36,6 +36,7 @@ _CAPABILITY_MODULES = {
     "describe": "natural_pdf.services.describe_service",
     "exclusion": "natural_pdf.services.exclusion_service",
     "extraction": "natural_pdf.services.extraction_service",
+    "form_cell": "natural_pdf.services.form_cell_service",
     "guides": "natural_pdf.services.guides_service",
     "layout": "natural_pdf.services.layout_service",
     "navigation": "natural_pdf.services.navigation_service",
