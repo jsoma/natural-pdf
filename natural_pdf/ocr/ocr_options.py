@@ -207,6 +207,12 @@ class PaddleOCRVLOptions(BaseOCROptions):
     use_doc_unwarping: Optional[bool] = None
     format_block_content: Optional[bool] = None
 
+    # Predict-time VLM generation parameters
+    max_new_tokens: Optional[int] = None
+    temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    repetition_penalty: Optional[float] = None
+
     def _init_key(self) -> str:
         return (
             f"{self.pipeline_version}|{self.use_layout_detection}|"

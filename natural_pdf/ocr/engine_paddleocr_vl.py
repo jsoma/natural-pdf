@@ -124,7 +124,15 @@ class PaddleOCRVLEngine(OCREngine):
         if not isinstance(image, np.ndarray):
             raise TypeError("PaddleOCRVLEngine expects preprocessed numpy arrays")
 
-        raw_results = self._model.predict(image)
+        # Forward VLM generation params from options to predict()
+        predict_kwargs: Dict[str, Any] = {}
+        if isinstance(options, PaddleOCRVLOptions):
+            for param in ("max_new_tokens", "temperature", "top_p", "repetition_penalty"):
+                value = getattr(options, param, None)
+                if value is not None:
+                    predict_kwargs[param] = value
+
+        raw_results = self._model.predict(image, **predict_kwargs)
         return raw_results
 
     def _standardize_results(

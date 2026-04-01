@@ -209,14 +209,15 @@ class TestPaddleOCRVLEngineUnit:
 
         assert len(regions) == 0
 
-    def test_skip_unknown_labels(self):
-        """Unknown block labels should be ignored (allowlist-based filtering)."""
+    def test_skip_visual_labels(self):
+        """Visual-only block labels (image, figure, chart, seal) should be skipped."""
         engine = PaddleOCRVLEngine()
         blocks = [
-            self._make_block("formula", [10, 20, 200, 50], "E=mc^2"),
-            self._make_block("caption", [10, 60, 200, 80], "Figure 1"),
-            self._make_block("footnote_mark", [10, 90, 200, 100], "1"),
-            self._make_block("text", [10, 110, 200, 130], "Kept"),
+            self._make_block("image", [10, 20, 200, 50], "photo caption"),
+            self._make_block("figure", [10, 60, 200, 80], "diagram"),
+            self._make_block("chart", [10, 90, 200, 100], "pie chart"),
+            self._make_block("seal", [10, 110, 200, 130], "stamp"),
+            self._make_block("text", [10, 140, 200, 160], "Kept"),
         ]
         raw_results = [self._make_result(blocks)]
         regions = engine._standardize_results(raw_results, min_confidence=0.0, detect_only=False)

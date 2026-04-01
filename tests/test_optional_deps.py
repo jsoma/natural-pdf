@@ -68,13 +68,11 @@ def are_optional_deps_installed():
     """
     try:
         # Check multiple packages to be more certain we're in a full environment
-        sentinel_packages = ["easyocr", "paddleocr", "surya-ocr", "doclayout_yolo"]
+        sentinel_packages = ["easyocr", "paddleocr", "doclayout_yolo"]
         installed_count = 0
         for pkg in sentinel_packages:
             try:
-                if pkg == "surya-ocr":
-                    importlib.import_module("surya")
-                elif pkg == "doclayout_yolo":
+                if pkg == "doclayout_yolo":
                     importlib.import_module("doclayout_yolo")
                 else:
                     importlib.import_module(pkg)
@@ -88,7 +86,7 @@ def are_optional_deps_installed():
 
 
 def _package_available(package_name: str) -> bool:
-    module_name = "surya" if package_name == "surya" else package_name
+    module_name = package_name
     try:
         importlib.import_module(module_name)
     except ImportError:
@@ -118,7 +116,6 @@ def test_page_viewer_widget_creation_when_installed(standard_pdf_page):
     [
         ("easyocr", "easyocr"),
         ("paddle", "paddleocr"),
-        ("surya", "surya"),
         ("doctr", "doctr"),
         ("yolo", "doclayout_yolo"),
         ("vlm", "openai"),
@@ -130,13 +127,11 @@ def test_engine_works_when_installed(needs_ocr_pdf_page, standard_pdf_page, engi
 
     if engine == "paddle" and sys.platform == "darwin":
         pytest.skip("PaddleOCR tests skipped on macOS")
-    if engine in ["surya"] and sys.version_info < (3, 10):
-        pytest.skip(f"{engine} tests skipped on Python < 3.10")
 
     try:
-        if engine in ["easyocr", "paddle", "surya", "doctr"]:
+        if engine in ["easyocr", "paddle", "doctr"]:
             result = needs_ocr_pdf_page.apply_ocr(engine=engine)
-        elif engine in ["yolo", "surya", "vlm"]:
+        elif engine in ["yolo", "vlm"]:
             # VLM requires classes, so we provide a default list for testing
             if engine == "vlm":
                 pytest.importorskip("openai")
@@ -161,7 +156,6 @@ def test_engine_works_when_installed(needs_ocr_pdf_page, standard_pdf_page, engi
     [
         ("easyocr", "easyocr"),
         ("paddle", "paddleocr"),
-        ("surya", "surya"),
         ("doctr", "doctr"),
         ("yolo", "doclayout_yolo"),
         ("vlm", "openai"),
@@ -181,7 +175,7 @@ def test_engine_fails_gracefully_when_not_installed(
             f"Skipping failure-path check for '{engine}' because {package_name} is installed."
         )
     with pytest.raises(RuntimeError, match="is not available"):
-        if engine in ["easyocr", "paddle", "surya", "doctr"]:
+        if engine in ["easyocr", "paddle", "doctr"]:
             _ = needs_ocr_pdf_page.apply_ocr(engine=engine)
-        elif engine in ["yolo", "surya", "vlm"]:
+        elif engine in ["yolo", "vlm"]:
             _ = standard_pdf_page.analyze_layout(engine=engine)

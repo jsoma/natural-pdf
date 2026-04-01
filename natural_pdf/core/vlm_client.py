@@ -205,7 +205,12 @@ class _LocalVLMAdapter:
         t0 = time.perf_counter()
 
         with torch.inference_mode():
-            output_ids = self._model.generate(**inputs, max_new_tokens=max_new_tokens)
+            output_ids = self._model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+                repetition_penalty=1.1,
+            )
 
         generated = output_ids[0][inputs.input_ids.shape[1] :]
         n_tokens = len(generated)
@@ -217,9 +222,11 @@ class _LocalVLMAdapter:
 
         if n_tokens >= max_new_tokens:
             logger.warning(
-                "VLM output was truncated (generated %d tokens = max_new_tokens). "
-                "Output may be incomplete — consider increasing max_new_tokens.",
+                "VLM output was truncated (generated %d tokens = max_new_tokens=%d). "
+                "Output may be incomplete or repetitive. If processing dense text, "
+                "pass a higher max_new_tokens.",
                 n_tokens,
+                max_new_tokens,
             )
 
         return self._processor.decode(generated, skip_special_tokens=True)
@@ -318,9 +325,11 @@ class _MLXVLMAdapter:
 
             if n_tokens >= max_new_tokens:
                 logger.warning(
-                    "MLX VLM output was truncated (generated %d tokens = max_new_tokens). "
-                    "Output may be incomplete — consider increasing max_new_tokens.",
+                    "MLX VLM output was truncated (generated %d tokens = max_new_tokens=%d). "
+                    "Output may be incomplete or repetitive. If processing dense text, "
+                    "pass a higher max_new_tokens.",
                     n_tokens,
+                    max_new_tokens,
                 )
 
             return output
@@ -480,8 +489,8 @@ def _generate_remote(
     if finish_reason == "length":
         logger.warning(
             "VLM output was truncated (finish_reason='length', model=%s, "
-            "max_new_tokens=%d). Output may be incomplete — consider increasing "
-            "max_new_tokens.",
+            "max_new_tokens=%d). Output may be incomplete or repetitive. "
+            "If processing dense text, pass a higher max_new_tokens.",
             model,
             max_new_tokens,
         )

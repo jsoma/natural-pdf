@@ -391,6 +391,211 @@ def _detect_layout_regions(
     return regions
 
 
+def _suppress_contained_regions(
+    regions: List[Dict[str, Any]],
+    *,
+    nms_iou_same: float = 0.6,
+    nms_iou_diff: float = 0.95,
+    overlap_threshold: float = 0.7,
+    min_box_size: int = 6,
+) -> List[Dict[str, Any]]:
+    """Remove overlapping layout regions to avoid duplicate OCR.
+
+    Reproduces the three-stage strategy used by PaddleOCR-VL's native
+    pipeline (which only runs on the non-MLX path):
+
+    1. **Class-aware NMS** — greedy suppression sorted by confidence.
+       Same-label boxes suppressed at IoU >= *nms_iou_same* (0.6),
+       cross-label at IoU >= *nms_iou_diff* (0.95).
+    2. **Overlap filter** — pairwise check using "small" mode
+       (intersection / smaller area).  When ratio > *overlap_threshold*
+       (0.7), the smaller-area box is dropped.  Boxes smaller than
+       *min_box_size* in either dimension are also dropped.
+    """
+    if len(regions) <= 1:
+        return regions
+
+    def _area(b: List[float]) -> float:
+        return max(0.0, b[2] - b[0]) * max(0.0, b[3] - b[1])
+
+    def _intersection_area(a: List[float], b: List[float]) -> float:
+        ix0 = max(a[0], b[0])
+        iy0 = max(a[1], b[1])
+        ix1 = min(a[2], b[2])
+        iy1 = min(a[3], b[3])
+        return max(0.0, ix1 - ix0) * max(0.0, iy1 - iy0)
+
+    def _iou(a: List[float], b: List[float]) -> float:
+        inter = _intersection_area(a, b)
+        union = _area(a) + _area(b) - inter
+        return inter / union if union > 0 else 0.0
+
+    # --- Stage 1: class-aware NMS (greedy, sorted by confidence desc) ---
+    order = sorted(
+        range(len(regions)),
+        key=lambda i: regions[i].get("confidence", 0.0),
+        reverse=True,
+    )
+    keep: List[bool] = [True] * len(regions)
+
+    for pos, i in enumerate(order):
+        if not keep[i]:
+            continue
+        bbox_i = regions[i]["bbox"]
+        label_i = regions[i].get("label", "")
+        for j in order[pos + 1 :]:
+            if not keep[j]:
+                continue
+            bbox_j = regions[j]["bbox"]
+            label_j = regions[j].get("label", "")
+            iou_val = _iou(bbox_i, bbox_j)
+            threshold = nms_iou_same if label_i == label_j else nms_iou_diff
+            if iou_val >= threshold:
+                keep[j] = False
+
+    # --- Stage 2: pairwise overlap filter ("small" mode) + min-size ---
+    survivors = [i for i in range(len(regions)) if keep[i]]
+
+    dropped: set = set()
+    for i in survivors:
+        bbox_i = regions[i]["bbox"]
+        w = bbox_i[2] - bbox_i[0]
+        h = bbox_i[3] - bbox_i[1]
+        if w < min_box_size or h < min_box_size:
+            dropped.add(i)
+
+    for ai, i in enumerate(survivors):
+        if i in dropped:
+            continue
+        bbox_i = regions[i]["bbox"]
+        area_i = _area(bbox_i)
+        for j in survivors[ai + 1 :]:
+            if j in dropped:
+                continue
+            bbox_j = regions[j]["bbox"]
+            area_j = _area(bbox_j)
+            inter = _intersection_area(bbox_i, bbox_j)
+            smaller_area = min(area_i, area_j)
+            if smaller_area <= 0:
+                continue
+            ratio = inter / smaller_area
+            if ratio > overlap_threshold:
+                # Drop the smaller box.
+                if area_i >= area_j:
+                    dropped.add(j)
+                else:
+                    dropped.add(i)
+                    break  # i is dropped, stop comparing it
+
+    final = [i for i in survivors if i not in dropped]
+    return [regions[i] for i in final]
+
+
+def _detect_cluster_regions(
+    image: Image.Image,
+    *,
+    expand_px: int = 2,
+    languages: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
+    """Detect text regions by clustering word-level boxes.
+
+    Uses rapidocr in detect-only mode to find word-level bounding boxes,
+    expands each by *expand_px* pixels so nearby boxes overlap, then
+    dissolves overlapping boxes into natural clusters.
+
+    This produces intermediate-granularity regions (typically 30-80 per page)
+    that are well-suited for per-crop VLM recognition. It avoids the
+    pathological case where PP-DocLayout-V3 detects a dense form as one
+    giant "table" region that causes VLM hallucination.
+
+    Args:
+        image: Pre-rendered page image.
+        expand_px: Pixels to expand each word box before dissolving.
+        languages: Language codes for the detection engine.
+
+    Returns:
+        List of region dicts with ``label``, ``bbox``, ``confidence`` keys.
+        Bounding boxes are in image pixel coordinates.
+    """
+    from natural_pdf.ocr.unified_dispatch import run_detection
+
+    img_w, img_h = image.size
+    logger.info(
+        "layout+OCR: running cluster detection on %dx%d image (expand=%dpx) ...",
+        img_w,
+        img_h,
+        expand_px,
+    )
+
+    # Step 1: Get word-level bounding boxes via rapidocr detect-only
+    word_regions = run_detection(image=image, engine_name="rapidocr", languages=languages)
+    if not word_regions:
+        logger.info("layout+OCR: cluster detection found no words.")
+        return []
+
+    logger.info("layout+OCR: cluster detection found %d word boxes.", len(word_regions))
+
+    # Step 2: Expand each box so nearby words overlap, then merge via union-find.
+    boxes = []
+    for r in word_regions:
+        x0, y0, x1, y1 = r["bbox"]
+        boxes.append(
+            [
+                max(0.0, x0 - expand_px),
+                max(0.0, y0 - expand_px),
+                min(float(img_w), x1 + expand_px),
+                min(float(img_h), y1 + expand_px),
+            ]
+        )
+
+    parent = list(range(len(boxes)))
+
+    def _find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def _union(i: int, j: int) -> None:
+        ri, rj = _find(i), _find(j)
+        if ri != rj:
+            parent[ri] = rj
+
+    for i in range(len(boxes)):
+        for j in range(i + 1, len(boxes)):
+            bi, bj = boxes[i], boxes[j]
+            if bi[0] < bj[2] and bi[2] > bj[0] and bi[1] < bj[3] and bi[3] > bj[1]:
+                _union(i, j)
+
+    # Group by cluster root and compute bounding hull
+    from collections import defaultdict
+
+    groups: Dict[int, List[int]] = defaultdict(list)
+    for i in range(len(boxes)):
+        groups[_find(i)].append(i)
+
+    clusters = []
+    for members in groups.values():
+        x0 = min(boxes[m][0] for m in members)
+        y0 = min(boxes[m][1] for m in members)
+        x1 = max(boxes[m][2] for m in members)
+        y1 = max(boxes[m][3] for m in members)
+        clusters.append(
+            {
+                "label": "text",
+                "bbox": [x0, y0, x1, y1],
+                "confidence": 0.9,
+            }
+        )
+
+    logger.info(
+        "layout+OCR: cluster detection merged %d words into %d clusters.",
+        len(word_regions),
+        len(clusters),
+    )
+    return clusters
+
+
 def _run_layout_ocr_on_image(
     image: Image.Image,
     *,
@@ -402,12 +607,22 @@ def _run_layout_ocr_on_image(
     crop_padding: int = 1,
     layout_threshold: float = 0.15,
     skip_labels: Optional[set] = None,
+    detection_engine: Optional[str] = None,
+    use_cluster: bool = False,
+    languages: Optional[List[str]] = None,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
     """Run layout detection + per-crop VLM recognition on a pre-rendered image.
 
-    1. Run PP-DocLayout-V3 to detect layout regions with bounding boxes.
+    1. Detect text regions via PP-DocLayout-V3 (default), a classic
+       OCR engine in detect-only mode (when *detection_engine* is set),
+       or cluster detection (when *use_cluster* is True).
     2. For each text region, crop the image (with padding) and send to VLM.
-    3. Return results with bboxes from layout + text from VLM.
+    3. Return results with bboxes from detection + text from VLM.
+
+    When *use_cluster* is True, detection uses rapidocr in detect-only mode
+    to find word-level boxes, expands each by a small margin, then dissolves
+    overlapping boxes into natural clusters. This avoids the pathological case
+    where PP-DocLayout-V3 detects a dense form as one giant "table" region.
 
     Returns results in image pixel coordinates.
     """
@@ -418,21 +633,55 @@ def _run_layout_ocr_on_image(
 
     img_w, img_h = image.size
 
-    # Step 1: Layout detection
-    logger.info("layout+OCR: running layout detection on %dx%d image ...", img_w, img_h)
-    regions = _detect_layout_regions(image, threshold=layout_threshold)
-    text_regions = [r for r in regions if r["label"] not in skip_labels]
+    # Step 1: Detection
+    if use_cluster:
+        text_regions = _detect_cluster_regions(image, languages=languages)
+        regions = text_regions
+    elif detection_engine is not None:
+        from natural_pdf.ocr.unified_dispatch import run_detection
 
-    skipped = [r for r in regions if r["label"] in skip_labels]
-    if skipped:
-        skipped_summary: Dict[str, int] = {}
-        for r in skipped:
-            skipped_summary[r["label"]] = skipped_summary.get(r["label"], 0) + 1
-        logger.info("layout+OCR: skipped %d visual-only regions: %s", len(skipped), skipped_summary)
+        logger.info(
+            "layout+OCR: running %s detection on %dx%d image ...",
+            detection_engine,
+            img_w,
+            img_h,
+        )
+        regions = run_detection(
+            image=image,
+            engine_name=detection_engine,
+            languages=languages,
+        )
+        text_regions = regions
+    else:
+        logger.info("layout+OCR: running layout detection on %dx%d image ...", img_w, img_h)
+        regions = _detect_layout_regions(image, threshold=layout_threshold)
+        text_regions = [r for r in regions if r["label"] not in skip_labels]
+
+        skipped = [r for r in regions if r["label"] in skip_labels]
+        if skipped:
+            skipped_summary: Dict[str, int] = {}
+            for r in skipped:
+                skipped_summary[r["label"]] = skipped_summary.get(r["label"], 0) + 1
+            logger.info(
+                "layout+OCR: skipped %d visual-only regions: %s", len(skipped), skipped_summary
+            )
 
     if not text_regions:
         logger.info("layout+OCR: no text regions detected, running on full page.")
         text_regions = [{"label": "text", "bbox": [0, 0, img_w, img_h], "confidence": 1.0}]
+
+    if not use_cluster:
+        # Suppress overlapping regions to avoid duplicate OCR results.
+        # (Cluster detection already produces non-overlapping regions.)
+        before_dedup = len(text_regions)
+        text_regions = _suppress_contained_regions(text_regions)
+        if len(text_regions) < before_dedup:
+            logger.info(
+                "layout+OCR: suppressed %d overlapping regions (%d → %d).",
+                before_dedup - len(text_regions),
+                before_dedup,
+                len(text_regions),
+            )
 
     logger.info(
         "layout+OCR: detected %d text regions (of %d total). Running recognition on each ...",
@@ -442,8 +691,13 @@ def _run_layout_ocr_on_image(
 
     # Step 2: Run VLM recognition on each text region
     results = []
+    image_area = img_w * img_h
 
-    for region in text_regions:
+    from tqdm.auto import tqdm
+
+    from natural_pdf.utils.text_utils import detect_repetition
+
+    for region in tqdm(text_regions, desc="OCR regions", unit="region"):
         bbox = region["bbox"]
         x0, y0, x1, y1 = [int(round(v)) for v in bbox]
 
@@ -456,16 +710,35 @@ def _run_layout_ocr_on_image(
         if x1 - x0 < 2 or y1 - y0 < 2:
             continue
 
+        # Scale token budget by region area relative to full image.
+        # 2x safety margin for dense tables/forms; floor of 256 tokens.
+        region_area = (x1 - x0) * (y1 - y0)
+        area_ratio = region_area / image_area
+        region_max = max(256, min(max_new_tokens, int(max_new_tokens * area_ratio * 2)))
+
         crop = image.crop((x0, y0, x1, y1))
         raw_text = generate(
             crop,
             prompt,
             model=model,
             client=client,
-            max_new_tokens=max_new_tokens,
+            max_new_tokens=region_max,
         ).strip()
 
         if not raw_text:
+            continue
+
+        # Detect VLM hallucination: repetitive output that compresses unusually well.
+        if detect_repetition(raw_text):
+            label = region.get("label", "unknown")
+            logger.warning(
+                "Region '%s' produced repetitive output (%d chars, budget %d tokens) "
+                "— discarding. If this region contains dense text, pass a higher "
+                "max_new_tokens.",
+                label,
+                len(raw_text),
+                region_max,
+            )
             continue
 
         results.append(
@@ -987,7 +1260,7 @@ def run_vlm_ocr_on_image(
     prompt: Optional[str] = None,
     instructions: Optional[str] = None,
     languages: Optional[List[str]] = None,
-    layout: Optional[bool] = None,
+    layout: Optional[bool | str] = None,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
     """Run VLM-based OCR on a pre-rendered image.
 
@@ -997,13 +1270,22 @@ def run_vlm_ocr_on_image(
         image: Pre-rendered PIL Image.
         model: HuggingFace model ID or remote model name.
         client: OpenAI-compatible client.
-        max_new_tokens: Max tokens for VLM generation.
+        max_new_tokens: Max tokens for VLM generation. In layout+OCR mode,
+            each region's budget is scaled by its area relative to the
+            full image to prevent VLM hallucination loops.
         prompt: Custom prompt (overrides auto-generated prompt).
         instructions: Additional instructions appended to auto-generated prompt
             (ignored when *prompt* is set).
         languages: Optional language codes for VLM hint.
         layout: If ``True``, run layout detection (PP-DocLayout-V3) first
             and send each cropped region to the VLM for recognition.
+            If ``"cluster"``, use rapidocr detect-only to find word boxes,
+            expand them slightly, and dissolve overlapping boxes into
+            natural clusters. Best for dense forms where PP-DocLayout-V3
+            detects the whole page as one giant "table" region.
+            If another string (e.g. ``"rapidocr"``, ``"paddle"``), use that
+            classic OCR engine in detect-only mode for line-level boxes
+            instead of PP-DocLayout-V3.
             If ``None`` (default), auto-detect based on model family
             (``glm_ocr`` uses layout; grounding models don't).
             If ``False``, always use full-page prompt.
@@ -1026,10 +1308,24 @@ def run_vlm_ocr_on_image(
 
     family = detect_model_family(effective_model)
 
-    # layout=True forces layout+crop pipeline for any model.
-    # layout=None auto-detects (glm_ocr uses layout; others don't).
-    # layout=False forces full-page prompt.
-    use_layout = layout if layout is not None else (family == "glm_ocr")
+    # Unpack layout parameter:
+    #   "cluster" → rapidocr detect-only → expand → dissolve into clusters
+    #   str       → use that engine for detection, force layout pipeline
+    #   True      → PP-DocLayout-V3
+    #   None      → auto-detect per family
+    #   False     → full-page, no layout
+    detection_engine: Optional[str] = None
+    use_cluster = False
+    if isinstance(layout, str):
+        if layout == "cluster":
+            use_cluster = True
+        else:
+            detection_engine = layout
+        use_layout = True
+    elif layout is not None:
+        use_layout = layout
+    else:
+        use_layout = family == "glm_ocr"
 
     if use_layout:
         effective_prompt = prompt or _GLM_OCR_PROMPT
@@ -1041,6 +1337,9 @@ def run_vlm_ocr_on_image(
             max_new_tokens=max_new_tokens,
             prompt=effective_prompt,
             default_confidence=default_conf,
+            detection_engine=detection_engine,
+            use_cluster=use_cluster,
+            languages=languages,
         )
 
     # Family-specific single-pass handlers

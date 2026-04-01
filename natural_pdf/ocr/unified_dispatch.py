@@ -359,7 +359,7 @@ def run_ocr(
     prompt: Optional[str] = None,
     instructions: Optional[str] = None,
     max_new_tokens: Optional[int] = None,
-    layout: Optional[bool] = None,
+    layout: Optional[bool | str] = None,
 ) -> OCRRunResult:
     """Unified OCR dispatch — single entry point for all engines.
 
@@ -427,6 +427,14 @@ def run_ocr(
                 layout=True if layout is None else layout,
             )
         else:
+            # Fold VLM generation params into PaddleOCRVLOptions for the classic path
+            if max_new_tokens is not None:
+                from natural_pdf.ocr.ocr_options import PaddleOCRVLOptions
+
+                if options is None:
+                    options = PaddleOCRVLOptions(max_new_tokens=max_new_tokens)
+                elif isinstance(options, PaddleOCRVLOptions) and options.max_new_tokens is None:
+                    options.max_new_tokens = max_new_tokens
             return _run_classic(
                 image=image,
                 engine_name=engine_key,
@@ -440,6 +448,11 @@ def run_ocr(
             )
 
     if entry.engine_type in ("classic", "classic_provider"):
+        if isinstance(layout, str):
+            raise ValueError(
+                f"layout={layout!r} (detection engine) is only valid with VLM OCR "
+                f"engines, but engine={engine_name!r} is a classic engine."
+            )
         return _run_classic(
             image=image,
             engine_name=engine_key,
@@ -593,6 +606,67 @@ def _normalize_engine_output(payload):
 
 
 # ---------------------------------------------------------------------------
+# Classic detection on a pre-rendered image
+# ---------------------------------------------------------------------------
+
+
+def run_detection(
+    *,
+    image: Image.Image,
+    engine_name: str,
+    languages: Optional[List[str]] = None,
+    device: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Run a classic OCR engine in detect-only mode on a pre-rendered image.
+
+    Returns results in the same format as :func:`_detect_layout_regions`
+    so they can be consumed by :func:`_run_layout_ocr_on_image`.
+
+    Each result is a dict with ``label`` (always ``"text"``), ``bbox``
+    (``[x0, y0, x1, y1]`` in image pixels), and ``confidence``.
+    """
+    registry = get_registry()
+    engine_key = engine_name.strip().lower()
+    entry = registry.get(engine_key)
+
+    if entry is None:
+        available = sorted(registry.keys())
+        raise LookupError(f"Unknown detection engine {engine_name!r}. Available: {available}")
+
+    if entry.engine_type not in ("classic", "classic_provider", "auto_platform"):
+        raise ValueError(
+            f"layout={engine_name!r} is a VLM engine and cannot be used for "
+            f"detection. Use a classic engine like 'rapidocr' or 'paddle'."
+        )
+
+    result = _run_classic(
+        image=image,
+        engine_name=engine_key,
+        entry=entry,
+        languages=languages,
+        min_confidence=None,
+        device=device,
+        detect_only=True,
+        options=None,
+        context=None,
+    )
+
+    regions: List[Dict[str, Any]] = []
+    for r in result.results:
+        bbox = r.get("bbox")
+        if bbox is None:
+            continue
+        regions.append(
+            {
+                "label": "text",
+                "bbox": list(bbox),
+                "confidence": r.get("confidence", 0.5),
+            }
+        )
+    return regions
+
+
+# ---------------------------------------------------------------------------
 # VLM engine dispatch
 # ---------------------------------------------------------------------------
 
@@ -608,7 +682,7 @@ def _run_vlm(
     instructions: Optional[str],
     max_new_tokens: Optional[int],
     languages: Optional[List[str]],
-    layout: Optional[bool] = None,
+    layout: Optional[bool | str] = None,
 ) -> OCRRunResult:
     """Dispatch to a VLM OCR engine."""
     from natural_pdf.ocr.vlm_ocr import run_vlm_ocr_on_image

@@ -173,9 +173,27 @@ Both models are loaded from HuggingFace and run in-process.
 page.apply_ocr(engine="vlm", model="zai-org/GLM-OCR")
 ```
 
-**Install:** `pip install transformers torch`
+### Layout detection strategies
 
-Use `resolution=72` or `resolution=100` to keep memory usage reasonable. The default 144 DPI can cause OOM on machines with limited GPU/MPS memory.
+The `layout` parameter controls how regions are detected before being sent to the VLM for text recognition. This applies to any VLM engine that uses the layout pipeline (e.g. GLM-OCR, PaddleVL).
+
+- **PP-DocLayout-V3**, the default, detects headers, tables, big blocks of text, text
+- **rapidocr** or any other "traditional" LLM is slightly more granular, and detects words or lines
+- **cluster** uses rapidocr but then combines nearby elements
+
+```python
+# Uses PP-DocLayout-V3, which ends up as big
+page.apply_ocr(engine="glm_ocr")
+page.apply_ocr(engine="paddlevl")
+
+# Use a specific OCR engine for word- or line-level detection
+page.apply_ocr(engine="glm_ocr", layout="rapidocr")
+
+# If a specific layout= gives you many elements,
+page.apply_ocr(engine="glm_ocr", layout="cluster")
+```
+
+**Install:** `pip install transformers torch`
 
 ## VLM-Based OCR
 

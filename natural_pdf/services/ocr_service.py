@@ -177,7 +177,7 @@ class OCRService:
         prompt: Optional[str] = None,
         instructions: Optional[str] = None,
         max_new_tokens: Optional[int] = None,
-        layout: Optional[bool] = None,
+        layout: Optional[bool | str] = None,
         **kwargs,
     ):
         normalized_options = normalize_ocr_options(options)

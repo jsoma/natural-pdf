@@ -734,7 +734,16 @@ class Page(
             instructions: Additional instructions appended to the VLM prompt.
                 Ignored when ``prompt`` is passed directly via ``**kwargs``.
             function: Custom OCR callable that receives a Region and returns text.
-            **kwargs: Extra engine-specific parameters.
+            **kwargs: Extra engine-specific parameters.  Notable kwargs:
+
+                - ``layout`` (bool | str): Controls layout detection for VLM
+                  engines.  ``True`` uses PP-DocLayout-V3 (block-level).
+                  A string like ``"rapidocr"`` or ``"paddle"`` uses that
+                  classic engine in detect-only mode for line-level boxes.
+                  ``False`` disables layout (full-page prompt).  ``None``
+                  (default) auto-detects based on model family.
+                - ``prompt`` (str): Custom VLM prompt.
+                - ``max_new_tokens`` (int): Max generation tokens for VLM.
 
         Returns:
             Self for chaining.
