@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -2096,9 +2096,20 @@
 <td>Smaller model footprint.</td>
 <td><code>pip install python-doctr</code></td>
 </tr>
+<tr>
+<td><code>dots</code></td>
+<td>dots.mocr — combined layout + OCR. MLX-optimized on Apple Silicon.</td>
+<td><code>pip install mlx-vlm</code> or <code>pip install transformers torch</code></td>
+</tr>
+<tr>
+<td><code>chandra</code></td>
+<td>VLM-based successor to Surya.</td>
+<td><code>pip install chandra-ocr[hf]</code></td>
+</tr>
 </tbody>
 </table>
 <p>GLM-OCR (0.9B VLM) is also available via <code>engine="vlm"</code> with automatic layout detection — see the <a href="../tutorials/12-ocr-integration.md#glm-ocr">OCR tutorial</a>.</p>
+<p>Not sure which engine to use? Compare them side by side with <code>page.compare_ocr(engines=["rapidocr", "easyocr"])</code> — see <a href="../tutorials/12-ocr-integration.md#comparing-ocr-engines">Comparing OCR Engines</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Use a specific engine</span>
 <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;surya&quot;</span><span class="p">)</span>
 
