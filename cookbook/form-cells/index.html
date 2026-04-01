@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://jsoma.github.io/natural-pdf/getting-started/selectors/">
+        <link rel="canonical" href="https://jsoma.github.io/natural-pdf/cookbook/form-cells/">
       
       
-        <link rel="prev" href="../quickstart/">
+        <link rel="prev" href="../guides/">
       
       
-        <link rel="next" href="../concepts/">
+        <link rel="next" href="../messy-tables/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Selectors 101 - Natural PDF</title>
+        <title>Form Cells - Natural PDF</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#selectors-101" class="md-skip">
+        <a href="#form-cell-detection" class="md-skip">
           Skip to content
         </a>
       
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Selectors 101
+              Form Cells
             
           </span>
         </div>
@@ -290,8 +290,6 @@
       
   
   
-    
-  
   
   
     
@@ -318,11 +316,13 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -350,7 +350,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -370,7 +370,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../choose-your-path/" class="md-nav__link">
+      <a href="../../getting-started/choose-your-path/" class="md-nav__link">
         
   
   
@@ -398,7 +398,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
         
   
   
@@ -423,37 +423,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Selectors 101
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../getting-started/selectors/" class="md-nav__link">
         
   
   
@@ -469,265 +442,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#quick-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Reference
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-basics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The Basics
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="The Basics">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#element-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Element Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pseudo-classes-name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pseudo-Classes (:name)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#attribute-filters-attrvalue" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Attribute Filters ([attr=value])
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Attribute Filters ([attr=value])">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#common-attributes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Attributes
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#combining-selectors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Combining Selectors
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#finding-elements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Finding Elements
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Finding Elements">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#find-first-match" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        find() - First Match
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#find_all-all-matches" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        find_all() - All Matches
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#advanced-patterns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced Patterns
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Advanced Patterns">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#regex-matching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Regex Matching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#layout-regions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Layout Regions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ocr-elements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OCR Elements
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#common-patterns-cheat-sheet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Patterns Cheat Sheet
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#my-selector-finds-nothing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "My selector finds nothing"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#i-get-attributeerror-nonetype" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "I get AttributeError: 'NoneType'"
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next Steps
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -740,7 +454,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/" class="md-nav__link">
+      <a href="../../getting-started/concepts/" class="md-nav__link">
         
   
   
@@ -1105,7 +819,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/structured-extraction/" class="md-nav__link">
+      <a href="../structured-extraction/" class="md-nav__link">
         
   
   
@@ -1133,7 +847,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/batch-processing/" class="md-nav__link">
+      <a href="../batch-processing/" class="md-nav__link">
         
   
   
@@ -1165,8 +879,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1197,13 +913,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
@@ -1224,7 +938,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1242,7 +956,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/one-page-one-row/" class="md-nav__link">
+      <a href="../one-page-one-row/" class="md-nav__link">
         
   
   
@@ -1270,7 +984,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/label-value-extraction/" class="md-nav__link">
+      <a href="../label-value-extraction/" class="md-nav__link">
         
   
   
@@ -1298,7 +1012,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/guides/" class="md-nav__link">
+      <a href="../guides/" class="md-nav__link">
         
   
   
@@ -1323,10 +1037,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../cookbook/form-cells/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Form Cells
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1342,6 +1083,120 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#merging-cells" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Merging Cells
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Merging Cells">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#protecting-cells-with-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protecting Cells with Labels
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#navigating-between-cells" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Navigating Between Cells
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-regions-and-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working with Regions and Collections
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1354,7 +1209,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/messy-tables/" class="md-nav__link">
+      <a href="../messy-tables/" class="md-nav__link">
         
   
   
@@ -1382,7 +1237,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/multi-column-layouts/" class="md-nav__link">
+      <a href="../multi-column-layouts/" class="md-nav__link">
         
   
   
@@ -1410,7 +1265,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/ocr-then-navigate/" class="md-nav__link">
+      <a href="../ocr-then-navigate/" class="md-nav__link">
         
   
   
@@ -1438,7 +1293,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/multipage-content/" class="md-nav__link">
+      <a href="../multipage-content/" class="md-nav__link">
         
   
   
@@ -1466,7 +1321,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/finding-sections/" class="md-nav__link">
+      <a href="../finding-sections/" class="md-nav__link">
         
   
   
@@ -1725,7 +1580,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/troubleshooting/" class="md-nav__link">
+      <a href="../troubleshooting/" class="md-nav__link">
         
   
   
@@ -1780,10 +1635,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-reference" class="md-nav__link">
+  <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Reference
+        Basic Usage
       
     </span>
   </a>
@@ -1791,72 +1646,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-basics" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Basics
+        How It Works
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="The Basics">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#merging-cells" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Merging Cells
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Merging Cells">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#element-types" class="md-nav__link">
+  <a href="#protecting-cells-with-labels" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Element Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pseudo-classes-name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pseudo-Classes (:name)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#attribute-filters-attrvalue" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Attribute Filters ([attr=value])
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Attribute Filters ([attr=value])">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#common-attributes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Attributes
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#combining-selectors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Combining Selectors
+        Protecting Cells with Labels
       
     </span>
   </a>
@@ -1869,99 +1685,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#finding-elements" class="md-nav__link">
+  <a href="#navigating-between-cells" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Finding Elements
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Finding Elements">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#find-first-match" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        find() - First Match
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#find_all-all-matches" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        find_all() - All Matches
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#advanced-patterns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced Patterns
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Advanced Patterns">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#regex-matching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Regex Matching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#layout-regions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Layout Regions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ocr-elements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OCR Elements
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#common-patterns-cheat-sheet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Patterns Cheat Sheet
+        Navigating Between Cells
       
     </span>
   </a>
@@ -1969,49 +1696,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
+  <a href="#debugging" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Troubleshooting
+        Debugging
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#my-selector-finds-nothing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "My selector finds nothing"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#i-get-attributeerror-nonetype" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "I get AttributeError: 'NoneType'"
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
+  <a href="#parameters" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Next Steps
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-regions-and-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working with Regions and Collections
       
     </span>
   </a>
@@ -2038,441 +1748,172 @@
   
 
 
-<h1 id="selectors-101">Selectors 101</h1>
-<p>Selectors are the heart of Natural PDF. They let you find elements in your PDF using a simple, CSS-like syntax.</p>
-<h2 id="quick-reference">Quick Reference</h2>
-<div class="highlight"><pre><span></span><code>&#39;text&#39;                          # All text elements
-&#39;text:bold&#39;                     # Bold text (pseudo-class)
-&#39;text:contains(&quot;Invoice&quot;)&#39;      # Text containing &quot;Invoice&quot;
-&#39;text[size&gt;12]&#39;                 # Text with font size &gt; 12 (attribute)
-&#39;text:bold[size&gt;=14]&#39;           # Bold text AND size &gt;= 14 (combined)
-</code></pre></div>
-<h2 id="the-basics">The Basics</h2>
-<h3 id="element-types">Element Types</h3>
-<p>Every selector starts with an element type:</p>
-<table>
-<thead>
-<tr>
-<th>Type</th>
-<th>What It Finds</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>text</code></td>
-<td>Text content</td>
-<td><code>page.find('text')</code></td>
-</tr>
-<tr>
-<td><code>line</code></td>
-<td>Lines and rules</td>
-<td><code>page.find('line')</code></td>
-</tr>
-<tr>
-<td><code>rect</code></td>
-<td>Rectangles and boxes</td>
-<td><code>page.find('rect')</code></td>
-</tr>
-<tr>
-<td><code>image</code></td>
-<td>Embedded images</td>
-<td><code>page.find('image')</code></td>
-</tr>
-<tr>
-<td><code>region</code></td>
-<td>Layout-detected areas</td>
-<td><code>page.find('region')</code></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find the first text element</span>
-<span class="n">first_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find all lines</span>
-<span class="n">all_lines</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;line&#39;</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="pseudo-classes-name">Pseudo-Classes (<code>:name</code>)</h3>
-<p>Pseudo-classes filter by state or content. They use a <strong>colon</strong> (<code>:</code>) prefix.</p>
-<table>
-<thead>
-<tr>
-<th>Pseudo-Class</th>
-<th>Description</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>:bold</code></td>
-<td>Bold text</td>
-<td><code>'text:bold'</code></td>
-</tr>
-<tr>
-<td><code>:italic</code></td>
-<td>Italic text</td>
-<td><code>'text:italic'</code></td>
-</tr>
-<tr>
-<td><code>:contains("X")</code></td>
-<td>Contains the text "X"</td>
-<td><code>'text:contains("Invoice")'</code></td>
-</tr>
-<tr>
-<td><code>:startswith("X")</code></td>
-<td>Starts with "X"</td>
-<td><code>'text:startswith("Total")'</code></td>
-</tr>
-<tr>
-<td><code>:endswith("X")</code></td>
-<td>Ends with "X"</td>
-<td><code>'text:endswith(":")'</code></td>
-</tr>
-<tr>
-<td><code>:regex("pattern")</code></td>
-<td>Matches a regex pattern</td>
-<td><code>'text:regex("INV-\\d+")'</code></td>
-</tr>
-<tr>
-<td><code>:horizontal</code></td>
-<td>Horizontal lines</td>
-<td><code>'line:horizontal'</code></td>
-</tr>
-<tr>
-<td><code>:vertical</code></td>
-<td>Vertical lines</td>
-<td><code>'line:vertical'</code></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find bold text</span>
-<span class="n">bold</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find text containing &quot;Total&quot;</span>
-<span class="n">total</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Total&quot;)&#39;</span><span class="p">)</span>
-
-<span class="c1"># Case-insensitive search</span>
-<span class="n">total</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;total&quot;)&#39;</span><span class="p">,</span> <span class="n">case</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title">Common Mistake</p>
-<p>Use <strong>colon</strong> (<code>:</code>) not <strong>dot</strong> (<code>.</code>) for pseudo-classes:</p>
+<h1 id="form-cell-detection">Form Cell Detection</h1>
+<p>Detect rectangular cells in structured forms — arrest reports, tax forms, government applications — using image-based morphological processing. Works on scanned documents and image-based PDFs where the grid lines are visible pixels, not PDF drawing commands.</p>
+<p><strong>When to use this:</strong></p>
 <ul>
-<li>✅ <code>'text:bold'</code> (correct)</li>
-<li>❌ <code>'text.bold'</code> (wrong - this is CSS class syntax)</li>
+<li>Government forms with printed grid cells (arrest reports, tax forms, permit applications)</li>
+<li>Scanned documents where <code>extract_table()</code> doesn't find the structure</li>
+<li>Forms where you need to navigate between labeled cells ("find the cell labeled Jurisdiction, get the value below it")</li>
 </ul>
-</div>
-<h3 id="attribute-filters-attrvalue">Attribute Filters (<code>[attr=value]</code>)</h3>
-<p>Attribute filters match specific properties. They use <strong>brackets</strong> (<code>[]</code>).</p>
-<table>
-<thead>
-<tr>
-<th>Operator</th>
-<th>Meaning</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>=</code></td>
-<td>Equals</td>
-<td><code>'text[size=12]'</code></td>
-</tr>
-<tr>
-<td><code>!=</code></td>
-<td>Not equals</td>
-<td><code>'text[size!=12]'</code></td>
-</tr>
-<tr>
-<td><code>&gt;</code></td>
-<td>Greater than</td>
-<td><code>'text[size&gt;12]'</code></td>
-</tr>
-<tr>
-<td><code>&gt;=</code></td>
-<td>Greater or equal</td>
-<td><code>'text[size&gt;=12]'</code></td>
-</tr>
-<tr>
-<td><code>&lt;</code></td>
-<td>Less than</td>
-<td><code>'text[size&lt;12]'</code></td>
-</tr>
-<tr>
-<td><code>&lt;=</code></td>
-<td>Less or equal</td>
-<td><code>'text[size&lt;=12]'</code></td>
-</tr>
-<tr>
-<td><code>*=</code></td>
-<td>Contains</td>
-<td><code>'text[fontname*=Arial]'</code></td>
-</tr>
-<tr>
-<td><code>^=</code></td>
-<td>Starts with</td>
-<td><code>'text[fontname^=Times]'</code></td>
-</tr>
-<tr>
-<td><code>$=</code></td>
-<td>Ends with</td>
-<td><code>'text[fontname$=Bold]'</code></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find large text (size &gt; 14)</span>
-<span class="n">large</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[size&gt;14]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find text in Arial font</span>
-<span class="n">arial</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[fontname*=Arial]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find high-confidence OCR results</span>
-<span class="n">confident</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[confidence&gt;=0.9]&#39;</span><span class="p">)</span>
+<p><strong>Prerequisites:</strong></p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>opencv-python-headless<span class="w"> </span>numpy
 </code></pre></div>
-<h4 id="common-attributes">Common Attributes</h4>
-<table>
-<thead>
-<tr>
-<th>Attribute</th>
-<th>Element Types</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>size</code></td>
-<td>text</td>
-<td>Font size in points</td>
-</tr>
-<tr>
-<td><code>fontname</code></td>
-<td>text</td>
-<td>Font family name</td>
-</tr>
-<tr>
-<td><code>confidence</code></td>
-<td>text (OCR)</td>
-<td>OCR confidence (0-1)</td>
-</tr>
-<tr>
-<td><code>source</code></td>
-<td>text</td>
-<td>Origin: <code>pdf</code> or <code>ocr</code></td>
-</tr>
-<tr>
-<td><code>type</code></td>
-<td>region</td>
-<td>Region type from layout analysis</td>
-</tr>
-<tr>
-<td><code>width</code></td>
-<td>line, rect</td>
-<td>Element width</td>
-</tr>
-<tr>
-<td><code>height</code></td>
-<td>line, rect, image</td>
-<td>Element height</td>
-</tr>
-<tr>
-<td><code>fill</code></td>
-<td>rect</td>
-<td>Has fill color</td>
-</tr>
-<tr>
-<td><code>stroke</code></td>
-<td>rect, line</td>
-<td>Has stroke/border</td>
-</tr>
-</tbody>
-</table>
-<h3 id="combining-selectors">Combining Selectors</h3>
-<p>You can combine pseudo-classes and attributes for precise matching:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Bold text larger than 14pt</span>
-<span class="n">headers</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:bold[size&gt;14]&#39;</span><span class="p">)</span>
+<h2 id="basic-usage">Basic Usage</h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
 
-<span class="c1"># Text containing &quot;Total&quot; in Arial font</span>
-<span class="n">totals</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Total&quot;)[fontname*=Arial]&#39;</span><span class="p">)</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;pdfs/cookbook/arrest_report.pdf&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-<span class="c1"># Bold, large text containing &quot;Summary&quot;</span>
-<span class="n">summary</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:bold[size&gt;=16]:contains(&quot;Summary&quot;)&#39;</span><span class="p">)</span>
+<span class="n">cells</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">detect_form_cells</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span><span class="si">}</span><span class="s2"> cells&quot;</span><span class="p">)</span>
 </code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Selector Order</p>
-<p>Pseudo-classes and attributes can appear in any order after the type. These are all equivalent:</p>
-<div class="highlight"><pre><span></span><code><span class="s1">&#39;text:bold[size&gt;14]:contains(&quot;Summary&quot;)&#39;</span>
-<span class="s1">&#39;text:contains(&quot;Summary&quot;):bold[size&gt;14]&#39;</span>
-<span class="s1">&#39;text[size&gt;14]:bold:contains(&quot;Summary&quot;)&#39;</span>
+<p>Each detected cell is a <code>Region</code> with <code>type="form_cell"</code>. You can find them later with selectors:</p>
+<div class="highlight"><pre><span></span><code><span class="n">form_cells</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=form_cell]&#39;</span><span class="p">)</span>
 </code></pre></div>
-</div>
-<h2 id="finding-elements">Finding Elements</h2>
-<h3 id="find-first-match"><code>find()</code> - First Match</h3>
-<p>Returns the first matching element, or <code>None</code> if not found.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find the first bold text</span>
-<span class="n">title</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>
-
-<span class="c1"># Always check for None!</span>
-<span class="k">if</span> <span class="n">title</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">title</span><span class="o">.</span><span class="n">extract_text</span><span class="p">())</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Not found&quot;</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="find_all-all-matches"><code>find_all()</code> - All Matches</h3>
-<p>Returns an <code>ElementCollection</code> with all matching elements.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find all bold text</span>
-<span class="n">all_bold</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_bold</span><span class="p">)</span><span class="si">}</span><span class="s2"> bold elements&quot;</span><span class="p">)</span>
-
-<span class="c1"># ElementCollection has useful methods</span>
-<span class="n">first</span> <span class="o">=</span> <span class="n">all_bold</span><span class="o">.</span><span class="n">first</span>  <span class="c1"># First element or None</span>
-<span class="n">texts</span> <span class="o">=</span> <span class="n">all_bold</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>  <span class="c1"># Extract text from all</span>
-</code></pre></div>
-<h2 id="advanced-patterns">Advanced Patterns</h2>
-<h3 id="regex-matching">Regex Matching</h3>
-<p>There are two ways to use regex. The <code>:regex()</code> pseudo-class matches against the full text of each element:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find invoice numbers like &quot;INV-12345&quot;</span>
-<span class="n">invoice</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:regex(&quot;INV-</span><span class="se">\\</span><span class="s1">d+&quot;)&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find dates in MM/DD/YYYY format</span>
-<span class="n">dates</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:regex(&quot;</span><span class="se">\\</span><span class="s1">d</span><span class="si">{2}</span><span class="s1">/</span><span class="se">\\</span><span class="s1">d</span><span class="si">{2}</span><span class="s1">/</span><span class="se">\\</span><span class="s1">d</span><span class="si">{4}</span><span class="s1">&quot;)&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find page numbers like &quot;Page 1 of 10&quot;</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:regex(&quot;Page </span><span class="se">\\</span><span class="s1">d+ of </span><span class="se">\\</span><span class="s1">d+&quot;)&#39;</span><span class="p">)</span>
-</code></pre></div>
-<p>You can also use <code>regex=True</code> with <code>:contains()</code> for the same effect:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># These are equivalent</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:regex(&quot;Total|Sum&quot;)&#39;</span><span class="p">)</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Total|Sum&quot;)&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="layout-regions">Layout Regions</h3>
-<p>After running layout analysis, you can find detected regions:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># First, detect layout</span>
-<span class="n">page</span><span class="o">.</span><span class="n">analyze_layout</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;yolo&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find all detected tables</span>
-<span class="n">tables</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=table]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find specific region types</span>
-<span class="n">titles</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=title]&#39;</span><span class="p">)</span>
-<span class="n">figures</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=figure]&#39;</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="ocr-elements">OCR Elements</h3>
-<p>After applying OCR, filter by source and confidence:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Apply OCR</span>
-<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">()</span>
-
-<span class="c1"># Find OCR text (not native PDF text)</span>
-<span class="n">ocr_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=ocr]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find high-confidence OCR only</span>
-<span class="n">confident</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=ocr][confidence&gt;=0.8]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find native PDF text only</span>
-<span class="n">native</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=pdf]&#39;</span><span class="p">)</span>
-</code></pre></div>
-<h2 id="common-patterns-cheat-sheet">Common Patterns Cheat Sheet</h2>
-<table>
-<thead>
-<tr>
-<th>Goal</th>
-<th>Selector</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>All text</td>
-<td><code>'text'</code></td>
-</tr>
-<tr>
-<td>Bold text</td>
-<td><code>'text:bold'</code></td>
-</tr>
-<tr>
-<td>Large text (headings)</td>
-<td><code>'text[size&gt;=14]'</code></td>
-</tr>
-<tr>
-<td>Text containing "X"</td>
-<td><code>'text:contains("X")'</code></td>
-</tr>
-<tr>
-<td>Case-insensitive search</td>
-<td><code>page.find('text:contains("x")', case=False)</code></td>
-</tr>
-<tr>
-<td>Horizontal lines</td>
-<td><code>'line:horizontal'</code></td>
-</tr>
-<tr>
-<td>Thick lines</td>
-<td><code>'line[width&gt;=2]'</code></td>
-</tr>
-<tr>
-<td>Filled rectangles</td>
-<td><code>'rect[fill]'</code></td>
-</tr>
-<tr>
-<td>Detected tables</td>
-<td><code>'region[type=table]'</code></td>
-</tr>
-<tr>
-<td>High-confidence OCR</td>
-<td><code>'text[source=ocr][confidence&gt;=0.8]'</code></td>
-</tr>
-</tbody>
-</table>
-<h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="my-selector-finds-nothing">"My selector finds nothing"</h3>
+<h2 id="how-it-works">How It Works</h2>
+<p>The pipeline renders the page to an image, then:</p>
 <ol>
-<li>
-<p><strong>Start broad, then narrow down:</strong>
-   <div class="highlight"><pre><span></span><code><span class="c1"># See what&#39;s on the page</span>
-<span class="n">all_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_text</span><span class="p">)</span><span class="si">}</span><span class="s2"> text elements&quot;</span><span class="p">)</span>
-<span class="n">all_text</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>  <span class="c1"># Visualize them</span>
-</code></pre></div></p>
-</li>
-<li>
-<p><strong>Check your spelling and case:</strong>
-   <div class="highlight"><pre><span></span><code><span class="c1"># This finds &quot;Invoice&quot; but not &quot;INVOICE&quot; or &quot;invoice&quot;</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Invoice&quot;)&#39;</span><span class="p">)</span>
-
-<span class="c1"># Use case=False for case-insensitive</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;invoice&quot;)&#39;</span><span class="p">,</span> <span class="n">case</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</code></pre></div></p>
-</li>
-<li>
-<p><strong>Check the syntax:</strong>
-   <div class="highlight"><pre><span></span><code><span class="c1"># Wrong</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text.bold&#39;</span><span class="p">)</span>              <span class="c1"># Use colon, not dot</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[contains=&quot;X&quot;]&#39;</span><span class="p">)</span>     <span class="c1"># :contains is a pseudo-class</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(Invoice)&#39;</span><span class="p">)</span> <span class="c1"># Need quotes around text</span>
-
-<span class="c1"># Correct</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Invoice&quot;)&#39;</span><span class="p">)</span>
-</code></pre></div></p>
-</li>
+<li><strong>Adaptive threshold</strong> converts to binary (black/white)</li>
+<li><strong>Morphological opening</strong> with horizontal and vertical kernels isolates form lines from text</li>
+<li><strong>Line extension</strong> bridges small gaps to form a watertight grid</li>
+<li><strong>Contour detection</strong> finds enclosed rectangular regions (the cells)</li>
+<li><strong>OCR merge</strong> combines cells where a text element spans multiple cells on the same row (fixes spurious vertical line splits in banner labels)</li>
 </ol>
-<h3 id="i-get-attributeerror-nonetype">"I get AttributeError: 'NoneType'"</h3>
-<p><code>find()</code> returns <code>None</code> when nothing matches. Always check:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Wrong - crashes if not found</span>
-<span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Missing&quot;)&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
+<h2 id="merging-cells">Merging Cells</h2>
+<p>By default, <code>merge=True</code> combines cells that a single text element spans. This fixes banner labels like "GENERAL CASE INFORMATION" that get split into fragments by incidental vertical lines.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Merge is on by default</span>
+<span class="n">cells</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">detect_form_cells</span><span class="p">(</span><span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-<span class="c1"># Correct - handle None</span>
-<span class="n">element</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Missing&quot;)&#39;</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">element</span><span class="p">:</span>
-    <span class="n">text</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+<span class="c1"># Disable merging to see raw detected cells</span>
+<span class="n">raw_cells</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">detect_form_cells</span><span class="p">(</span><span class="n">merge</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
-<h2 id="next-steps">Next Steps</h2>
-<ul>
-<li><strong><a href="../quickstart/">Quickstart</a></strong> - See selectors in action</li>
-<li><strong><a href="../../tutorials/02-finding-elements/">Finding Elements Tutorial</a></strong> - Deep dive into finding elements</li>
-<li><strong><a href="../../tutorials/08-spatial-navigation/">Spatial Navigation</a></strong> - Use <code>.below()</code>, <code>.above()</code> after finding</li>
-</ul>
+<h3 id="protecting-cells-with-labels">Protecting Cells with Labels</h3>
+<p>The merge can incorrectly combine adjacent cells when a text bounding box is slightly oversized and bleeds past a real divider. For example, a "Jurisdiction" label bbox might extend a few pixels into the adjacent "Beat" cell, causing them to merge.</p>
+<p>Use <code>cell_labels</code> to mark cells that should never merge with each other. Pass selectors (strings) or elements:</p>
+<div class="highlight"><pre><span></span><code><span class="n">cells</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">detect_form_cells</span><span class="p">(</span>
+    <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">cell_labels</span><span class="o">=</span><span class="p">[</span>
+        <span class="s1">&#39;text:contains(&quot;Jurisdiction&quot;)&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;text:contains(&quot;Beat&quot;)&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;text:contains(&quot;Call Source&quot;)&#39;</span><span class="p">,</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>The logic: if two cells both contain a label element (by center point), that merge is skipped. A labeled cell can still merge with an empty fragment — only two labeled cells are prevented from merging.</p>
+<p><strong>Selectors work the same as <code>page.find()</code></strong>, so you can use any match type:</p>
+<div class="highlight"><pre><span></span><code><span class="n">cell_labels</span><span class="o">=</span><span class="p">[</span>
+    <span class="s1">&#39;text:contains(&quot;Jurisdiction&quot;)&#39;</span><span class="p">,</span>   <span class="c1"># substring match</span>
+    <span class="s1">&#39;text:regex(&quot;Case</span><span class="se">\\</span><span class="s1">s+No&quot;)&#39;</span><span class="p">,</span>        <span class="c1"># regex for OCR variation</span>
+    <span class="s1">&#39;text:closest(&quot;Beat&quot;)&#39;</span><span class="p">,</span>            <span class="c1"># fuzzy match for OCR typos</span>
+<span class="p">]</span>
+</code></pre></div>
+<p>You can also pass elements directly, which is useful when OCR garbles the text:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find elements first, then protect them</span>
+<span class="n">juris</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Jradadon&quot;)&#39;</span><span class="p">)</span>  <span class="c1"># OCR&#39;d &quot;Jurisdiction&quot;</span>
+<span class="n">beat</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;521&quot;)&#39;</span><span class="p">)</span>
+
+<span class="n">cells</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">detect_form_cells</span><span class="p">(</span>
+    <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">cell_labels</span><span class="o">=</span><span class="p">[</span><span class="n">juris</span><span class="p">,</span> <span class="n">beat</span><span class="p">]</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>For bulk processing (100k+ forms of the same template), you define the label list once and reuse it.</p>
+<h2 id="navigating-between-cells">Navigating Between Cells</h2>
+<p>Once cells are detected, use <code>.parent()</code> to find which cell contains a text element:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find text, then find its containing cell</span>
+<span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;East Village&quot;)&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">text</span><span class="p">:</span>
+    <span class="n">cell</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">parent</span><span class="p">(</span><span class="s1">&#39;region[type=form_cell]&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cell</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">extract_text</span><span class="p">())</span>
+</code></pre></div>
+<h2 id="debugging">Debugging</h2>
+<p>Pass <code>debug_dir</code> to save step-by-step images of the detection pipeline:</p>
+<div class="highlight"><pre><span></span><code><span class="n">cells</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">detect_form_cells</span><span class="p">(</span>
+    <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">debug_dir</span><span class="o">=</span><span class="s2">&quot;temp/form_cell_debug&quot;</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>This saves images for each stage:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>00_rendered.png</code></td>
+<td>Page rendered at detection resolution</td>
+</tr>
+<tr>
+<td><code>01_gray.png</code></td>
+<td>Grayscale conversion</td>
+</tr>
+<tr>
+<td><code>02_binary.png</code></td>
+<td>Adaptive threshold result</td>
+</tr>
+<tr>
+<td><code>03a-e</code></td>
+<td>Horizontal line detection steps</td>
+</tr>
+<tr>
+<td><code>04a-e</code></td>
+<td>Vertical line detection steps</td>
+</tr>
+<tr>
+<td><code>05_line_bboxes.png</code></td>
+<td>Detected line bounding boxes (red=horizontal, blue=vertical)</td>
+</tr>
+<tr>
+<td><code>06_grid_mask.png</code></td>
+<td>Extended lines forming the grid</td>
+</tr>
+<tr>
+<td><code>07_inverse.png</code></td>
+<td>Inverted grid showing cell candidates</td>
+</tr>
+<tr>
+<td><code>08_cells_pre_merge.png</code></td>
+<td>Cells before OCR merge (colored)</td>
+</tr>
+<tr>
+<td><code>08b_cells_with_text.png</code></td>
+<td>Cells + text bounding boxes (green=cells, red=text)</td>
+</tr>
+<tr>
+<td><code>09_cells_final.png</code></td>
+<td>Final cells after merge (colored)</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>08b_cells_with_text.png</code> to understand merge behavior — it shows which text bboxes cross cell boundaries.</p>
+<h2 id="parameters">Parameters</h2>
+<p>Override detection parameters via keyword arguments:</p>
+<div class="highlight"><pre><span></span><code><span class="n">cells</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">detect_form_cells</span><span class="p">(</span>
+    <span class="n">resolution</span><span class="o">=</span><span class="mi">2200</span><span class="p">,</span>      <span class="c1"># target image width in pixels (default: 2200)</span>
+    <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>           <span class="c1"># merge cells spanning same text (default: True)</span>
+    <span class="n">adaptive_c</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>         <span class="c1"># adaptive threshold constant (default: 5, lower = more aggressive)</span>
+    <span class="n">min_cell_w</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>        <span class="c1"># minimum cell width in pixels</span>
+    <span class="n">min_cell_h</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>        <span class="c1"># minimum cell height in pixels</span>
+    <span class="n">max_aspect</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>        <span class="c1"># maximum width/height ratio</span>
+<span class="p">)</span>
+</code></pre></div>
+<h2 id="working-with-regions-and-collections">Working with Regions and Collections</h2>
+<p><code>detect_form_cells()</code> is available on pages, regions, and collections:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Single page</span>
+<span class="n">cells</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">detect_form_cells</span><span class="p">()</span>
+
+<span class="c1"># Region — detects on the full page, filters to cells inside the region</span>
+<span class="n">region</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;VICTIM&quot;)&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">below</span><span class="p">()</span>
+<span class="n">victim_cells</span> <span class="o">=</span> <span class="n">region</span><span class="o">.</span><span class="n">detect_form_cells</span><span class="p">()</span>
+
+<span class="c1"># All pages</span>
+<span class="n">all_cells</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="o">.</span><span class="n">detect_form_cells</span><span class="p">()</span>
+</code></pre></div>
 
 
 

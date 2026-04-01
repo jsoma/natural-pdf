@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://jsoma.github.io/natural-pdf/getting-started/selectors/">
+        <link rel="canonical" href="https://jsoma.github.io/natural-pdf/cookbook/structured-extraction/">
       
       
-        <link rel="prev" href="../quickstart/">
+        <link rel="prev" href="../../tutorials/06-document-qa/">
       
       
-        <link rel="next" href="../concepts/">
+        <link rel="next" href="../batch-processing/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Selectors 101 - Natural PDF</title>
+        <title>10 Structured Extraction - Natural PDF</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#selectors-101" class="md-skip">
+        <a href="#structured-extraction-with-llms" class="md-skip">
           Skip to content
         </a>
       
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Selectors 101
+              10 Structured Extraction
             
           </span>
         </div>
@@ -290,8 +290,6 @@
       
   
   
-    
-  
   
   
     
@@ -318,11 +316,13 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -350,7 +350,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -370,7 +370,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../choose-your-path/" class="md-nav__link">
+      <a href="../../getting-started/choose-your-path/" class="md-nav__link">
         
   
   
@@ -398,7 +398,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
         
   
   
@@ -423,37 +423,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Selectors 101
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../getting-started/selectors/" class="md-nav__link">
         
   
   
@@ -469,265 +442,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#quick-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Reference
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-basics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The Basics
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="The Basics">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#element-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Element Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pseudo-classes-name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pseudo-Classes (:name)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#attribute-filters-attrvalue" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Attribute Filters ([attr=value])
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Attribute Filters ([attr=value])">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#common-attributes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Attributes
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#combining-selectors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Combining Selectors
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#finding-elements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Finding Elements
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Finding Elements">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#find-first-match" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        find() - First Match
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#find_all-all-matches" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        find_all() - All Matches
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#advanced-patterns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced Patterns
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Advanced Patterns">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#regex-matching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Regex Matching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#layout-regions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Layout Regions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ocr-elements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OCR Elements
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#common-patterns-cheat-sheet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Patterns Cheat Sheet
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#my-selector-finds-nothing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "My selector finds nothing"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#i-get-attributeerror-nonetype" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "I get AttributeError: 'NoneType'"
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next Steps
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -740,7 +454,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/" class="md-nav__link">
+      <a href="../../getting-started/concepts/" class="md-nav__link">
         
   
   
@@ -772,8 +486,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -808,13 +524,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
@@ -835,7 +549,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1102,10 +816,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../cookbook/structured-extraction/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Structured Extraction
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1121,6 +862,148 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#text-vs-vision-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Text vs Vision Mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-prompts-and-instructions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Prompts and Instructions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#citations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Citations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#confidence-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Confidence Scoring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Confidence Scoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#categorical-confidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Categorical Confidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#annotated-pdf-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Annotated PDF Export
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Annotated PDF Export">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#controlling-which-pages-appear" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controlling which pages appear
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extracting-from-regions-pages-and-pdfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extracting from Regions, Pages, and PDFs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-a-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing a Model
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1133,7 +1016,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/batch-processing/" class="md-nav__link">
+      <a href="../batch-processing/" class="md-nav__link">
         
   
   
@@ -1242,7 +1125,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/one-page-one-row/" class="md-nav__link">
+      <a href="../one-page-one-row/" class="md-nav__link">
         
   
   
@@ -1270,7 +1153,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/label-value-extraction/" class="md-nav__link">
+      <a href="../label-value-extraction/" class="md-nav__link">
         
   
   
@@ -1298,7 +1181,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/guides/" class="md-nav__link">
+      <a href="../guides/" class="md-nav__link">
         
   
   
@@ -1326,7 +1209,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/form-cells/" class="md-nav__link">
+      <a href="../form-cells/" class="md-nav__link">
         
   
   
@@ -1354,7 +1237,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/messy-tables/" class="md-nav__link">
+      <a href="../messy-tables/" class="md-nav__link">
         
   
   
@@ -1382,7 +1265,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/multi-column-layouts/" class="md-nav__link">
+      <a href="../multi-column-layouts/" class="md-nav__link">
         
   
   
@@ -1410,7 +1293,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/ocr-then-navigate/" class="md-nav__link">
+      <a href="../ocr-then-navigate/" class="md-nav__link">
         
   
   
@@ -1438,7 +1321,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/multipage-content/" class="md-nav__link">
+      <a href="../multipage-content/" class="md-nav__link">
         
   
   
@@ -1466,7 +1349,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/finding-sections/" class="md-nav__link">
+      <a href="../finding-sections/" class="md-nav__link">
         
   
   
@@ -1725,7 +1608,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cookbook/troubleshooting/" class="md-nav__link">
+      <a href="../troubleshooting/" class="md-nav__link">
         
   
   
@@ -1780,10 +1663,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-reference" class="md-nav__link">
+  <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Reference
+        Basic Usage
       
     </span>
   </a>
@@ -1791,72 +1674,55 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-basics" class="md-nav__link">
+  <a href="#text-vs-vision-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Basics
+        Text vs Vision Mode
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="The Basics">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-prompts-and-instructions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Prompts and Instructions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#citations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Citations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#confidence-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Confidence Scoring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Confidence Scoring">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#element-types" class="md-nav__link">
+  <a href="#categorical-confidence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Element Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pseudo-classes-name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pseudo-Classes (:name)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#attribute-filters-attrvalue" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Attribute Filters ([attr=value])
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Attribute Filters ([attr=value])">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#common-attributes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Attributes
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#combining-selectors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Combining Selectors
+        Categorical Confidence
       
     </span>
   </a>
@@ -1869,33 +1735,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#finding-elements" class="md-nav__link">
+  <a href="#annotated-pdf-export" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Finding Elements
+        Annotated PDF Export
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Finding Elements">
+    <nav class="md-nav" aria-label="Annotated PDF Export">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#find-first-match" class="md-nav__link">
+  <a href="#controlling-which-pages-appear" class="md-nav__link">
     <span class="md-ellipsis">
       
-        find() - First Match
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#find_all-all-matches" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        find_all() - All Matches
+        Controlling which pages appear
       
     </span>
   </a>
@@ -1908,60 +1763,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#advanced-patterns" class="md-nav__link">
+  <a href="#extracting-from-regions-pages-and-pdfs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Advanced Patterns
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Advanced Patterns">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#regex-matching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Regex Matching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#layout-regions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Layout Regions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ocr-elements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OCR Elements
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#common-patterns-cheat-sheet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Patterns Cheat Sheet
+        Extracting from Regions, Pages, and PDFs
       
     </span>
   </a>
@@ -1969,49 +1774,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
+  <a href="#choosing-a-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#my-selector-finds-nothing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "My selector finds nothing"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#i-get-attributeerror-nonetype" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "I get AttributeError: 'NoneType'"
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next Steps
+        Choosing a Model
       
     </span>
   </a>
@@ -2038,441 +1804,174 @@
   
 
 
-<h1 id="selectors-101">Selectors 101</h1>
-<p>Selectors are the heart of Natural PDF. They let you find elements in your PDF using a simple, CSS-like syntax.</p>
-<h2 id="quick-reference">Quick Reference</h2>
-<div class="highlight"><pre><span></span><code>&#39;text&#39;                          # All text elements
-&#39;text:bold&#39;                     # Bold text (pseudo-class)
-&#39;text:contains(&quot;Invoice&quot;)&#39;      # Text containing &quot;Invoice&quot;
-&#39;text[size&gt;12]&#39;                 # Text with font size &gt; 12 (attribute)
-&#39;text:bold[size&gt;=14]&#39;           # Bold text AND size &gt;= 14 (combined)
+<h1 id="structured-extraction-with-llms">Structured Extraction with LLMs</h1>
+<p>Use <code>.extract()</code> to pull structured data from PDFs using an LLM. Define a Pydantic schema, pass an OpenAI-compatible client, and get back typed results with optional citations and confidence scores.</p>
+<h2 id="basic-usage">Basic Usage</h2>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OPENAI_API_KEY&quot;</span><span class="p">))</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">InvoiceData</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">invoice_number</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">date</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">total</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;invoice.pdf&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">InvoiceData</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">)</span>
+
+<span class="c1"># Attribute access</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">invoice_number</span><span class="p">)</span>   <span class="c1"># &quot;INV-2024-00789&quot;</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">total</span><span class="p">)</span>            <span class="c1"># 1250.00</span>
+
+<span class="c1"># Item access gives FieldResult objects</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;vendor&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>  <span class="c1"># &quot;Acme Corp&quot;</span>
+
+<span class="c1"># Convert to dict</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span>        <span class="c1"># {&quot;invoice_number&quot;: &quot;INV-2024-00789&quot;, ...}</span>
+
+<span class="c1"># Iterate</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">field</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">pdf</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </code></pre></div>
-<h2 id="the-basics">The Basics</h2>
-<h3 id="element-types">Element Types</h3>
-<p>Every selector starts with an element type:</p>
+<h2 id="text-vs-vision-mode">Text vs Vision Mode</h2>
+<p>By default <code>.extract()</code> sends the page's text layer to the LLM. For scanned documents or when layout matters visually, use <code>using='vision'</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Text mode (default) — sends extracted text</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">MySchema</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
+
+<span class="c1"># Vision mode — sends a rendered image of the page</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">MySchema</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="custom-prompts-and-instructions">Custom Prompts and Instructions</h2>
+<p>Override the default prompt entirely or append domain-specific guidance:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Custom prompt</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+    <span class="n">MySchema</span><span class="p">,</span>
+    <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span>
+    <span class="n">prompt</span><span class="o">=</span><span class="s2">&quot;Extract inspection details. Dates should be in ISO format.&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Instructions — appended to the default (or custom) prompt</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+    <span class="n">MySchema</span><span class="p">,</span>
+    <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span>
+    <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;Monetary values should be in USD. If a field is ambiguous, prefer null.&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<h2 id="citations">Citations</h2>
+<p>Add <code>citations=True</code> to trace each extracted value back to the specific PDF elements it came from:</p>
+<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">MySchema</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> <span class="n">citations</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Each field has a .citations ElementCollection</span>
+<span class="n">result</span><span class="p">[</span><span class="s2">&quot;vendor&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">citations</span>       <span class="c1"># ElementCollection of source TextElements</span>
+<span class="n">result</span><span class="p">[</span><span class="s2">&quot;vendor&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">citations</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>  <span class="c1"># Highlight sources on the page</span>
+
+<span class="c1"># Show all citations at once</span>
+<span class="n">result</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># Access all citations as a dict</span>
+<span class="n">result</span><span class="o">.</span><span class="n">all_citations</span>  <span class="c1"># {&quot;vendor&quot;: ElementCollection, &quot;date&quot;: ElementCollection, ...}</span>
+</code></pre></div>
+<p>Citations work by sending line-numbered text to the LLM and asking it to return verbatim quotes. These quotes are then aligned back to PDF elements using pdfplumber's TextMap provenance data.</p>
+<p><strong>Note:</strong> Citations require <code>using='text'</code> (the default). They are not supported with <code>using='vision'</code>.</p>
+<h2 id="confidence-scoring">Confidence Scoring</h2>
+<p>Add <code>confidence=True</code> to get a 0.0–1.0 confidence score for each extracted field:</p>
+<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">MySchema</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> <span class="n">confidence</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">result</span><span class="p">[</span><span class="s2">&quot;vendor&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">confidence</span>  <span class="c1"># 0.95</span>
+<span class="n">result</span><span class="o">.</span><span class="n">confidences</span>           <span class="c1"># {&quot;vendor&quot;: 0.95, &quot;date&quot;: 0.85, ...}</span>
+</code></pre></div>
+<p>The prompt asks the LLM to self-report confidence using these anchors. These are the LLM's own assessments — they are not calibrated or independently verified:</p>
 <table>
 <thead>
 <tr>
-<th>Type</th>
-<th>What It Finds</th>
-<th>Example</th>
+<th>Score</th>
+<th>Prompt Anchor</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>text</code></td>
-<td>Text content</td>
-<td><code>page.find('text')</code></td>
+<td>0.0</td>
+<td>Not present or completely uncertain</td>
 </tr>
 <tr>
-<td><code>line</code></td>
-<td>Lines and rules</td>
-<td><code>page.find('line')</code></td>
+<td>0.2</td>
+<td>Weakly implied but not stated</td>
 </tr>
 <tr>
-<td><code>rect</code></td>
-<td>Rectangles and boxes</td>
-<td><code>page.find('rect')</code></td>
+<td>0.5</td>
+<td>Partially supported or ambiguous</td>
 </tr>
 <tr>
-<td><code>image</code></td>
-<td>Embedded images</td>
-<td><code>page.find('image')</code></td>
+<td>0.8</td>
+<td>Supported with minor inference</td>
 </tr>
 <tr>
-<td><code>region</code></td>
-<td>Layout-detected areas</td>
-<td><code>page.find('region')</code></td>
+<td>1.0</td>
+<td>Explicitly stated in the text</td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find the first text element</span>
-<span class="n">first_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find all lines</span>
-<span class="n">all_lines</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;line&#39;</span><span class="p">)</span>
+<h3 id="categorical-confidence">Categorical Confidence</h3>
+<p>Instead of numeric scores, use a list of levels. You define what they mean, or the LLM interprets them from the label:</p>
+<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+    <span class="n">MySchema</span><span class="p">,</span>
+    <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span>
+    <span class="n">confidence</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">,</span> <span class="s2">&quot;medium&quot;</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+<span class="n">result</span><span class="p">[</span><span class="s2">&quot;vendor&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">confidence</span>  <span class="c1"># &quot;high&quot;</span>
 </code></pre></div>
-<h3 id="pseudo-classes-name">Pseudo-Classes (<code>:name</code>)</h3>
-<p>Pseudo-classes filter by state or content. They use a <strong>colon</strong> (<code>:</code>) prefix.</p>
-<table>
-<thead>
-<tr>
-<th>Pseudo-Class</th>
-<th>Description</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>:bold</code></td>
-<td>Bold text</td>
-<td><code>'text:bold'</code></td>
-</tr>
-<tr>
-<td><code>:italic</code></td>
-<td>Italic text</td>
-<td><code>'text:italic'</code></td>
-</tr>
-<tr>
-<td><code>:contains("X")</code></td>
-<td>Contains the text "X"</td>
-<td><code>'text:contains("Invoice")'</code></td>
-</tr>
-<tr>
-<td><code>:startswith("X")</code></td>
-<td>Starts with "X"</td>
-<td><code>'text:startswith("Total")'</code></td>
-</tr>
-<tr>
-<td><code>:endswith("X")</code></td>
-<td>Ends with "X"</td>
-<td><code>'text:endswith(":")'</code></td>
-</tr>
-<tr>
-<td><code>:regex("pattern")</code></td>
-<td>Matches a regex pattern</td>
-<td><code>'text:regex("INV-\\d+")'</code></td>
-</tr>
-<tr>
-<td><code>:horizontal</code></td>
-<td>Horizontal lines</td>
-<td><code>'line:horizontal'</code></td>
-</tr>
-<tr>
-<td><code>:vertical</code></td>
-<td>Vertical lines</td>
-<td><code>'line:vertical'</code></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find bold text</span>
-<span class="n">bold</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find text containing &quot;Total&quot;</span>
-<span class="n">total</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Total&quot;)&#39;</span><span class="p">)</span>
-
-<span class="c1"># Case-insensitive search</span>
-<span class="n">total</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;total&quot;)&#39;</span><span class="p">,</span> <span class="n">case</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<p>Or provide explicit descriptions for each level:</p>
+<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+    <span class="n">MySchema</span><span class="p">,</span>
+    <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span>
+    <span class="n">confidence</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="s2">&quot;implied or inferred&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;medium&quot;</span><span class="p">:</span> <span class="s2">&quot;strongly implied&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="s2">&quot;clearly and explicitly stated&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">)</span>
 </code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title">Common Mistake</p>
-<p>Use <strong>colon</strong> (<code>:</code>) not <strong>dot</strong> (<code>.</code>) for pseudo-classes:</p>
-<ul>
-<li>✅ <code>'text:bold'</code> (correct)</li>
-<li>❌ <code>'text.bold'</code> (wrong - this is CSS class syntax)</li>
-</ul>
-</div>
-<h3 id="attribute-filters-attrvalue">Attribute Filters (<code>[attr=value]</code>)</h3>
-<p>Attribute filters match specific properties. They use <strong>brackets</strong> (<code>[]</code>).</p>
-<table>
-<thead>
-<tr>
-<th>Operator</th>
-<th>Meaning</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>=</code></td>
-<td>Equals</td>
-<td><code>'text[size=12]'</code></td>
-</tr>
-<tr>
-<td><code>!=</code></td>
-<td>Not equals</td>
-<td><code>'text[size!=12]'</code></td>
-</tr>
-<tr>
-<td><code>&gt;</code></td>
-<td>Greater than</td>
-<td><code>'text[size&gt;12]'</code></td>
-</tr>
-<tr>
-<td><code>&gt;=</code></td>
-<td>Greater or equal</td>
-<td><code>'text[size&gt;=12]'</code></td>
-</tr>
-<tr>
-<td><code>&lt;</code></td>
-<td>Less than</td>
-<td><code>'text[size&lt;12]'</code></td>
-</tr>
-<tr>
-<td><code>&lt;=</code></td>
-<td>Less or equal</td>
-<td><code>'text[size&lt;=12]'</code></td>
-</tr>
-<tr>
-<td><code>*=</code></td>
-<td>Contains</td>
-<td><code>'text[fontname*=Arial]'</code></td>
-</tr>
-<tr>
-<td><code>^=</code></td>
-<td>Starts with</td>
-<td><code>'text[fontname^=Times]'</code></td>
-</tr>
-<tr>
-<td><code>$=</code></td>
-<td>Ends with</td>
-<td><code>'text[fontname$=Bold]'</code></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find large text (size &gt; 14)</span>
-<span class="n">large</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[size&gt;14]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find text in Arial font</span>
-<span class="n">arial</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[fontname*=Arial]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find high-confidence OCR results</span>
-<span class="n">confident</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[confidence&gt;=0.9]&#39;</span><span class="p">)</span>
+<h2 id="annotated-pdf-export">Annotated PDF Export</h2>
+<p>Save extraction results as a native PDF with highlight annotations and a sidebar legend:</p>
+<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">MySchema</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> <span class="n">citations</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">confidence</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">result</span><span class="o">.</span><span class="n">save_pdf</span><span class="p">(</span><span class="s2">&quot;annotated.pdf&quot;</span><span class="p">)</span>
 </code></pre></div>
-<h4 id="common-attributes">Common Attributes</h4>
-<table>
-<thead>
-<tr>
-<th>Attribute</th>
-<th>Element Types</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>size</code></td>
-<td>text</td>
-<td>Font size in points</td>
-</tr>
-<tr>
-<td><code>fontname</code></td>
-<td>text</td>
-<td>Font family name</td>
-</tr>
-<tr>
-<td><code>confidence</code></td>
-<td>text (OCR)</td>
-<td>OCR confidence (0-1)</td>
-</tr>
-<tr>
-<td><code>source</code></td>
-<td>text</td>
-<td>Origin: <code>pdf</code> or <code>ocr</code></td>
-</tr>
-<tr>
-<td><code>type</code></td>
-<td>region</td>
-<td>Region type from layout analysis</td>
-</tr>
-<tr>
-<td><code>width</code></td>
-<td>line, rect</td>
-<td>Element width</td>
-</tr>
-<tr>
-<td><code>height</code></td>
-<td>line, rect, image</td>
-<td>Element height</td>
-</tr>
-<tr>
-<td><code>fill</code></td>
-<td>rect</td>
-<td>Has fill color</td>
-</tr>
-<tr>
-<td><code>stroke</code></td>
-<td>rect, line</td>
-<td>Has stroke/border</td>
-</tr>
-</tbody>
-</table>
-<h3 id="combining-selectors">Combining Selectors</h3>
-<p>You can combine pseudo-classes and attributes for precise matching:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Bold text larger than 14pt</span>
-<span class="n">headers</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:bold[size&gt;14]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Text containing &quot;Total&quot; in Arial font</span>
-<span class="n">totals</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Total&quot;)[fontname*=Arial]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Bold, large text containing &quot;Summary&quot;</span>
-<span class="n">summary</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:bold[size&gt;=16]:contains(&quot;Summary&quot;)&#39;</span><span class="p">)</span>
+<p><strong>Install:</strong> <code>pip install "natural-pdf[export]"</code> (requires pikepdf).</p>
+<p>Each field's citation elements become <code>/Highlight</code> annotations on the corresponding pages. The sidebar shows field names, extracted values, and colors matching the highlights.</p>
+<p>You can also visualize inline:</p>
+<div class="highlight"><pre><span></span><code><span class="n">result</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>  <span class="c1"># Displays enriched legend labels (field name + value)</span>
 </code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Selector Order</p>
-<p>Pseudo-classes and attributes can appear in any order after the type. These are all equivalent:</p>
-<div class="highlight"><pre><span></span><code><span class="s1">&#39;text:bold[size&gt;14]:contains(&quot;Summary&quot;)&#39;</span>
-<span class="s1">&#39;text:contains(&quot;Summary&quot;):bold[size&gt;14]&#39;</span>
-<span class="s1">&#39;text[size&gt;14]:bold:contains(&quot;Summary&quot;)&#39;</span>
+<h3 id="controlling-which-pages-appear">Controlling which pages appear</h3>
+<p>Both <code>.show()</code> and <code>.save_pdf()</code> accept a <code>pages</code> parameter:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># .show() defaults to pages=&quot;cited&quot; — only pages with citation elements</span>
+<span class="n">result</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>                     <span class="c1"># cited pages only</span>
+<span class="n">result</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">pages</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>          <span class="c1"># every page in the source PDF</span>
+
+<span class="c1"># .save_pdf() defaults to pages=&quot;all&quot; — the full source PDF with annotations</span>
+<span class="n">result</span><span class="o">.</span><span class="n">save_pdf</span><span class="p">(</span><span class="s2">&quot;annotated.pdf&quot;</span><span class="p">)</span>                   <span class="c1"># all pages</span>
+<span class="n">result</span><span class="o">.</span><span class="n">save_pdf</span><span class="p">(</span><span class="s2">&quot;annotated.pdf&quot;</span><span class="p">,</span> <span class="n">pages</span><span class="o">=</span><span class="s2">&quot;cited&quot;</span><span class="p">)</span>    <span class="c1"># only annotated pages</span>
 </code></pre></div>
-</div>
-<h2 id="finding-elements">Finding Elements</h2>
-<h3 id="find-first-match"><code>find()</code> - First Match</h3>
-<p>Returns the first matching element, or <code>None</code> if not found.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find the first bold text</span>
-<span class="n">title</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>
+<h2 id="extracting-from-regions-pages-and-pdfs">Extracting from Regions, Pages, and PDFs</h2>
+<p><code>.extract()</code> works on pages, regions, and entire PDFs:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># From a specific region</span>
+<span class="n">header</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Invoice&quot;)&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">below</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="s1">&#39;text:contains(&quot;Items&quot;)&#39;</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">MySchema</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">)</span>
 
-<span class="c1"># Always check for None!</span>
-<span class="k">if</span> <span class="n">title</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">title</span><span class="o">.</span><span class="n">extract_text</span><span class="p">())</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Not found&quot;</span><span class="p">)</span>
+<span class="c1"># From an entire PDF (multi-page)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">MySchema</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> <span class="n">citations</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
-<h3 id="find_all-all-matches"><code>find_all()</code> - All Matches</h3>
-<p>Returns an <code>ElementCollection</code> with all matching elements.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find all bold text</span>
-<span class="n">all_bold</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_bold</span><span class="p">)</span><span class="si">}</span><span class="s2"> bold elements&quot;</span><span class="p">)</span>
-
-<span class="c1"># ElementCollection has useful methods</span>
-<span class="n">first</span> <span class="o">=</span> <span class="n">all_bold</span><span class="o">.</span><span class="n">first</span>  <span class="c1"># First element or None</span>
-<span class="n">texts</span> <span class="o">=</span> <span class="n">all_bold</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>  <span class="c1"># Extract text from all</span>
+<h2 id="choosing-a-model">Choosing a Model</h2>
+<p>Pass <code>model=</code> to select which LLM to use:</p>
+<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">MySchema</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">)</span>
 </code></pre></div>
-<h2 id="advanced-patterns">Advanced Patterns</h2>
-<h3 id="regex-matching">Regex Matching</h3>
-<p>There are two ways to use regex. The <code>:regex()</code> pseudo-class matches against the full text of each element:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find invoice numbers like &quot;INV-12345&quot;</span>
-<span class="n">invoice</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:regex(&quot;INV-</span><span class="se">\\</span><span class="s1">d+&quot;)&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find dates in MM/DD/YYYY format</span>
-<span class="n">dates</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:regex(&quot;</span><span class="se">\\</span><span class="s1">d</span><span class="si">{2}</span><span class="s1">/</span><span class="se">\\</span><span class="s1">d</span><span class="si">{2}</span><span class="s1">/</span><span class="se">\\</span><span class="s1">d</span><span class="si">{4}</span><span class="s1">&quot;)&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find page numbers like &quot;Page 1 of 10&quot;</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:regex(&quot;Page </span><span class="se">\\</span><span class="s1">d+ of </span><span class="se">\\</span><span class="s1">d+&quot;)&#39;</span><span class="p">)</span>
-</code></pre></div>
-<p>You can also use <code>regex=True</code> with <code>:contains()</code> for the same effect:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># These are equivalent</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:regex(&quot;Total|Sum&quot;)&#39;</span><span class="p">)</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Total|Sum&quot;)&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="layout-regions">Layout Regions</h3>
-<p>After running layout analysis, you can find detected regions:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># First, detect layout</span>
-<span class="n">page</span><span class="o">.</span><span class="n">analyze_layout</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;yolo&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find all detected tables</span>
-<span class="n">tables</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=table]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find specific region types</span>
-<span class="n">titles</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=title]&#39;</span><span class="p">)</span>
-<span class="n">figures</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=figure]&#39;</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="ocr-elements">OCR Elements</h3>
-<p>After applying OCR, filter by source and confidence:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Apply OCR</span>
-<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">()</span>
-
-<span class="c1"># Find OCR text (not native PDF text)</span>
-<span class="n">ocr_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=ocr]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find high-confidence OCR only</span>
-<span class="n">confident</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=ocr][confidence&gt;=0.8]&#39;</span><span class="p">)</span>
-
-<span class="c1"># Find native PDF text only</span>
-<span class="n">native</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=pdf]&#39;</span><span class="p">)</span>
-</code></pre></div>
-<h2 id="common-patterns-cheat-sheet">Common Patterns Cheat Sheet</h2>
-<table>
-<thead>
-<tr>
-<th>Goal</th>
-<th>Selector</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>All text</td>
-<td><code>'text'</code></td>
-</tr>
-<tr>
-<td>Bold text</td>
-<td><code>'text:bold'</code></td>
-</tr>
-<tr>
-<td>Large text (headings)</td>
-<td><code>'text[size&gt;=14]'</code></td>
-</tr>
-<tr>
-<td>Text containing "X"</td>
-<td><code>'text:contains("X")'</code></td>
-</tr>
-<tr>
-<td>Case-insensitive search</td>
-<td><code>page.find('text:contains("x")', case=False)</code></td>
-</tr>
-<tr>
-<td>Horizontal lines</td>
-<td><code>'line:horizontal'</code></td>
-</tr>
-<tr>
-<td>Thick lines</td>
-<td><code>'line[width&gt;=2]'</code></td>
-</tr>
-<tr>
-<td>Filled rectangles</td>
-<td><code>'rect[fill]'</code></td>
-</tr>
-<tr>
-<td>Detected tables</td>
-<td><code>'region[type=table]'</code></td>
-</tr>
-<tr>
-<td>High-confidence OCR</td>
-<td><code>'text[source=ocr][confidence&gt;=0.8]'</code></td>
-</tr>
-</tbody>
-</table>
-<h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="my-selector-finds-nothing">"My selector finds nothing"</h3>
-<ol>
-<li>
-<p><strong>Start broad, then narrow down:</strong>
-   <div class="highlight"><pre><span></span><code><span class="c1"># See what&#39;s on the page</span>
-<span class="n">all_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_text</span><span class="p">)</span><span class="si">}</span><span class="s2"> text elements&quot;</span><span class="p">)</span>
-<span class="n">all_text</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>  <span class="c1"># Visualize them</span>
-</code></pre></div></p>
-</li>
-<li>
-<p><strong>Check your spelling and case:</strong>
-   <div class="highlight"><pre><span></span><code><span class="c1"># This finds &quot;Invoice&quot; but not &quot;INVOICE&quot; or &quot;invoice&quot;</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Invoice&quot;)&#39;</span><span class="p">)</span>
-
-<span class="c1"># Use case=False for case-insensitive</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;invoice&quot;)&#39;</span><span class="p">,</span> <span class="n">case</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</code></pre></div></p>
-</li>
-<li>
-<p><strong>Check the syntax:</strong>
-   <div class="highlight"><pre><span></span><code><span class="c1"># Wrong</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text.bold&#39;</span><span class="p">)</span>              <span class="c1"># Use colon, not dot</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[contains=&quot;X&quot;]&#39;</span><span class="p">)</span>     <span class="c1"># :contains is a pseudo-class</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(Invoice)&#39;</span><span class="p">)</span> <span class="c1"># Need quotes around text</span>
-
-<span class="c1"># Correct</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Invoice&quot;)&#39;</span><span class="p">)</span>
-</code></pre></div></p>
-</li>
-</ol>
-<h3 id="i-get-attributeerror-nonetype">"I get AttributeError: 'NoneType'"</h3>
-<p><code>find()</code> returns <code>None</code> when nothing matches. Always check:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Wrong - crashes if not found</span>
-<span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Missing&quot;)&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
-
-<span class="c1"># Correct - handle None</span>
-<span class="n">element</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Missing&quot;)&#39;</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">element</span><span class="p">:</span>
-    <span class="n">text</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-</code></pre></div>
-<h2 id="next-steps">Next Steps</h2>
-<ul>
-<li><strong><a href="../quickstart/">Quickstart</a></strong> - See selectors in action</li>
-<li><strong><a href="../../tutorials/02-finding-elements/">Finding Elements Tutorial</a></strong> - Deep dive into finding elements</li>
-<li><strong><a href="../../tutorials/08-spatial-navigation/">Spatial Navigation</a></strong> - Use <code>.below()</code>, <code>.above()</code> after finding</li>
-</ul>
 
 
 

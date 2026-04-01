@@ -819,7 +819,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorials/10-structured-extraction.md" class="md-nav__link">
+      <a href="../structured-extraction/" class="md-nav__link">
         
   
   
@@ -885,6 +885,8 @@
   
     
     
+      
+        
       
         
       
@@ -1018,6 +1020,34 @@
     
   
     Guides
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../form-cells/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Form Cells
   
 
     
@@ -2108,8 +2138,8 @@
 </tr>
 </tbody>
 </table>
-<p>GLM-OCR (0.9B VLM) is also available via <code>engine="vlm"</code> with automatic layout detection — see the <a href="../tutorials/12-ocr-integration.md#glm-ocr">OCR tutorial</a>.</p>
-<p>Not sure which engine to use? Compare them side by side with <code>page.compare_ocr(engines=["rapidocr", "easyocr"])</code> — see <a href="../tutorials/12-ocr-integration.md#comparing-ocr-engines">Comparing OCR Engines</a>.</p>
+<p>GLM-OCR (0.9B VLM) is also available via <code>engine="vlm"</code> with automatic layout detection — see the <a href="../../tutorials/12-ocr-integration/#glm-ocr">OCR tutorial</a>.</p>
+<p>Not sure which engine to use? Compare them side by side with <code>page.compare_ocr(engines=["rapidocr", "easyocr"])</code> — see <a href="../../tutorials/12-ocr-integration/#comparing-ocr-engines">Comparing OCR Engines</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Use a specific engine</span>
 <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;surya&quot;</span><span class="p">)</span>
 
@@ -2172,7 +2202,7 @@
     <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;checked&quot;</span> <span class="k">if</span> <span class="n">cb</span><span class="o">.</span><span class="n">is_checked</span> <span class="k">else</span> <span class="s2">&quot;unchecked&quot;</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p>See the <a href="../tutorials/12-ocr-integration.md#detecting-checkboxes">OCR Integration tutorial</a> for engine options and details.</p>
+<p>See the <a href="../../tutorials/12-ocr-integration/#detecting-checkboxes">OCR Integration tutorial</a> for engine options and details.</p>
 <h2 id="complete-example">Complete Example</h2>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npdf</span>
 
