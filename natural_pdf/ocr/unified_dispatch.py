@@ -48,6 +48,23 @@ class EngineEntry:
     install_hint: Optional[str] = None
 
 
+def _is_apple_silicon() -> bool:
+    """Check if running on Apple Silicon."""
+    import platform
+
+    return platform.machine() == "arm64" and platform.system() == "Darwin"
+
+
+def _resolve_paddlevl_model() -> str:
+    """Pick the best PaddleOCR-VL model for the current platform."""
+    if _is_apple_silicon():
+        return "mlx-community/PaddleOCR-VL-1.5-4bit"
+    return "PaddlePaddle/PaddleOCR-VL-1.5"
+
+
+_PADDLEVL_PROMPT = "OCR:"
+
+
 def _build_registry() -> Dict[str, EngineEntry]:
     """Build the unified engine registry from classic + VLM engines.
 
@@ -115,10 +132,12 @@ def _build_registry() -> Dict[str, EngineEntry]:
             install_hint="pip install chandra-ocr[hf]",
         ),
         "paddlevl": EngineEntry(
-            engine_type="classic",
+            engine_type="auto_platform",  # MLX on Apple Silicon, pip package elsewhere
             provider=PaddleOCRVLEngine,
             options_class=PaddleOCRVLOptions,
             install_hint="pip install paddleocr",
+            model_resolver=_resolve_paddlevl_model,
+            vlm_family="paddlevl",
         ),
         # VLM shorthand engines
         "dots": EngineEntry(
@@ -391,6 +410,34 @@ def run_ocr(
 
     # Render image once
     image = _render_target(target, resolution, effective_render_kwargs)
+
+    # auto_platform: Apple Silicon → VLM with layout, otherwise → classic pip package
+    if entry.engine_type == "auto_platform":
+        if _is_apple_silicon():
+            return _run_vlm(
+                image=image,
+                entry=entry,
+                engine_name=engine_key,
+                model=model or (entry.model_resolver() if entry.model_resolver else None),
+                client=client,
+                prompt=prompt or _PADDLEVL_PROMPT,
+                instructions=instructions,
+                max_new_tokens=max_new_tokens,
+                languages=languages,
+                layout=True if layout is None else layout,
+            )
+        else:
+            return _run_classic(
+                image=image,
+                engine_name=engine_key,
+                entry=entry,
+                languages=languages,
+                min_confidence=min_confidence,
+                device=device,
+                detect_only=detect_only,
+                options=options,
+                context=context,
+            )
 
     if entry.engine_type in ("classic", "classic_provider"):
         return _run_classic(

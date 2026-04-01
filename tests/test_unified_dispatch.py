@@ -36,9 +36,15 @@ from natural_pdf.ocr.unified_dispatch import (
 class TestRegistry:
     def test_contains_all_classic_engines(self):
         registry = get_registry()
-        for name in ("easyocr", "rapidocr", "surya", "paddle", "doctr", "chandra2", "paddlevl"):
+        for name in ("easyocr", "rapidocr", "surya", "paddle", "doctr", "chandra2"):
             assert name in registry, f"Missing classic engine: {name}"
             assert registry[name].engine_type == "classic"
+
+    def test_paddlevl_auto_platform(self):
+        registry = get_registry()
+        assert "paddlevl" in registry
+        assert registry["paddlevl"].engine_type == "auto_platform"
+        assert registry["paddlevl"].model_resolver is not None
 
     def test_contains_vlm_engines(self):
         registry = get_registry()
