@@ -340,6 +340,7 @@ def run_ocr(
     prompt: Optional[str] = None,
     instructions: Optional[str] = None,
     max_new_tokens: Optional[int] = None,
+    layout: Optional[bool] = None,
 ) -> OCRRunResult:
     """Unified OCR dispatch — single entry point for all engines.
 
@@ -414,6 +415,7 @@ def run_ocr(
             instructions=instructions,
             max_new_tokens=max_new_tokens,
             languages=languages,
+            layout=layout,
         )
     else:
         raise ValueError(f"Unknown engine type {entry.engine_type!r} for {engine_name!r}")
@@ -559,6 +561,7 @@ def _run_vlm(
     instructions: Optional[str],
     max_new_tokens: Optional[int],
     languages: Optional[List[str]],
+    layout: Optional[bool] = None,
 ) -> OCRRunResult:
     """Dispatch to a VLM OCR engine."""
     from natural_pdf.ocr.vlm_ocr import run_vlm_ocr_on_image
@@ -593,6 +596,7 @@ def _run_vlm(
         prompt=prompt,
         instructions=instructions,
         languages=languages,
+        layout=layout,
     )
 
     return OCRRunResult(results=results, image_size=img_size, engine_type="vlm")

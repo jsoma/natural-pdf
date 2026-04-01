@@ -177,6 +177,7 @@ class OCRService:
         prompt: Optional[str] = None,
         instructions: Optional[str] = None,
         max_new_tokens: Optional[int] = None,
+        layout: Optional[bool] = None,
         **kwargs,
     ):
         normalized_options = normalize_ocr_options(options)
@@ -216,6 +217,7 @@ class OCRService:
             prompt=prompt,
             instructions=instructions,
             max_new_tokens=max_new_tokens,
+            layout=layout,
         )
 
         image_width, image_height = ocr_payload.image_size

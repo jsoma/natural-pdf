@@ -316,13 +316,18 @@ def _get_layout_detector(model_name: str = _LAYOUT_MODEL) -> Any:
         if model_name not in _layout_detector_cache:
             try:
                 import torch
-                from transformers import (
-                    PPDocLayoutV3ForObjectDetection,
-                    PPDocLayoutV3ImageProcessor,
-                )
+                from transformers import PPDocLayoutV3ForObjectDetection
+
+                # transformers 5.x renamed to PPDocLayoutV3ImageProcessorFast
+                try:
+                    from transformers import (
+                        PPDocLayoutV3ImageProcessorFast as PPDocLayoutV3ImageProcessor,
+                    )
+                except ImportError:
+                    from transformers import PPDocLayoutV3ImageProcessor
             except ImportError as exc:
                 raise RuntimeError(
-                    "Layout detection for GLM-OCR requires transformers and torch. "
+                    "Layout detection requires transformers and torch. "
                     "Install with: pip install transformers torch"
                 ) from exc
 
@@ -386,61 +391,67 @@ def _detect_layout_regions(
     return regions
 
 
-def _run_glm_ocr_on_image(
+def _run_layout_ocr_on_image(
     image: Image.Image,
     *,
     model: Optional[str],
     client: Optional[Any],
     max_new_tokens: int,
+    prompt: str = _GLM_OCR_PROMPT,
+    default_confidence: float = 0.9,
+    crop_padding: int = 1,
+    layout_threshold: float = 0.15,
+    skip_labels: Optional[set] = None,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
-    """Run layout detection + GLM-OCR text recognition on a pre-rendered image.
+    """Run layout detection + per-crop VLM recognition on a pre-rendered image.
 
     1. Run PP-DocLayout-V3 to detect layout regions with bounding boxes.
-    2. For each text region, crop the image and run GLM-OCR.
-    3. Return results with bboxes from layout + text from GLM-OCR.
+    2. For each text region, crop the image (with padding) and send to VLM.
+    3. Return results with bboxes from layout + text from VLM.
 
     Returns results in image pixel coordinates.
     """
     from natural_pdf.core.vlm_client import generate
 
+    if skip_labels is None:
+        skip_labels = _GLM_SKIP_LABELS
+
     img_w, img_h = image.size
 
     # Step 1: Layout detection
-    logger.info("GLM-OCR: running layout detection on %dx%d image ...", img_w, img_h)
-    regions = _detect_layout_regions(image, threshold=0.15)
-    text_regions = [r for r in regions if r["label"] not in _GLM_SKIP_LABELS]
+    logger.info("layout+OCR: running layout detection on %dx%d image ...", img_w, img_h)
+    regions = _detect_layout_regions(image, threshold=layout_threshold)
+    text_regions = [r for r in regions if r["label"] not in skip_labels]
 
-    skipped = [r for r in regions if r["label"] in _GLM_SKIP_LABELS]
+    skipped = [r for r in regions if r["label"] in skip_labels]
     if skipped:
-        skipped_summary = {}
+        skipped_summary: Dict[str, int] = {}
         for r in skipped:
             skipped_summary[r["label"]] = skipped_summary.get(r["label"], 0) + 1
-        logger.info("GLM-OCR: skipped %d visual-only regions: %s", len(skipped), skipped_summary)
+        logger.info("layout+OCR: skipped %d visual-only regions: %s", len(skipped), skipped_summary)
 
     if not text_regions:
-        # No layout regions found — fall back to full-page OCR
-        logger.info("GLM-OCR: no text regions detected, running on full page.")
+        logger.info("layout+OCR: no text regions detected, running on full page.")
         text_regions = [{"label": "text", "bbox": [0, 0, img_w, img_h], "confidence": 1.0}]
 
     logger.info(
-        "GLM-OCR: detected %d text regions (of %d total). Running OCR on each ...",
+        "layout+OCR: detected %d text regions (of %d total). Running recognition on each ...",
         len(text_regions),
         len(regions),
     )
 
-    # Step 2: Run GLM-OCR on each text region
+    # Step 2: Run VLM recognition on each text region
     results = []
-    default_conf = _FAMILY_DEFAULT_CONFIDENCE["glm_ocr"]
 
     for region in text_regions:
         bbox = region["bbox"]
         x0, y0, x1, y1 = [int(round(v)) for v in bbox]
 
-        # Clamp to image bounds
-        x0 = max(0, min(x0, img_w))
-        y0 = max(0, min(y0, img_h))
-        x1 = max(0, min(x1, img_w))
-        y1 = max(0, min(y1, img_h))
+        # Clamp to image bounds with padding
+        x0 = max(0, x0 - crop_padding)
+        y0 = max(0, y0 - crop_padding)
+        x1 = min(img_w, x1 + crop_padding)
+        y1 = min(img_h, y1 + crop_padding)
 
         if x1 - x0 < 2 or y1 - y0 < 2:
             continue
@@ -448,7 +459,7 @@ def _run_glm_ocr_on_image(
         crop = image.crop((x0, y0, x1, y1))
         raw_text = generate(
             crop,
-            _GLM_OCR_PROMPT,
+            prompt,
             model=model,
             client=client,
             max_new_tokens=max_new_tokens,
@@ -461,12 +472,34 @@ def _run_glm_ocr_on_image(
             {
                 "bbox": [float(x0), float(y0), float(x1), float(y1)],
                 "text": raw_text,
-                "confidence": default_conf,
+                "confidence": default_confidence,
             }
         )
 
-    logger.info("GLM-OCR: recognized text in %d regions.", len(results))
+    logger.info("layout+OCR: recognized text in %d of %d regions.", len(results), len(text_regions))
     return results, (img_w, img_h)
+
+
+def _run_glm_ocr_on_image(
+    image: Image.Image,
+    *,
+    model: Optional[str],
+    client: Optional[Any],
+    max_new_tokens: int,
+) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
+    """Run layout detection + GLM-OCR text recognition on a pre-rendered image.
+
+    Convenience wrapper around :func:`_run_layout_ocr_on_image` with
+    GLM-OCR defaults.
+    """
+    return _run_layout_ocr_on_image(
+        image,
+        model=model,
+        client=client,
+        max_new_tokens=max_new_tokens,
+        prompt=_GLM_OCR_PROMPT,
+        default_confidence=_FAMILY_DEFAULT_CONFIDENCE["glm_ocr"],
+    )
 
 
 def _run_glm_ocr_with_layout(
@@ -954,6 +987,7 @@ def run_vlm_ocr_on_image(
     prompt: Optional[str] = None,
     instructions: Optional[str] = None,
     languages: Optional[List[str]] = None,
+    layout: Optional[bool] = None,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
     """Run VLM-based OCR on a pre-rendered image.
 
@@ -968,6 +1002,11 @@ def run_vlm_ocr_on_image(
         instructions: Additional instructions appended to auto-generated prompt
             (ignored when *prompt* is set).
         languages: Optional language codes for VLM hint.
+        layout: If ``True``, run layout detection (PP-DocLayout-V3) first
+            and send each cropped region to the VLM for recognition.
+            If ``None`` (default), auto-detect based on model family
+            (``glm_ocr`` uses layout; grounding models don't).
+            If ``False``, always use full-page prompt.
 
     Returns:
         Tuple of (ocr_results, (image_width, image_height)).
@@ -987,11 +1026,25 @@ def run_vlm_ocr_on_image(
 
     family = detect_model_family(effective_model)
 
-    if family == "glm_ocr":
-        return _run_glm_ocr_on_image(
-            image, model=model, client=client, max_new_tokens=max_new_tokens
+    # layout=True forces layout+crop pipeline for any model.
+    # layout=None auto-detects (glm_ocr uses layout; others don't).
+    # layout=False forces full-page prompt.
+    use_layout = layout if layout is not None else (family == "glm_ocr")
+
+    if use_layout:
+        effective_prompt = prompt or _GLM_OCR_PROMPT
+        default_conf = _FAMILY_DEFAULT_CONFIDENCE.get(family, 0.9)
+        return _run_layout_ocr_on_image(
+            image,
+            model=model,
+            client=client,
+            max_new_tokens=max_new_tokens,
+            prompt=effective_prompt,
+            default_confidence=default_conf,
         )
-    elif family == "dots_mocr":
+
+    # Family-specific single-pass handlers
+    if family == "dots_mocr":
         return _run_dots_mocr_on_image(
             image, model=model, client=client, max_new_tokens=max_new_tokens
         )
@@ -1003,7 +1056,8 @@ def run_vlm_ocr_on_image(
         logger.warning(
             "VLM OCR: model %r is not a recognized grounding model. "
             "Bounding-box accuracy may be poor. For best results use a "
-            "Qwen-VL family model (e.g. Qwen/Qwen3-VL-2B-Instruct).",
+            "Qwen-VL family model (e.g. Qwen/Qwen3-VL-2B-Instruct), "
+            "or pass layout=True to use layout detection + per-crop recognition.",
             effective_model,
         )
     elif family == "openai":
@@ -1013,7 +1067,7 @@ def run_vlm_ocr_on_image(
             "output, use a Qwen-VL model via OpenRouter.",
         )
 
-    # Use family-specific prompt unless the caller supplied a custom one
+    # Full-page grounding prompt path
     if prompt is not None:
         effective_prompt = prompt
     else:

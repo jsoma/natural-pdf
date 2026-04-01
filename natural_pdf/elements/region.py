@@ -2062,6 +2062,7 @@ class Region(
             instructions=instructions,
             prompt=kwargs.get("prompt"),
             max_new_tokens=kwargs.get("max_new_tokens"),
+            layout=kwargs.get("layout"),
         )
         return self
 
