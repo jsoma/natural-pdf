@@ -1199,6 +1199,15 @@ def _build_filter_list(
             filters.append({"name": "pseudo-class :closest", "func": closest_filter})
             continue
 
+        # --- Handle :ocr pseudo-class for OCR-tolerant matching --- #
+        elif name == "ocr" and args is not None:
+            # Like :closest, handled specially in page._apply_selector
+            def ocr_filter(_element: Any) -> bool:
+                return True
+
+            filters.append({"name": "pseudo-class :ocr", "func": ocr_filter})
+            continue
+
         else:
             raise ValueError(f"Unknown or unsupported pseudo-class: ':{name}'")
 

@@ -36,6 +36,7 @@ jQuery-like syntax for finding PDF elements:
 'text'                          # All text elements
 'text:bold'                     # Pseudo-class (colon)
 'text:contains("Invoice")'     # Text content match
+'text:ocr("Invoice")'          # OCR-tolerant match (handles garbled chars)
 'text[size>12]'                 # Attribute filter (brackets)
 'text:bold[size>=14]'           # Combined
 'line:horizontal'               # Line orientation

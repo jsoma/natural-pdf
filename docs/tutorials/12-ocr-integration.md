@@ -503,6 +503,35 @@ print(fields)
 
 See [Tutorial 08: Spatial Navigation](08-spatial-navigation.md) for more techniques.
 
+### OCR-Tolerant Matching with `:ocr()`
+
+OCR often garbles characters — `l` becomes `1`, `rn` becomes `m`, `O` becomes `0`. The `:ocr()` selector finds text elements despite these errors by using visual shape similarity:
+
+```python
+# Find "Date received" even if OCR produced "Date recelved" or "Dato recoived"
+label = page.find('text:ocr("Date received")')
+if label:
+    value = label.right(width=200).extract_text().strip()
+
+# Works with common OCR confusions:
+#   l/1/I  →  treated as identical
+#   O/0    →  treated as identical
+#   rn/m   →  treated as identical (visual shape match)
+#   S/5    →  treated as identical
+page.find('text:ocr("Identification")')  # matches "klentification"
+page.find('text:ocr("Reviewer")')        # matches "Roviowor"
+page.find('text:ocr("800")')             # matches "8oo"
+```
+
+`:ocr()` uses a built-in threshold that works for most documents. If you need to override it (e.g., for severely degraded scans), use `@`:
+
+```python
+# Lower threshold for very noisy OCR
+page.find('text:ocr("Date received"@0.6)')
+```
+
+`:contains()` requires an exact substring match and is best when you know the text is clean. `:ocr()` tolerates character-level OCR errors and is best after `apply_ocr()` on scanned documents.
+
 ## Detecting Checkboxes
 
 Scanned forms often contain checkboxes. The `detect_checkboxes()` method finds them and determines whether each one is checked or unchecked.

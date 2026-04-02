@@ -46,6 +46,7 @@ Pseudo-classes filter by state or content. They use a **colon** (`:`) prefix.
 | `:startswith("X")` | Starts with "X" | `'text:startswith("Total")'` |
 | `:endswith("X")` | Ends with "X" | `'text:endswith(":")'` |
 | `:regex("pattern")` | Matches a regex pattern | `'text:regex("INV-\\d+")'` |
+| `:ocr("X")` | OCR-tolerant match (handles garbled characters) | `'text:ocr("Invoice")'` |
 | `:horizontal` | Horizontal lines | `'line:horizontal'` |
 | `:vertical` | Vertical lines | `'line:vertical'` |
 
@@ -222,6 +223,26 @@ confident = page.find_all('text[source=ocr][confidence>=0.8]')
 native = page.find_all('text[source=pdf]')
 ```
 
+### OCR-Tolerant Matching
+
+OCR often garbles characters. Use `:ocr()` to find text despite errors like `l`/`1`, `O`/`0`, or `rn`/`m` confusion:
+
+```python
+page.apply_ocr()
+
+# Finds "Date received" even if OCR produced "Date recelved"
+label = page.find('text:ocr("Date received")')
+
+# Works with visual confusions (l/1/I, O/0, rn/m, S/5, etc.)
+page.find('text:ocr("Identification")')  # matches "klentification"
+page.find('text:ocr("Reviewer")')        # matches "Roviowor"
+
+# Override threshold for noisy documents
+page.find('text:ocr("Date received"@0.6)')
+```
+
+Use `:contains()` when text is clean. Use `:ocr()` when working with scanned documents where characters may be garbled.
+
 ## Common Patterns Cheat Sheet
 
 | Goal | Selector |
@@ -236,6 +257,7 @@ native = page.find_all('text[source=pdf]')
 | Filled rectangles | `'rect[fill]'` |
 | Detected tables | `'region[type=table]'` |
 | High-confidence OCR | `'text[source=ocr][confidence>=0.8]'` |
+| OCR-tolerant label match | `'text:ocr("Invoice Number")'` |
 
 ## Troubleshooting
 

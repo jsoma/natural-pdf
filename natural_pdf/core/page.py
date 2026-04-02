@@ -1396,6 +1396,42 @@ class Page(
             matching_elements = [entry[2] for entry in scored_elements]
             break
 
+        # Handle :ocr pseudo-class for OCR-tolerant matching
+        for pseudo in selector_obj.get("pseudo_classes", []):
+            name = pseudo.get("name")
+            if name != "ocr" or pseudo.get("args") is None:
+                continue
+
+            from natural_pdf.selectors.ocr_match import DEFAULT_THRESHOLD, ocr_score
+
+            search_text = str(pseudo["args"]).strip()
+            threshold = DEFAULT_THRESHOLD
+            if not search_text:
+                matching_elements = []
+                break
+
+            # Parse optional @threshold syntax (consistent with :closest)
+            if "@" in search_text and search_text.count("@") == 1:
+                text_part, threshold_part = search_text.rsplit("@", 1)
+                try:
+                    threshold = float(threshold_part)
+                    search_text = text_part.strip()
+                except (ValueError, TypeError):
+                    pass
+
+            scored_elements = []
+            for el in matching_elements:
+                if not getattr(el, "text", None):
+                    continue
+                el_text = el.text.strip()
+                score = ocr_score(search_text, el_text)
+                if score >= threshold:
+                    scored_elements.append((score, el))
+
+            scored_elements.sort(key=lambda x: x[0], reverse=True)
+            matching_elements = [entry[1] for entry in scored_elements]
+            break
+
         matching_elements = _apply_post(post_pseudos, matching_elements)
 
         return ElementCollection(matching_elements)
