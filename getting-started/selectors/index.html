@@ -658,6 +658,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#ocr-tolerant-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OCR-Tolerant Matching
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1952,6 +1963,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#ocr-tolerant-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OCR-Tolerant Matching
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2132,6 +2154,11 @@
 <td><code>:regex("pattern")</code></td>
 <td>Matches a regex pattern</td>
 <td><code>'text:regex("INV-\\d+")'</code></td>
+</tr>
+<tr>
+<td><code>:ocr("X")</code></td>
+<td>OCR-tolerant match (handles garbled characters)</td>
+<td><code>'text:ocr("Invoice")'</code></td>
 </tr>
 <tr>
 <td><code>:horizontal</code></td>
@@ -2371,6 +2398,21 @@
 <span class="c1"># Find native PDF text only</span>
 <span class="n">native</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=pdf]&#39;</span><span class="p">)</span>
 </code></pre></div>
+<h3 id="ocr-tolerant-matching">OCR-Tolerant Matching</h3>
+<p>OCR often garbles characters. Use <code>:ocr()</code> to find text despite errors like <code>l</code>/<code>1</code>, <code>O</code>/<code>0</code>, or <code>rn</code>/<code>m</code> confusion:</p>
+<div class="highlight"><pre><span></span><code><span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">()</span>
+
+<span class="c1"># Finds &quot;Date received&quot; even if OCR produced &quot;Date recelved&quot;</span>
+<span class="n">label</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:ocr(&quot;Date received&quot;)&#39;</span><span class="p">)</span>
+
+<span class="c1"># Works with visual confusions (l/1/I, O/0, rn/m, S/5, etc.)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:ocr(&quot;Identification&quot;)&#39;</span><span class="p">)</span>  <span class="c1"># matches &quot;klentification&quot;</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:ocr(&quot;Reviewer&quot;)&#39;</span><span class="p">)</span>        <span class="c1"># matches &quot;Roviowor&quot;</span>
+
+<span class="c1"># Override threshold for noisy documents</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:ocr(&quot;Date received&quot;@0.6)&#39;</span><span class="p">)</span>
+</code></pre></div>
+<p>Use <code>:contains()</code> when text is clean. Use <code>:ocr()</code> when working with scanned documents where characters may be garbled.</p>
 <h2 id="common-patterns-cheat-sheet">Common Patterns Cheat Sheet</h2>
 <table>
 <thead>
@@ -2419,6 +2461,10 @@
 <tr>
 <td>High-confidence OCR</td>
 <td><code>'text[source=ocr][confidence&gt;=0.8]'</code></td>
+</tr>
+<tr>
+<td>OCR-tolerant label match</td>
+<td><code>'text:ocr("Invoice Number")'</code></td>
 </tr>
 </tbody>
 </table>
