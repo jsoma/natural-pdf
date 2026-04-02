@@ -208,8 +208,8 @@ class TestRapidOCREngineRegistry:
         from natural_pdf.ocr.ocr_factory import _ENGINE_PREFERENCE
 
         assert "rapidocr" in _ENGINE_PREFERENCE
-        # Should be second in preference (after easyocr)
-        assert _ENGINE_PREFERENCE.index("rapidocr") == 1
+        # Should be first in preference (default engine)
+        assert _ENGINE_PREFERENCE.index("rapidocr") == 0
 
 
 @pytest.mark.skipif(not rapidocr_available(), reason="RapidOCR not installed")

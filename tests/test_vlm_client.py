@@ -132,7 +132,7 @@ class TestGenerateLocal:
             result = generate(tiny_image, "prompt", model="some/model")
 
         assert result == "local result"
-        mock_adapter.generate.assert_called_once_with(tiny_image, "prompt", max_new_tokens=4096)
+        mock_adapter.generate.assert_called_once_with(tiny_image, "prompt", max_new_tokens=32768)
 
 
 # ---------------------------------------------------------------------------
