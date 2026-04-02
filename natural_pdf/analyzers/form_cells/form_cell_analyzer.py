@@ -481,6 +481,7 @@ class FormCellAnalyzer:
             if ri != rj:
                 parent[ri] = rj
 
+        row_tol = max(3, round(5 * img_w / 2200))
         merge_count = 0
         for tx1, ty1, tx2, ty2 in ocr_boxes:
             # Find all cells this text overlaps
@@ -505,8 +506,8 @@ class FormCellAnalyzer:
                         continue
                     # Same row: matching top and bottom within tolerance
                     if (
-                        abs(cells[ai][1] - cells[bi][1]) <= 5
-                        and abs(cells[ai][3] - cells[bi][3]) <= 5
+                        abs(cells[ai][1] - cells[bi][1]) <= row_tol
+                        and abs(cells[ai][3] - cells[bi][3]) <= row_tol
                     ):
                         if find(ai) != find(bi):
                             union(ai, bi)
