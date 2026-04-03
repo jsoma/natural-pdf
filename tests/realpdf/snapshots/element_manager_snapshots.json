@@ -319,7 +319,7 @@
       },
       "rects": {
         "count": 8,
-        "digest": "85c36669e5c1cc3a8a425bb0c935f0a4ddcab8fb17b35f8b5b68f26b3ed82d85",
+        "digest": "1431a60f3715c3c37b4e57810b0b9cc8b14b35e4c7a70c25a5a2f99df145c975",
         "samples": [
           {
             "bbox": [
@@ -327,7 +327,8 @@
               27.0,
               555.0,
               62.0
-            ]
+            ],
+            "text": "Jungle Health and Safety Inspection Service\nINS-UP70N51NCL41R"
           },
           {
             "bbox": [
@@ -335,7 +336,8 @@
               418.0,
               528.0,
               426.0
-            ]
+            ],
+            "text": ""
           },
           {
             "bbox": [
@@ -343,7 +345,8 @@
               438.0,
               528.0,
               446.0
-            ]
+            ],
+            "text": ""
           },
           {
             "bbox": [
@@ -351,7 +354,8 @@
               458.0,
               528.0,
               466.0
-            ]
+            ],
+            "text": ""
           },
           {
             "bbox": [
@@ -359,7 +363,8 @@
               478.0,
               528.0,
               486.0
-            ]
+            ],
+            "text": ""
           }
         ]
       },

@@ -2558,6 +2558,10 @@ class PDF(
 
         return HighlightContext(self, show_on_exit=show)
 
+    def to_llm(self, **kwargs) -> str:
+        """Return an LLM-optimized text representation of this PDF."""
+        return self.services.to_llm.to_llm(self, **kwargs)
+
     def describe(self, **kwargs):
         """
         Describe the PDF content using the describe service.

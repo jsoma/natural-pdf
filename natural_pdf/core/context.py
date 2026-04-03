@@ -52,6 +52,8 @@ class PDFContext:
             factories["conversion"] = self._default_conversion_factory()
         if "ocr_comparison" not in factories:
             factories["ocr_comparison"] = self._default_ocr_comparison_factory()
+        if "to_llm" not in factories:
+            factories["to_llm"] = self._default_to_llm_factory()
         self._service_factories: Dict[str, ServiceFactory] = factories
         self._options: Dict[str, Mapping[str, Any]] = dict(self.options or {})
 
@@ -250,5 +252,14 @@ class PDFContext:
 
         def factory(context: "PDFContext") -> OcrComparisonService:
             return OcrComparisonService(context)
+
+        return factory
+
+    @staticmethod
+    def _default_to_llm_factory() -> ServiceFactory:
+        from natural_pdf.services.to_llm_service import ToLLMService
+
+        def factory(context: "PDFContext") -> ToLLMService:
+            return ToLLMService(context)
 
         return factory

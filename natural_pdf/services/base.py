@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from natural_pdf.services.shape_detection_service import ShapeDetectionService
     from natural_pdf.services.table_service import TableService
     from natural_pdf.services.text_service import TextService
+    from natural_pdf.services.to_llm_service import ToLLMService
 
 
 class ServiceNamespace:
@@ -102,6 +103,10 @@ class ServiceNamespace:
     @property
     def text(self) -> TextService:
         return self._context.get_service("text")
+
+    @property
+    def to_llm(self) -> ToLLMService:
+        return self._context.get_service("to_llm")
 
 
 class ServiceHostMixin:

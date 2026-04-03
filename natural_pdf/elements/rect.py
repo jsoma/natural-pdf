@@ -87,6 +87,11 @@ class RectangleElement(Element):
             return "vertical"
         return "diagonal"
 
+    @property
+    def text(self) -> str:
+        """Get text content inside this rectangle (delegates to extract_text())."""
+        return self.extract_text() or ""
+
     def extract_text(
         self,
         preserve_whitespace: bool = True,

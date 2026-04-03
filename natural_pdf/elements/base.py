@@ -2165,6 +2165,10 @@ class Element(
     def classify(self, *args, **kwargs):
         return self.services.classification.classify(self, *args, **kwargs)
 
+    def to_llm(self, **kwargs) -> str:
+        """Return an LLM-optimized text representation of this element."""
+        return self.services.to_llm.to_llm(self, **kwargs)
+
     def describe(self, *args, **kwargs):
         return self.services.describe.describe(self, *args, **kwargs)
 

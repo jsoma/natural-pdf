@@ -1686,6 +1686,11 @@ class Region(
         """
         return getattr(self, name, None)
 
+    @property
+    def text(self) -> str:
+        """Get text content of this region (delegates to extract_text())."""
+        return self.extract_text() or ""
+
     def extract_text(
         self,
         granularity: str = "chars",
@@ -3154,6 +3159,10 @@ class Region(
 
     def guides(self, *args, **kwargs):
         return self.services.guides.guides(self, *args, **kwargs)
+
+    def to_llm(self, **kwargs) -> str:
+        """Return an LLM-optimized text representation of this region."""
+        return self.services.to_llm.to_llm(self, **kwargs)
 
     def describe(self, **kwargs):
         """

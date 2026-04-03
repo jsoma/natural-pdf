@@ -384,6 +384,10 @@ class PageCollection(
     def detect_checkboxes(self, *args, **kwargs):
         return self.services.checkbox.detect_checkboxes(self, *args, **kwargs)
 
+    def to_llm(self, **kwargs) -> str:
+        """Return an LLM-optimized text representation of this page collection."""
+        return self.services.to_llm.to_llm(self, **kwargs)
+
     def describe(self, **kwargs):
         return self.services.describe.describe(self.find_all("*"), **kwargs)
 

@@ -2777,6 +2777,10 @@ class Page(
             self.metadata = {}
         self.metadata["analysis"] = value
 
+    def to_llm(self, **kwargs) -> str:
+        """Return an LLM-optimized text representation of this page."""
+        return self.services.to_llm.to_llm(self, **kwargs)
+
     def describe(self, **kwargs):
         """
         Describe the page content using the describe service.

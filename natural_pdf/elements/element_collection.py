@@ -3382,6 +3382,10 @@ class ElementCollection(
     # ------------------------------------------------------------------
     # Describe/inspect helpers
     # ------------------------------------------------------------------
+    def to_llm(self, **kwargs) -> str:
+        """Return an LLM-optimized text representation of this collection."""
+        return self.services.to_llm.to_llm(self, **kwargs)
+
     def describe(self, *args, **kwargs):
         return self.services.describe.describe(self, *args, **kwargs)
 

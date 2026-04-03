@@ -48,6 +48,7 @@ _CAPABILITY_MODULES = {
     "shapes": "natural_pdf.services.shape_detection_service",
     "table": "natural_pdf.services.table_service",
     "text": "natural_pdf.services.text_service",
+    "to_llm": "natural_pdf.services.to_llm_service",
 }
 
 _IMPORTED_CAPABILITIES: Dict[str, bool] = {}
