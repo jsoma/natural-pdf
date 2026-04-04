@@ -48,6 +48,159 @@ def _cluster_values(values: List[float], tolerance: float = 3.0) -> List[Tuple[f
     return sorted(result, key=lambda x: x[0])
 
 
+def _detect_script(text: str) -> str:
+    """Detect the dominant Unicode script in *text*.
+
+    Returns a short label like ``"Latin"``, ``"Han"``, ``"Cyrillic"``, etc.
+    Falls back to ``"Latin"`` when the text is empty or ambiguous.
+    """
+    import unicodedata
+
+    script_counts: Dict[str, int] = {}
+    for ch in text:
+        if not ch.isalpha():
+            continue
+        try:
+            name = unicodedata.name(ch, "")
+        except ValueError:
+            continue
+        # Unicode names start with the script, e.g. "LATIN SMALL LETTER A"
+        script = name.split(" ", 1)[0] if name else "UNKNOWN"
+        # Normalise CJK variants
+        if script in ("CJK",):
+            script = "Han"
+        script_counts[script] = script_counts.get(script, 0) + 1
+
+    if not script_counts:
+        return "Latin"
+    return max(script_counts, key=script_counts.get)  # type: ignore[arg-type]
+
+
+# Maps scripts to pyspellchecker language codes.
+_SCRIPT_TO_LANG: Dict[str, str] = {
+    "LATIN": "en",
+    "CYRILLIC": "ru",
+    "ARABIC": "ar",
+}
+
+# pyspellchecker supported languages (subset — the most common)
+_SPELLCHECK_LANGS = {"en", "es", "fr", "de", "pt", "ru", "ar", "eu", "lv", "nl"}
+
+
+_spellchecker_cache: Dict[str, "Any"] = {}
+
+
+def _get_spellchecker(lang: str) -> "Any":
+    """Return a cached SpellChecker instance for *lang*."""
+    if lang not in _spellchecker_cache:
+        from spellchecker import SpellChecker
+
+        _spellchecker_cache[lang] = SpellChecker(language=lang)
+    return _spellchecker_cache[lang]
+
+
+def _compute_garble_rate(text_elements: list) -> "Dict[str, object] | None":
+    """Compute a dictionary-miss rate for OCR text.
+
+    Returns a dict with keys ``language``, ``garble_rate``,
+    ``misspelled_count``, ``alpha_word_count``, ``script``,
+    ``supported``, ``auto_detected``.
+    Returns ``None`` if ``pyspellchecker`` is not installed.
+    """
+    try:
+        from spellchecker import SpellChecker
+    except ImportError:
+        return None
+
+    # Collect all text
+    combined = " ".join(getattr(el, "text", "") for el in text_elements)
+    if not combined.strip():
+        return None
+
+    # Detect dominant script
+    script = _detect_script(combined)
+
+    # Default language from script
+    lang = _SCRIPT_TO_LANG.get(script.upper(), None)
+    auto_detected = True
+
+    # For Latin scripts, try langdetect for better language resolution
+    if script.upper() == "LATIN" and lang == "en":
+        try:
+            from langdetect import detect as _detect_lang
+
+            detected = _detect_lang(combined)
+            if detected in _SPELLCHECK_LANGS:
+                lang = detected
+        except Exception:
+            pass  # langdetect not installed or detection failed
+
+    # Script not supported
+    if lang is None or lang not in _SPELLCHECK_LANGS:
+        return {
+            "supported": False,
+            "script": script,
+            "language": lang,
+            "garble_rate": 0.0,
+            "misspelled_count": 0,
+            "alpha_word_count": 0,
+            "auto_detected": auto_detected,
+        }
+
+    # Tokenize and filter
+    import re
+
+    _WORD_RE = re.compile(r"^[a-zA-Z]+(?:['''-][a-zA-Z]+)*$")
+
+    words: List[str] = []
+    for el in text_elements:
+        for token in getattr(el, "text", "").split():
+            # Strip surrounding punctuation
+            clean = token.strip(".,;:!?()[]{}\"'`~#*&@/\\<>-_=+")
+            if not clean or len(clean) < 3:
+                continue
+            # Skip ALL_CAPS (acronyms)
+            if clean == clean.upper():
+                continue
+            # Split hyphenated words and check parts
+            if "-" in clean:
+                parts = [p for p in clean.split("-") if len(p) >= 3 and p.isalpha()]
+                words.extend(p.lower() for p in parts if p != p.upper())
+            # Handle possessives: strip trailing 's
+            elif clean.endswith("'s") or clean.endswith("\u2019s"):
+                stem = clean[:-2]
+                if len(stem) >= 3 and stem.isalpha() and stem != stem.upper():
+                    words.append(stem.lower())
+            # Standard alpha words (allows internal apostrophes via regex)
+            elif _WORD_RE.match(clean):
+                words.append(clean.lower())
+
+    if not words:
+        return {
+            "supported": True,
+            "script": script,
+            "language": lang,
+            "garble_rate": 0.0,
+            "misspelled_count": 0,
+            "alpha_word_count": 0,
+            "auto_detected": auto_detected,
+        }
+
+    spell = _get_spellchecker(lang)
+    misspelled = spell.unknown(words)
+    rate = len(misspelled) / len(words)
+
+    return {
+        "supported": True,
+        "script": script,
+        "language": lang,
+        "garble_rate": rate,
+        "misspelled_count": len(misspelled),
+        "alpha_word_count": len(words),
+        "auto_detected": auto_detected,
+    }
+
+
 def render_text_layer(page: "Page") -> str:
     """Render the TEXT LAYER section.
 
@@ -92,6 +245,26 @@ def render_text_layer(page: "Page") -> str:
         lines.append(f"  {total} words, all OCR ({engine_str}{conf_str})")
     else:
         lines.append(f"  {total} words ({native_count} native + {ocr_count} OCR)")
+
+    # Garble rate for OCR text (optional — requires pyspellchecker)
+    if ocr_count > 0:
+        ocr_elements = [el for el in text_elements if getattr(el, "source", "native") == "ocr"]
+        garble_info = _compute_garble_rate(ocr_elements)
+        if garble_info is not None:
+            if not garble_info["supported"]:
+                lines.append(f"  Garble rate: not computed (script: {garble_info['script']})")
+            elif garble_info["alpha_word_count"] > 0:
+                rate = garble_info["garble_rate"]
+                missed = garble_info["misspelled_count"]
+                total_alpha = garble_info["alpha_word_count"]
+                lang = garble_info["language"]
+                lines.append(
+                    f"  Language: {lang} (detected), "
+                    f"garble rate {rate:.0%} "
+                    f"({missed} of {total_alpha} alpha words not in dictionary)"
+                )
+                if rate > 0.3:
+                    lines.append("  -> Consider re-OCR with a different engine")
 
     # Vector elements summary
     h_lines = sum(1 for l in page.lines if l.is_horizontal)
@@ -471,16 +644,109 @@ def render_alignment(page: "Page", min_pct: float = 3.0) -> str:
     return "\n".join(out)
 
 
-def render_layout_preview(page: "Page", max_lines: int = 15) -> str:
+def _group_words_into_runs(sorted_elements: list) -> list:
+    """Group word elements into runs based on spatial gaps and style changes.
+
+    Words with small gaps *and* the same style are part of the same
+    phrase/run.  A run break is triggered by either:
+
+    * A large spatial gap (> 2.5 x average character width), **or**
+    * A font-style change (bold, size) with any non-negative gap.
+
+    This ensures that adjacent label:value pairs like
+    ``"Site:" (bold) "Durham's Meatpacking" (regular)``
+    are placed in separate runs even when physically touching.
+    """
+    if not sorted_elements:
+        return []
+
+    def _style_key(el):
+        size = round(getattr(el, "size", 0) * 2) / 2  # nearest 0.5pt
+        bold = getattr(el, "bold", False)
+        return (size, bold)
+
+    runs: list = [[sorted_elements[0]]]
+    for i in range(1, len(sorted_elements)):
+        prev = sorted_elements[i - 1]
+        curr = sorted_elements[i]
+        gap = curr.x0 - prev.x1
+
+        # Estimate average character width from both elements
+        prev_cw = prev.width / max(len(prev.text), 1)
+        curr_cw = curr.width / max(len(curr.text), 1)
+        avg_cw = max((prev_cw + curr_cw) / 2, 2.0)  # floor at 2pt
+
+        # Break on large gap
+        if gap > avg_cw * 2.5:
+            runs.append([curr])
+        # Break on style change (allow slight overlap from kerning/rounding)
+        elif gap > -2.0 and _style_key(prev) != _style_key(curr):
+            runs.append([curr])
+        else:
+            runs[-1].append(curr)
+
+    return runs
+
+
+_SEPARATOR = "\u2503"  # ┃ heavy vertical box drawing
+
+
+def _render_layout_with_separators(page: "Page") -> str:
+    """Build layout text with ┃ separators between element groups.
+
+    Groups word-level elements into lines (by y-cluster), then into
+    runs (by x-gap).  Uses proportional indentation and `` ┃ `` between
+    runs to show element boundaries clearly.
+    """
+    text_elements = page.find_all("text")
+    if not text_elements:
+        return ""
+
+    # Cluster elements into lines by vertical center
+    y_centers = [(el.top + el.bottom) / 2 for el in text_elements]
+    line_clusters = _cluster_values(y_centers, tolerance=5.0)
+
+    # Scale factor: approximate characters-per-point (pdfplumber default ~7.25)
+    chars_per_pt = 1.0 / 7.25 if page.width else 0.0
+
+    output_lines: list = []
+    for _center, indices in line_clusters:
+        line_elements = sorted([text_elements[i] for i in indices], key=lambda e: e.x0)
+        runs = _group_words_into_runs(line_elements)
+
+        # Indent based on first element's x position
+        indent = int(line_elements[0].x0 * chars_per_pt)
+
+        # Build line: join words within runs with space, runs with ┃
+        run_texts = []
+        for run in runs:
+            words = [el.text.replace(_SEPARATOR, "|") for el in run]
+            run_texts.append(" ".join(words))
+
+        line = (" " * indent) + f" {_SEPARATOR} ".join(run_texts)
+        if line.strip():
+            output_lines.append(line)
+
+    return "\n".join(output_lines)
+
+
+def render_layout_preview(page: "Page", max_lines: int = 15, show_boundaries: bool = False) -> str:
     """Render the LAYOUT PREVIEW section.
 
-    Bounded extract_text(layout=True) output.
+    When *show_boundaries* is True, element groups are separated by ``┃``
+    characters so that LLM consumers can see where one element ends and
+    another begins.  When False, the classic ``extract_text(layout=True)``
+    output is used.
     """
     text_elements = page.find_all("text")
     if not text_elements:
         return "LAYOUT PREVIEW\n  (no text on this page)"
 
-    text = page.extract_text(layout=True)
+    if show_boundaries:
+        text = _render_layout_with_separators(page)
+    else:
+        text = page.extract_text(layout=True)
+
     if not text or not text.strip():
         return "LAYOUT PREVIEW\n  (no text on this page)"
 

@@ -43,6 +43,7 @@ dependencies = [
     "matplotlib",
     "onnxruntime",
     "huggingface_hub",
+    "platformdirs",
 ]
 
 [project.optional-dependencies]
@@ -101,10 +102,16 @@ dev = [
     "mkdocs-redirects",
 ]
 
+quality = [
+    "pyspellchecker",
+    "langdetect",
+]
+
 all = [
     "natural-pdf[ai]",
     "natural-pdf[export]",
     "natural-pdf[test]",
+    "natural-pdf[quality]",
 ]
 
 [project.urls]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Tuple, cast
 
 from natural_pdf.ocr.ocr_manager import (
@@ -157,6 +158,68 @@ class OCRService:
             context=host, requested=requested, options=options, scope=scope
         )
 
+    def _process_ocr_payload(
+        self, host, ocr_payload, engine_name, min_confidence, offset_x, offset_y
+    ):
+        """Scale OCR results and create text elements.
+
+        Returns the created element list, or ``None`` if the payload is invalid.
+        Used by both cache-hit and fresh-OCR paths to avoid duplication.
+        """
+        image_width, image_height = ocr_payload.image_size
+        if not image_width or not image_height:
+            logger.error("OCR payload missing image dimensions.")
+            return None
+
+        width = (
+            getattr(host, "width", None) or getattr(getattr(host, "page", None), "width", None) or 0
+        )
+        height = (
+            getattr(host, "height", None)
+            or getattr(getattr(host, "page", None), "height", None)
+            or 0
+        )
+        scale_x = width / image_width if width else 1.0
+        scale_y = height / image_height if height else 1.0
+
+        if ocr_payload.engine_type == "vlm":
+            from natural_pdf.ocr.vlm_ocr import create_table_regions_from_ocr, scale_ocr_results
+
+            scaled = scale_ocr_results(
+                ocr_payload.results,
+                image_width=image_width,
+                image_height=image_height,
+                page_width=width,
+                page_height=height,
+                offset_x=offset_x,
+                offset_y=offset_y,
+            )
+            if min_confidence is not None:
+                scaled = [r for r in scaled if r.get("confidence", 1.0) >= min_confidence]
+
+            page_obj = getattr(host, "page", host)
+            text_results, _table_regions = create_table_regions_from_ocr(page_obj, scaled)
+
+            return self.create_text_elements_from_ocr(
+                host,
+                text_results,
+                scale_x=1.0,
+                scale_y=1.0,
+                offset_x=0.0,
+                offset_y=0.0,
+                engine_name=engine_name,
+            )
+        else:
+            return self.create_text_elements_from_ocr(
+                host,
+                ocr_payload.results,
+                scale_x=scale_x,
+                scale_y=scale_y,
+                offset_x=offset_x,
+                offset_y=offset_y,
+                engine_name=engine_name,
+            )
+
     @register_delegate("ocr", "apply_ocr")
     def apply_ocr(
         self,
@@ -171,6 +234,7 @@ class OCRService:
         detect_only: bool = False,
         apply_exclusions: bool = True,
         replace: bool = True,
+        use_cache: bool = True,
         # VLM params:
         model: Optional[str] = None,
         client: Optional[Any] = None,
@@ -201,6 +265,59 @@ class OCRService:
         render_kwargs = self._render_kwargs(host, apply_exclusions=apply_exclusions)
         offset_x, offset_y = self._resolve_offsets(host, render_kwargs)
 
+        # --- OCR result cache ---
+        from natural_pdf.ocr.ocr_cache import compute_cache_key, get_default_cache
+
+        cache = get_default_cache() if use_cache else None
+        cache_key = None
+
+        page_obj = getattr(host, "page", host)
+        pdf_obj = getattr(page_obj, "pdf", getattr(page_obj, "_parent", None))
+        pdf_path = getattr(pdf_obj, "_resolved_path", None)
+
+        if cache is not None and pdf_path and pdf_path != "<stream>":
+            try:
+                file_stat = os.stat(pdf_path)
+                page_index = getattr(page_obj, "index", 0)
+                options_key = (
+                    normalized_options._init_key()
+                    if hasattr(normalized_options, "_init_key")
+                    else ""
+                )
+                cache_key = compute_cache_key(
+                    pdf_path=pdf_path,
+                    file_mtime_ns=file_stat.st_mtime_ns,
+                    file_size=file_stat.st_size,
+                    page_index=page_index,
+                    engine_name=engine_name,
+                    languages=tuple(sorted(resolved_languages or ["en"])),
+                    resolution=final_resolution,
+                    detect_only=detect_only,
+                    device=resolved_device or "cpu",
+                    options_init_key=options_key,
+                    apply_exclusions=apply_exclusions,
+                    model=model,
+                    prompt=prompt,
+                    instructions=instructions,
+                    max_new_tokens=max_new_tokens,
+                )
+
+                cached = cache.get(cache_key)
+                if cached is not None:
+                    logger.info("OCR cache hit for page %d (%s)", page_index, engine_name)
+                    created = self._process_ocr_payload(
+                        host, cached, engine_name, resolved_min_conf, offset_x, offset_y
+                    )
+                    if created is not None:
+                        logger.info(
+                            "Added %d OCR elements from cache using '%s'.",
+                            len(created),
+                            engine_name,
+                        )
+                        return host
+            except OSError:
+                pass  # Can't stat file — skip cache
+
         ocr_payload = run_ocr(
             target=host,
             engine_name=engine_name,
@@ -220,67 +337,16 @@ class OCRService:
             layout=layout,
         )
 
-        image_width, image_height = ocr_payload.image_size
-        if not image_width or not image_height:
-            logger.error("OCR payload missing image dimensions.")
+        # Cache the results
+        if cache_key is not None:
+            page_index = getattr(page_obj, "index", 0)
+            cache.put(cache_key, ocr_payload, engine_name, page_index)
+
+        created_elements = self._process_ocr_payload(
+            host, ocr_payload, engine_name, resolved_min_conf, offset_x, offset_y
+        )
+        if created_elements is None:
             return host
-
-        width = (
-            getattr(host, "width", None) or getattr(getattr(host, "page", None), "width", None) or 0
-        )
-        height = (
-            getattr(host, "height", None)
-            or getattr(getattr(host, "page", None), "height", None)
-            or 0
-        )
-        scale_x = width / image_width if width else 1.0
-        scale_y = height / image_height if height else 1.0
-
-        results = ocr_payload.results
-
-        # For VLM engines, handle table region creation (dots.mocr, etc.)
-        if ocr_payload.engine_type == "vlm":
-            from natural_pdf.ocr.vlm_ocr import create_table_regions_from_ocr, scale_ocr_results
-
-            # Scale results to page coordinates first for table region creation
-            scaled = scale_ocr_results(
-                results,
-                image_width=image_width,
-                image_height=image_height,
-                page_width=width,
-                page_height=height,
-                offset_x=offset_x,
-                offset_y=offset_y,
-            )
-
-            # Filter by confidence
-            if resolved_min_conf is not None:
-                scaled = [r for r in scaled if r.get("confidence", 1.0) >= resolved_min_conf]
-
-            # Split table results from text results
-            page_obj = getattr(host, "page", host)
-            text_results, _table_regions = create_table_regions_from_ocr(page_obj, scaled)
-
-            # Create text elements from already-scaled results (scale=1.0, offset=0.0)
-            created_elements = self.create_text_elements_from_ocr(
-                host,
-                text_results,
-                scale_x=1.0,
-                scale_y=1.0,
-                offset_x=0.0,
-                offset_y=0.0,
-                engine_name=engine_name,
-            )
-        else:
-            created_elements = self.create_text_elements_from_ocr(
-                host,
-                results,
-                scale_x=scale_x,
-                scale_y=scale_y,
-                offset_x=offset_x,
-                offset_y=offset_y,
-                engine_name=engine_name,
-            )
 
         logger.info("Added %d OCR elements using '%s'.", len(created_elements), engine_name)
         return host

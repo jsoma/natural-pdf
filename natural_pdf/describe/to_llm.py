@@ -23,12 +23,14 @@ def page_to_llm(
     detail: str = "standard",
     include_text: bool = True,
     include_hints: str = "none",
+    show_boundaries: bool = True,
 ) -> str:
     """Build LLM representation for a single page.
 
     detail: "brief" | "standard" | "full"
     include_text: whether to show text samples in style tiers
     include_hints: "none" | "descriptive" | "api"
+    show_boundaries: show element boundary separators (┃) in layout preview
     """
     from natural_pdf.describe.to_llm_sections import (
         render_alignment,
@@ -61,7 +63,9 @@ def page_to_llm(
     # LAYOUT PREVIEW — standard and full only
     if preview_lines > 0:
         parts.append("")
-        parts.append(render_layout_preview(page, max_lines=preview_lines))
+        parts.append(
+            render_layout_preview(page, max_lines=preview_lines, show_boundaries=show_boundaries)
+        )
 
     # STYLES & CONTENT — always included, detail controls caps
     parts.append("")

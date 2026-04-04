@@ -1831,6 +1831,14 @@ class PDF(
         else:
             raise TypeError(f"Page indices must be integers or slices, not {type(key)}.")
 
+    @staticmethod
+    def clear_ocr_cache() -> int:
+        """Clear the OCR result cache.  Returns number of entries removed."""
+        from natural_pdf.ocr.ocr_cache import get_default_cache
+
+        cache = get_default_cache()
+        return cache.clear()
+
     def close(self):
         """Close the underlying PDF file and clean up any temporary files."""
         # Delegate to the weakref finalizer which handles closing pdfplumber

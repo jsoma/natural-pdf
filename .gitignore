@@ -1,6 +1,8 @@
 benchmark_output
 research
 .mcp.json
+pal_generated.code
+docs/specs
 temp
 .claude
 Untitled*.ipynb
