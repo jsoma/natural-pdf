@@ -1402,7 +1402,7 @@ class Page(
             if name != "ocr" or pseudo.get("args") is None:
                 continue
 
-            from natural_pdf.selectors.ocr_match import DEFAULT_THRESHOLD, ocr_score
+            from natural_pdf.selectors.ocr_match import DEFAULT_THRESHOLD, ocr_substring_score
 
             search_text = str(pseudo["args"]).strip()
             threshold = DEFAULT_THRESHOLD
@@ -1424,7 +1424,7 @@ class Page(
                 if not getattr(el, "text", None):
                     continue
                 el_text = el.text.strip()
-                score = ocr_score(search_text, el_text)
+                score = ocr_substring_score(search_text, el_text)
                 if score >= threshold:
                     scored_elements.append((score, el))
 
