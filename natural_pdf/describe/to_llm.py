@@ -37,6 +37,7 @@ def page_to_llm(
         render_hints,
         render_layout_preview,
         render_lines,
+        render_pixel_histogram,
         render_rectangles,
         render_styles,
         render_text_layer,
@@ -91,6 +92,13 @@ def page_to_llm(
     # RECTANGLES — always included
     parts.append("")
     parts.append(render_rectangles(page, detail=detail))
+
+    # PIXEL HISTOGRAM — standard and full only
+    if not is_brief:
+        histogram = render_pixel_histogram(page)
+        if histogram:
+            parts.append("")
+            parts.append(histogram)
 
     # HINTS — only if requested
     if include_hints in ("descriptive", "api"):

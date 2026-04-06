@@ -43,15 +43,15 @@ def _load_pdf(name):
 # =============================================================================
 # SESSION-SCOPED FIXTURES (for read-only tests - much faster!)
 # =============================================================================
-# Redirect the OCR result cache to a temp directory for the entire test
-# session so that (a) tests don't pollute the real user cache and
-# (b) mocked-OCR tests can't be poisoned by prior real runs.
-@pytest.fixture(scope="session", autouse=True)
-def _isolate_ocr_cache(tmp_path_factory):
+# Redirect the OCR result cache to an isolated temp directory so that
+# (a) tests don't pollute the real user cache, and (b) mocked-OCR tests
+# can't be poisoned by other tests in the same session.  Function-scoped
+# so each test starts with an empty cache.
+@pytest.fixture(autouse=True)
+def _isolate_ocr_cache(tmp_path):
     from natural_pdf.ocr.ocr_cache import OCRCache, set_default_cache
 
-    tmp_cache_dir = tmp_path_factory.mktemp("ocr_cache")
-    previous = set_default_cache(OCRCache(cache_dir=tmp_cache_dir))
+    previous = set_default_cache(OCRCache(cache_dir=tmp_path / "ocr_cache"))
     yield
     set_default_cache(previous)
 

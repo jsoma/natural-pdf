@@ -184,3 +184,8 @@ npdf = "natural_pdf.cli:main"
 
 [tool.pyright]
 exclude = ["tests"]
+
+[tool.uv.workspace]
+members = [
+    "agentic",
+]

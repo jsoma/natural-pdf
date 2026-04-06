@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Tuple, cast
+from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Tuple, Union, cast
 
 from natural_pdf.ocr.ocr_manager import (
     normalize_ocr_options,
@@ -233,7 +233,7 @@ class OCRService:
         resolution: Optional[int] = None,
         detect_only: bool = False,
         apply_exclusions: bool = True,
-        replace: bool = True,
+        replace: Union[bool, str] = True,
         use_cache: bool = True,
         # VLM params:
         model: Optional[str] = None,
@@ -256,7 +256,13 @@ class OCRService:
         resolved_min_conf = resolve_ocr_min_confidence(host, min_confidence, scope=scope)
         resolved_device = resolve_ocr_device(host, device, scope=scope)
 
-        if replace:
+        if replace is True or replace == "all":
+            # Clear entire text layer (native + OCR) before adding fresh OCR results
+            words, chars = self.clear_text_layer(host)
+            if words or chars:
+                logger.info("Cleared text layer (%d words, %d chars) before OCR.", words, chars)
+        elif replace == "ocr":
+            # Only remove prior OCR elements, keep native text layer
             removed = self.remove_ocr_elements(host)
             if removed:
                 logger.info("Removed %d OCR elements before new OCR run.", removed)

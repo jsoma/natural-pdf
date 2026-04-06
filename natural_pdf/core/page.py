@@ -1348,7 +1348,17 @@ class Page(
 
         matching_elements = _apply_relational(relational_pseudos, matching_elements)
 
-        if selector_kwargs.get("reading_order", True):
+        # For rect/region selectors with :contains(), sort by area (smallest first)
+        # so find() returns the most specific container, not the outermost one
+        has_contains = any(
+            p.get("name") in ("contains", "ocr", "closest")
+            for p in selector_obj.get("pseudo_classes", [])
+        )
+        if element_type in ("rect", "region", "form_cell") and has_contains:
+            matching_elements.sort(
+                key=lambda el: el.width * el.height if hasattr(el, "width") else 0
+            )
+        elif selector_kwargs.get("reading_order", True):
             if all(hasattr(el, "top") and hasattr(el, "x0") for el in matching_elements):
                 matching_elements.sort(key=lambda el: (el.top, el.x0))
             elif matching_elements:

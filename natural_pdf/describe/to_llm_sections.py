@@ -246,10 +246,9 @@ def render_text_layer(page: "Page") -> str:
     else:
         lines.append(f"  {total} words ({native_count} native + {ocr_count} OCR)")
 
-    # Garble rate for OCR text (optional — requires pyspellchecker)
-    if ocr_count > 0:
-        ocr_elements = [el for el in text_elements if getattr(el, "source", "native") == "ocr"]
-        garble_info = _compute_garble_rate(ocr_elements)
+    # Garble rate — always run on whatever text is present
+    if total > 0:
+        garble_info = _compute_garble_rate(list(text_elements))
         if garble_info is not None:
             if not garble_info["supported"]:
                 lines.append(f"  Garble rate: not computed (script: {garble_info['script']})")
@@ -264,7 +263,7 @@ def render_text_layer(page: "Page") -> str:
                     f"({missed} of {total_alpha} alpha words not in dictionary)"
                 )
                 if rate > 0.3:
-                    lines.append("  -> Consider re-OCR with a different engine")
+                    lines.append("  -> Text layer may be unreliable — consider apply_ocr()")
 
     # Vector elements summary
     h_lines = sum(1 for l in page.lines if l.is_horizontal)
@@ -589,6 +588,82 @@ def render_rectangles(page: "Page", detail: str = "standard") -> str:
     return "\n".join(lines)
 
 
+def render_pixel_histogram(page: "Page") -> str:
+    """Render dark pixel projection along X and Y axes.
+
+    Reveals grid/form structure regardless of how lines are drawn
+    (vector, raster, image-based PDF). Returns empty string if no
+    significant structure detected.
+    """
+    try:
+        import numpy as np
+    except ImportError:
+        return ""
+
+    pimg = page._page.to_image(resolution=72)
+    arr = np.array(pimg.original.convert("L"))
+    dark = (arr < 128).astype(np.int32)
+
+    x_pct = dark.sum(axis=0) / arr.shape[0] * 100
+    y_pct = dark.sum(axis=1) / arr.shape[1] * 100
+
+    def _cluster_peaks(pcts, threshold=15, gap=5):
+        """Find peaks in a 1D density profile.
+
+        Groups adjacent pixels above threshold into clusters.
+        Returns (center_pixel, max_density, width_in_pixels) per cluster.
+        """
+        peaks = [(i, float(pcts[i])) for i in range(len(pcts)) if pcts[i] > threshold]
+        if not peaks:
+            return []
+        clusters = [[peaks[0]]]
+        for p in peaks[1:]:
+            if p[0] - clusters[-1][-1][0] <= gap:
+                clusters[-1].append(p)
+            else:
+                clusters.append([p])
+        return [
+            (
+                sum(p[0] for p in c) // len(c),  # center
+                max(p[1] for p in c),  # max density
+                c[-1][0] - c[0][0] + 1,  # width (pixel range)
+            )
+            for c in clusters
+        ]
+
+    x_cl = _cluster_peaks(x_pct)
+    y_cl = _cluster_peaks(y_pct)
+
+    if not x_cl and not y_cl:
+        return ""
+
+    img_w, img_h = arr.shape[1], arr.shape[0]
+    lines = [f"PIXEL HISTOGRAM (72 DPI, {img_w}x{img_h}px)"]
+    if x_cl:
+        top_x = sorted(x_cl, key=lambda t: -t[1])[:10]
+
+        def _fmt(pos, pct, width):
+            s = f"x={pos} ({pct:.0f}%)"
+            if width > 1:
+                s += f" {width}px wide"
+            return s
+
+        parts = [_fmt(x, pct, w) for x, pct, w in sorted(top_x)]
+        lines.append(f"  X-axis: {', '.join(parts)}")
+    if y_cl:
+        top_y = sorted(y_cl, key=lambda t: -t[1])[:10]
+
+        def _fmt_y(pos, pct, width):
+            s = f"y={pos} ({pct:.0f}%)"
+            if width > 1:
+                s += f" {width}px tall"
+            return s
+
+        parts = [_fmt_y(y, pct, w) for y, pct, w in sorted(top_y)]
+        lines.append(f"  Y-axis: {', '.join(parts)}")
+    return "\n".join(lines)
+
+
 def render_alignment(page: "Page", min_pct: float = 3.0) -> str:
     """Render the ALIGNMENT section.
 
@@ -692,12 +767,7 @@ _SEPARATOR = "\u2503"  # ┃ heavy vertical box drawing
 
 
 def _render_layout_with_separators(page: "Page") -> str:
-    """Build layout text with ┃ separators between element groups.
-
-    Groups word-level elements into lines (by y-cluster), then into
-    runs (by x-gap).  Uses proportional indentation and `` ┃ `` between
-    runs to show element boundaries clearly.
-    """
+    """Build layout text with ┃ separators between text elements."""
     text_elements = page.find_all("text")
     if not text_elements:
         return ""
@@ -712,18 +782,13 @@ def _render_layout_with_separators(page: "Page") -> str:
     output_lines: list = []
     for _center, indices in line_clusters:
         line_elements = sorted([text_elements[i] for i in indices], key=lambda e: e.x0)
-        runs = _group_words_into_runs(line_elements)
 
         # Indent based on first element's x position
         indent = int(line_elements[0].x0 * chars_per_pt)
 
-        # Build line: join words within runs with space, runs with ┃
-        run_texts = []
-        for run in runs:
-            words = [el.text.replace(_SEPARATOR, "|") for el in run]
-            run_texts.append(" ".join(words))
-
-        line = (" " * indent) + f" {_SEPARATOR} ".join(run_texts)
+        # Each element is its own unit — pipe between them
+        texts = [el.text.replace(_SEPARATOR, "|") for el in line_elements]
+        line = (" " * indent) + f" {_SEPARATOR} ".join(texts)
         if line.strip():
             output_lines.append(line)
 
@@ -817,6 +882,35 @@ def render_hints(page: "Page", style: str = "api") -> str:
             hints.append(f"{len(small_squares)} small squares -> .detect_checkboxes()")
         else:
             hints.append(f"{len(small_squares)} small square shapes may be checkboxes")
+
+    # Rects with text inside — characterize the distribution
+    rects_with_text = []
+    for r in rects:
+        if r.width < 15 or r.height < 8:
+            continue  # skip tiny ones (checkboxes)
+        text = r.extract_text().strip()
+        if text:
+            rects_with_text.append(text)
+    if len(rects_with_text) >= 5:
+        short = sum(1 for t in rects_with_text if len(t) <= 15)
+        medium = sum(1 for t in rects_with_text if 15 < len(t) <= 30)
+        long_ = sum(1 for t in rects_with_text if len(t) > 30)
+        # Pick up to 5 examples (skip single-char junk)
+        examples = [t for t in rects_with_text if 2 <= len(t) <= 30][:5]
+        examples_str = ", ".join(f'"{e}"' for e in examples)
+        if style == "api":
+            hints.append(
+                f"{len(rects_with_text)} rects with text inside "
+                f"({short} ≤15 chars, {medium} 15-30 chars, {long_} 30+ chars) "
+                f"e.g. {examples_str} "
+                f"-> try rect:contains() or .detect_form_cells()"
+            )
+        else:
+            hints.append(
+                f"{len(rects_with_text)} rectangles contain text "
+                f"({short} ≤15 chars, {medium} 15-30 chars, {long_} 30+ chars) "
+                f"e.g. {examples_str}"
+            )
 
     if h_lines == 0 and v_lines == 0 and word_count > 20:
         x_clusters = _cluster_values([el.x0 for el in text_elements], tolerance=3.0)
