@@ -13089,6 +13089,28 @@ text extraction and analysis operations.</p>
 <div class="doc doc-object doc-function">
 
 
+<h7 id="natural_pdf.PDF.clear_ocr_cache" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">PDF</span><span class="o">.</span><span class="n">clear_ocr_cache</span><span class="p">()</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
+  </span>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Clear the OCR result cache.  Returns number of entries removed.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h7 id="natural_pdf.PDF.close" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">PDF</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code>
 
@@ -14967,6 +14989,24 @@ embeddings. Embeddings are cached so repeated searches are fast.</p>
 <h6 id="natural_pdf.PDF.split--split-only-by-page-breaks-no-divider-elements">Split only by page breaks (no divider elements)</h6>
 <p>pages = pdf.split(None, new_section_on_page_break=True)</p>
 </details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h7 id="natural_pdf.PDF.to_llm" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">PDF</span><span class="o">.</span><span class="n">to_llm</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return an LLM-optimized text representation of this PDF.</p>
+
 
     </div>
 
@@ -21094,6 +21134,24 @@ sees the content in the new orientation.</p>
 <div class="doc doc-object doc-function">
 
 
+<h7 id="natural_pdf.Page.to_llm" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Page</span><span class="o">.</span><span class="n">to_llm</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return an LLM-optimized text representation of this page.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h7 id="natural_pdf.Page.to_markdown" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Page</span><span class="o">.</span><span class="n">to_markdown</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">144</span><span class="p">,</span> <span class="n">render_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prompt</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
@@ -22914,6 +22972,24 @@ or any content requiring reading order across page boundaries.</p>
 <div class="doc doc-object doc-function">
 
 
+<h7 id="natural_pdf.PageCollection.to_llm" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">PageCollection</span><span class="o">.</span><span class="n">to_llm</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return an LLM-optimized text representation of this page collection.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h7 id="natural_pdf.PageCollection.to_markdown" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">PageCollection</span><span class="o">.</span><span class="n">to_markdown</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">separator</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">---</span><span class="se">\n\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
@@ -23538,6 +23614,28 @@ returns the element that matched the selector and defined the boundary.</p>
     <div class="doc doc-contents ">
 
         <p>Get polygon coordinates if available, otherwise return rectangle corners.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h7 id="natural_pdf.Region.text" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Region</span><span class="o">.</span><span class="n">text</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get text content of this region (delegates to extract_text()).</p>
 
     </div>
 
@@ -27594,6 +27692,24 @@ The original page/region are not mutated.</p>
 <h6 id="natural_pdf.Region.split--split-horizontally-by-vertical-lines">Split horizontally by vertical lines</h6>
 <p>sections = region.split("line[orientation=vertical]", orientation="horizontal")</p>
 </details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h7 id="natural_pdf.Region.to_llm" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Region</span><span class="o">.</span><span class="n">to_llm</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return an LLM-optimized text representation of this region.</p>
+
 
     </div>
 
