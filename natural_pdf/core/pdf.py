@@ -178,6 +178,12 @@ class _LazyPageList(Sequence["Page"]):
         """Create and cache a page at the given index within this list."""
         cached: Optional["Page"] = self._cache[index]
         if cached is None:
+            if (
+                getattr(self._parent_pdf, "_closed", False)
+                or getattr(self._parent_pdf, "_pdf", None) is None
+            ):
+                raise RuntimeError("Cannot load page: parent PDF has been closed.")
+
             # Get the actual page index in the full PDF
             actual_page_index = self._indices[index]
 
@@ -208,19 +214,6 @@ class _LazyPageList(Sequence["Page"]):
                 context=self._parent_pdf._context,
             )
 
-            # Apply any stored exclusions to the newly created page
-            if hasattr(self._parent_pdf, "_exclusions"):
-                for exclusion_data in self._parent_pdf._exclusions:
-                    if len(exclusion_data) == 3:
-                        exclusion_func, label, method = exclusion_data
-                    else:
-                        exclusion_func, label = exclusion_data
-                        method = "region"
-                    try:
-                        cached.add_exclusion(exclusion_func, label=label, method=method)
-                    except Exception as e:
-                        logger.warning(f"Failed to apply exclusion to page {cached.number}: {e}")
-
             # Check if the parent PDF already has a cached page with page-specific exclusions
             if hasattr(self._parent_pdf, "_pages") and hasattr(self._parent_pdf._pages, "_cache"):
                 parent_cache = self._parent_pdf._pages._cache
@@ -231,7 +224,15 @@ class _LazyPageList(Sequence["Page"]):
                             exclusion_item = exclusion_data[0]
                             if not callable(exclusion_item):
                                 try:
-                                    cached.add_exclusion(*exclusion_data[:2])
+                                    label = exclusion_data[1] if len(exclusion_data) >= 2 else None
+                                    method = (
+                                        exclusion_data[2] if len(exclusion_data) >= 3 else "region"
+                                    )
+                                    cached.add_exclusion(
+                                        exclusion_item,
+                                        label=label,
+                                        method=method,
+                                    )
                                 except Exception as e:
                                     logger.warning(
                                         f"Failed to copy page-specific exclusion to page {cached.number}: {e}"
@@ -529,6 +530,7 @@ class PDF(
         self._temp_file = None
         self._resolved_path = None
         self._is_stream = False
+        self._closed = False
         self._text_layer = text_layer
         stream_to_open = None
 
@@ -749,15 +751,6 @@ class PDF(
 
         self._exclusions = []
 
-        # Clear exclusions only from already-created (cached) pages to avoid forcing page creation
-        for i in range(len(self._pages)):
-            cached_page = self._pages._cache[i]
-            if cached_page is None:
-                continue
-            try:
-                cached_page.clear_exclusions()
-            except Exception as e:
-                logger.warning(f"Failed to clear exclusions from existing page {i}: {e}")
         return self
 
     def add_exclusion(
@@ -1822,7 +1815,7 @@ class PDF(
             # Use the lazy page list's slicing which returns another _LazyPageList
             lazy_slice = self._pages[key]
             # Wrap in PageCollection for compatibility
-            return PageCollection(lazy_slice)
+            return PageCollection(lazy_slice, context=self._context)
         elif isinstance(key, int):
             if 0 <= key < len(self._pages):
                 return self._pages[key]
@@ -1841,6 +1834,7 @@ class PDF(
 
     def close(self):
         """Close the underlying PDF file and clean up any temporary files."""
+        self._closed = True
         # Delegate to the weakref finalizer which handles closing pdfplumber
         # and cleaning up temp files. Calling it marks it as dead, so
         # subsequent close() calls are safe no-ops.
@@ -2224,6 +2218,11 @@ class PDF(
         Returns:
             :class:`StructuredDataResult`
         """
+        if using == "vision" and len(self.pages) != 1:
+            raise NotImplementedError(
+                "PDF.extract(using='vision') does not support multi-page PDFs yet. "
+                "Use page.extract(..., using='vision') or text extraction instead."
+            )
         return self.services.extraction.extract(
             self,
             schema=schema,

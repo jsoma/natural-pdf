@@ -328,7 +328,7 @@ class Region(
     def _qa_source_elements(self) -> "ElementCollection":
         from natural_pdf.elements.element_collection import ElementCollection
 
-        return ElementCollection([])
+        return ElementCollection([], context=self._context)
 
     def _qa_target_region(self) -> "Region":
         return self
@@ -2656,6 +2656,37 @@ class Region(
             and 'intersections', or None if pdfplumber is unavailable or an error occurs.
         """
 
+        def _freeze(value: Any) -> Any:
+            if isinstance(value, dict):
+                return tuple(sorted((str(key), _freeze(val)) for key, val in value.items()))
+            if isinstance(value, (list, tuple)):
+                return tuple(_freeze(item) for item in value)
+            return value
+
+        def _cache_key() -> Tuple[Any, ...]:
+            normalized_expand = _freeze(expand_bbox or {})
+            normalized_kwargs = _freeze(kwargs)
+            text_state_version = getattr(self.page, "_text_state_version", 0)
+            return (
+                tuple(self.bbox),
+                int(text_state_version),
+                snap_tolerance,
+                join_tolerance,
+                min_words_vertical,
+                min_words_horizontal,
+                intersection_tolerance,
+                normalized_expand,
+                normalized_kwargs,
+            )
+
+        cache_key = _cache_key()
+        if (
+            self.analyses.get("text_table_structure") is not None
+            and self.analyses.get("text_table_structure_cache_key") == cache_key
+        ):
+            logger.debug("analyze_text_table_structure: Using cached analysis results.")
+            return self.analyses["text_table_structure"]
+
         # Determine the search region (expand if requested)
         search_region = self
         if expand_bbox and isinstance(expand_bbox, dict):
@@ -2708,6 +2739,7 @@ class Region(
             )
             # Store results in the region's analyses cache
             self.analyses["text_table_structure"] = analysis_results
+            self.analyses["text_table_structure_cache_key"] = cache_key
             return analysis_results
         except ImportError:
             logger.error("pdfplumber library is required for 'text' table analysis but not found.")
@@ -2747,25 +2779,20 @@ class Region(
         """
         from natural_pdf.elements.element_collection import ElementCollection
 
-        # 1. Perform the analysis (or use cached results)
-        if "text_table_structure" in self.analyses:
-            analysis_results = self.analyses["text_table_structure"]
-            logger.debug("get_text_table_cells: Using cached analysis results.")
-        else:
-            analysis_results = self.analyze_text_table_structure(
-                snap_tolerance=snap_tolerance,
-                join_tolerance=join_tolerance,
-                min_words_vertical=min_words_vertical,
-                min_words_horizontal=min_words_horizontal,
-                intersection_tolerance=intersection_tolerance,
-                expand_bbox=expand_bbox,
-                **kwargs,
-            )
+        analysis_results = self.analyze_text_table_structure(
+            snap_tolerance=snap_tolerance,
+            join_tolerance=join_tolerance,
+            min_words_vertical=min_words_vertical,
+            min_words_horizontal=min_words_horizontal,
+            intersection_tolerance=intersection_tolerance,
+            expand_bbox=expand_bbox,
+            **kwargs,
+        )
 
         # 2. Check if analysis was successful and cells were found
         if analysis_results is None or not analysis_results.get("cells"):
             logger.info(f"Region {self.bbox}: No cells found by text table analysis.")
-            return ElementCollection([])  # Return empty collection
+            return ElementCollection([], context=self._context)  # Return empty collection
 
         # 3. Create temporary Region objects for each cell dictionary
         cell_regions = []
@@ -2780,7 +2807,7 @@ class Region(
 
         # 4. Return the list wrapped in an ElementCollection
         logger.debug(f"get_text_table_cells: Created {len(cell_regions)} temporary cell regions.")
-        return ElementCollection(cell_regions)
+        return ElementCollection(cell_regions, context=self._context)
 
     def to_text_element(
         self,

@@ -43,10 +43,7 @@ class TextTablesEngine:
         content_filter,
         apply_exclusions: bool,
     ) -> List[List[Optional[str]]]:
-        if "text_table_structure" in region.analyses:
-            analysis_results = region.analyses["text_table_structure"]
-        else:
-            analysis_results = region.analyze_text_table_structure(**text_options)
+        analysis_results = region.analyze_text_table_structure(**text_options)
 
         if analysis_results is None or not analysis_results.get("cells"):
             return []

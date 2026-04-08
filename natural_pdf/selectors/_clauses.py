@@ -42,18 +42,7 @@ def _resolve_reference_elements(ctx: ClauseEvalContext, selector: Any) -> List[A
         return []
 
     selector_str = str(selector)
-    find_kwargs = {}
-    for key in (
-        "regex",
-        "case",
-        "text_tolerance",
-        "auto_text_tolerance",
-        "reading_order",
-        "near_threshold",
-        "engine",
-    ):
-        if key in ctx.options:
-            find_kwargs[key] = ctx.options[key]
+    find_kwargs = {key: value for key, value in ctx.options.items() if key != "selector_context"}
 
     try:
         collection = host.find_all(selector=selector_str, **find_kwargs)

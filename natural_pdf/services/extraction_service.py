@@ -76,6 +76,11 @@ class ExtractionService:
         confidence = kwargs.pop("confidence", None)
         instructions = kwargs.pop("instructions", None)
         multipass = kwargs.pop("multipass", False)
+        if using == "vision" and client is None and engine != "vlm":
+            raise ValueError(
+                "using='vision' requires either a client for LLM/VLM extraction "
+                "or engine='vlm' for the local vision model."
+            )
         resolved_engine = self._resolve_engine(engine, client)
         if resolved_engine == "doc_qa":
             self._perform_docqa_extraction(
@@ -183,7 +188,8 @@ class ExtractionService:
             from natural_pdf.qa.document_qa import get_qa_engine
         except ImportError as exc:
             raise RuntimeError(
-                "Document-QA dependencies missing. Install with: pip install torch transformers"
+                "Document-QA dependencies missing. Install with: "
+                'pip install "natural-pdf[all]" or pip install torch transformers'
             ) from exc
 
         qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
@@ -313,7 +319,8 @@ class ExtractionService:
         except ImportError as exc:
             raise RuntimeError(
                 "VLM engine requires 'transformers' and 'torch'. "
-                "Install with: pip install transformers torch"
+                'Install with: pip install "natural-pdf[all]" '
+                "or pip install transformers torch"
             ) from exc
 
         # Get image from host

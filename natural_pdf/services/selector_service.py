@@ -97,7 +97,10 @@ class SelectorService:
 
         if apply_exclusions and results_collection:
             filtered_elements = page._filter_elements_by_exclusions(results_collection.elements)
-            return ElementCollection(filtered_elements)
+            return ElementCollection(
+                filtered_elements,
+                context=getattr(page, "_context", self._context),
+            )
         return results_collection
 
     def _find_all_region(self, region, **kwargs) -> ElementCollection:
@@ -111,7 +114,7 @@ class SelectorService:
         page_kwargs.pop("overlap", None)
         page_results = self._find_all_page(region.page, **page_kwargs)
         if not page_results:
-            return ElementCollection([])
+            return ElementCollection([], context=getattr(region, "_context", self._context))
 
         filtered = region._filter_elements_by_overlap_mode(
             page_results.elements,
@@ -125,7 +128,7 @@ class SelectorService:
                 continue
             seen.add(marker)
             unique.append(element)
-        return ElementCollection(unique)
+        return ElementCollection(unique, context=getattr(region, "_context", self._context))
 
     def _find_all_element(self, element, **kwargs) -> ElementCollection:
         from natural_pdf.elements.region import Region
@@ -149,7 +152,7 @@ class SelectorService:
                 unique.append(el)
                 seen.add(el)
 
-        return ElementCollection(unique)
+        return ElementCollection(unique, context=getattr(host, "_context", self._context))
 
     def _find_all_flow(self, flow, **kwargs):
         from natural_pdf.flows.collections import FlowElementCollection
@@ -213,9 +216,7 @@ class SelectorService:
                                 )
                         except Exception as exc:
                             logger.debug("Error checking intersection: %s", exc)
-                            all_flow_elements.append(
-                                FlowElement(physical_object=phys_elem, flow=flow)
-                            )
+                            continue
 
         unique: List[FlowElement] = []
         seen_ids = set()

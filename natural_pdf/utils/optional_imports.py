@@ -46,6 +46,11 @@ class OptionalDependency:
 
 OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
     # OCR
+    "rapidocr": OptionalDependency(
+        "rapidocr",
+        ('pip install "natural-pdf[all]"', "pip install rapidocr_onnxruntime"),
+        "Default RapidOCR engine for OCR workflows.",
+    ),
     "easyocr": OptionalDependency(
         "easyocr",
         ("pip install easyocr",),
@@ -65,39 +70,39 @@ OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
     # Search / embeddings
     "sentence_transformers": OptionalDependency(
         "sentence_transformers",
-        ("pip install sentence-transformers",),
+        ('pip install "natural-pdf[all]"', "pip install sentence-transformers"),
         "Embedding models for semantic search.",
     ),
     # ML Core
     "torch": OptionalDependency(
         "torch",
-        ("pip install torch",),
+        ('pip install "natural-pdf[all]"', "pip install torch"),
         "PyTorch runtime used by QA/classification/layout engines.",
     ),
     "transformers": OptionalDependency(
         "transformers",
-        ("pip install transformers",),
+        ('pip install "natural-pdf[all]"', "pip install transformers"),
         "Hugging Face transformers for QA/classification.",
     ),
     "torchvision": OptionalDependency(
         "torchvision",
-        ("pip install torchvision",),
+        ('pip install "natural-pdf[all]"', "pip install torchvision"),
         "TorchVision models/utilities used by perception pipelines.",
     ),
     "huggingface_hub": OptionalDependency(
         "huggingface_hub",
-        ("pip install huggingface_hub",),
+        ('pip install "natural-pdf[all]"', "pip install huggingface_hub"),
         "Model hub utilities required by AI engines.",
     ),
     # Layout
     "doclayout_yolo": OptionalDependency(
         "doclayout_yolo",
-        ("pip install doclayout_yolo",),
+        ('pip install "natural-pdf[all]"', "pip install doclayout_yolo"),
         "YOLO-based layout detection models.",
     ),
     "timm": OptionalDependency(
         "timm",
-        ("pip install timm",),
+        ('pip install "natural-pdf[all]"', "pip install timm"),
         "Required backbone models for layout detectors.",
     ),
 }

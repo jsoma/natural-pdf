@@ -17,18 +17,20 @@ Natural PDF lets you find and extract content from PDFs using simple code that m
 pip install natural-pdf
 ```
 
-Need OCR, layout models, or other add-ons? Install what you need:
+Need OCR, semantic search, export, or AI-powered extraction? Install what you need:
 
 ```bash
-pip install easyocr                 # EasyOCR engine
+pip install "natural-pdf[all]"      # Recommended feature-complete install
+pip install "natural-pdf[export]"   # Export helpers only
+pip install easyocr                 # Extra OCR backend
 pip install "natural-pdf[paddle]"   # PaddleOCR stack
-pip install "surya-ocr<0.15"         # Surya OCR engine
-pip install doclayout_yolo          # YOLO layout detection
-pip install "natural-pdf[export]"   # PDF export, deskew
-pip install "natural-pdf[all]"      # Everything
+pip install "surya-ocr<0.15"        # Surya OCR engine
+pip install doctr                   # Doctr OCR engine
 ```
 
 More details in the [installation guide](https://jsoma.github.io/natural-pdf/installation/).
+
+`natural-pdf[all]` is the recommended feature-complete install for core features: the default RapidOCR engine, sentence-transformers-based semantic search, QA/extraction dependencies, and export support. It does not install every optional backend. Extra engines such as PaddleOCR, Surya, and Doctr stay opt-in, and Natural PDF will tell you what to install when you try to use something that is missing.
 
 ## Quick Start
 
@@ -73,7 +75,7 @@ Natural PDF offers a range of features for working with PDFs:
 *   **OCR Integration:** Extract text from scanned documents using engines like EasyOCR, PaddleOCR, or Surya.
 *   **Layout Analysis:** Detect document structures (titles, paragraphs, tables) using various engines (e.g., YOLO, Paddle, LLM via API).
 *   **Document QA:** Ask natural language questions about your document's content.
-*   **Semantic Search:** Index PDFs and find relevant pages or documents based on semantic meaning using Haystack.
+*   **Semantic Search:** Rank pages within a PDF by semantic similarity using sentence-transformer embeddings.
 *   **Visual Debugging:** Highlight elements and use an interactive viewer or save images to understand your selections.
 
 ## Learn More

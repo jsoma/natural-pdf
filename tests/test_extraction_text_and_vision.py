@@ -120,6 +120,20 @@ def test_vision_extraction(practice_pdf):
     assert result.violation_count == "Vision: 7"
 
 
+def test_vision_requires_client_or_vlm_engine(practice_pdf):
+    page = practice_pdf.pages[0]
+
+    with pytest.raises(ValueError, match="using='vision' requires either a client"):
+        page.extract(["site"], using="vision")
+
+
+def test_pdf_vision_extraction_rejects_multi_page_documents(pdf_factory):
+    pdf = pdf_factory("pdfs/pdf_sample_land_registry_japan.PDF")
+
+    with pytest.raises(NotImplementedError, match="does not support multi-page PDFs yet"):
+        pdf.extract(["site"], using="vision", client=Mock())
+
+
 def test_vision_extraction_with_custom_resolution(practice_pdf):
     """Test vision extraction with custom resolution."""
     page = practice_pdf.pages[0]

@@ -4,7 +4,7 @@ Let's get Natural PDF installed and run your first extraction.
 
 ## Installation
 
-The base install includes the core library (selectors, extraction, spatial navigation) plus the `openai` client for LLM-based features like `.extract()` and `.to_markdown()`.
+The base install includes the core library for selectors, extraction, and spatial navigation. It does not try to install every OCR, layout, or research backend up front.
 
 ```bash
 pip install natural-pdf
@@ -14,16 +14,18 @@ Optional dependencies can be installed individually as needed. The library will 
 
 ```bash
 # Bundles
-pip install "natural-pdf[export]"   # PDF export (pikepdf, img2pdf, etc.)
+pip install "natural-pdf[all]"      # Recommended feature-complete runtime install
+pip install "natural-pdf[export]"   # PDF export helpers only
 pip install "natural-pdf[paddle]"   # PaddleOCR stack (paddlepaddle + paddleocr + paddlex) — includes paddlevl engine
-pip install "natural-pdf[all]"      # Everything
 
 # Individual packages
 pip install easyocr                 # EasyOCR engine
-pip install "surya-ocr<0.15"         # Surya OCR engine
+pip install "surya-ocr<0.15"        # Surya OCR engine
+pip install doctr                   # Doctr OCR engine
 pip install doclayout_yolo          # YOLO layout detection
-pip install torch transformers      # QA, classification, semantic search, VLM OCR (GLM-OCR, Qwen-VL)
 ```
+
+`natural-pdf[all]` means the recommended core-complete install: the default RapidOCR backend, sentence-transformers-based semantic search, QA/extraction dependencies, and export support. It does not include every optional backend. Advanced engines such as PaddleOCR, Surya, and Doctr remain opt-in.
 
 If you attempt to use an engine that is missing, the library will raise an
 error with the `pip install` command you need.

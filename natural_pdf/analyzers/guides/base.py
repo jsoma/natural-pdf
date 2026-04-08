@@ -2690,7 +2690,11 @@ class Guides:
 
         orientation = self._get_flow_orientation()
         adapter = FlowGuideAdapter(self)
-        region_grids = adapter.build_region_grids(source=source, cell_padding=cell_padding)
+        region_grids = adapter.build_region_grids(
+            source=source,
+            cell_padding=cell_padding,
+            include_outer_boundaries=include_outer_boundaries,
+        )
 
         if not region_grids:
             return {
@@ -2861,9 +2865,9 @@ class Guides:
                     continue
                 if getattr(r, "region_type", None) not in {
                     "table",
-                    "table_row",
-                    "table_column",
-                    "table_cell",
+                    "table-row",
+                    "table-column",
+                    "table-cell",
                 }:
                     continue
                 if not hasattr(r, "bbox"):
@@ -2914,8 +2918,8 @@ class Guides:
                     col_boundaries[0], row_boundaries[i], col_boundaries[-1], row_boundaries[i + 1]
                 )
                 row_region.source = source
-                row_region.region_type = "table_row"
-                row_region.normalized_type = "table_row"
+                row_region.region_type = "table-row"
+                row_region.normalized_type = "table-row"
                 row_region.metadata.update({"row_index": i, "source_guides": True})
                 page.add_region(row_region, source=source)
                 counts["rows"] += 1
@@ -2928,8 +2932,8 @@ class Guides:
                     col_boundaries[j], row_boundaries[0], col_boundaries[j + 1], row_boundaries[-1]
                 )
                 col_region.source = source
-                col_region.region_type = "table_column"
-                col_region.normalized_type = "table_column"
+                col_region.region_type = "table-column"
+                col_region.normalized_type = "table-column"
                 col_region.metadata.update({"col_index": j, "source_guides": True})
                 page.add_region(col_region, source=source)
                 counts["columns"] += 1
@@ -2951,8 +2955,8 @@ class Guides:
 
                     cell_region = page.create_region(cell_x0, cell_top, cell_x1, cell_bottom)
                     cell_region.source = source
-                    cell_region.region_type = "table_cell"
-                    cell_region.normalized_type = "table_cell"
+                    cell_region.region_type = "table-cell"
+                    cell_region.normalized_type = "table-cell"
                     cell_region.metadata.update(
                         {
                             "row_index": i,
@@ -3286,12 +3290,17 @@ class Guides:
 
         from natural_pdf.core.page import Page
 
+        def _resolve_page_for_target(obj: Any) -> Page:
+            if hasattr(obj, "add_element"):
+                return cast(Page, obj)
+            page_obj = getattr(obj, "_page", None) or getattr(obj, "page", None)
+            if page_obj is None or not hasattr(page_obj, "add_element"):
+                raise ValueError(f"Target object {obj} is not a Page or Region")
+            return cast(Page, page_obj)
+
         # Get the page for cleanup later
         if hasattr(target_obj, "x0") and hasattr(target_obj, "top"):  # Region
-            page_obj = getattr(target_obj, "_page", None)
-            if page_obj is None:
-                raise ValueError("Region is not associated with a page")
-            page = cast(Page, page_obj)
+            page = _resolve_page_for_target(target_obj)
         elif hasattr(target_obj, "add_element"):  # Page-like
             page = cast(Page, target_obj)
         else:
@@ -3384,7 +3393,7 @@ class Guides:
                 for r in existing_regions
                 if getattr(r, "source", None) == source
                 and getattr(r, "region_type", None)
-                in {"table", "table_row", "table_column", "table_cell"}
+                in {"table", "table-row", "table-column", "table-cell"}
             ]
 
             for region in regions_to_remove:

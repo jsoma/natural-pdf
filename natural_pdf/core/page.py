@@ -61,7 +61,7 @@ from natural_pdf.core.element_manager import ElementManager
 from natural_pdf.core.interfaces import Bounds, SupportsGeometry, SupportsSections
 from natural_pdf.core.mixins import SinglePageContextMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.core.selector_utils import _apply_relational_post_pseudos
+from natural_pdf.core.selector_utils import execute_selector_branch
 from natural_pdf.deskew import run_deskew_apply, run_deskew_detect
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
@@ -92,75 +92,6 @@ from natural_pdf.text.operations import normalize_whitespace as _normalize_white
 # End Deskew Imports
 
 logger = logging.getLogger(__name__)
-
-
-def _jaro_winkler_similarity(s1: str, s2: str, prefix_weight: float = 0.1) -> float:
-    """
-    Compute Jaro-Winkler similarity between two strings.
-
-    Args:
-        s1: First string.
-        s2: Second string.
-        prefix_weight: Scaling factor for common prefix bonus (default 0.1).
-
-    Returns:
-        Similarity score in the range [0, 1].
-    """
-    if s1 == s2:
-        return 1.0
-
-    len1, len2 = len(s1), len(s2)
-    if len1 == 0 or len2 == 0:
-        return 0.0
-
-    match_distance = max(len1, len2) // 2 - 1
-    if match_distance < 0:
-        match_distance = 0
-
-    s1_matches = [False] * len1
-    s2_matches = [False] * len2
-
-    matches = 0
-    for i in range(len1):
-        start = max(0, i - match_distance)
-        end = min(i + match_distance + 1, len2)
-        for j in range(start, end):
-            if s2_matches[j]:
-                continue
-            if s1[i] != s2[j]:
-                continue
-            s1_matches[i] = True
-            s2_matches[j] = True
-            matches += 1
-            break
-
-    if matches == 0:
-        return 0.0
-
-    transpositions = 0
-    k = 0
-    for i in range(len1):
-        if not s1_matches[i]:
-            continue
-        while not s2_matches[k]:
-            k += 1
-        if s1[i] != s2[k]:
-            transpositions += 1
-        k += 1
-    transpositions /= 2
-
-    jaro = ((matches / len1) + (matches / len2) + (matches - transpositions) / matches) / 3.0
-
-    prefix = 0
-    for c1, c2 in zip(s1, s2):
-        if c1 != c2:
-            break
-        prefix += 1
-        if prefix == 4:
-            break
-
-    jaro_winkler = jaro + prefix * prefix_weight * (1.0 - jaro)
-    return max(0.0, min(1.0, jaro_winkler))
 
 
 class Page(
@@ -283,6 +214,7 @@ class Page(
         self._load_text = load_text
         self._text_styles_summary: Dict[str, Any] = {}
         self._text_styles = None  # Lazy-loaded text style analyzer results
+        self._text_state_version = 0
         self._exclusions = []  # List to store exclusion functions/regions
         self._skew_angle: Optional[float] = None  # Stores detected skew angle
 
@@ -321,6 +253,9 @@ class Page(
 
         # Flag to prevent infinite recursion when computing exclusions
         self._computing_exclusions = False
+
+    def _bump_text_state_version(self) -> None:
+        self._text_state_version += 1
 
     def _get_render_specs(
         self,
@@ -444,7 +379,7 @@ class Page(
         return self.number
 
     def _qa_source_elements(self) -> ElementCollection:
-        return ElementCollection([])
+        return ElementCollection([], context=self._context)
 
     def _qa_target_region(self) -> Region:
         return self.to_region()
@@ -467,8 +402,15 @@ class Page(
         return self._element_mgr._decorations
 
     def _invalidate_exclusion_cache(self) -> None:
-        if self._element_mgr:
-            self._element_mgr.invalidate_cache()
+        # Exclusions are read-time filters over canonical page content.
+        # Do not invalidate the element manager cache here, or synthetic/OCR
+        # elements can be discarded unintentionally.
+        return None
+
+    def _require_live_pdf(self, operation: str) -> None:
+        parent = getattr(self, "_parent", None)
+        if getattr(parent, "_closed", False) or getattr(parent, "_pdf", None) is None:
+            raise RuntimeError(f"Cannot {operation}: parent PDF has been closed.")
 
     @property
     def pdf(self) -> "PDF":
@@ -748,6 +690,7 @@ class Page(
         Returns:
             Self for chaining.
         """
+        self._require_live_pdf("apply OCR")
 
         # Custom OCR function path
         custom_func = function or kwargs.pop("ocr_function", None)
@@ -915,7 +858,7 @@ class Page(
                 return False
             return True
 
-        removed = 0
+        removed_ids: set[int] = set()
 
         # Remove from element manager store (the authoritative source for
         # iter_regions / selector queries).  We must write back via _store.set
@@ -925,16 +868,16 @@ class Page(
             current = store.get("regions", [])
             if current:
                 filtered = [r for r in current if not _matches(r)]
-                mgr_removed = len(current) - len(filtered)
-                if mgr_removed:
+                removed_regions = [r for r in current if _matches(r)]
+                if removed_regions:
                     self._element_mgr._store.set("regions", filtered)
-                    removed += mgr_removed
+                    removed_ids.update(id(region) for region in removed_regions)
 
         # Remove from detected collection
         detected = self._regions.get("detected", [])
         if detected:
             retained = [region for region in detected if not _matches(region)]
-            removed += len(detected) - len(retained)
+            removed_ids.update(id(region) for region in detected if _matches(region))
             self._regions["detected"] = retained
 
         # Remove from named collection
@@ -942,10 +885,10 @@ class Page(
         if named:
             keys_to_delete = [key for key, region in named.items() if _matches(region)]
             for key in keys_to_delete:
+                removed_ids.add(id(named[key]))
                 del named[key]
-                removed += 1
 
-        return removed
+        return len(removed_ids)
 
     def _get_exclusion_regions(self, include_callable=True, debug=False) -> List["Region"]:
         """
@@ -1245,206 +1188,47 @@ class Page(
         Returns:
             ElementCollection of matching elements (unfiltered by exclusions)
         """
-        from natural_pdf.selectors.parser import _calculate_aggregates, build_execution_plan
-
         selector_kwargs = dict(kwargs)
         selector_kwargs.setdefault("selector_context", self)
-
-        def _apply_relational(relational_pseudos, elements):
-            if not relational_pseudos:
-                return elements
-            return _apply_relational_post_pseudos(
-                self,
-                {"relational_pseudos": relational_pseudos},
-                elements,
-                selector_kwargs,
-            )
-
-        def _apply_post(post_pseudos, elements):
-            if not post_pseudos:
-                return elements
-            return _apply_relational_post_pseudos(
-                self,
-                {"post_pseudos": post_pseudos},
-                elements,
-                selector_kwargs,
-            )
 
         # Handle compound OR selectors — evaluate each sub-selector against its
         # natural element pool and union results for better performance.
         if selector_obj.get("type") == "or":
             seen_ids: set = set()
             matching_elements: List[Any] = []
-            all_post: List[Dict[str, Any]] = []
-            all_relational: List[Dict[str, Any]] = []
-            branches_with_post = 0
 
             for sub_selector in selector_obj.get("selectors", []):
                 sub_type = sub_selector.get("type", "any").lower()
                 pool = self._get_element_pool(sub_type)
-
-                # Calculate aggregates for this sub-selector if needed
-                sub_aggregates: Dict[str, Any] = {}
-                has_agg = any(
-                    isinstance(attr.get("value"), dict) and attr["value"].get("type") == "aggregate"
-                    for attr in sub_selector.get("attributes", [])
+                branch_results = execute_selector_branch(
+                    self,
+                    sub_selector,
+                    pool,
+                    selector_kwargs=selector_kwargs,
+                    selector_type=sub_type,
+                    logger=logger,
                 )
-                if has_agg:
-                    sub_aggregates = _calculate_aggregates(pool, sub_selector)
-
-                sub_filter, sub_post, sub_relational = build_execution_plan(
-                    sub_selector, aggregates=sub_aggregates, **selector_kwargs
-                )
-                if sub_post:
-                    branches_with_post += 1
-                all_post.extend(sub_post)
-                all_relational.extend(sub_relational)
-
-                for el in pool:
+                for el in branch_results:
                     el_id = id(el)
-                    if el_id not in seen_ids and sub_filter(el):
+                    if el_id not in seen_ids:
                         seen_ids.add(el_id)
                         matching_elements.append(el)
 
-            if branches_with_post > 1:
-                names = [p["name"] for p in all_post]
-                logger.warning(
-                    "Multiple OR branches have post-pseudos (%s). "
-                    "These are applied sequentially to the merged result set, "
-                    "which may not match expectations. Consider separate queries.",
-                    ", ".join(f":{n}" for n in names),
-                )
-
-            matching_elements = _apply_relational(all_relational, matching_elements)
-
-            if selector_kwargs.get("reading_order", True):
-                if all(hasattr(el, "top") and hasattr(el, "x0") for el in matching_elements):
-                    matching_elements.sort(key=lambda el: (el.top, el.x0))
-                elif matching_elements:
-                    logger.warning(
-                        "Cannot sort elements in reading order: Missing required attributes (top, x0)."
-                    )
-
-            matching_elements = _apply_post(all_post, matching_elements)
-            return ElementCollection(matching_elements)
+            return ElementCollection(matching_elements, context=self._context)
 
         # Single selector path
         element_type = selector_obj.get("type", "any").lower()
         elements_to_search = self._get_element_pool(element_type)
-
-        has_aggregates = any(
-            isinstance(attr.get("value"), dict) and attr["value"].get("type") == "aggregate"
-            for attr in selector_obj.get("attributes", [])
+        matching_elements = execute_selector_branch(
+            self,
+            selector_obj,
+            elements_to_search,
+            selector_kwargs=selector_kwargs,
+            selector_type=element_type,
+            logger=logger,
         )
 
-        aggregates: Dict[str, Any] = {}
-        if has_aggregates:
-            aggregates = _calculate_aggregates(elements_to_search, selector_obj)
-
-        filter_func, post_pseudos, relational_pseudos = build_execution_plan(
-            selector_obj, aggregates=aggregates, **selector_kwargs
-        )
-        matching_elements = [element for element in elements_to_search if filter_func(element)]
-
-        matching_elements = _apply_relational(relational_pseudos, matching_elements)
-
-        # For rect/region selectors with :contains(), sort by area (smallest first)
-        # so find() returns the most specific container, not the outermost one
-        has_contains = any(
-            p.get("name") in ("contains", "ocr", "closest")
-            for p in selector_obj.get("pseudo_classes", [])
-        )
-        if element_type in ("rect", "region", "form_cell") and has_contains:
-            matching_elements.sort(
-                key=lambda el: el.width * el.height if hasattr(el, "width") else 0
-            )
-        elif selector_kwargs.get("reading_order", True):
-            if all(hasattr(el, "top") and hasattr(el, "x0") for el in matching_elements):
-                matching_elements.sort(key=lambda el: (el.top, el.x0))
-            elif matching_elements:
-                logger.warning(
-                    "Cannot sort elements in reading order: Missing required attributes (top, x0)."
-                )
-
-        # Handle :closest pseudo-class for fuzzy text matching
-        for pseudo in selector_obj.get("pseudo_classes", []):
-            name = pseudo.get("name")
-            if name != "closest" or pseudo.get("args") is None:
-                continue
-
-            search_text = str(pseudo["args"]).strip()
-            threshold = 0.0
-            if not search_text:
-                matching_elements = []
-                break
-
-            if "@" in search_text and search_text.count("@") == 1:
-                text_part, threshold_part = search_text.rsplit("@", 1)
-                try:
-                    threshold = float(threshold_part)
-                    search_text = text_part.strip()
-                except (ValueError, TypeError):
-                    pass
-
-            ignore_case = not selector_kwargs.get("case", True)
-            scored_elements = []
-            for el in matching_elements:
-                if not getattr(el, "text", None):
-                    continue
-                el_text = el.text.strip()
-                search_term = search_text
-                if ignore_case:
-                    el_text = el_text.lower()
-                    search_term = search_term.lower()
-
-                ratio = _jaro_winkler_similarity(search_term, el_text)
-                contains_match = search_term in el_text
-                if ratio >= threshold:
-                    scored_elements.append((contains_match, ratio, el))
-
-            scored_elements.sort(key=lambda x: (x[0], x[1]), reverse=True)
-            matching_elements = [entry[2] for entry in scored_elements]
-            break
-
-        # Handle :ocr pseudo-class for OCR-tolerant matching
-        for pseudo in selector_obj.get("pseudo_classes", []):
-            name = pseudo.get("name")
-            if name != "ocr" or pseudo.get("args") is None:
-                continue
-
-            from natural_pdf.selectors.ocr_match import DEFAULT_THRESHOLD, ocr_substring_score
-
-            search_text = str(pseudo["args"]).strip()
-            threshold = DEFAULT_THRESHOLD
-            if not search_text:
-                matching_elements = []
-                break
-
-            # Parse optional @threshold syntax (consistent with :closest)
-            if "@" in search_text and search_text.count("@") == 1:
-                text_part, threshold_part = search_text.rsplit("@", 1)
-                try:
-                    threshold = float(threshold_part)
-                    search_text = text_part.strip()
-                except (ValueError, TypeError):
-                    pass
-
-            scored_elements = []
-            for el in matching_elements:
-                if not getattr(el, "text", None):
-                    continue
-                el_text = el.text.strip()
-                score = ocr_substring_score(search_text, el_text)
-                if score >= threshold:
-                    scored_elements.append((score, el))
-
-            scored_elements.sort(key=lambda x: x[0], reverse=True)
-            matching_elements = [entry[1] for entry in scored_elements]
-            break
-
-        matching_elements = _apply_post(post_pseudos, matching_elements)
-
-        return ElementCollection(matching_elements)
+        return ElementCollection(matching_elements, context=self._context)
 
     def create_region(self, x0: float, top: float, x1: float, bottom: float) -> Any:
         """
@@ -1655,25 +1439,18 @@ class Page(
         Returns:
             List of elements that match the selector
         """
-        from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
+        from natural_pdf.selectors.parser import parse_selector
 
         # Parse the selector
         selector_obj = parse_selector(selector)
-
-        # Create filter function from selector
-        filter_func = selector_to_filter_func(selector_obj, **kwargs)
-
-        # Apply the filter to the elements
-        matching_elements = [element for element in elements if filter_func(element)]
-
-        # Sort elements in reading order if requested
-        if kwargs.get("reading_order", True):
-            if all(hasattr(el, "top") and hasattr(el, "x0") for el in matching_elements):
-                matching_elements.sort(key=lambda el: (el.top, el.x0))
-            else:
-                logger.warning(
-                    "Cannot sort elements in reading order: Missing required attributes (top, x0)."
-                )
+        matching_elements = execute_selector_branch(
+            self,
+            selector_obj,
+            elements,
+            selector_kwargs=kwargs,
+            selector_type=selector_obj.get("type", "any").lower(),
+            logger=logger,
+        )
 
         return matching_elements
 
@@ -1752,6 +1529,7 @@ class Page(
         Returns:
             Cropped page object (pdfplumber.Page)
         """
+        self._require_live_pdf("crop page")
         # Returns the pdfplumber page object, not a natural-pdf Page
         resolved_bbox: Optional[Tuple[float, float, float, float]]
         if bbox is None:
@@ -1796,6 +1574,8 @@ class Page(
 
         if resolved_angle == 0:
             return self
+
+        self._require_live_pdf("rotate page")
 
         if not hasattr(self, "_parent") or not hasattr(self._parent, "_pdf"):
             raise RuntimeError("Cannot rotate page: parent PDF is not initialized.")
@@ -2966,6 +2746,7 @@ class Page(
             return self.extract_text(layout=layout, **kwargs)
 
         if using == "vision":
+            self._require_live_pdf("extract vision content")
             resolution = kwargs.pop("resolution", 96)
             kwargs.pop("include_highlights", None)
             kwargs.pop("labels", None)
@@ -3014,6 +2795,8 @@ class Page(
         logger.info(f"Page {self.number}: Removing all text elements...")
 
         removed_words, removed_chars = self._element_mgr.clear_text_layer()
+        if removed_words or removed_chars:
+            self._bump_text_state_version()
 
         logger.info(
             f"Page {self.number}: Removed {removed_words} words and {removed_chars} characters"

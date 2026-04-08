@@ -53,6 +53,11 @@ class _FakeOCREngine(OCREngine):
         return True
 
 
+class _EmptyOCREngine(_FakeOCREngine):
+    def _process_single_image(self, image, detect_only, options):
+        return []
+
+
 def test_page_apply_ocr_uses_provider(monkeypatch):
     provider = EngineProvider()
     provider._entry_points_loaded = True
@@ -101,3 +106,39 @@ def test_region_apply_ocr_respects_crop_offsets(monkeypatch):
         assert word.width == pytest.approx(expected_width, rel=1e-3, abs=1e-3)
     finally:
         pdf.close()
+
+
+def test_replace_ocr_is_transactional_when_engine_returns_no_results(
+    monkeypatch, practice_pdf_fresh
+):
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+    monkeypatch.setattr(provider_module, "_PROVIDER", provider)
+
+    for capability in ("ocr", "ocr.apply", "ocr.extract"):
+        provider.register(capability, "fake-empty", lambda **_: _EmptyOCREngine(), replace=True)
+
+    page = practice_pdf_fresh.pages[0]
+    before_texts = [word.text for word in page.words]
+
+    page.apply_ocr(engine="fake-empty", resolution=72, replace=True)
+
+    after_texts = [word.text for word in page.words]
+    assert after_texts == before_texts
+
+
+def test_replace_ocr_swaps_text_only_after_success(monkeypatch, practice_pdf_fresh):
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+    monkeypatch.setattr(provider_module, "_PROVIDER", provider)
+
+    for capability in ("ocr", "ocr.apply", "ocr.extract"):
+        provider.register(capability, "fake-success", lambda **_: _FakeOCREngine(), replace=True)
+
+    page = practice_pdf_fresh.pages[0]
+    assert any(getattr(word, "source", None) != "ocr" for word in page.words)
+
+    page.apply_ocr(engine="fake-success", resolution=72, replace=True)
+
+    assert page.words
+    assert all(getattr(word, "source", None) == "ocr" for word in page.words)

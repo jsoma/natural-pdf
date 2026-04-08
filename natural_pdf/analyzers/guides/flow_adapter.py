@@ -20,6 +20,16 @@ logger = logging.getLogger(__name__)
 _BOUNDARY_TOLERANCE = 0.1
 
 
+def _validate_group_lengths(groups: Sequence[Sequence[Any]], *, label: str, source: str) -> None:
+    lengths = [len(group) for group in groups]
+    if len(set(lengths)) <= 1:
+        return
+    raise ValueError(
+        f"Inconsistent multi-page {label} counts for source '{source}': {lengths}. "
+        "Refusing to stitch by truncation."
+    )
+
+
 @dataclass
 class RegionGrid:
     """Container tracking a region and the grid fragments built inside it."""
@@ -52,6 +62,7 @@ class FlowGuideAdapter:
         self,
         source: str,
         cell_padding: float,
+        include_outer_boundaries: bool,
     ) -> List[RegionGrid]:
         """Build per-region grids by clipping the unified guide set."""
         region_grids: List[RegionGrid] = []
@@ -67,7 +78,7 @@ class FlowGuideAdapter:
                 target=region,
                 source=source,
                 cell_padding=cell_padding,
-                include_outer_boundaries=False,
+                include_outer_boundaries=include_outer_boundaries,
             )
 
             if grid_parts["counts"]["table"] <= 0:
@@ -199,9 +210,9 @@ class FlowGuideAdapter:
         fragments = grid_parts["regions"]
         type_map = {
             "table": "table_fragment",
-            "rows": "table_row_fragment",
-            "columns": "table_column_fragment",
-            "cells": "table_cell_fragment",
+            "rows": "table-row-fragment",
+            "columns": "table-column-fragment",
+            "cells": "table-cell-fragment",
         }
 
         for key, region_type in type_map.items():
@@ -214,6 +225,8 @@ class FlowGuideAdapter:
                 targets = [value]
             for target in targets:
                 target.region_type = region_type
+                if hasattr(target, "normalized_type"):
+                    target.normalized_type = region_type
                 target.metadata["is_fragment"] = True
 
     def _stitch_vertical(
@@ -283,7 +296,7 @@ class FlowGuideAdapter:
             flow, self._flatten_region_likes([last_row, first_row]), source_flow_element=None
         )
         merged_row.source = source
-        merged_row.region_type = "table_row"
+        merged_row.region_type = "table-row"
         merged_row.metadata.update(
             {
                 "row_index": last_row.metadata.get("row_index"),
@@ -315,13 +328,19 @@ class FlowGuideAdapter:
 
         last_cells.sort(key=lambda cell: cell.metadata.get("col_index", 0))
         next_cells.sort(key=lambda cell: cell.metadata.get("col_index", 0))
+        if len(last_cells) != len(next_cells):
+            raise ValueError(
+                "Inconsistent multi-page cell counts while merging row boundary "
+                f"for source '{source}' between regions {index} and {index + 1}: "
+                f"{len(last_cells)} vs {len(next_cells)}."
+            )
 
         for cell_a, cell_b in zip(last_cells, next_cells):
             merged_cell = FlowRegion(
                 flow, self._flatten_region_likes([cell_a, cell_b]), source_flow_element=None
             )
             merged_cell.source = source
-            merged_cell.region_type = "table_cell"
+            merged_cell.region_type = "table-cell"
             merged_cell.metadata.update(
                 {
                     "row_index": cell_a.metadata.get("row_index"),
@@ -349,7 +368,7 @@ class FlowGuideAdapter:
             flow, self._flatten_region_likes([last_col, first_col]), source_flow_element=None
         )
         merged_col.source = source
-        merged_col.region_type = "table_column"
+        merged_col.region_type = "table-column"
         merged_col.metadata.update(
             {
                 "col_index": last_col.metadata.get("col_index"),
@@ -381,13 +400,19 @@ class FlowGuideAdapter:
 
         col_cells_a.sort(key=lambda cell: cell.metadata.get("row_index", 0))
         col_cells_b.sort(key=lambda cell: cell.metadata.get("row_index", 0))
+        if len(col_cells_a) != len(col_cells_b):
+            raise ValueError(
+                "Inconsistent multi-page cell counts while merging column boundary "
+                f"for source '{source}' between regions {index} and {index + 1}: "
+                f"{len(col_cells_a)} vs {len(col_cells_b)}."
+            )
 
         for cell_a, cell_b in zip(col_cells_a, col_cells_b):
             merged_cell = FlowRegion(
                 flow, self._flatten_region_likes([cell_a, cell_b]), source_flow_element=None
             )
             merged_cell.source = source
-            merged_cell.region_type = "table_cell"
+            merged_cell.region_type = "table-cell"
             merged_cell.metadata.update(
                 {
                     "row_index": cell_a.metadata.get("row_index"),
@@ -404,7 +429,9 @@ class FlowGuideAdapter:
     ) -> List[RegionLike]:
         stitched_columns: List[RegionLike] = []
         flow = self.flow
-        physical_columns = zip(*(grid.columns for grid in region_grids))
+        column_groups = [list(grid.columns) for grid in region_grids]
+        _validate_group_lengths(column_groups, label="column", source=source)
+        physical_columns = zip(*column_groups)
 
         for col_index, column_group in enumerate(physical_columns):
             column_regions = list(column_group)
@@ -414,7 +441,7 @@ class FlowGuideAdapter:
                 flow, self._flatten_region_likes(column_regions), source_flow_element=None
             )
             column.source = source
-            column.region_type = "table_column"
+            column.region_type = "table-column"
             column.metadata.update({"col_index": col_index, "is_multi_page": True})
             stitched_columns.append(column)
 
@@ -427,7 +454,9 @@ class FlowGuideAdapter:
     ) -> List[RegionLike]:
         stitched_rows: List[RegionLike] = []
         flow = self.flow
-        physical_rows = zip(*(grid.rows for grid in region_grids))
+        row_groups = [list(grid.rows) for grid in region_grids]
+        _validate_group_lengths(row_groups, label="row", source=source)
+        physical_rows = zip(*row_groups)
 
         for row_index, row_group in enumerate(physical_rows):
             row_regions = list(row_group)
@@ -437,7 +466,7 @@ class FlowGuideAdapter:
                 flow, self._flatten_region_likes(row_regions), source_flow_element=None
             )
             row.source = source
-            row.region_type = "table_row"
+            row.region_type = "table-row"
             row.metadata.update({"row_index": row_index, "is_multi_page": True})
             stitched_rows.append(row)
 

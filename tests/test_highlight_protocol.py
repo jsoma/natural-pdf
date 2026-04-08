@@ -200,6 +200,26 @@ class TestHighlightProtocol:
 class TestHighlightProtocolIntegration:
     """Integration tests with real rendering."""
 
+    def test_table_cell_regions_use_shared_table_cells_label(self, practice_pdf):
+        page = practice_pdf.pages[0]
+        cell = page.create_region(10, 10, 40, 30)
+        cell.region_type = "table-cell"
+        cell.normalized_type = "table-cell"
+
+        collection = ElementCollection([cell])
+
+        with patch.object(collection, "_get_highlighter") as mock_get_highlighter:
+            mock_highlighter = Mock()
+            mock_highlighter.unified_render.return_value = Mock()
+            mock_get_highlighter.return_value = mock_highlighter
+
+            collection.show()
+
+            call_args = mock_highlighter.unified_render.call_args
+            specs = call_args[1]["specs"]
+            assert len(specs) == 1
+            assert specs[0].highlights[0]["label"] == "Table Cells"
+
     def test_multipage_table_cells_visualization(self, multipage_table_pdf):
         """Test the motivating use case: showing table cells across pages."""
         pdf = multipage_table_pdf

@@ -280,6 +280,26 @@ class TestQAServiceHelpers:
             pdf.close()
         assert captured["citations"] is True
 
+    def test_ask_uses_fixed_private_analysis_key_with_overwrite(self, monkeypatch):
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+        captured_calls = []
+
+        def capture_extract(**kwargs):
+            captured_calls.append(kwargs)
+            return _make_answer_result("ok")
+
+        monkeypatch.setattr(page, "extract", capture_extract)
+        try:
+            page.ask("first?")
+            page.ask("second?")
+        finally:
+            pdf.close()
+
+        assert len(captured_calls) == 2
+        assert all(call["analysis_key"] == "_qa" for call in captured_calls)
+        assert all(call["overwrite"] is True for call in captured_calls)
+
 
 class TestIntegration:
     """End-to-end integration test: .ask() → QAService → extract() → doc_qa."""

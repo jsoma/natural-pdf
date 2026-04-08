@@ -106,15 +106,28 @@ class OCRService:
 
         return 150
 
+    @staticmethod
+    def _bump_text_state(host: Any) -> None:
+        page = host if hasattr(host, "_bump_text_state_version") else getattr(host, "page", None)
+        bump = getattr(page, "_bump_text_state_version", None)
+        if callable(bump):
+            bump()
+
     @register_delegate("ocr", "remove_ocr_elements")
     def remove_ocr_elements(self, host: SupportsOCRElementManager) -> int:
         mgr = host._ocr_element_manager()
-        return int(mgr.remove_ocr_elements())
+        removed = int(mgr.remove_ocr_elements())
+        if removed:
+            self._bump_text_state(host)
+        return removed
 
     @register_delegate("ocr", "clear_text_layer")
     def clear_text_layer(self, host: SupportsOCRElementManager):
         mgr = host._ocr_element_manager()
-        return mgr.clear_text_layer()
+        removed = mgr.clear_text_layer()
+        if removed and any(removed):
+            self._bump_text_state(host)
+        return removed
 
     @register_delegate("ocr", "create_text_elements_from_ocr")
     def create_text_elements_from_ocr(
@@ -128,7 +141,7 @@ class OCRService:
         engine_name: Optional[str] = None,
     ):
         mgr = host._ocr_element_manager()
-        return mgr.create_text_elements_from_ocr(
+        created = mgr.create_text_elements_from_ocr(
             ocr_results,
             scale_x=scale_x,
             scale_y=scale_y,
@@ -136,6 +149,9 @@ class OCRService:
             offset_y=offset_y,
             engine_name=engine_name,
         )
+        if created:
+            self._bump_text_state(host)
+        return created
 
     def _resolve_engine_name(
         self,
@@ -220,6 +236,84 @@ class OCRService:
                 engine_name=engine_name,
             )
 
+    def _payload_can_replace_text(
+        self,
+        host,
+        ocr_payload,
+        engine_name,
+        min_confidence,
+        offset_x,
+        offset_y,
+    ) -> bool:
+        image_width, image_height = ocr_payload.image_size
+        if not image_width or not image_height:
+            return False
+
+        width = (
+            getattr(host, "width", None) or getattr(getattr(host, "page", None), "width", None) or 0
+        )
+        height = (
+            getattr(host, "height", None)
+            or getattr(getattr(host, "page", None), "height", None)
+            or 0
+        )
+        scale_x = width / image_width if width else 1.0
+        scale_y = height / image_height if height else 1.0
+
+        staged_results = ocr_payload.results
+        staged_scale_x = scale_x
+        staged_scale_y = scale_y
+        staged_offset_x = offset_x
+        staged_offset_y = offset_y
+
+        if ocr_payload.engine_type == "vlm":
+            from natural_pdf.ocr.vlm_ocr import scale_ocr_results
+
+            scaled = scale_ocr_results(
+                ocr_payload.results,
+                image_width=image_width,
+                image_height=image_height,
+                page_width=width,
+                page_height=height,
+                offset_x=offset_x,
+                offset_y=offset_y,
+            )
+            if min_confidence is not None:
+                scaled = [r for r in scaled if r.get("confidence", 1.0) >= min_confidence]
+
+            staged_results = [
+                result
+                for result in scaled
+                if str(result.get("source_category", "")).lower() != "table"
+            ]
+            staged_scale_x = 1.0
+            staged_scale_y = 1.0
+            staged_offset_x = 0.0
+            staged_offset_y = 0.0
+
+        if not staged_results:
+            return False
+
+        mgr = host._ocr_element_manager()
+        converter = getattr(mgr, "_ocr_converter", None)
+        if converter is None:
+            return True
+
+        try:
+            staged_words, staged_chars = converter.convert(
+                staged_results,
+                scale_x=staged_scale_x,
+                scale_y=staged_scale_y,
+                offset_x=staged_offset_x,
+                offset_y=staged_offset_y,
+                engine_name=engine_name,
+            )
+        except Exception:
+            logger.debug("Failed to validate OCR payload before replacement.", exc_info=True)
+            return False
+
+        return bool(staged_words or staged_chars)
+
     @register_delegate("ocr", "apply_ocr")
     def apply_ocr(
         self,
@@ -255,17 +349,6 @@ class OCRService:
         resolved_languages = resolve_ocr_languages(host, languages, scope=scope)
         resolved_min_conf = resolve_ocr_min_confidence(host, min_confidence, scope=scope)
         resolved_device = resolve_ocr_device(host, device, scope=scope)
-
-        if replace is True or replace == "all":
-            # Clear entire text layer (native + OCR) before adding fresh OCR results
-            words, chars = self.clear_text_layer(host)
-            if words or chars:
-                logger.info("Cleared text layer (%d words, %d chars) before OCR.", words, chars)
-        elif replace == "ocr":
-            # Only remove prior OCR elements, keep native text layer
-            removed = self.remove_ocr_elements(host)
-            if removed:
-                logger.info("Removed %d OCR elements before new OCR run.", removed)
 
         final_resolution = self._resolve_resolution(host, resolution, scope)
         render_kwargs = self._render_kwargs(host, apply_exclusions=apply_exclusions)
@@ -311,6 +394,28 @@ class OCRService:
                 cached = cache.get(cache_key)
                 if cached is not None:
                     logger.info("OCR cache hit for page %d (%s)", page_index, engine_name)
+                    if replace is True or replace == "all":
+                        if not self._payload_can_replace_text(
+                            host,
+                            cached,
+                            engine_name,
+                            resolved_min_conf,
+                            offset_x,
+                            offset_y,
+                        ):
+                            logger.warning(
+                                "Skipping replacement OCR because the cached payload could not be validated."
+                            )
+                            return host
+                        words, chars = self.clear_text_layer(host)
+                        if words or chars:
+                            logger.info(
+                                "Cleared text layer (%d words, %d chars) before OCR.", words, chars
+                            )
+                    elif replace == "ocr":
+                        removed = self.remove_ocr_elements(host)
+                        if removed:
+                            logger.info("Removed %d OCR elements before new OCR run.", removed)
                     created = self._process_ocr_payload(
                         host, cached, engine_name, resolved_min_conf, offset_x, offset_y
                     )
@@ -347,6 +452,27 @@ class OCRService:
         if cache_key is not None:
             page_index = getattr(page_obj, "index", 0)
             cache.put(cache_key, ocr_payload, engine_name, page_index)
+
+        if replace is True or replace == "all":
+            if not self._payload_can_replace_text(
+                host,
+                ocr_payload,
+                engine_name,
+                resolved_min_conf,
+                offset_x,
+                offset_y,
+            ):
+                logger.warning(
+                    "Skipping replacement OCR because the OCR payload could not be validated."
+                )
+                return host
+            words, chars = self.clear_text_layer(host)
+            if words or chars:
+                logger.info("Cleared text layer (%d words, %d chars) before OCR.", words, chars)
+        elif replace == "ocr":
+            removed = self.remove_ocr_elements(host)
+            if removed:
+                logger.info("Removed %d OCR elements before new OCR run.", removed)
 
         created_elements = self._process_ocr_payload(
             host, ocr_payload, engine_name, resolved_min_conf, offset_x, offset_y

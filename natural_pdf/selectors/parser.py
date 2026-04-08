@@ -53,6 +53,12 @@ from natural_pdf.selectors.registry import (
 logger = logging.getLogger(__name__)
 
 
+def _normalize_selector_label(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value).strip().lower().replace("-", "_").replace(" ", "_")
+
+
 def build_text_contains_selector(text_input: Union[str, Iterable[str]]) -> str:
     """
     Build a selector string that matches one or more literal text values.
@@ -838,6 +844,7 @@ def _build_filter_list(
     # Filter by element type
     if selector_type != "any":
         filter_name = f"type is '{selector_type}'"
+        normalized_selector_type = _normalize_selector_label(selector_type)
         if selector_type == "text":
             filter_name = "type is 'text', 'char', or 'word'"
             func = lambda el: hasattr(el, "type") and el.type in ["text", "char", "word"]
@@ -848,13 +855,14 @@ def _build_filter_list(
         else:
             # Check against normalized_type first, then element.type
             func = lambda el: (
-                hasattr(el, "normalized_type") and el.normalized_type == selector_type
+                hasattr(el, "normalized_type")
+                and _normalize_selector_label(el.normalized_type) == normalized_selector_type
             ) or (
                 not hasattr(
                     el, "normalized_type"
                 )  # Only check element.type if normalized_type doesn't exist/match
                 and hasattr(el, "type")
-                and el.type == selector_type
+                and _normalize_selector_label(el.type) == normalized_selector_type
             )
         filters.append({"name": filter_name, "func": func})
 
@@ -955,9 +963,9 @@ def _build_filter_list(
             if selector_type == "region":
                 if attr_name == "type":
                     if hasattr(element, "normalized_type") and element.normalized_type:
-                        return element.normalized_type
+                        return _normalize_selector_label(element.normalized_type)
                     else:
-                        return getattr(element, "region_type", "").lower().replace(" ", "_")
+                        return _normalize_selector_label(getattr(element, "region_type", ""))
                 elif attr_name == "model":
                     return getattr(element, "model", None)
                 elif attr_name == "checked":

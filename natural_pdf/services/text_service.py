@@ -191,6 +191,22 @@ class TextService:
         if element_pbar:
             element_pbar.close()
 
+        if updated_count:
+            touched_pages = {
+                getattr(element, "page", None)
+                for element in elements
+                if getattr(element, "page", None) is not None
+            }
+            host_page = (
+                host if hasattr(host, "_bump_text_state_version") else getattr(host, "page", None)
+            )
+            if host_page is not None:
+                touched_pages.add(host_page)
+            for page in touched_pages:
+                bump = getattr(page, "_bump_text_state_version", None)
+                if callable(bump):
+                    bump()
+
         logger.info(
             "%s.update_text – processed %d/%d element(s); updated %d; errors %d.",
             host.__class__.__name__,

@@ -175,7 +175,7 @@ def test_lazy_page_list_checks_parent_cache():
 
 
 def test_exclusions_applied_to_new_pages_in_slice():
-    """Test that exclusions are applied to pages created after exclusion is added."""
+    """Test that new pages see PDF-level exclusions without copying them into page state."""
     # Create a test PDF
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
         f.write(create_test_pdf_content())
@@ -194,13 +194,19 @@ def test_exclusions_applied_to_new_pages_in_slice():
             page0 = slice_pages[0]
             page1 = slice_pages[1]
 
-            # Pages should have the exclusion
-            assert len(page0._exclusions) > 0
-            assert len(page1._exclusions) > 0
+            # Pages should not copy PDF-level exclusions into page-local storage
+            assert len(page0._exclusions) == 0
+            assert len(page1._exclusions) == 0
 
-            # Verify the exclusion label
-            assert any(exc[1] == "early_exclusion" for exc in page0._exclusions)
-            assert any(exc[1] == "early_exclusion" for exc in page1._exclusions)
+            # But the evaluated exclusions should still include the PDF-level rule
+            labels0 = {
+                region.label for region in page0._get_exclusion_regions(include_callable=True)
+            }
+            labels1 = {
+                region.label for region in page1._get_exclusion_regions(include_callable=True)
+            }
+            assert "early_exclusion" in labels0
+            assert "early_exclusion" in labels1
 
     finally:
         # Clean up

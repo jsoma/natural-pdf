@@ -9,18 +9,31 @@ natural_pdf/          # Library source
   core/               # PDF, Page, PageCollection — main entry points
   elements/           # Element, Region, ElementCollection
   services/           # Service delegation layer (navigation, OCR, extraction, etc.)
+  analyzers/          # Layout, guides, and structure analysis
   selectors/          # CSS-like selector engine
   flows/              # Multi-page/multi-column content reflow (FlowRegion)
+  guides/             # Guides provider and guide engines
   ocr/                # OCR engine adapters (easyocr, surya, paddleocr, doctr)
   extraction/         # Structured data extraction (LLM, VLM, doc_qa)
+  classification/     # Text and vision classification providers
+  qa/                 # Document QA workflows
+  search/             # Per-PDF semantic page ranking
   exporters/          # Searchable PDF, hOCR output
   tables/             # Table detection and extraction engines
+  widgets/            # Viewer and notebook widgets
+  engine_registry/    # Engine registry compatibility layer
 docs/                 # mkdocs site source (tutorials, cookbooks, API reference)
 tests/                # pytest suite
 pdfs/                 # Test PDFs — use these, don't create new ones
 scripts/              # Build/CI scripts (notebook executor, publish)
 temp/                 # Temp file output (gitignored)
 ```
+
+Out of scope for the main library contract:
+- `agentic/`
+- `natural-pdf-agentic/`
+
+Those are being split out separately and should not drive changes to the main library docs, packaging, or test expectations.
 
 ## Architecture
 
@@ -49,9 +62,10 @@ Elements support directional methods that return Regions:
 - `.above()` / `.below()` default to `width='full'` (full page width)
 - All accept `multipage=True` to span pages (returns `FlowRegion` when crossing pages)
 - Exclusions can be added via `pdf.add_exclusion(lambda page: ...)` — supports Region, ElementCollection, or lists
+- Exclusions are read-time filters over canonical content. Treat them as "show me the non-excluded view" rather than as a write operation.
 
 ### OCR
-Multiple engines: `rapidocr` (default), `easyocr`, `surya`, `paddle`, `paddlevl`, `doctr`. Applied via `page.apply_ocr(engine="rapidocr")`. GLM-OCR (0.9B VLM) works via `engine="vlm"` with `model="zai-org/GLM-OCR"` — runs layout detection + per-region OCR in-process.
+Multiple engines: `rapidocr` (default), `easyocr`, `surya`, `paddle`, `paddlevl`, `doctr`. Applied via `page.apply_ocr(engine="rapidocr")`. `natural-pdf[all]` is the recommended runtime install: it includes the default RapidOCR path, semantic search, QA/extraction dependencies, and export support, but not every optional backend. GLM-OCR (0.9B VLM) works via `engine="vlm"` with `model="zai-org/GLM-OCR"` — runs layout detection + per-region OCR in-process.
 
 ### Extraction
 - **Structured data**: `page.extract(MyPydanticModel)` or `page.extract(MyPydanticModel, engine="llm", client=...)`
@@ -115,6 +129,11 @@ for path in pdf_paths:
         ...
     finally:
         pdf.close()
+
+# close() is partial
+# Already-materialized lightweight state may still be readable after close().
+# Operations that need the live PDF backing (for example loading unseen pages
+# or OCR/render-heavy work) should be treated as unavailable after close().
 ```
 
 ## Development

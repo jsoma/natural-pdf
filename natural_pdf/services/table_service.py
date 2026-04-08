@@ -29,6 +29,20 @@ class TableService:
     def __init__(self, context):
         self._context = context
 
+    @staticmethod
+    def _is_attributable_cell(host: Any, cell: Any) -> bool:
+        host_source = getattr(host, "source", None)
+        cell_source = getattr(cell, "source", None)
+        if host_source and cell_source:
+            return host_source == cell_source
+
+        host_model = getattr(host, "model", None)
+        cell_model = getattr(cell, "model", None)
+        if host_model and cell_model:
+            return host_model == cell_model
+
+        return False
+
     @register_delegate("table", "extract_table")
     def extract_table(
         self,
@@ -114,7 +128,7 @@ class TableService:
                     intersects = cast(
                         Optional[Callable[[Any], bool]], getattr(host, "intersects", None)
                     )
-                    cell_regions_in_table = [
+                    candidate_cells = [
                         c
                         for c in host.page.find_all(
                             "region[type=table_cell]", apply_exclusions=False
@@ -122,7 +136,11 @@ class TableService:
                         if intersects and intersects(c)
                     ]
                 except Exception:
-                    cell_regions_in_table = []
+                    candidate_cells = []
+
+                cell_regions_in_table = [
+                    cell for cell in candidate_cells if self._is_attributable_cell(host, cell)
+                ]
 
                 if cell_regions_in_table:
                     logger.debug(

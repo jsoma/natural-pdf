@@ -123,7 +123,7 @@ def test_guides_extract_table_cleanup_on_success():
 
     temp_region2 = Mock()
     temp_region2.source = "guides_temp"
-    temp_region2.region_type = "table_cell"
+    temp_region2.region_type = "table-cell"
 
     other_region = Mock()
     other_region.source = "other_source"

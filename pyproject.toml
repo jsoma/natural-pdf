@@ -48,6 +48,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ai = [
+    "rapidocr_onnxruntime",
     "torch",
     "torchvision",
     "transformers[sentencepiece]",
@@ -110,8 +111,6 @@ quality = [
 all = [
     "natural-pdf[ai]",
     "natural-pdf[export]",
-    "natural-pdf[test]",
-    "natural-pdf[quality]",
 ]
 
 [project.urls]

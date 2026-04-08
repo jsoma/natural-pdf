@@ -26,6 +26,30 @@ def main():
 # ---------------------------------------------------------------------------
 
 EXTRA_GROUPS: Dict[str, list[str]] = {
+    "all": [
+        "rapidocr",
+        "torch",
+        "torchvision",
+        "transformers",
+        "sentence-transformers",
+        "easyocr",
+        "timm",
+        "doclayout_yolo",
+        "pikepdf",
+        "img2pdf",
+        "jupytext",
+        "nbformat",
+    ],
+    "ai": [
+        "rapidocr",
+        "torch",
+        "torchvision",
+        "transformers",
+        "sentence-transformers",
+        "easyocr",
+        "timm",
+        "doclayout_yolo",
+    ],
     "export": ["pikepdf", "img2pdf", "jupytext", "nbformat"],
     "paddle": ["paddlepaddle", "paddleocr", "paddlex"],
 }

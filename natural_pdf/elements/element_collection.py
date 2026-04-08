@@ -462,9 +462,10 @@ class ElementCollection(
                         # Handle special cases for common types
                         if base_name == "Text":
                             shared_label = "Text Elements"
-                        elif base_name == "table_cell" or (
+                        elif base_name in {"table_cell", "table-cell"} or (
                             hasattr(page_elements[0], "region_type")
-                            and page_elements[0].region_type == "table_cell"
+                            and getattr(page_elements[0], "region_type", None)
+                            in {"table_cell", "table-cell"}
                         ):
                             shared_label = "Table Cells"
                         elif base_name == "table":
