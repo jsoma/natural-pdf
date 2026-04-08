@@ -305,3 +305,6 @@ extracted_data.csv
 
 # Checkbox dataset pipeline
 datasets/
+
+# Separate private extractor platform repo
+/natural-pdf-agentic/
