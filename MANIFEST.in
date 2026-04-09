@@ -33,6 +33,12 @@ exclude requirements.lock
 exclude install.sh
 
 # Directories to exclude
+prune agentic
+prune natural-pdf-agentic
+prune benchmark
+prune datasets
+prune artifacts
+prune temp
 prune .venv
 prune output
 prune results

@@ -169,11 +169,9 @@ include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["natural_pdf*"]
 exclude = [
-    "tests", "tests.*",
-    "build", "dist", "*.egg-info",
-    "docs", "docs.*",
-    ".nox", ".venv", "env", "venv"
+    "tests", "tests.*"
 ]
 
 [project.scripts]
