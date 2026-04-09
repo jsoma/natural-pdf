@@ -12730,7 +12730,8 @@ processing pages in batches for large documents.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OpenAI-compatible client for LLM-backed QA.</p>
+                <p>OpenAI-compatible client for LLM-backed QA. When provided,
+<code>.ask()</code> uses the LLM extraction path unless <code>engine='vlm'</code>.</p>
               </div>
             </td>
             <td>
@@ -12746,7 +12747,7 @@ processing pages in batches for large documents.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>'text'</code> or <code>'vision'</code>.</p>
+                <p><code>'text'</code> or <code>'vision'</code> for the client-backed extraction path.</p>
               </div>
             </td>
             <td>
@@ -12762,7 +12763,7 @@ processing pages in batches for large documents.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>None</code> (auto), <code>'doc_qa'</code>, <code>'vlm'</code>.</p>
+                <p><code>None</code> (auto), <code>'doc_qa'</code>, or <code>'vlm'</code>.</p>
               </div>
             </td>
             <td>
@@ -13586,7 +13587,9 @@ text-element images and metadata (JSONL or CSV).</p>
 <code>citations=True</code> to get per-field source citations that map
 extracted values back to their source elements across pages.
 Pass <code>confidence=True</code> for per-field confidence scores, and
-<code>instructions="..."</code> for domain-specific LLM guidance.</p>
+<code>instructions="..."</code> for domain-specific LLM guidance.
+<code>using='vision'</code> is only supported for single-page PDFs and
+requires either <code>client=...</code> or <code>engine='vlm'</code>.</p>
 
 
     <p><span class="doc-section-title">Returns:</span></p>
@@ -18246,7 +18249,8 @@ Ignored when <code>prompt</code> is passed directly via <code>**kwargs</code>.</
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OpenAI-compatible client for LLM-backed QA.</p>
+                <p>OpenAI-compatible client for LLM-backed QA. When provided,
+<code>.ask()</code> uses the LLM extraction path unless <code>engine='vlm'</code>.</p>
               </div>
             </td>
             <td>
@@ -18262,7 +18266,8 @@ Ignored when <code>prompt</code> is passed directly via <code>**kwargs</code>.</
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Content mode — <code>'text'</code> or <code>'vision'</code>.</p>
+                <p>Content mode — <code>'text'</code> or <code>'vision'</code> for the client-backed
+extraction path. Ignored for default doc-QA.</p>
               </div>
             </td>
             <td>
@@ -18279,7 +18284,7 @@ Ignored when <code>prompt</code> is passed directly via <code>**kwargs</code>.</
             <td>
               <div class="doc-md-description">
                 <p>Extraction engine — <code>None</code> (auto), <code>'doc_qa'</code>,
-<code>'vlm'</code>.</p>
+or <code>'vlm'</code>.</p>
               </div>
             </td>
             <td>
@@ -19249,7 +19254,8 @@ using <code>detect_skew_angle</code> (or use the cached angle if available).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>An OpenAI-compatible client instance (required for LLM engine).</p>
+                <p>An OpenAI-compatible client instance. When provided and
+<code>engine</code> is not set, extraction defaults to the LLM text path.</p>
               </div>
             </td>
             <td>
@@ -19297,7 +19303,8 @@ using <code>detect_skew_angle</code> (or use the cached angle if available).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Content mode — <code>'text'</code> (layout text) or <code>'vision'</code> (rendered image).</p>
+                <p>Content mode — <code>'text'</code> (layout text) or <code>'vision'</code> (rendered image).
+Vision extraction requires either <code>client=...</code> or <code>engine='vlm'</code>.</p>
               </div>
             </td>
             <td>
@@ -19329,7 +19336,7 @@ using <code>detect_skew_angle</code> (or use the cached angle if available).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>'llm'</code>, <code>'doc_qa'</code>, or None (auto-detect from client).</p>
+                <p><code>'llm'</code>, <code>'doc_qa'</code>, <code>'vlm'</code>, or None (auto-detect from client).</p>
               </div>
             </td>
             <td>

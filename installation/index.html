@@ -1549,21 +1549,22 @@
 <h1 id="getting-started-with-natural-pdf">Getting Started with Natural PDF</h1>
 <p>Let's get Natural PDF installed and run your first extraction.</p>
 <h2 id="installation">Installation</h2>
-<p>The base install includes the core library (selectors, extraction, spatial navigation) plus the <code>openai</code> client for LLM-based features like <code>.extract()</code> and <code>.to_markdown()</code>.</p>
+<p>The base install includes the core library for selectors, extraction, and spatial navigation. It does not try to install every OCR, layout, or research backend up front.</p>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>natural-pdf
 </code></pre></div>
 <p>Optional dependencies can be installed individually as needed. The library will tell you what to install if something is missing.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Bundles</span>
-pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[export]&quot;</span><span class="w">   </span><span class="c1"># PDF export (pikepdf, img2pdf, etc.)</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[all]&quot;</span><span class="w">      </span><span class="c1"># Recommended feature-complete runtime install</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[export]&quot;</span><span class="w">   </span><span class="c1"># PDF export helpers only</span>
 pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[paddle]&quot;</span><span class="w">   </span><span class="c1"># PaddleOCR stack (paddlepaddle + paddleocr + paddlex) — includes paddlevl engine</span>
-pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[all]&quot;</span><span class="w">      </span><span class="c1"># Everything</span>
 
 <span class="c1"># Individual packages</span>
 pip<span class="w"> </span>install<span class="w"> </span>easyocr<span class="w">                 </span><span class="c1"># EasyOCR engine</span>
-pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;surya-ocr&lt;0.15&quot;</span><span class="w">         </span><span class="c1"># Surya OCR engine</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;surya-ocr&lt;0.15&quot;</span><span class="w">        </span><span class="c1"># Surya OCR engine</span>
+pip<span class="w"> </span>install<span class="w"> </span>doctr<span class="w">                   </span><span class="c1"># Doctr OCR engine</span>
 pip<span class="w"> </span>install<span class="w"> </span>doclayout_yolo<span class="w">          </span><span class="c1"># YOLO layout detection</span>
-pip<span class="w"> </span>install<span class="w"> </span>torch<span class="w"> </span>transformers<span class="w">      </span><span class="c1"># QA, classification, semantic search, VLM OCR (GLM-OCR, Qwen-VL)</span>
 </code></pre></div>
+<p><code>natural-pdf[all]</code> means the recommended core-complete install: the default RapidOCR backend, sentence-transformers-based semantic search, QA/extraction dependencies, and export support. It does not include every optional backend. Advanced engines such as PaddleOCR, Surya, and Doctr remain opt-in.</p>
 <p>If you attempt to use an engine that is missing, the library will raise an
 error with the <code>pip install</code> command you need.</p>
 <p>You can check what's installed at any time:</p>
