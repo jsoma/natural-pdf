@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union, cast
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, Sequence, Tuple, Union, cast
 
 from natural_pdf.flows.region import FlowRegion
+
+from ._grid_builder import build_single_page_grid
+from ._grid_types import GridBuildResult
 
 if TYPE_CHECKING:
     from natural_pdf.elements.region import Region
@@ -35,10 +38,11 @@ class RegionGrid:
     """Container tracking a region and the grid fragments built inside it."""
 
     region: Region
-    table: RegionLike | None
-    rows: List[RegionLike]
-    columns: List[RegionLike]
-    cells: List[RegionLike]
+    result: GridBuildResult = field(default_factory=GridBuildResult)
+    table: RegionLike | None = None
+    rows: List[RegionLike] = field(default_factory=list)
+    columns: List[RegionLike] = field(default_factory=list)
+    cells: List[RegionLike] = field(default_factory=list)
 
 
 class FlowGuideAdapter:
@@ -53,7 +57,6 @@ class FlowGuideAdapter:
         self.flow = self._flow_region.flow
         self._regions = list(guides._flow_constituent_regions())
         self._multi_region = len(self._regions) > 1
-        self._guides_cls = guides.__class__
         self.vertical_coords = [float(coord) for coord in guides.vertical]
         self.horizontal_coords = [float(coord) for coord in guides.horizontal]
         self._ensure_region_entries()
@@ -68,32 +71,29 @@ class FlowGuideAdapter:
         region_grids: List[RegionGrid] = []
 
         for region, verticals, horizontals in self._iter_region_guides():
-            region_guides = self._guides_cls(
+            grid_result = build_single_page_grid(
+                target_obj=region,
                 verticals=verticals,
                 horizontals=horizontals,
-                context=region,
-            )
-
-            grid_parts = region_guides._build_grid_single_page(
-                target=region,
                 source=source,
                 cell_padding=cell_padding,
                 include_outer_boundaries=include_outer_boundaries,
             )
 
-            if grid_parts["counts"]["table"] <= 0:
+            if grid_result.counts.table <= 0:
                 continue
 
             if self._multi_region:
-                self._mark_fragments(grid_parts)
+                self._mark_fragments(grid_result)
 
             region_grids.append(
                 RegionGrid(
                     region=region,
-                    table=grid_parts["regions"]["table"],
-                    rows=list(grid_parts["regions"]["rows"]),
-                    columns=list(grid_parts["regions"]["columns"]),
-                    cells=list(grid_parts["regions"]["cells"]),
+                    result=grid_result,
+                    table=grid_result.regions.table,
+                    rows=list(grid_result.regions.rows),
+                    columns=list(grid_result.regions.columns),
+                    cells=list(grid_result.regions.cells),
                 )
             )
 
@@ -135,7 +135,6 @@ class FlowGuideAdapter:
         if axis_key not in {"vertical", "horizontal"}:
             raise ValueError("axis must be 'vertical' or 'horizontal'")
 
-        unified_attr, cache_attr, axis_list, start_idx, end_idx = self._axis_metadata(axis_key)
         normalized = {
             region: [float(value) for value in region_values.get(region, [])]
             for region in self._regions
@@ -143,13 +142,27 @@ class FlowGuideAdapter:
 
         aggregated: List[float] = []
         if append:
+            unified_attr, _, _, _, _ = self._axis_metadata(axis_key)
             existing = getattr(self._guides, unified_attr, [])
             aggregated.extend(coord for coord, _ in existing)
 
         for coords in normalized.values():
             aggregated.extend(coords)
 
-        unique_coords = sorted({float(coord) for coord in aggregated})
+        self.set_axis_coordinates(axis_key, aggregated)
+
+    def set_axis_coordinates(
+        self,
+        axis: str,
+        coordinates: Sequence[float],
+    ) -> None:
+        """Update a single axis from a unified coordinate list."""
+        axis_key = axis.lower()
+        if axis_key not in {"vertical", "horizontal"}:
+            raise ValueError("axis must be 'vertical' or 'horizontal'")
+
+        unified_attr, cache_attr, axis_list, start_idx, end_idx = self._axis_metadata(axis_key)
+        unique_coords = sorted({float(coord) for coord in coordinates})
 
         new_unified: List[Tuple[float, Region]] = []
         for coord in unique_coords:
@@ -165,7 +178,7 @@ class FlowGuideAdapter:
 
         setattr(self._guides, unified_attr, new_unified)
         setattr(self._guides, cache_attr, None)
-        axis_list.data = unique_coords
+        axis_list._set_data_direct(unique_coords)
 
         for region in self._regions:
             verticals, horizontals = self._guides._flow_guides.get(region, ([], []))
@@ -206,8 +219,8 @@ class FlowGuideAdapter:
         enriched.add(end)
         return sorted(enriched)
 
-    def _mark_fragments(self, grid_parts: Dict[str, Any]) -> None:
-        fragments = grid_parts["regions"]
+    def _mark_fragments(self, grid_result: GridBuildResult) -> None:
+        fragments = grid_result.regions
         type_map = {
             "table": "table_fragment",
             "rows": "table-row-fragment",
@@ -216,7 +229,7 @@ class FlowGuideAdapter:
         }
 
         for key, region_type in type_map.items():
-            value = fragments.get(key)
+            value = getattr(fragments, key)
             if not value:
                 continue
             if isinstance(value, list):

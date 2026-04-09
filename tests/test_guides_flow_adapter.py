@@ -5,6 +5,11 @@ from typing import List
 
 import pytest
 
+from natural_pdf.analyzers.guides._grid_types import (
+    GridBuildCounts,
+    GridBuildRegions,
+    GridBuildResult,
+)
 from natural_pdf.analyzers.guides.flow_adapter import FlowGuideAdapter, RegionGrid
 
 
@@ -28,45 +33,6 @@ class DummyGuides:
     @property
     def horizontal(self):
         return self._horizontals
-
-
-class _BuilderGuides:
-    calls = []
-
-    def __init__(self, verticals=None, horizontals=None, context=None):
-        self.vertical = verticals or []
-        self.horizontal = horizontals or []
-        self.context = context
-        self._flow_guides = {}
-        self.is_flow_region = False
-
-    def _build_grid_single_page(
-        self,
-        *,
-        target,
-        source,
-        cell_padding,
-        include_outer_boundaries,
-    ):
-        self.__class__.calls.append(include_outer_boundaries)
-        return {
-            "counts": {"table": 1, "rows": 0, "columns": 0, "cells": 0},
-            "regions": {"table": object(), "rows": [], "columns": [], "cells": []},
-        }
-
-
-class _AdapterBuildGuides(_BuilderGuides):
-    def __init__(self, flow_region=None, verticals=None, horizontals=None, context=None):
-        active_context = flow_region if flow_region is not None else context
-        super().__init__(verticals=verticals, horizontals=horizontals, context=active_context)
-        self._flow_region = active_context
-        self.is_flow_region = True
-
-    def _flow_context(self):
-        return self._flow_region
-
-    def _flow_constituent_regions(self):
-        return self._flow_region.constituent_regions
 
 
 class _HashableNamespace(SimpleNamespace):
@@ -141,12 +107,23 @@ def test_flow_adapter_unknown_orientation_returns_fragments():
     assert cells == [cell]
 
 
-def test_flow_adapter_forwards_include_outer_boundaries():
+def test_flow_adapter_forwards_include_outer_boundaries(monkeypatch):
     region = _stub_region((0, 0, 50, 100))
     flow_region = SimpleNamespace(flow=SimpleNamespace(), constituent_regions=[region])
+    guides = DummyGuides(flow_region, verticals=[0, 50], horizontals=[0, 100])
+    captured = []
 
-    guides = _AdapterBuildGuides(flow_region, verticals=[0, 50], horizontals=[0, 100])
-    _BuilderGuides.calls = []
+    def _fake_build_single_page_grid(**kwargs):
+        captured.append(kwargs["include_outer_boundaries"])
+        return GridBuildResult(
+            counts=GridBuildCounts(table=1),
+            regions=GridBuildRegions(table=object()),
+        )
+
+    monkeypatch.setattr(
+        "natural_pdf.analyzers.guides.flow_adapter.build_single_page_grid",
+        _fake_build_single_page_grid,
+    )
 
     adapter = FlowGuideAdapter(guides)
     adapter.build_region_grids(
@@ -155,7 +132,7 @@ def test_flow_adapter_forwards_include_outer_boundaries():
         include_outer_boundaries=True,
     )
 
-    assert _BuilderGuides.calls == [True]
+    assert captured == [True]
 
 
 def test_flow_adapter_raises_on_mismatched_stitch_counts():
