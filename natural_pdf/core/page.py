@@ -61,7 +61,7 @@ from natural_pdf.core.element_manager import ElementManager
 from natural_pdf.core.interfaces import Bounds, SupportsGeometry, SupportsSections
 from natural_pdf.core.mixins import SinglePageContextMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.core.selector_utils import execute_parsed_selector
+from natural_pdf.core.selector_utils import _jaro_winkler_similarity, execute_parsed_selector
 from natural_pdf.deskew import run_deskew_apply, run_deskew_detect
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement

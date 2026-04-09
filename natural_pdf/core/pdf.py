@@ -178,10 +178,10 @@ class _LazyPageList(Sequence["Page"]):
         """Create and cache a page at the given index within this list."""
         cached: Optional["Page"] = self._cache[index]
         if cached is None:
-            if (
-                getattr(self._parent_pdf, "_closed", False)
-                or getattr(self._parent_pdf, "_pdf", None) is None
-            ):
+            parent_attrs = getattr(self._parent_pdf, "__dict__", {})
+            parent_closed = bool(parent_attrs.get("_closed", False))
+            parent_pdf_cleared = "_pdf" in parent_attrs and parent_attrs["_pdf"] is None
+            if parent_closed or parent_pdf_cleared:
                 raise RuntimeError("Cannot load page: parent PDF has been closed.")
 
             # Get the actual page index in the full PDF

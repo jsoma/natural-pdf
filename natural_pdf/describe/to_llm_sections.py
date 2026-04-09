@@ -246,8 +246,8 @@ def render_text_layer(page: "Page") -> str:
     else:
         lines.append(f"  {total} words ({native_count} native + {ocr_count} OCR)")
 
-    # Garble rate — always run on whatever text is present
-    if total > 0:
+    # Garble rate is only meaningful for OCR text.
+    if total > 0 and ocr_count > 0:
         garble_info = _compute_garble_rate(list(text_elements))
         if garble_info is not None:
             if not garble_info["supported"]:

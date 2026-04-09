@@ -7,6 +7,43 @@ import pytest
 from natural_pdf.core.pdf import _LazyPageList
 
 
+class FakePage:
+    created = 0
+
+    def __init__(
+        self,
+        plumber_page,
+        *,
+        parent,
+        index,
+        font_attrs=None,
+        load_text=True,
+        context=None,
+    ):
+        type(self).created += 1
+        self.plumber_page = plumber_page
+        self._parent = parent
+        self.index = index
+        self.number = index + 1
+        self._exclusions = []
+        self.font_attrs = font_attrs
+        self.load_text = load_text
+        self.context = context
+
+    def effective_exclusions(self):
+        exclusions = list(self._exclusions)
+        existing_labels = {label for _, label, _ in exclusions if label}
+        for pdf_exclusion in getattr(self._parent, "_exclusions", []):
+            label = pdf_exclusion[1] if len(pdf_exclusion) >= 2 else None
+            if label and label in existing_labels:
+                continue
+            if len(pdf_exclusion) == 2:
+                exclusions.append((pdf_exclusion[0], pdf_exclusion[1], "region"))
+            else:
+                exclusions.append(pdf_exclusion)
+        return exclusions
+
+
 def test_lazy_page_list_reuses_cached_pages():
     """Test that _LazyPageList reuses cached pages from parent PDF."""
     # Create mock objects
@@ -29,16 +66,10 @@ def test_lazy_page_list_reuses_cached_pages():
 
     # Mock the Page class
     with patch("natural_pdf.core.page.Page") as MockPage:
+        FakePage.created = 0
         # Create mock page instances
-        mock_page_0 = Mock()
-        mock_page_0.number = 1
-        mock_page_0.index = 0
-        mock_page_0._exclusions = [("test_exclusion", "test_label")]
-
-        mock_page_1 = Mock()
-        mock_page_1.number = 2
-        mock_page_1.index = 1
-        mock_page_1._exclusions = [("test_exclusion", "test_label")]
+        mock_page_0 = FakePage(Mock(), parent=mock_pdf, index=0)
+        mock_page_1 = FakePage(Mock(), parent=mock_pdf, index=1)
 
         # Configure MockPage to return different instances
         MockPage.side_effect = [mock_page_0, mock_page_1]
@@ -84,21 +115,12 @@ def test_exclusions_persist_across_slices():
     # Set up the reference so pages can check parent cache
     mock_pdf._pages = main_pages
 
-    with patch("natural_pdf.core.page.Page") as MockPage:
-        # Create a mock page with exclusion tracking
-        mock_page = Mock()
-        mock_page.number = 1
-        mock_page.index = 0
-        mock_page._exclusions = []
-        mock_page.add_exclusion = Mock(
-            side_effect=lambda exc, label: mock_page._exclusions.append((exc, label))
-        )
-
-        MockPage.return_value = mock_page
+    with patch("natural_pdf.core.page.Page", FakePage):
+        FakePage.created = 0
 
         # Access page before adding exclusion
         page_before = main_pages[0]
-        assert len(page_before._exclusions) == 0, "Page should start with no exclusions"
+        assert page_before.effective_exclusions() == [], "Page should start with no exclusions"
 
         # Add exclusion to PDF
         mock_pdf._exclusions.append(("new_exclusion", "new_label"))
@@ -110,15 +132,12 @@ def test_exclusions_persist_across_slices():
         # Should be the same object
         assert page_from_slice is page_before, "Should reuse the same page object"
 
-        # The page still has the exclusions it had when created
-        # (This demonstrates why we need to apply PDF exclusions when pages are created)
-        assert (
-            len(page_from_slice._exclusions) == 0
-        ), "Cached page doesn't get new exclusions retroactively"
+        # Cached pages should reflect PDF-level exclusions dynamically through their parent.
+        assert page_from_slice.effective_exclusions() == [("new_exclusion", "new_label", "region")]
 
 
 def test_new_pages_get_all_exclusions():
-    """Test that pages created after exclusions are added get all exclusions."""
+    """Test that newly created pages see all PDF exclusions without eager seeding."""
     mock_pdf = Mock()
     mock_pdf._exclusions = [("exclusion1", "label1", "region"), ("exclusion2", "label2", "region")]
     mock_pdf._regions = []
@@ -133,26 +152,15 @@ def test_new_pages_get_all_exclusions():
     # Set up reference
     mock_pdf._pages = main_pages
 
-    with patch("natural_pdf.core.page.Page") as MockPage:
-        mock_page = Mock()
-        mock_page.number = 1
-        mock_page.index = 0
-        mock_page._exclusions = []
-        exclusions_added = []
-        mock_page.add_exclusion = Mock(
-            side_effect=lambda exc, label, method="region": exclusions_added.append(
-                (exc, label, method)
-            )
-        )
-
-        MockPage.return_value = mock_page
+    with patch("natural_pdf.core.page.Page", FakePage):
+        FakePage.created = 0
 
         # Access page (will be created with exclusions)
         page = main_pages[0]
 
-        # Verify all exclusions were applied
-        assert mock_page.add_exclusion.call_count == 2, "Both exclusions should be applied"
-        assert exclusions_added == [
+        # PDF exclusions remain dynamic via the parent rather than being copied into page state.
+        assert page._exclusions == []
+        assert page.effective_exclusions() == [
             ("exclusion1", "label1", "region"),
             ("exclusion2", "label2", "region"),
         ]
