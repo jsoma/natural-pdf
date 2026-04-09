@@ -10,6 +10,7 @@ from pydantic import Field, create_model
 
 from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.extraction.result import StructuredDataResult
+from natural_pdf.services._model_support import QA_INSTALL_MESSAGE
 from natural_pdf.services.registry import register_delegate
 
 logger = logging.getLogger(__name__)
@@ -150,6 +151,47 @@ class QAService:
         **kwargs,
     ) -> StructuredDataResult:
         """Create a one-field schema and call ``host.extract()``."""
+        extract_kw = self._build_extract_kwargs(
+            question=question,
+            model=model,
+            min_confidence=min_confidence,
+            debug=debug,
+            client=client,
+            using=using,
+            engine=engine,
+            kwargs=kwargs,
+        )
+
+        # Use the extract service via the host's .extract() method.
+        # If host doesn't have .extract(), try its _qa_target_region().
+        extract_host = host
+        if not hasattr(extract_host, "extract"):
+            target_getter = getattr(host, "_qa_target_region", None)
+            if callable(target_getter):
+                extract_host = target_getter()
+        extract_fn = getattr(extract_host, "extract", None)
+        if extract_fn is None:
+            raise RuntimeError(
+                f"{type(host).__name__} does not support .extract(); " "cannot delegate .ask()."
+            )
+
+        try:
+            return extract_fn(**extract_kw)
+        except ImportError as exc:
+            raise RuntimeError(QA_INSTALL_MESSAGE) from exc
+
+    @staticmethod
+    def _build_extract_kwargs(
+        *,
+        question: str,
+        model: Optional[str],
+        min_confidence: float,
+        debug: bool,
+        client: Any,
+        using: str,
+        engine: Optional[str],
+        kwargs: dict[str, Any],
+    ) -> dict[str, Any]:
         extract_kw: dict[str, Any] = dict(
             schema=_QA_SCHEMA,
             model=model,
@@ -160,7 +202,7 @@ class QAService:
         if debug:
             extract_kw["debug"] = True
 
-        if client is not None:
+        if client is not None and engine != "vlm":
             extract_kw.update(
                 client=client,
                 using=using,
@@ -186,28 +228,7 @@ class QAService:
             )
 
         extract_kw.update(kwargs)
-
-        # Use the extract service via the host's .extract() method.
-        # If host doesn't have .extract(), try its _qa_target_region().
-        extract_host = host
-        if not hasattr(extract_host, "extract"):
-            target_getter = getattr(host, "_qa_target_region", None)
-            if callable(target_getter):
-                extract_host = target_getter()
-        extract_fn = getattr(extract_host, "extract", None)
-        if extract_fn is None:
-            raise RuntimeError(
-                f"{type(host).__name__} does not support .extract(); " "cannot delegate .ask()."
-            )
-
-        try:
-            return extract_fn(**extract_kw)
-        except ImportError as exc:
-            message = (
-                "Question answering requires torch and transformers. Install with: "
-                'pip install "natural-pdf[all]" or pip install torch transformers'
-            )
-            raise RuntimeError(message) from exc
+        return extract_kw
 
     def _ask_segments(
         self,

@@ -12,6 +12,7 @@ from natural_pdf.ocr.ocr_manager import (
     run_ocr_extract,
 )
 from natural_pdf.ocr.unified_dispatch import get_registry, run_ocr
+from natural_pdf.services._text_state import bump_text_state
 from natural_pdf.services.registry import register_delegate
 
 logger = logging.getLogger(__name__)
@@ -106,19 +107,12 @@ class OCRService:
 
         return 150
 
-    @staticmethod
-    def _bump_text_state(host: Any) -> None:
-        page = host if hasattr(host, "_bump_text_state_version") else getattr(host, "page", None)
-        bump = getattr(page, "_bump_text_state_version", None)
-        if callable(bump):
-            bump()
-
     @register_delegate("ocr", "remove_ocr_elements")
     def remove_ocr_elements(self, host: SupportsOCRElementManager) -> int:
         mgr = host._ocr_element_manager()
         removed = int(mgr.remove_ocr_elements())
         if removed:
-            self._bump_text_state(host)
+            bump_text_state(host)
         return removed
 
     @register_delegate("ocr", "clear_text_layer")
@@ -126,7 +120,7 @@ class OCRService:
         mgr = host._ocr_element_manager()
         removed = mgr.clear_text_layer()
         if removed and any(removed):
-            self._bump_text_state(host)
+            bump_text_state(host)
         return removed
 
     @register_delegate("ocr", "create_text_elements_from_ocr")
@@ -150,7 +144,7 @@ class OCRService:
             engine_name=engine_name,
         )
         if created:
-            self._bump_text_state(host)
+            bump_text_state(host, elements=created)
         return created
 
     def _resolve_engine_name(
@@ -652,8 +646,11 @@ class OCRService:
     ):
         normalized_options = normalize_ocr_options(options)
         scope = self._scope(host)
-        engine_name = resolve_ocr_engine_name(
-            context=host, requested=engine, options=normalized_options, scope=scope
+        engine_name = self._resolve_engine_name(
+            host,
+            engine,
+            normalized_options,
+            scope,
         )
         resolved_languages = resolve_ocr_languages(host, languages, scope=scope)
         resolved_min_conf = resolve_ocr_min_confidence(host, min_confidence, scope=scope)

@@ -14,6 +14,25 @@ from natural_pdf.selectors.registry import (
 TextInput = Union[str, Sequence[str]]
 
 
+def _stable_unique_elements(elements: Sequence[Any]) -> List[Any]:
+    unique: List[Any] = []
+    seen_ids: set[int] = set()
+    for element in elements:
+        marker = id(element)
+        if marker in seen_ids:
+            continue
+        seen_ids.add(marker)
+        unique.append(element)
+    return unique
+
+
+def _resolve_selector_pool(host: Any, selector_type: Optional[str]) -> List[Any]:
+    pool_resolver = getattr(host, "_get_element_pool", None)
+    if not callable(pool_resolver):
+        raise TypeError(f"Host type {type(host)!r} does not expose selector pools.")
+    return list(pool_resolver((selector_type or "any").lower()))
+
+
 def _jaro_winkler_similarity(s1: str, s2: str, prefix_weight: float = 0.1) -> float:
     if s1 == s2:
         return 1.0
@@ -197,7 +216,16 @@ def _run_native_selector(
     )
 
     with cm:
-        return host._apply_selector(selector_obj, **selector_kwargs)  # type: ignore[attr-defined]
+        instance_override = getattr(getattr(host, "__dict__", {}), "get", lambda *_: None)(
+            "_apply_selector"
+        )
+        if callable(instance_override):
+            return instance_override(selector_obj, **selector_kwargs)
+        return execute_parsed_selector(
+            host,
+            selector_obj,
+            selector_kwargs=selector_kwargs,
+        )
 
 
 def _apply_relational_post_pseudos(
@@ -387,4 +415,50 @@ def execute_selector_branch(
         {"post_pseudos": post_pseudos},
         matching_elements,
         branch_kwargs,
+    )
+
+
+def execute_parsed_selector(
+    host: Any,
+    selector_obj: Dict[str, Any],
+    *,
+    selector_kwargs: Optional[Dict[str, Any]] = None,
+    logger=None,
+    context: Any = None,
+) -> ElementCollection:
+    """Execute a parsed selector against a host using branch-local execution."""
+    branch_kwargs = dict(selector_kwargs or {})
+    branch_kwargs.setdefault("selector_context", host)
+
+    if selector_obj.get("type") == "or":
+        matching_elements: List[Any] = []
+        for sub_selector in selector_obj.get("selectors", []):
+            sub_type = sub_selector.get("type", "any").lower()
+            pool = _resolve_selector_pool(host, sub_type)
+            matching_elements.extend(
+                execute_selector_branch(
+                    host,
+                    sub_selector,
+                    pool,
+                    selector_kwargs=branch_kwargs,
+                    selector_type=sub_type,
+                    logger=logger,
+                )
+            )
+        matching_elements = _stable_unique_elements(matching_elements)
+    else:
+        element_type = selector_obj.get("type", "any").lower()
+        elements_to_search = _resolve_selector_pool(host, element_type)
+        matching_elements = execute_selector_branch(
+            host,
+            selector_obj,
+            elements_to_search,
+            selector_kwargs=branch_kwargs,
+            selector_type=element_type,
+            logger=logger,
+        )
+
+    return ElementCollection(
+        matching_elements,
+        context=context if context is not None else getattr(host, "_context", None),
     )

@@ -61,38 +61,15 @@ class SelectorService:
         raise TypeError(f"Host type {type(host)!r} is not selector-capable.")
 
     def _find_all_page(self, page, **kwargs) -> ElementCollection:
-        from natural_pdf.core.selector_utils import execute_selector_query
-
-        selector = kwargs.get("selector")
-        text = kwargs.get("text")
         apply_exclusions = kwargs.get("apply_exclusions", True)
-        regex = kwargs.get("regex", False)
-        case = kwargs.get("case", True)
-        text_tolerance = kwargs.get("text_tolerance")
-        auto_text_tolerance = kwargs.get("auto_text_tolerance")
-        reading_order = kwargs.get("reading_order", True)
-        near_threshold = kwargs.get("near_threshold")
-        engine = kwargs.get("engine")
-        if engine is None:
-            engine = self._context.get_option("selector", "engine", host=page)
-
-        effective_selector = normalize_selector_input(
-            selector,
-            text,
-            logger=logger,
+        normalized_kwargs = self._normalized_selector_kwargs(
+            kwargs,
             context="Page.find_all",
         )
-
         results_collection = execute_selector_query(
             page,
-            effective_selector,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            regex=regex,
-            case=case,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
+            normalized_kwargs["selector"],
+            **self._page_query_options(page, normalized_kwargs),
         )
 
         if apply_exclusions and results_collection:
@@ -158,15 +135,10 @@ class SelectorService:
         from natural_pdf.flows.collections import FlowElementCollection
         from natural_pdf.flows.element import FlowElement
 
-        selector = kwargs.get("selector")
-        text = kwargs.get("text")
-        apply_exclusions = kwargs.get("apply_exclusions", True)
-        regex = kwargs.get("regex", False)
-        case = kwargs.get("case", True)
-        text_tolerance = kwargs.get("text_tolerance")
-        auto_text_tolerance = kwargs.get("auto_text_tolerance")
-        reading_order = kwargs.get("reading_order", True)
-        engine = kwargs.get("engine")
+        normalized_kwargs = self._normalized_selector_kwargs(
+            kwargs,
+            context="Flow.find_all",
+        )
 
         segments_by_page: Dict[Any, List[Tuple[Any, str]]] = {}
         for i, segment in enumerate(flow.segments):
@@ -188,18 +160,7 @@ class SelectorService:
 
         all_flow_elements: List[FlowElement] = []
         for page_obj, page_segments in segments_by_page.items():
-            page_collection = self._find_all_page(
-                page_obj,
-                selector=selector,
-                text=text,
-                apply_exclusions=apply_exclusions,
-                regex=regex,
-                case=case,
-                text_tolerance=text_tolerance,
-                auto_text_tolerance=auto_text_tolerance,
-                reading_order=reading_order,
-                engine=engine,
-            )
+            page_collection = self._find_all_page(page_obj, **normalized_kwargs)
             if not page_collection:
                 continue
 
@@ -236,73 +197,67 @@ class SelectorService:
         return FlowElementCollection(unique)
 
     def _find_all_pdf(self, pdf, **kwargs) -> ElementCollection:
-        from natural_pdf.elements.element_collection import ElementCollection
-
-        selector = kwargs.get("selector")
-        text = kwargs.get("text")
-
-        effective_selector = normalize_selector_input(
-            selector,
-            text,
-            logger=logger,
-            context="PDF.find_all",
-        )
-
-        per_page_kwargs = dict(kwargs)
-        per_page_kwargs["selector"] = effective_selector
-        per_page_kwargs.pop("text", None)
-
-        matches: List[Any] = []
-        for page in pdf.pages:
-            result = self._find_all_page(page, **per_page_kwargs)
-            if result:
-                matches.extend(result.elements)
-        return ElementCollection(matches)
+        per_page_kwargs = self._normalized_selector_kwargs(kwargs, context="PDF.find_all")
+        return self._collect_matches(pdf.pages, self._find_all_page, **per_page_kwargs)
 
     def _find_all_page_collection(self, collection, **kwargs) -> ElementCollection:
-        from natural_pdf.elements.element_collection import ElementCollection
-
-        selector = kwargs.get("selector")
-        text = kwargs.get("text")
-
-        effective_selector = normalize_selector_input(
-            selector,
-            text,
-            logger=logger,
+        per_page_kwargs = self._normalized_selector_kwargs(
+            kwargs,
             context="PageCollection.find_all",
         )
-
-        per_page_kwargs = dict(kwargs)
-        per_page_kwargs["selector"] = effective_selector
-        per_page_kwargs.pop("text", None)
-
-        matches: List[Any] = []
-        for page in collection.pages:
-            result = self._find_all_page(page, **per_page_kwargs)
-            if result:
-                matches.extend(result.elements)
-        return ElementCollection(matches)
+        return self._collect_matches(collection.pages, self._find_all_page, **per_page_kwargs)
 
     def _find_all_pdf_collection(self, collection, **kwargs) -> ElementCollection:
-        from natural_pdf.elements.element_collection import ElementCollection
+        per_pdf_kwargs = self._normalized_selector_kwargs(
+            kwargs,
+            context="PDFCollection.find_all",
+        )
+        return self._collect_matches(collection._pdfs, self._find_all_pdf, **per_pdf_kwargs)
 
+    def _normalized_selector_kwargs(
+        self,
+        kwargs: Dict[str, Any],
+        *,
+        context: str,
+    ) -> Dict[str, Any]:
         selector = kwargs.get("selector")
         text = kwargs.get("text")
-
-        effective_selector = normalize_selector_input(
+        normalized = dict(kwargs)
+        normalized["selector"] = normalize_selector_input(
             selector,
             text,
             logger=logger,
-            context="PDFCollection.find_all",
+            context=context,
         )
+        normalized.pop("text", None)
+        return normalized
 
-        per_pdf_kwargs = dict(kwargs)
-        per_pdf_kwargs["selector"] = effective_selector
-        per_pdf_kwargs.pop("text", None)
+    def _page_query_options(self, page: Any, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        engine = kwargs.get("engine")
+        if engine is None:
+            engine = self._context.get_option("selector", "engine", host=page)
+
+        return {
+            "text_tolerance": kwargs.get("text_tolerance"),
+            "auto_text_tolerance": kwargs.get("auto_text_tolerance"),
+            "regex": kwargs.get("regex", False),
+            "case": kwargs.get("case", True),
+            "reading_order": kwargs.get("reading_order", True),
+            "near_threshold": kwargs.get("near_threshold"),
+            "engine": engine,
+        }
+
+    def _collect_matches(
+        self,
+        items: Iterable[Any],
+        finder,
+        **kwargs,
+    ) -> ElementCollection:
+        from natural_pdf.elements.element_collection import ElementCollection
 
         matches: List[Any] = []
-        for pdf in collection._pdfs:
-            result = self._find_all_pdf(pdf, **per_pdf_kwargs)
+        for item in items:
+            result = finder(item, **kwargs)
             if result:
                 matches.extend(result.elements)
         return ElementCollection(matches)

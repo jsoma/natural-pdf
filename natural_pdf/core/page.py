@@ -61,7 +61,7 @@ from natural_pdf.core.element_manager import ElementManager
 from natural_pdf.core.interfaces import Bounds, SupportsGeometry, SupportsSections
 from natural_pdf.core.mixins import SinglePageContextMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.core.selector_utils import execute_selector_branch
+from natural_pdf.core.selector_utils import execute_parsed_selector
 from natural_pdf.deskew import run_deskew_apply, run_deskew_detect
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
@@ -1188,47 +1188,13 @@ class Page(
         Returns:
             ElementCollection of matching elements (unfiltered by exclusions)
         """
-        selector_kwargs = dict(kwargs)
-        selector_kwargs.setdefault("selector_context", self)
-
-        # Handle compound OR selectors — evaluate each sub-selector against its
-        # natural element pool and union results for better performance.
-        if selector_obj.get("type") == "or":
-            seen_ids: set = set()
-            matching_elements: List[Any] = []
-
-            for sub_selector in selector_obj.get("selectors", []):
-                sub_type = sub_selector.get("type", "any").lower()
-                pool = self._get_element_pool(sub_type)
-                branch_results = execute_selector_branch(
-                    self,
-                    sub_selector,
-                    pool,
-                    selector_kwargs=selector_kwargs,
-                    selector_type=sub_type,
-                    logger=logger,
-                )
-                for el in branch_results:
-                    el_id = id(el)
-                    if el_id not in seen_ids:
-                        seen_ids.add(el_id)
-                        matching_elements.append(el)
-
-            return ElementCollection(matching_elements, context=self._context)
-
-        # Single selector path
-        element_type = selector_obj.get("type", "any").lower()
-        elements_to_search = self._get_element_pool(element_type)
-        matching_elements = execute_selector_branch(
+        return execute_parsed_selector(
             self,
             selector_obj,
-            elements_to_search,
-            selector_kwargs=selector_kwargs,
-            selector_type=element_type,
+            selector_kwargs=kwargs,
             logger=logger,
+            context=self._context,
         )
-
-        return ElementCollection(matching_elements, context=self._context)
 
     def create_region(self, x0: float, top: float, x1: float, bottom: float) -> Any:
         """
@@ -2603,10 +2569,12 @@ class Page(
             min_confidence: Minimum confidence for extractive QA.
             model: Model name for the QA / VLM engine.
             debug: Enable debug output.
-            client: OpenAI-compatible client for LLM-backed QA.
-            using: Content mode — ``'text'`` or ``'vision'``.
+            client: OpenAI-compatible client for LLM-backed QA. When provided,
+                ``.ask()`` uses the LLM extraction path unless ``engine='vlm'``.
+            using: Content mode — ``'text'`` or ``'vision'`` for the client-backed
+                extraction path. Ignored for default doc-QA.
             engine: Extraction engine — ``None`` (auto), ``'doc_qa'``,
-                ``'vlm'``.
+                or ``'vlm'``.
 
         Returns:
             :class:`StructuredDataResult` with an ``answer`` field.
@@ -2640,12 +2608,14 @@ class Page(
 
         Args:
             schema: A Pydantic BaseModel class or list of field name strings.
-            client: An OpenAI-compatible client instance (required for LLM engine).
+            client: An OpenAI-compatible client instance. When provided and
+                ``engine`` is not set, extraction defaults to the LLM text path.
             analysis_key: Key to store results under in ``self.analyses``.
             prompt: Custom system prompt for the LLM.
             using: Content mode — ``'text'`` (layout text) or ``'vision'`` (rendered image).
+                Vision extraction requires either ``client=...`` or ``engine='vlm'``.
             model: Model identifier passed to the LLM client.
-            engine: ``'llm'``, ``'doc_qa'``, or None (auto-detect from client).
+            engine: ``'llm'``, ``'doc_qa'``, ``'vlm'``, or None (auto-detect from client).
             overwrite: Re-run if results already exist for *analysis_key*.
             **kwargs: Extra arguments forwarded to the extraction engine.
                 ``citations`` (bool): When True, each field's result includes

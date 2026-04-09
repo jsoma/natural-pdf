@@ -4,6 +4,7 @@ import concurrent.futures
 import logging
 from typing import Any, Callable, List, Optional, Protocol, Sequence
 
+from natural_pdf.services._text_state import bump_text_state
 from natural_pdf.services.base import resolve_service
 from natural_pdf.services.registry import register_delegate
 
@@ -192,20 +193,7 @@ class TextService:
             element_pbar.close()
 
         if updated_count:
-            touched_pages = {
-                getattr(element, "page", None)
-                for element in elements
-                if getattr(element, "page", None) is not None
-            }
-            host_page = (
-                host if hasattr(host, "_bump_text_state_version") else getattr(host, "page", None)
-            )
-            if host_page is not None:
-                touched_pages.add(host_page)
-            for page in touched_pages:
-                bump = getattr(page, "_bump_text_state_version", None)
-                if callable(bump):
-                    bump()
+            bump_text_state(host, elements=elements)
 
         logger.info(
             "%s.update_text – processed %d/%d element(s); updated %d; errors %d.",

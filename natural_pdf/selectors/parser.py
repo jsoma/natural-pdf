@@ -1352,6 +1352,10 @@ def build_execution_plan(
     """
     Build a complete execution plan from a parsed selector without mutating it.
 
+    Runtime selector execution should pass single-branch selectors here.
+    Compound OR selectors are executed branch-by-branch in selector utils; the
+    OR support retained here is compatibility-oriented for direct helper callers.
+
     Returns:
         Tuple of (filter_func, post_pseudos, relational_pseudos).
         - filter_func: callable that takes an element and returns True if it matches

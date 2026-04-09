@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import warnings
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Type, Union, cast
 
 from pydantic import BaseModel, Field, create_model
@@ -12,11 +13,22 @@ from natural_pdf.extraction.structured_ops import (
     extract_structured_data,
     structured_data_is_available,
 )
+from natural_pdf.services._model_support import (
+    DOC_QA_INSTALL_MESSAGE,
+    VISION_MODE_REQUIREMENTS,
+    VLM_INSTALL_MESSAGE,
+)
 from natural_pdf.services.registry import register_delegate
 
 DEFAULT_STRUCTURED_KEY = "structured"
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ResolvedExtractionMode:
+    using: str
+    engine: str
 
 
 class ExtractionService:
@@ -76,13 +88,8 @@ class ExtractionService:
         confidence = kwargs.pop("confidence", None)
         instructions = kwargs.pop("instructions", None)
         multipass = kwargs.pop("multipass", False)
-        if using == "vision" and client is None and engine != "vlm":
-            raise ValueError(
-                "using='vision' requires either a client for LLM/VLM extraction "
-                "or engine='vlm' for the local vision model."
-            )
-        resolved_engine = self._resolve_engine(engine, client)
-        if resolved_engine == "doc_qa":
+        resolved_mode = self._resolve_mode(using=using, engine=engine, client=client)
+        if resolved_mode.engine == "doc_qa":
             self._perform_docqa_extraction(
                 host=host,
                 schema=schema_model,
@@ -91,7 +98,7 @@ class ExtractionService:
                 overwrite=overwrite,
                 **kwargs,
             )
-        elif resolved_engine == "vlm":
+        elif resolved_mode.engine == "vlm":
             self._perform_vlm_extraction(
                 host=host,
                 schema=schema_model,
@@ -107,7 +114,7 @@ class ExtractionService:
                 client=client,
                 analysis_key=key,
                 prompt=prompt,
-                using=using,
+                using=resolved_mode.using,
                 model=model,
                 overwrite=overwrite,
                 citations=citations,
@@ -153,16 +160,23 @@ class ExtractionService:
         return create_model("DynamicExtractSchema", **field_defs)  # type: ignore[arg-type]
 
     @staticmethod
-    def _resolve_engine(engine: Optional[str], client: Any) -> str:
+    def _resolve_mode(*, using: str, engine: Optional[str], client: Any) -> ResolvedExtractionMode:
+        normalized_using = (using or "text").strip().lower()
+        if normalized_using not in {"text", "vision"}:
+            raise ValueError("using must be 'text' or 'vision'")
+
         if engine == "vlm":
-            return "vlm"
+            return ResolvedExtractionMode(using="vision", engine="vlm")
         if engine not in (None, "llm", "doc_qa"):
             raise ValueError("engine must be 'llm', 'doc_qa', 'vlm', or None")
+        if normalized_using == "vision" and client is None and engine != "vlm":
+            raise ValueError(VISION_MODE_REQUIREMENTS)
         if engine is None:
-            return "llm" if client is not None else "doc_qa"
+            resolved_engine = "llm" if client is not None else "doc_qa"
+            return ResolvedExtractionMode(using=normalized_using, engine=resolved_engine)
         if engine == "llm" and client is None:
             raise ValueError("LLM engine selected but no 'client' was provided.")
-        return engine
+        return ResolvedExtractionMode(using=normalized_using, engine=engine)
 
     # ------------------------------------------------------------------ #
     # Engine implementations
@@ -187,10 +201,7 @@ class ExtractionService:
 
             from natural_pdf.qa.document_qa import get_qa_engine
         except ImportError as exc:
-            raise RuntimeError(
-                "Document-QA dependencies missing. Install with: "
-                'pip install "natural-pdf[all]" or pip install torch transformers'
-            ) from exc
+            raise RuntimeError(DOC_QA_INSTALL_MESSAGE) from exc
 
         qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
 
@@ -317,11 +328,7 @@ class ExtractionService:
         try:
             from natural_pdf.extraction.vlm_adapter import get_vlm_adapter
         except ImportError as exc:
-            raise RuntimeError(
-                "VLM engine requires 'transformers' and 'torch'. "
-                'Install with: pip install "natural-pdf[all]" '
-                "or pip install transformers torch"
-            ) from exc
+            raise RuntimeError(VLM_INSTALL_MESSAGE) from exc
 
         # Get image from host
         renderer = getattr(host, "render", None)

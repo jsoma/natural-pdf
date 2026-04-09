@@ -120,11 +120,13 @@ def test_replace_ocr_is_transactional_when_engine_returns_no_results(
 
     page = practice_pdf_fresh.pages[0]
     before_texts = [word.text for word in page.words]
+    before_version = page._text_state_version
 
     page.apply_ocr(engine="fake-empty", resolution=72, replace=True)
 
     after_texts = [word.text for word in page.words]
     assert after_texts == before_texts
+    assert page._text_state_version == before_version
 
 
 def test_replace_ocr_swaps_text_only_after_success(monkeypatch, practice_pdf_fresh):
@@ -137,8 +139,10 @@ def test_replace_ocr_swaps_text_only_after_success(monkeypatch, practice_pdf_fre
 
     page = practice_pdf_fresh.pages[0]
     assert any(getattr(word, "source", None) != "ocr" for word in page.words)
+    before_version = page._text_state_version
 
     page.apply_ocr(engine="fake-success", resolution=72, replace=True)
 
     assert page.words
     assert all(getattr(word, "source", None) == "ocr" for word in page.words)
+    assert page._text_state_version > before_version

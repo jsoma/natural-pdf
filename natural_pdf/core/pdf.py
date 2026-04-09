@@ -1527,9 +1527,10 @@ class PDF(
             pages: Specific pages to query (default: all).
             min_confidence: Minimum confidence for extractive QA.
             model: Model name for QA / VLM / LLM engine.
-            client: OpenAI-compatible client for LLM-backed QA.
-            using: ``'text'`` or ``'vision'``.
-            engine: ``None`` (auto), ``'doc_qa'``, ``'vlm'``.
+            client: OpenAI-compatible client for LLM-backed QA. When provided,
+                ``.ask()`` uses the LLM extraction path unless ``engine='vlm'``.
+            using: ``'text'`` or ``'vision'`` for the client-backed extraction path.
+            engine: ``None`` (auto), ``'doc_qa'``, or ``'vlm'``.
 
         Returns:
             :class:`StructuredDataResult` with an ``answer`` field.
@@ -2214,6 +2215,8 @@ class PDF(
         extracted values back to their source elements across pages.
         Pass ``confidence=True`` for per-field confidence scores, and
         ``instructions="..."`` for domain-specific LLM guidance.
+        ``using='vision'`` is only supported for single-page PDFs and
+        requires either ``client=...`` or ``engine='vlm'``.
 
         Returns:
             :class:`StructuredDataResult`

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Test extraction with both text and vision modes."""
 
+import builtins
 from typing import Optional
 from unittest.mock import Mock
 
@@ -11,7 +12,7 @@ from pydantic import BaseModel
 from natural_pdf.core.context import PDFContext
 from natural_pdf.extraction.result import StructuredDataResult
 from natural_pdf.services import extraction_service
-from natural_pdf.services.extraction_service import ExtractionService
+from natural_pdf.services.extraction_service import ExtractionService, ResolvedExtractionMode
 
 
 class InspectionData(BaseModel):
@@ -125,6 +126,68 @@ def test_vision_requires_client_or_vlm_engine(practice_pdf):
 
     with pytest.raises(ValueError, match="using='vision' requires either a client"):
         page.extract(["site"], using="vision")
+
+
+def test_engine_vlm_forces_vision_mode():
+    mode = ExtractionService._resolve_mode(using="text", engine="vlm", client=None)
+
+    assert mode == ResolvedExtractionMode(using="vision", engine="vlm")
+
+
+def test_default_mode_prefers_llm_when_client_is_provided():
+    mode = ExtractionService._resolve_mode(using="text", engine=None, client=Mock())
+
+    assert mode == ResolvedExtractionMode(using="text", engine="llm")
+
+
+def test_default_mode_prefers_doc_qa_without_client():
+    mode = ExtractionService._resolve_mode(using="text", engine=None, client=None)
+
+    assert mode == ResolvedExtractionMode(using="text", engine="doc_qa")
+
+
+def test_docqa_dependency_error_mentions_core_complete_install(practice_pdf, monkeypatch):
+    service = ExtractionService(PDFContext.with_defaults())
+    page = practice_pdf.pages[0]
+    original_import = builtins.__import__
+
+    def fail_docqa_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "natural_pdf.qa.document_qa":
+            raise ImportError("doc_qa missing")
+        return original_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fail_docqa_import)
+
+    with pytest.raises(RuntimeError, match=r"natural-pdf\[all\]"):
+        service._perform_docqa_extraction(
+            host=page,
+            schema=InspectionData,
+            analysis_key="structured",
+            model=None,
+            overwrite=True,
+        )
+
+
+def test_vlm_dependency_error_mentions_core_complete_install(monkeypatch):
+    service = ExtractionService(PDFContext.with_defaults())
+    host = _MockExtractionHost()
+    original_import = builtins.__import__
+
+    def fail_vlm_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "natural_pdf.extraction.vlm_adapter":
+            raise ImportError("vlm missing")
+        return original_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fail_vlm_import)
+
+    with pytest.raises(RuntimeError, match=r"natural-pdf\[all\]"):
+        service._perform_vlm_extraction(
+            host=host,
+            schema=InspectionData,
+            analysis_key="structured",
+            prompt=None,
+            model=None,
+        )
 
 
 def test_pdf_vision_extraction_rejects_multi_page_documents(pdf_factory):

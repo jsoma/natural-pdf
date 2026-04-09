@@ -300,6 +300,36 @@ class TestQAServiceHelpers:
         assert all(call["analysis_key"] == "_qa" for call in captured_calls)
         assert all(call["overwrite"] is True for call in captured_calls)
 
+    def test_page_ask_overwrites_existing_private_qa_analysis(self, monkeypatch):
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+        page.analyses["_qa"] = _make_answer_result("stale")
+
+        def capture_extract(**kwargs):
+            page.analyses[kwargs["analysis_key"]] = _make_answer_result("fresh")
+            return page.analyses[kwargs["analysis_key"]]
+
+        monkeypatch.setattr(page, "extract", capture_extract)
+        try:
+            result = page.ask("fresh?")
+        finally:
+            pdf.close()
+
+        assert result.answer == "fresh"
+        assert page.analyses["_qa"].answer == "fresh"
+
+    def test_page_ask_dependency_error_mentions_core_complete_install(self, monkeypatch):
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+
+        monkeypatch.setattr(page, "extract", lambda **kwargs: (_ for _ in ()).throw(ImportError()))
+
+        try:
+            with pytest.raises(RuntimeError, match=r"natural-pdf\[all\]"):
+                page.ask("test?")
+        finally:
+            pdf.close()
+
 
 class TestIntegration:
     """End-to-end integration test: .ask() → QAService → extract() → doc_qa."""
