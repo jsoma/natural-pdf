@@ -5,8 +5,8 @@ This module validates that code examples in the documentation actually work.
 Tests focus on getting-started docs which use the practice PDF and should be fully runnable.
 
 Usage:
-    pytest tests/test_markdown_docs.py -v
-    pytest tests/test_markdown_docs.py -k "quickstart"
+    uv run pytest tests/test_markdown_docs.py -v
+    uv run pytest tests/test_markdown_docs.py -k "quickstart"
 """
 
 import pathlib

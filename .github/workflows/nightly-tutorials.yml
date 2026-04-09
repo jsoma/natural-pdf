@@ -27,27 +27,18 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Create and register Jupyter kernel for notebooks
+      - name: Sync dependencies
         run: |
-            uv venv .venv
-            source .venv/bin/activate
-            uv pip install ipykernel
-            python -m ipykernel install --user --name=natural-pdf-project-venv
+          uv sync --extra all --extra dev
 
-      - name: Install dependencies
+      - name: Register Jupyter kernel for notebooks
         run: |
-          source .venv/bin/activate
-          uv pip install nox nox-uv
-          uv pip install --upgrade nbclient jupyter_core
-          # Install the project in editable mode with all dependencies,
-          # including those needed for notebooks and nox sessions.
-          uv pip install -e .[all,dev]
+          uv run python -m ipykernel install --user --name=natural-pdf-project-venv
 
       - name: Execute notebooks and run tutorial tests
         run: |
-          source .venv/bin/activate
           echo "Starting at $(date)"
-          nox --non-interactive -s docs
+          uv run nox --non-interactive -s docs
           echo "Completed at $(date)"
 
       - name: Commit and push changes

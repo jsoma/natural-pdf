@@ -141,8 +141,9 @@ for path in pdf_paths:
 ### Environment
 - Virtual environment: `.venv`
 - Package manager: `uv`
-- Run tests: `.venv/bin/pytest tests/ -x`
-- CI sessions: `nox -s lint`, `nox -s test_minimal`, `nox -s test_full`
+- Command policy: use `uv run ...` for repo commands; do not activate `.venv` directly and do not invoke raw `python`, `pytest`, `black`, or `nox`
+- Run tests: `uv run pytest tests/ -x`
+- CI sessions: `uv run nox -s lint`, `uv run nox -s test_minimal`, `uv run nox -s test_full`
 
 ### Conventions
 - Temp files go in `temp/`
