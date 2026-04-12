@@ -30,10 +30,9 @@ temp/                 # Temp file output (gitignored)
 ```
 
 Out of scope for the main library contract:
-- `agentic/`
-- `natural-pdf-agentic/`
+- the standalone extractor-platform repo at `../natural-pdf-agentic`
 
-Those are being split out separately and should not drive changes to the main library docs, packaging, or test expectations.
+That work is intentionally split out and should not drive changes to the main library docs, packaging, or test expectations.
 
 ## Architecture
 
