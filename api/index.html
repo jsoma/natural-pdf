@@ -3973,7 +3973,7 @@ seamlessly across boundaries.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCR engine — <code>"easyocr"</code>, <code>"surya"</code>, <code>"paddle"</code>,
+                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"easyocr"</code>, <code>"surya"</code>, <code>"paddle"</code>,
 <code>"paddlevl"</code>, <code>"doctr"</code>, or <code>"vlm"</code>.</p>
               </div>
             </td>
@@ -5233,7 +5233,7 @@ This is an alias for normalized_type.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCR engine — <code>"easyocr"</code>, <code>"surya"</code>, <code>"paddle"</code>,
+                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"easyocr"</code>, <code>"surya"</code>, <code>"paddle"</code>,
 <code>"paddlevl"</code>, <code>"doctr"</code>, or <code>"vlm"</code>.</p>
               </div>
             </td>
@@ -8315,7 +8315,7 @@ This allows: Guides.new(page).add_whitespace(axis='both')</p>
 
 
 <h7 id="natural_pdf.Guides.extract_table" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s1">&#39;guides_temp&#39;</span><span class="p">,</span> <span class="n">cell_padding</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">include_outer_boundaries</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">table_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_ocr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ocr_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">text_options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cell_extraction_func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">content_filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">multi_page</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s1">&#39;first&#39;</span><span class="p">,</span> <span class="n">skip_repeating_headers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">structure_engine</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s1">&#39;guides_temp&#39;</span><span class="p">,</span> <span class="n">cell_padding</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">include_outer_boundaries</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">table_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_ocr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ocr_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">text_options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cell_extraction_func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cell_extract</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="n">cell_overlap</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">cell_newlines</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">show_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">content_filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">multi_page</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s1">&#39;first&#39;</span><span class="p">,</span> <span class="n">skip_repeating_headers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">structure_engine</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h7>
 
@@ -8501,6 +8501,56 @@ will extract tables from each element and combine them into a single result.</p>
             </td>
             <td>
                   <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cell_extract</code>
+            </td>
+            <td>
+                  <code><span title="typing.Literal">Literal</span>[&#39;text&#39;, &#39;words&#39;]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Cell text mode. "text" preserves current behavior; "words"
+extracts word elements and can be batched for guide-built cells.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;text&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cell_overlap</code>
+            </td>
+            <td>
+                  <code><span title="typing.Literal">Literal</span>[&#39;center&#39;, &#39;full&#39;, &#39;partial&#39;]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Word overlap mode for cell_extract="words": "center",
+"full", or "partial".</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;center&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cell_newlines</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="bool">bool</span>, <span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Newline handling for extracted cell text.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -8691,6 +8741,14 @@ region extraction to leverage provider-backed table structure results.</p>
 <span class="n">guides</span> <span class="o">=</span> <span class="n">Guides</span><span class="p">(</span><span class="n">regions</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 <span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_lines</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 <span class="n">table_result</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">regions</span><span class="p">)</span>
+
+<span class="c1"># Tiny text where character-level cell extraction collapses spacing</span>
+<span class="n">table_result</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span>
+    <span class="n">include_outer_boundaries</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">cell_extract</span><span class="o">=</span><span class="s2">&quot;words&quot;</span><span class="p">,</span>
+    <span class="n">cell_overlap</span><span class="o">=</span><span class="s2">&quot;partial&quot;</span><span class="p">,</span>
+    <span class="n">cell_newlines</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
 </code></pre></div>
 </details>
 
@@ -11494,7 +11552,7 @@ document processing workflows including multi-page content flows.</p>
 </code></pre></div></p>
 <p>Advanced usage with OCR:
 <div class="highlight"><pre><span></span><code><span class="n">pdf</span> <span class="o">=</span> <span class="n">npdf</span><span class="o">.</span><span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;scanned_document.pdf&quot;</span><span class="p">)</span>
-<span class="n">pdf</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;easyocr&quot;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">144</span><span class="p">)</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;rapidocr&quot;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">144</span><span class="p">)</span>
 <span class="n">tables</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;table&#39;</span><span class="p">)</span>
 </code></pre></div></p>
 </details>
@@ -12604,7 +12662,7 @@ Allows fine-tuning of engine behavior beyond common parameters.</p>
 
 <span class="c1"># High-quality OCR with specific settings</span>
 <span class="n">pdf</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span>
-    <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;easyocr&#39;</span><span class="p">,</span>
+    <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;rapidocr&#39;</span><span class="p">,</span>
     <span class="n">languages</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;en&#39;</span><span class="p">,</span> <span class="s1">&#39;es&#39;</span><span class="p">],</span>
     <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
     <span class="n">min_confidence</span><span class="o">=</span><span class="mf">0.8</span>
@@ -15474,7 +15532,7 @@ embeddings. Embeddings are cached so repeated searches are fast.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCR engine to use (e.g., 'easyocr', 'paddleocr', 'surya')</p>
+                <p>OCR engine to use (e.g., 'rapidocr', 'easyocr', 'paddleocr', 'surya')</p>
               </div>
             </td>
             <td>
@@ -16542,7 +16600,7 @@ navigation with CSS-like selectors.</p>
 </code></pre></div></p>
 <p>Advanced usage:
 <div class="highlight"><pre><span></span><code><span class="c1"># Apply OCR if needed</span>
-<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;easyocr&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;rapidocr&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
 
 <span class="c1"># Layout analysis</span>
 <span class="n">page</span><span class="o">.</span><span class="n">analyze_layout</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;yolo&#39;</span><span class="p">)</span>
@@ -19464,7 +19522,7 @@ result.show()                  # highlight all citations on page
 
 
 <h7 id="natural_pdf.Page.extract_table" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Page</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">table_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_ocr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ocr_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">text_options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cell_extraction_func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">content_filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">verticals</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">horizontals</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">structure_engine</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Page</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">table_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_ocr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ocr_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">text_options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cell_extraction_func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cell_extract</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="n">cell_overlap</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">cell_newlines</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">show_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">content_filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">verticals</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">horizontals</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">structure_engine</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h7>
 
@@ -19472,6 +19530,10 @@ result.show()                  # highlight all citations on page
     <div class="doc doc-contents ">
 
         <p>Call the table service with the canonical extract_table signature.</p>
+<p>For tiny table text where character-level spacing is unreliable, use
+<code>cell_extract="words"</code> with <code>cell_overlap</code> and <code>cell_newlines</code>.
+Arbitrary <code>cell_extraction_func</code> callbacks are supported but run once
+per cell and are slower on large tables.</p>
 
 
     </div>
@@ -21807,7 +21869,7 @@ Provides methods for batch operations on these pages.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCR engine — <code>"easyocr"</code>, <code>"surya"</code>, <code>"paddle"</code>,
+                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"easyocr"</code>, <code>"surya"</code>, <code>"paddle"</code>,
 <code>"paddlevl"</code>, <code>"doctr"</code>, or <code>"vlm"</code>.</p>
               </div>
             </td>
@@ -23379,7 +23441,7 @@ analysis algorithms.</p>
 </code></pre></div></p>
 <p>Advanced usage:
 <div class="highlight"><pre><span></span><code><span class="c1"># OCR processing</span>
-<span class="n">region</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;easyocr&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+<span class="n">region</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;rapidocr&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
 
 <span class="c1"># AI-powered extraction</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">region</span><span class="o">.</span><span class="n">extract_structured_data</span><span class="p">(</span><span class="n">MySchema</span><span class="p">)</span>

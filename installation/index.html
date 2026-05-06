@@ -1559,17 +1559,19 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot
 pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[paddle]&quot;</span><span class="w">   </span><span class="c1"># PaddleOCR stack (paddlepaddle + paddleocr + paddlex) — includes paddlevl engine</span>
 
 <span class="c1"># Individual packages</span>
+pip<span class="w"> </span>install<span class="w"> </span>rapidocr<span class="w">                </span><span class="c1"># Default OCR backend</span>
 pip<span class="w"> </span>install<span class="w"> </span>easyocr<span class="w">                 </span><span class="c1"># EasyOCR engine</span>
 pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;surya-ocr&lt;0.15&quot;</span><span class="w">        </span><span class="c1"># Surya OCR engine</span>
-pip<span class="w"> </span>install<span class="w"> </span>doctr<span class="w">                   </span><span class="c1"># Doctr OCR engine</span>
+pip<span class="w"> </span>install<span class="w"> </span>python-doctr<span class="w">            </span><span class="c1"># Doctr OCR engine</span>
 pip<span class="w"> </span>install<span class="w"> </span>doclayout_yolo<span class="w">          </span><span class="c1"># YOLO layout detection</span>
 </code></pre></div>
-<p><code>natural-pdf[all]</code> means the recommended core-complete install: the default RapidOCR backend, sentence-transformers-based semantic search, QA/extraction dependencies, and export support. It does not include every optional backend. Advanced engines such as PaddleOCR, Surya, and Doctr remain opt-in.</p>
+<p><code>natural-pdf[all]</code> means the recommended runtime bundle: the default RapidOCR backend, sentence-transformers-based semantic search, QA/extraction dependencies, YOLO layout detection, and export support. It does not include every optional backend. Engines such as EasyOCR, PaddleOCR, Surya, and Doctr remain opt-in.</p>
 <p>If you attempt to use an engine that is missing, the library will raise an
 error with the <code>pip install</code> command you need.</p>
 <p>You can check what's installed at any time:</p>
-<div class="highlight"><pre><span></span><code>npdf<span class="w"> </span>list
+<div class="highlight"><pre><span></span><code>npdf<span class="w"> </span>doctor
 </code></pre></div>
+<p><code>npdf list</code> is kept as an alias for the same diagnostic output.</p>
 <h2 id="your-first-pdf-extraction">Your First PDF Extraction</h2>
 <p>Here's a quick example to make sure everything is working:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>

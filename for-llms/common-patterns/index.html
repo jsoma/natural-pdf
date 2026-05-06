@@ -2459,7 +2459,7 @@
 
 <span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;scanned.pdf&quot;</span><span class="p">)</span>
 <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;easyocr&#39;</span><span class="p">,</span> <span class="n">languages</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;en&#39;</span><span class="p">])</span>
+<span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;rapidocr&#39;</span><span class="p">,</span> <span class="n">languages</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;en&#39;</span><span class="p">])</span>
 <span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
 </code></pre></div>
 <p><strong>Returns</strong>: <code>ElementCollection</code> - The newly created OCR text elements.</p>

@@ -2066,7 +2066,7 @@
 <span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">])</span>
 </code></pre></div>
-<p><strong>Default engine:</strong> EasyOCR (works well for most documents)</p>
+<p><strong>Default engine:</strong> RapidOCR (works well for most documents)</p>
 <h2 id="step-2-navigate-like-normal">Step 2: Navigate Like Normal</h2>
 <p>After OCR, use the same patterns as text-based PDFs:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Find a label and get its value</span>
@@ -2097,8 +2097,13 @@
 </thead>
 <tbody>
 <tr>
+<td><code>rapidocr</code></td>
+<td>Default engine. PaddleOCR models via ONNX (~15MB). Easier install than full PaddlePaddle.</td>
+<td><code>pip install "natural-pdf[all]"</code> or <code>pip install rapidocr</code></td>
+</tr>
+<tr>
 <td><code>easyocr</code></td>
-<td>Good starting point. Supports 80+ languages.</td>
+<td>Opt-in alternate engine. Supports 80+ languages.</td>
 <td><code>pip install easyocr</code></td>
 </tr>
 <tr>
@@ -2110,11 +2115,6 @@
 <td><code>paddle</code></td>
 <td>Best CJK (Chinese/Japanese/Korean) support.</td>
 <td><code>pip install paddlepaddle paddleocr</code></td>
-</tr>
-<tr>
-<td><code>rapidocr</code></td>
-<td>PaddleOCR models via ONNX (~15MB). Easier install than full PaddlePaddle.</td>
-<td><code>pip install rapidocr</code></td>
 </tr>
 <tr>
 <td><code>paddlevl</code></td>
@@ -2144,7 +2144,7 @@
 <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;surya&quot;</span><span class="p">)</span>
 
 <span class="c1"># Or for the whole PDF</span>
-<span class="n">pdf</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;easyocr&quot;</span><span class="p">)</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;rapidocr&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="adjusting-ocr-quality">Adjusting OCR Quality</h2>
 <h3 id="resolution">Resolution</h3>
@@ -2183,11 +2183,11 @@
 </code></pre></div>
 <h3 id="try-a-different-engine-or-resolution">Try a Different Engine or Resolution</h3>
 <p>If results don't look right, try increasing resolution or switching engines. Re-applying OCR removes previous results automatically:</p>
-<div class="highlight"><pre><span></span><code><span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;easyocr&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;rapidocr&quot;</span><span class="p">)</span>
 <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>  <span class="c1"># check the output</span>
 
 <span class="c1"># Not good enough — try higher resolution</span>
-<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;easyocr&quot;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;rapidocr&quot;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
 
 <span class="c1"># Still not great — try a different engine</span>
 <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;surya&quot;</span><span class="p">)</span>
@@ -2206,7 +2206,7 @@
 <h2 id="complete-example">Complete Example</h2>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npdf</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">extract_scanned_form</span><span class="p">(</span><span class="n">pdf_path</span><span class="p">,</span> <span class="n">ocr_engine</span><span class="o">=</span><span class="s2">&quot;easyocr&quot;</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">extract_scanned_form</span><span class="p">(</span><span class="n">pdf_path</span><span class="p">,</span> <span class="n">ocr_engine</span><span class="o">=</span><span class="s2">&quot;rapidocr&quot;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract data from a scanned form.&quot;&quot;&quot;</span>
     <span class="n">pdf</span> <span class="o">=</span> <span class="n">npdf</span><span class="o">.</span><span class="n">PDF</span><span class="p">(</span><span class="n">pdf_path</span><span class="p">)</span>
     <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -2267,7 +2267,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">process_scanned_batch</span><span class="p">(</span><span class="n">pdf_dir</span><span class="p">,</span> <span class="n">ocr_engine</span><span class="o">=</span><span class="s2">&quot;easyocr&quot;</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_scanned_batch</span><span class="p">(</span><span class="n">pdf_dir</span><span class="p">,</span> <span class="n">ocr_engine</span><span class="o">=</span><span class="s2">&quot;rapidocr&quot;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Process a directory of scanned PDFs.&quot;&quot;&quot;</span>
     <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
 
