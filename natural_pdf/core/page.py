@@ -1695,7 +1695,7 @@ class Page(
         strip_final: bool = ...,
         strip_empty: bool = ...,
         bidi: bool = ...,
-        return_textmap: Literal[True] = ...,
+        return_textmap: Literal[True],
     ) -> Tuple[str, Any]: ...
 
     def extract_text(

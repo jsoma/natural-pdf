@@ -20,6 +20,7 @@ from typing import (
     TypeAlias,
     Union,
     cast,
+    overload,
 )
 
 from pdfplumber.utils import crop_to_bbox
@@ -1691,6 +1692,34 @@ class Region(
         """Get text content of this region (delegates to extract_text())."""
         return self.extract_text() or ""
 
+    @overload
+    def extract_text(
+        self,
+        granularity: str = ...,
+        apply_exclusions: bool = ...,
+        debug: bool = ...,
+        *,
+        overlap: str = ...,
+        newlines: Union[bool, str] = ...,
+        content_filter: Any = ...,
+        return_textmap: Literal[False] = ...,
+        **kwargs: Any,
+    ) -> str: ...
+
+    @overload
+    def extract_text(
+        self,
+        granularity: str = ...,
+        apply_exclusions: bool = ...,
+        debug: bool = ...,
+        *,
+        overlap: str = ...,
+        newlines: Union[bool, str] = ...,
+        content_filter: Any = ...,
+        return_textmap: Literal[True],
+        **kwargs: Any,
+    ) -> Tuple[str, Any]: ...
+
     def extract_text(
         self,
         granularity: str = "chars",
@@ -1702,7 +1731,7 @@ class Region(
         content_filter=None,
         return_textmap: bool = False,
         **kwargs,
-    ) -> str:
+    ) -> Union[str, Tuple[str, Any]]:
         """
         Extract text from this region, respecting page exclusions and using pdfplumber's
         layout engine (chars_to_textmap).

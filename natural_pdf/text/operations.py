@@ -2,7 +2,18 @@
 import logging
 import re
 import unicodedata
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+    overload,
+)
 
 from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
@@ -295,6 +306,36 @@ def _create_alt_text_char_dict(region, source_label: str = "alt_text") -> Dict[s
         "stroking_color": (0, 0, 0),
         "non_stroking_color": (0, 0, 0),
     }
+
+
+@overload
+def generate_text_layout(
+    char_dicts: List[Dict[str, Any]],
+    layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
+    user_kwargs: Optional[Dict[str, Any]] = None,
+    *,
+    return_textmap: Literal[False] = False,
+) -> str: ...
+
+
+@overload
+def generate_text_layout(
+    char_dicts: List[Dict[str, Any]],
+    layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
+    user_kwargs: Optional[Dict[str, Any]] = None,
+    *,
+    return_textmap: Literal[True],
+) -> Tuple[str, Any]: ...
+
+
+@overload
+def generate_text_layout(
+    char_dicts: List[Dict[str, Any]],
+    layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
+    user_kwargs: Optional[Dict[str, Any]] = None,
+    *,
+    return_textmap: bool = False,
+) -> Union[str, Tuple[str, Any]]: ...
 
 
 def generate_text_layout(
