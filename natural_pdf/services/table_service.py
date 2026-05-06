@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List, Optional, Sequence, Union, cast
+from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Union, cast
 
 from natural_pdf.services.registry import register_delegate
 from natural_pdf.tables import TableResult
@@ -53,6 +53,9 @@ class TableService:
         ocr_config: Optional[dict] = None,
         text_options: Optional[Dict] = None,
         cell_extraction_func: Optional[Callable[[Any], Optional[str]]] = None,
+        cell_extract: Literal["text", "words"] = "text",
+        cell_overlap: Literal["center", "full", "partial"] = "center",
+        cell_newlines: Union[bool, str] = True,
         show_progress: bool = False,
         content_filter=None,
         apply_exclusions: bool = True,
@@ -74,6 +77,9 @@ class TableService:
                 ocr_config=ocr_config,
                 text_options=text_options,
                 cell_extraction_func=cell_extraction_func,
+                cell_extract=cell_extract,
+                cell_overlap=cell_overlap,
+                cell_newlines=cell_newlines,
                 show_progress=show_progress,
                 content_filter=content_filter,
                 apply_exclusions=apply_exclusions,
@@ -151,14 +157,27 @@ class TableService:
                     return TableResult(
                         build_table_from_cells(
                             cell_regions_in_table,
+                            table_region=host,
+                            cell_extraction_func=cell_extraction_func,
+                            use_ocr=use_ocr,
+                            ocr_config=ocr_config,
                             content_filter=content_filter,
                             apply_exclusions=apply_exclusions,
+                            cell_extract=cell_extract,
+                            cell_overlap=cell_overlap,
+                            cell_newlines=cell_newlines,
                         )
                     )
 
                 structure_table = self._extract_table_from_structure(
                     host=host,
                     structure_engine=structure_engine,
+                    cell_extraction_func=cell_extraction_func,
+                    use_ocr=use_ocr,
+                    ocr_config=ocr_config,
+                    cell_extract=cell_extract,
+                    cell_overlap=cell_overlap,
+                    cell_newlines=cell_newlines,
                     content_filter=content_filter,
                     apply_exclusions=apply_exclusions,
                     strict=structure_engine is not None,
@@ -203,6 +222,9 @@ class TableService:
             ocr_config=ocr_config,
             text_options=text_options,
             cell_extraction_func=cell_extraction_func,
+            cell_extract=cell_extract,
+            cell_overlap=cell_overlap,
+            cell_newlines=cell_newlines,
             show_progress=show_progress,
             content_filter=content_filter,
             apply_exclusions=apply_exclusions,
@@ -250,6 +272,12 @@ class TableService:
         host,
         *,
         structure_engine: Optional[str],
+        cell_extraction_func: Optional[Callable[[Any], Optional[str]]] = None,
+        use_ocr: bool = False,
+        ocr_config: Optional[dict] = None,
+        cell_extract: Literal["text", "words"] = "text",
+        cell_overlap: Literal["center", "full", "partial"] = "center",
+        cell_newlines: Union[bool, str] = True,
         content_filter=None,
         apply_exclusions: bool = True,
         strict: bool = False,
@@ -295,8 +323,15 @@ class TableService:
         if "cells" in result.capabilities and result.cells:
             table_data = build_table_from_cells(
                 list(result.cells),
+                table_region=host,
+                cell_extraction_func=cell_extraction_func,
+                use_ocr=use_ocr,
+                ocr_config=ocr_config,
                 content_filter=content_filter,
                 apply_exclusions=apply_exclusions,
+                cell_extract=cell_extract,
+                cell_overlap=cell_overlap,
+                cell_newlines=cell_newlines,
             )
             return TableResult(table_data)
 
@@ -397,6 +432,9 @@ class TableService:
         ocr_config: Optional[dict] = None,
         text_options: Optional[Dict] = None,
         cell_extraction_func: Optional[Callable[[Any], Optional[str]]] = None,
+        cell_extract: Literal["text", "words"] = "text",
+        cell_overlap: Literal["center", "full", "partial"] = "center",
+        cell_newlines: Union[bool, str] = True,
         show_progress: bool = False,
         content_filter: ContentFilter = None,
         apply_exclusions: bool = True,
@@ -464,6 +502,9 @@ class TableService:
                 ocr_config=ocr_config,
                 text_options=text_copy,
                 cell_extraction_func=cell_extraction_func,
+                cell_extract=cell_extract,
+                cell_overlap=cell_overlap,
+                cell_newlines=cell_newlines,
                 show_progress=show_progress,
                 content_filter=content_filter,
                 apply_exclusions=apply_exclusions,

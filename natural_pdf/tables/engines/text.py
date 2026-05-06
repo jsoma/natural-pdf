@@ -6,6 +6,8 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from tqdm.auto import tqdm
 
+from natural_pdf.tables.utils.cells import extract_cell_value, warn_slow_cell_callback
+
 
 class TextTablesEngine:
     """Runs the text-alignment table extractor via the provider."""
@@ -21,6 +23,9 @@ class TextTablesEngine:
         show_progress: bool = False,
         content_filter: Optional[Any] = None,
         apply_exclusions: bool = True,
+        cell_extract: str = "text",
+        cell_overlap: str = "center",
+        cell_newlines: Any = True,
         **_: Any,
     ) -> List[List[List[Optional[str]]]]:
         table = self._extract_table(
@@ -30,6 +35,9 @@ class TextTablesEngine:
             show_progress=show_progress,
             content_filter=content_filter,
             apply_exclusions=apply_exclusions,
+            cell_extract=cell_extract,
+            cell_overlap=cell_overlap,
+            cell_newlines=cell_newlines,
         )
         return [table]
 
@@ -42,6 +50,9 @@ class TextTablesEngine:
         show_progress: bool,
         content_filter,
         apply_exclusions: bool,
+        cell_extract: str,
+        cell_overlap: str,
+        cell_newlines: Any,
     ) -> List[List[Optional[str]]]:
         analysis_results = region.analyze_text_table_structure(**text_options)
 
@@ -51,6 +62,9 @@ class TextTablesEngine:
         cell_dicts = analysis_results["cells"]
         if not cell_dicts:
             return []
+
+        if callable(cell_extraction_func):
+            warn_slow_cell_callback(len(cell_dicts))
 
         coord_tolerance = text_options.get("coordinate_grouping_tolerance", 1)
         tops = sorted(
@@ -79,20 +93,16 @@ class TextTablesEngine:
         for cell_data in cell_iterator:
             try:
                 cell_region = region.page.region(**cell_data)
-                cell_value = None
-                if callable(cell_extraction_func):
-                    try:
-                        cell_value = cell_extraction_func(cell_region)
-                        if not isinstance(cell_value, (str, type(None))):
-                            cell_value = None
-                    except Exception:
-                        cell_value = None
-                else:
-                    cell_value = cell_region.extract_text(
-                        layout=False,
-                        apply_exclusions=apply_exclusions,
-                        content_filter=content_filter,
-                    ).strip()
+                cell_value = extract_cell_value(
+                    cell_region,
+                    cell_extraction_func=cell_extraction_func,
+                    content_filter=content_filter,
+                    apply_exclusions=apply_exclusions,
+                    cell_extract=cell_extract,
+                    cell_overlap=cell_overlap,
+                    cell_newlines=cell_newlines,
+                    text_kwargs={"layout": False},
+                )
 
                 rounded_top = round(cell_data["top"] / coord_tolerance) * coord_tolerance
                 rounded_left = round(cell_data["left"] / coord_tolerance) * coord_tolerance

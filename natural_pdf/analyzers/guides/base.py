@@ -2764,6 +2764,9 @@ class Guides:
         ocr_config: Optional[dict] = None,
         text_options: Optional[Dict] = None,
         cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
+        cell_extract: Literal["text", "words"] = "text",
+        cell_overlap: Literal["center", "full", "partial"] = "center",
+        cell_newlines: Union[bool, str] = True,
         show_progress: bool = False,
         content_filter: Optional[Union[str, Callable[[str], bool], List[str]]] = None,
         apply_exclusions: bool = True,
@@ -2796,6 +2799,11 @@ class Guides:
             ocr_config: OCR configuration parameters
             text_options: Dictionary of options for the 'text' method
             cell_extraction_func: Optional callable for custom cell text extraction
+            cell_extract: Cell text mode. "text" preserves current behavior; "words"
+                extracts word elements and can be batched for guide-built cells.
+            cell_overlap: Word overlap mode for cell_extract="words": "center",
+                "full", or "partial".
+            cell_newlines: Newline handling for extracted cell text.
             show_progress: Controls progress bar for text method
             content_filter: Content filtering function or patterns
             apply_exclusions: Whether to apply exclusion regions during text extraction (default: True)
@@ -2836,6 +2844,14 @@ class Guides:
             guides = Guides(regions[0])
             guides.vertical.from_lines(n=3)
             table_result = guides.extract_table(regions)
+
+            # Tiny text where character-level cell extraction collapses spacing
+            table_result = guides.extract_table(
+                include_outer_boundaries=True,
+                cell_extract="words",
+                cell_overlap="partial",
+                cell_newlines=False,
+            )
             ```
         """
         return extract_table_from_guides(
@@ -2850,6 +2866,9 @@ class Guides:
             ocr_config=ocr_config,
             text_options=text_options,
             cell_extraction_func=cell_extraction_func,
+            cell_extract=cell_extract,
+            cell_overlap=cell_overlap,
+            cell_newlines=cell_newlines,
             show_progress=show_progress,
             content_filter=content_filter,
             apply_exclusions=apply_exclusions,
@@ -2870,6 +2889,9 @@ class Guides:
         ocr_config: Optional[dict] = None,
         text_options: Optional[Dict] = None,
         cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
+        cell_extract: Literal["text", "words"] = "text",
+        cell_overlap: Literal["center", "full", "partial"] = "center",
+        cell_newlines: Union[bool, str] = True,
         show_progress: bool = True,
         content_filter: Optional[Union[str, Callable[[str], bool], List[str]]] = None,
         apply_exclusions: bool = True,
@@ -2897,6 +2919,10 @@ class Guides:
             ocr_config: OCR configuration parameters
             text_options: Dictionary of options for the 'text' method
             cell_extraction_func: Optional callable for custom cell text extraction
+            cell_extract: Cell text mode. "text" preserves current behavior; "words"
+                uses word-level extraction.
+            cell_overlap: Word overlap mode for cell_extract="words".
+            cell_newlines: Newline handling for extracted cell text.
             show_progress: Show progress bar for multi-element extraction (default: True)
             content_filter: Content filtering function or patterns
             apply_exclusions: Whether to apply exclusion regions during extraction
@@ -2971,6 +2997,9 @@ class Guides:
                 ocr_config=ocr_config,
                 text_options=text_options,
                 cell_extraction_func=cell_extraction_func,
+                cell_extract=cell_extract,
+                cell_overlap=cell_overlap,
+                cell_newlines=cell_newlines,
                 show_progress=False,  # Don't show nested progress
                 content_filter=content_filter,
                 apply_exclusions=apply_exclusions,
