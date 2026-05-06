@@ -89,7 +89,7 @@ def _create_engine_instance(engine_name: str) -> OCREngine:
             "surya": "pip install surya-ocr",
             "chandra2": "pip install chandra-ocr[hf]",
             "doctr": "pip install python-doctr",
-            "rapidocr": "pip install rapidocr_onnxruntime",
+            "rapidocr": "pip install rapidocr",
             "paddlevl": "pip install paddleocr",
         }
         hint = install_hints.get(engine_name, f"pip install {engine_name}")
@@ -113,7 +113,7 @@ def register_ocr_engines(provider=None) -> None:
 
 
 def normalize_ocr_options(
-    options: Optional[Union[BaseOCROptions, Dict[str, Any]]]
+    options: Optional[Union[BaseOCROptions, Dict[str, Any]]],
 ) -> Optional[BaseOCROptions]:
     if options is None or isinstance(options, BaseOCROptions):
         return options
@@ -129,6 +129,15 @@ def infer_engine_from_options(options: Optional[BaseOCROptions]) -> Optional[str
         return None
     for name, entry in ENGINE_REGISTRY.items():
         opt_cls = entry.get("options_class")
+        if opt_cls is not None and isinstance(options, opt_cls):
+            return name
+    try:
+        from natural_pdf.ocr.unified_dispatch import list_engines
+    except Exception:
+        return None
+
+    for name, entry in list_engines().items():
+        opt_cls = getattr(entry, "options_class", None)
         if opt_cls is not None and isinstance(options, opt_cls):
             return name
     return None
@@ -484,7 +493,7 @@ def _call_engine(
 
 
 def _normalize_engine_output(
-    payload: Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]
+    payload: Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]],
 ) -> List[Dict[str, Any]]:
     if isinstance(payload, list):
         if payload and isinstance(payload[0], list):

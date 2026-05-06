@@ -1261,6 +1261,7 @@ def run_vlm_ocr_on_image(
     instructions: Optional[str] = None,
     languages: Optional[List[str]] = None,
     layout: Optional[bool | str] = None,
+    family: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
     """Run VLM-based OCR on a pre-rendered image.
 
@@ -1289,6 +1290,8 @@ def run_vlm_ocr_on_image(
             If ``None`` (default), auto-detect based on model family
             (``glm_ocr`` uses layout; grounding models don't).
             If ``False``, always use full-page prompt.
+        family: Optional parser family override for registered VLM shorthand
+            engines.
 
     Returns:
         Tuple of (ocr_results, (image_width, image_height)).
@@ -1306,7 +1309,7 @@ def run_vlm_ocr_on_image(
         _, default_model = get_default_client()
         effective_model = default_model
 
-    family = detect_model_family(effective_model)
+    family = family or detect_model_family(effective_model)
 
     # Unpack layout parameter:
     #   "cluster" → rapidocr detect-only → expand → dissolve into clusters

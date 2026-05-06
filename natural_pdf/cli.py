@@ -1,9 +1,6 @@
 import argparse
-from importlib.metadata import PackageNotFoundError
-from importlib.metadata import version as get_version
-from typing import Dict
 
-from natural_pdf.utils.optional_imports import list_optional_dependencies
+from natural_pdf.utils.optional_imports import list_dependency_groups, list_optional_dependencies
 
 
 def main():
@@ -13,83 +10,76 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # list subcommand
-    list_p = subparsers.add_parser("list", help="Show status of optional dependencies")
-    list_p.set_defaults(func=cmd_list)
+    doctor_p = subparsers.add_parser(
+        "doctor",
+        help="Show passive diagnostics for optional dependencies and engines",
+    )
+    doctor_p.set_defaults(func=cmd_doctor)
+
+    list_p = subparsers.add_parser("list", help="Alias for 'doctor'")
+    list_p.set_defaults(func=cmd_doctor)
 
     args = parser.parse_args()
     args.func(args)
 
 
-# ---------------------------------------------------------------------------
-# List command implementation
-# ---------------------------------------------------------------------------
+def cmd_doctor(args):
+    dep_info = list_optional_dependencies()
+    groups = list_dependency_groups()
 
-EXTRA_GROUPS: Dict[str, list[str]] = {
-    "all": [
-        "rapidocr",
-        "torch",
-        "torchvision",
-        "transformers",
-        "sentence-transformers",
-        "easyocr",
-        "timm",
-        "doclayout_yolo",
-        "pikepdf",
-        "img2pdf",
-        "jupytext",
-        "nbformat",
-    ],
-    "ai": [
-        "rapidocr",
-        "torch",
-        "torchvision",
-        "transformers",
-        "sentence-transformers",
-        "easyocr",
-        "timm",
-        "doclayout_yolo",
-    ],
-    "export": ["pikepdf", "img2pdf", "jupytext", "nbformat"],
-    "paddle": ["paddlepaddle", "paddleocr", "paddlex"],
-}
-
-
-def _pkg_version(pkg_name: str):
-    try:
-        return get_version(pkg_name)
-    except PackageNotFoundError:
-        return None
-
-
-def cmd_list(args):
+    print("Natural PDF doctor\n")
     print("Optional dependency groups:\n")
-    for group, pkgs in EXTRA_GROUPS.items():
-        installed_all = True
+    for group, dependency_names in groups.items():
         pieces = []
-        for pkg in pkgs:
-            ver = _pkg_version(pkg)
-            if ver is None:
+        installed_all = True
+        for dep_name in dependency_names:
+            payload = dep_info[dep_name]
+            versions = payload["versions"]
+            label = ", ".join(f"{pkg} {ver}" for pkg, ver in sorted(versions.items()))
+            if not payload["available"]:
                 installed_all = False
-                pieces.append(f"{pkg} (missing)")
-            else:
-                pieces.append(f"{pkg} {ver}")
-        status = "\u2713" if installed_all else "\u2717"
-        install_cmd = f'pip install "natural-pdf[{group}]"'
-        print(f"{status} {group:<8} -> " + ", ".join(pieces))
+                label = f"{payload['module_name']} missing"
+            elif not label:
+                label = payload["module_name"]
+            pieces.append(label)
+        status = "OK" if installed_all else "MISS"
+        print(f"{status:<4} natural-pdf[{group}] -> " + "; ".join(pieces))
         if not installed_all:
-            print(f"   install: {install_cmd}")
+            print(f'     install: pip install "natural-pdf[{group}]"')
     print()
 
     print("Optional dependency modules:\n")
-    dep_info = list_optional_dependencies()
     for name, payload in sorted(dep_info.items()):
-        status = "\u2713" if payload["available"] else "\u2717"
-        hints = " or ".join(payload["install_hints"]) or "pip install"
+        status = "OK" if payload["available"] else "MISS"
+        versions = payload["versions"]
+        version_text = ", ".join(f"{pkg} {ver}" for pkg, ver in sorted(versions.items()))
         desc = payload.get("description") or ""
-        print(f"{status} {name:<20} -> {desc}")
+        suffix = f" ({version_text})" if version_text else ""
+        print(f"{status:<4} {name:<22} -> {desc}{suffix}")
         if not payload["available"]:
-            print(f"   install: {hints}")
+            hints = " or ".join(payload["install_hints"]) or "pip install"
+            print(f"     install: {hints}")
+    print()
+
+    print("OCR engines:\n")
+    from natural_pdf import options as npdf_options
+    from natural_pdf.engine_provider import get_provider
+    from natural_pdf.ocr.unified_dispatch import list_engines
+
+    default_engine = getattr(getattr(npdf_options, "ocr", None), "engine", None)
+    provider = get_provider()
+    provider_engines = set()
+    for capability in ("ocr", "ocr.apply", "ocr.extract"):
+        provider_engines.update(provider.list(capability).get(capability, ()))
+
+    for name, entry in sorted(list_engines().items()):
+        marker = " default" if name == default_engine else ""
+        hint = f" install: {entry.install_hint}" if entry.install_hint else ""
+        family = f" family={entry.vlm_family}" if entry.vlm_family else ""
+        print(f"INFO {name:<16} -> {entry.engine_type}{family}{marker}{hint}")
+
+    for name in sorted(provider_engines - set(list_engines().keys())):
+        print(f"INFO {name:<16} -> provider-registered classic")
     print()
 
 

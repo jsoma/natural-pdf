@@ -65,15 +65,6 @@ from natural_pdf.core.selector_utils import _jaro_winkler_similarity, execute_pa
 from natural_pdf.deskew import run_deskew_apply, run_deskew_detect
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
-from natural_pdf.ocr.ocr_manager import (
-    normalize_ocr_options,
-    resolve_ocr_device,
-    resolve_ocr_engine_name,
-    resolve_ocr_languages,
-    resolve_ocr_min_confidence,
-    run_ocr_apply,
-    run_ocr_extract,
-)
 
 # Service modules are loaded lazily via the registry in natural_pdf.services.registry
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
@@ -150,7 +141,7 @@ class Page(
         Advanced usage:
         ```python
         # Apply OCR if needed
-        page.apply_ocr(engine='easyocr', resolution=300)
+        page.apply_ocr(engine='rapidocr', resolution=300)
 
         # Layout analysis
         page.analyze_layout(engine='yolo')
@@ -1910,6 +1901,9 @@ class Page(
         ocr_config: Optional[dict] = None,
         text_options: Optional[Dict[str, Any]] = None,
         cell_extraction_func: Optional[Callable[[Any], Optional[str]]] = None,
+        cell_extract: Literal["text", "words"] = "text",
+        cell_overlap: Literal["center", "full", "partial"] = "center",
+        cell_newlines: Union[bool, str] = True,
         show_progress: bool = False,
         content_filter: Optional[Union[str, Sequence[str], Callable[[str], bool]]] = None,
         apply_exclusions: bool = True,
@@ -1918,7 +1912,13 @@ class Page(
         outer: bool = False,
         structure_engine: Optional[str] = None,
     ) -> TableResult:
-        """Call the table service with the canonical extract_table signature."""
+        """Call the table service with the canonical extract_table signature.
+
+        For tiny table text where character-level spacing is unreliable, use
+        ``cell_extract="words"`` with ``cell_overlap`` and ``cell_newlines``.
+        Arbitrary ``cell_extraction_func`` callbacks are supported but run once
+        per cell and are slower on large tables.
+        """
 
         region = self._full_page_region()
         return self.services.table.extract_table(
@@ -1929,6 +1929,9 @@ class Page(
             ocr_config=ocr_config,
             text_options=text_options,
             cell_extraction_func=cell_extraction_func,
+            cell_extract=cell_extract,
+            cell_overlap=cell_overlap,
+            cell_newlines=cell_newlines,
             show_progress=show_progress,
             content_filter=content_filter,
             apply_exclusions=apply_exclusions,

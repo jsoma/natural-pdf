@@ -239,7 +239,7 @@ class FlowRegion(
         """Apply OCR across all constituent regions.
 
         Args:
-            engine: OCR engine — ``"easyocr"``, ``"surya"``, ``"paddle"``,
+            engine: OCR engine — ``"rapidocr"`` (default), ``"easyocr"``, ``"surya"``, ``"paddle"``,
                 ``"paddlevl"``, ``"doctr"``, or ``"vlm"``.
             options: Engine-specific option object.
             languages: Language codes, e.g. ``["en", "fr"]``.

@@ -297,7 +297,7 @@ from natural_pdf import PDFCollection
 collection = PDFCollection("scanned_docs/")
 
 # OCR all PDFs with progress bar
-collection.apply_ocr(engine='easyocr', languages=['en'])
+collection.apply_ocr(engine='rapidocr', languages=['en'])
 ```
 
 ## Memory Management
@@ -464,7 +464,7 @@ collection = PDFCollection("scanned_documents/")
 
 # Process 4 PDFs concurrently
 collection.apply_ocr(
-    engine='easyocr',
+    engine='rapidocr',
     languages=['en'],
     max_workers=4
 )

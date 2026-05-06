@@ -22,15 +22,22 @@ Need OCR, semantic search, export, or AI-powered extraction? Install what you ne
 ```bash
 pip install "natural-pdf[all]"      # Recommended feature-complete install
 pip install "natural-pdf[export]"   # Export helpers only
+pip install rapidocr                # Default OCR backend
 pip install easyocr                 # Extra OCR backend
 pip install "natural-pdf[paddle]"   # PaddleOCR stack
 pip install "surya-ocr<0.15"        # Surya OCR engine
-pip install doctr                   # Doctr OCR engine
+pip install python-doctr            # Doctr OCR engine
 ```
 
 More details in the [installation guide](https://jsoma.github.io/natural-pdf/installation/).
 
-`natural-pdf[all]` is the recommended feature-complete install for core features: the default RapidOCR engine, sentence-transformers-based semantic search, QA/extraction dependencies, and export support. It does not install every optional backend. Extra engines such as PaddleOCR, Surya, and Doctr stay opt-in, and Natural PDF will tell you what to install when you try to use something that is missing.
+`natural-pdf[all]` is the recommended feature-complete runtime bundle for core features: the default RapidOCR engine, sentence-transformers-based semantic search, QA/extraction dependencies, YOLO layout detection, and export support. It does not install every optional backend. Extra engines such as EasyOCR, PaddleOCR, Surya, and Doctr stay opt-in, and Natural PDF will tell you what to install when you try to use something that is missing.
+
+Check your local setup with:
+
+```bash
+npdf doctor
+```
 
 ## Quick Start
 
@@ -72,7 +79,7 @@ Natural PDF offers a range of features for working with PDFs:
 *   **CSS-like Selectors:** Find elements using intuitive query strings (`page.find('text:bold')`).
 *   **Spatial Navigation:** Select content relative to other elements (`heading.below()`, `element.select_until(...)`).
 *   **Text & Table Extraction:** Get clean text or structured table data, automatically handling exclusions.
-*   **OCR Integration:** Extract text from scanned documents using engines like EasyOCR, PaddleOCR, or Surya.
+*   **OCR Integration:** Extract text from scanned documents with RapidOCR by default, plus opt-in engines like EasyOCR, PaddleOCR, or Surya.
 *   **Layout Analysis:** Detect document structures (titles, paragraphs, tables) using various engines (e.g., YOLO, Paddle, LLM via API).
 *   **Document QA:** Ask natural language questions about your document's content.
 *   **Semantic Search:** Rank pages within a PDF by semantic similarity using sentence-transformer embeddings.

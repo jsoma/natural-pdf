@@ -19,13 +19,14 @@ pip install "natural-pdf[export]"   # PDF export helpers only
 pip install "natural-pdf[paddle]"   # PaddleOCR stack (paddlepaddle + paddleocr + paddlex) — includes paddlevl engine
 
 # Individual packages
+pip install rapidocr                # Default OCR backend
 pip install easyocr                 # EasyOCR engine
 pip install "surya-ocr<0.15"        # Surya OCR engine
-pip install doctr                   # Doctr OCR engine
+pip install python-doctr            # Doctr OCR engine
 pip install doclayout_yolo          # YOLO layout detection
 ```
 
-`natural-pdf[all]` means the recommended core-complete install: the default RapidOCR backend, sentence-transformers-based semantic search, QA/extraction dependencies, and export support. It does not include every optional backend. Advanced engines such as PaddleOCR, Surya, and Doctr remain opt-in.
+`natural-pdf[all]` means the recommended runtime bundle: the default RapidOCR backend, sentence-transformers-based semantic search, QA/extraction dependencies, YOLO layout detection, and export support. It does not include every optional backend. Engines such as EasyOCR, PaddleOCR, Surya, and Doctr remain opt-in.
 
 If you attempt to use an engine that is missing, the library will raise an
 error with the `pip install` command you need.
@@ -33,8 +34,10 @@ error with the `pip install` command you need.
 You can check what's installed at any time:
 
 ```bash
-npdf list
+npdf doctor
 ```
+
+`npdf list` is kept as an alias for the same diagnostic output.
 
 ## Your First PDF Extraction
 

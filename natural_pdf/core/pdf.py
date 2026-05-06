@@ -348,7 +348,7 @@ class PDF(
         Advanced usage with OCR:
         ```python
         pdf = npdf.PDF("scanned_document.pdf")
-        pdf.apply_ocr(engine="easyocr", resolution=144)
+        pdf.apply_ocr(engine="rapidocr", resolution=144)
         tables = pdf.pages[0].find_all('table')
         ```
     """
@@ -875,7 +875,7 @@ class PDF(
 
             # High-quality OCR with specific settings
             pdf.apply_ocr(
-                engine='easyocr',
+                engine='rapidocr',
                 languages=['en', 'es'],
                 resolution=300,
                 min_confidence=0.8

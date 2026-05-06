@@ -61,7 +61,7 @@ class OCRFactory:
     def get_recommended_engine(**kwargs) -> OCREngine:
         """Returns the best available OCR engine based on what's installed.
 
-        First tries engines in order of preference: EasyOCR, Doctr, Paddle, Surya.
+        First tries engines in order of preference: RapidOCR, EasyOCR, Doctr, Paddle, Surya.
         If none are available, raises ImportError with installation instructions.
 
         Args:
@@ -84,7 +84,8 @@ class OCRFactory:
         # If we get here, no engines are available
         raise ImportError(
             "No OCR engines are installed. You can add one with pip, e.g.:\n"
-            "  pip install easyocr                 # fastest to set up\n"
+            "  pip install rapidocr                # default lightweight OCR engine\n"
+            "  pip install easyocr                 # opt-in alternate OCR engine\n"
             '  pip install "natural-pdf[paddle]"   # PaddleOCR engine\n'
             '  pip install "surya-ocr<0.15"        # Surya OCR engine\n'
         )

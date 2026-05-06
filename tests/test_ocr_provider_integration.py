@@ -7,6 +7,7 @@ import pytest
 import natural_pdf as npdf
 import natural_pdf.engine_provider as provider_module
 from natural_pdf.engine_provider import EngineProvider
+from natural_pdf.engine_registry import register_ocr_engine
 from natural_pdf.ocr.engine import OCREngine, TextRegion
 
 
@@ -58,19 +59,15 @@ class _EmptyOCREngine(_FakeOCREngine):
         return []
 
 
-def test_page_apply_ocr_uses_provider(monkeypatch):
-    provider = EngineProvider()
-    provider._entry_points_loaded = True
-    monkeypatch.setattr(provider_module, "_PROVIDER", provider)
-
-    for capability in ("ocr", "ocr.apply", "ocr.extract"):
-        provider.register(capability, "fake", lambda **_: _FakeOCREngine(), replace=True)
+def test_page_apply_ocr_uses_registered_ocr_engine(monkeypatch):
+    name = "fake-registered"
+    register_ocr_engine(name, lambda **_: _FakeOCREngine(), replace=True)
 
     pdf = npdf.PDF("pdfs/tiny-ocr.pdf", text_layer=False)
     page = pdf.pages[0]
 
     before = len([w for w in page.words if getattr(w, "source", None) == "ocr"])
-    page.apply_ocr(engine="fake", resolution=72)
+    page.apply_ocr(engine=name, resolution=72)
     after = len([w for w in page.words if getattr(w, "source", None) == "ocr"])
 
     assert after > before, "OCR should add new elements via provider-backed engine"
@@ -78,19 +75,15 @@ def test_page_apply_ocr_uses_provider(monkeypatch):
 
 
 def test_region_apply_ocr_respects_crop_offsets(monkeypatch):
-    provider = EngineProvider()
-    provider._entry_points_loaded = True
-    monkeypatch.setattr(provider_module, "_PROVIDER", provider)
-
-    for capability in ("ocr", "ocr.apply", "ocr.extract"):
-        provider.register(capability, "fake", lambda **_: _FakeOCREngine(), replace=True)
+    name = "fake-region-registered"
+    register_ocr_engine(name, lambda **_: _FakeOCREngine(), replace=True)
 
     pdf = npdf.PDF("pdfs/tiny-ocr.pdf", text_layer=False)
     try:
         page = pdf.pages[0]
         region = page.create_region(100, 150, 220, 260)
 
-        region.apply_ocr(engine="fake", resolution=72)
+        region.apply_ocr(engine=name, resolution=72)
 
         ocr_words = [
             word

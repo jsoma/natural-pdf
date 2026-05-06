@@ -12,7 +12,6 @@ try:  # Python 3.11+
 except ModuleNotFoundError:  # pragma: no cover - fallback for 3.10
     import tomli as toml_loader  # type: ignore[import]
 
-from natural_pdf.cli import EXTRA_GROUPS
 from natural_pdf.utils import optional_imports as oi
 
 REQUIRED_DEPENDENCIES = {
@@ -66,7 +65,8 @@ def test_public_runtime_extras_contract():
     extras = _load_optional_extras()
 
     assert {"ai", "export", "paddle", "all"} <= set(extras)
-    assert "rapidocr_onnxruntime" in extras["ai"]
+    assert "rapidocr" in extras["ai"]
+    assert "easyocr" not in extras["ai"]
     assert extras["all"] == ["natural-pdf[ai]", "natural-pdf[export]"]
 
     assert "natural-pdf[test]" not in extras["all"]
@@ -77,19 +77,21 @@ def test_public_runtime_extras_contract():
 
 def test_cli_public_groups_align_with_runtime_extras():
     extras = _load_optional_extras()
+    groups = oi.list_dependency_groups()
 
-    assert {"all", "ai", "export", "paddle"} <= set(EXTRA_GROUPS)
-    assert "rapidocr" in EXTRA_GROUPS["all"]
-    assert "rapidocr" in EXTRA_GROUPS["ai"]
-    assert "pikepdf" in EXTRA_GROUPS["export"]
-    assert "paddlepaddle" in EXTRA_GROUPS["paddle"]
+    assert {"all", "ai", "export", "paddle"} <= set(groups)
+    assert "rapidocr" in groups["all"]
+    assert "rapidocr" in groups["ai"]
+    assert "easyocr" not in groups["all"]
+    assert "pikepdf" in groups["export"]
+    assert "paddlepaddle" in groups["paddle"]
     assert {"ai", "export", "paddle", "all"} <= set(extras)
 
 
 def test_default_ocr_install_hint_matches_public_contract():
     rapidocr = oi.OPTIONAL_DEPENDENCIES["rapidocr"]
     assert 'pip install "natural-pdf[all]"' in rapidocr.install_hints
-    assert any("rapidocr_onnxruntime" in hint for hint in rapidocr.install_hints)
+    assert "pip install rapidocr" in rapidocr.install_hints
 
 
 def test_docs_describe_all_as_recommended_core_complete_install():
@@ -98,8 +100,8 @@ def test_docs_describe_all_as_recommended_core_complete_install():
 
     assert 'pip install "natural-pdf[all]"' in readme
     assert 'pip install "natural-pdf[all]"' in install_doc
-    assert "recommended feature-complete install" in readme
-    assert "recommended core-complete install" in install_doc
+    assert "recommended feature-complete runtime bundle" in readme
+    assert "recommended runtime bundle" in install_doc
     assert "not install every optional backend" in readme
     assert "does not include every optional backend" in install_doc
 

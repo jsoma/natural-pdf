@@ -9,7 +9,6 @@ from natural_pdf.ocr.ocr_manager import (
     resolve_ocr_device,
     resolve_ocr_languages,
     resolve_ocr_min_confidence,
-    run_ocr_extract,
 )
 from natural_pdf.ocr.unified_dispatch import get_registry, run_ocr
 from natural_pdf.services._text_state import bump_text_state
@@ -660,9 +659,8 @@ class OCRService:
         render_kwargs = self._render_kwargs(host, apply_exclusions=True)
         offset_x, offset_y = self._resolve_offsets(host, render_kwargs)
 
-        ocr_payload = run_ocr_extract(
+        ocr_payload = run_ocr(
             target=host,
-            context=host,
             engine_name=engine_name,
             resolution=final_resolution,
             languages=resolved_languages,
@@ -671,29 +669,15 @@ class OCRService:
             detect_only=False,
             options=normalized_options,
             render_kwargs=render_kwargs,
+            context=host,
         )
 
-        results = ocr_payload.results
-        image_width, image_height = ocr_payload.image_size
-        if not image_width or not image_height:
-            logger.error("OCR payload missing image dimensions.")
-            return []
-
-        width = (
-            getattr(host, "width", None) or getattr(getattr(host, "page", None), "width", None) or 0
-        )
-        height = (
-            getattr(host, "height", None)
-            or getattr(getattr(host, "page", None), "height", None)
-            or 0
-        )
-        scale_x = width / image_width if width else 1.0
-        scale_y = height / image_height if height else 1.0
-        return self.create_text_elements_from_ocr(
+        created = self._process_ocr_payload(
             host,
-            results,
-            scale_x=scale_x,
-            scale_y=scale_y,
-            offset_x=offset_x,
-            offset_y=offset_y,
+            ocr_payload,
+            engine_name,
+            resolved_min_conf,
+            offset_x,
+            offset_y,
         )
+        return created or []

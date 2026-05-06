@@ -190,7 +190,7 @@ class Region(
         Advanced usage:
         ```python
         # OCR processing
-        region.apply_ocr(engine='easyocr', resolution=300)
+        region.apply_ocr(engine='rapidocr', resolution=300)
 
         # AI-powered extraction
         data = region.extract_structured_data(MySchema)
@@ -2280,7 +2280,7 @@ class Region(
         from natural_pdf.utils.sections import extract_sections_from_region
 
         def _normalize_section_boundary(
-            arg: Union[str, Sequence["Element"], "ElementCollection", None]
+            arg: Union[str, Sequence["Element"], "ElementCollection", None],
         ) -> Union[str, List["Element"], None]:
             if arg is None or isinstance(arg, str):
                 return arg

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from importlib import import_module, util
+from importlib import import_module, metadata, util
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 
@@ -15,6 +15,7 @@ class OptionalDependency:
     install_hints: Sequence[str]
     description: Optional[str] = None
     import_fn: Optional[Callable[[], Any]] = None
+    package_names: Sequence[str] = ()
     _module: Optional[Any] = field(default=None, init=False)
     _available: Optional[bool] = field(default=None, init=False)
 
@@ -43,18 +44,61 @@ class OptionalDependency:
     def optional(self) -> Optional[Any]:
         return self.load() if self.is_available() else None
 
+    def versions(self) -> Dict[str, str]:
+        versions: Dict[str, str] = {}
+        for package_name in self.package_names or (self.module_name,):
+            try:
+                versions[package_name] = metadata.version(package_name)
+            except metadata.PackageNotFoundError:
+                continue
+        return versions
+
 
 OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
     # OCR
     "rapidocr": OptionalDependency(
         "rapidocr",
-        ('pip install "natural-pdf[all]"', "pip install rapidocr_onnxruntime"),
+        ('pip install "natural-pdf[all]"', "pip install rapidocr"),
         "Default RapidOCR engine for OCR workflows.",
+        package_names=("rapidocr",),
     ),
     "easyocr": OptionalDependency(
         "easyocr",
         ("pip install easyocr",),
-        "EasyOCR engine for OCR workflows.",
+        "Opt-in EasyOCR engine for OCR workflows.",
+    ),
+    "surya": OptionalDependency(
+        "surya",
+        ("pip install surya-ocr",),
+        "Opt-in Surya OCR engine.",
+        package_names=("surya-ocr",),
+    ),
+    "doctr": OptionalDependency(
+        "doctr",
+        ("pip install python-doctr",),
+        "Opt-in Doctr OCR engine.",
+        package_names=("python-doctr",),
+    ),
+    "paddleocr": OptionalDependency(
+        "paddleocr",
+        ('pip install "natural-pdf[paddle]"', "pip install paddleocr"),
+        "PaddleOCR and PaddleOCR-VL engine stack.",
+    ),
+    "paddlepaddle": OptionalDependency(
+        "paddle",
+        ('pip install "natural-pdf[paddle]"', "pip install paddlepaddle"),
+        "PaddlePaddle runtime for PaddleOCR.",
+        package_names=("paddlepaddle",),
+    ),
+    "paddlex": OptionalDependency(
+        "paddlex",
+        ('pip install "natural-pdf[paddle]"', "pip install paddlex[ocr]"),
+        "PaddleX OCR pipeline dependency.",
+    ),
+    "numpy": OptionalDependency(
+        "numpy",
+        ('pip install "natural-pdf[paddle]"', "pip install 'numpy<2.0'"),
+        "Numeric runtime dependency; the Paddle extra pins this below 2.0.",
     ),
     # Export
     "pikepdf": OptionalDependency(
@@ -67,11 +111,22 @@ OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
         ('pip install "natural-pdf[export]"',),
         "Image to PDF conversion helper used by deskew/save routines.",
     ),
+    "jupytext": OptionalDependency(
+        "jupytext",
+        ('pip install "natural-pdf[export]"',),
+        "Notebook/text conversion support for export workflows.",
+    ),
+    "nbformat": OptionalDependency(
+        "nbformat",
+        ('pip install "natural-pdf[export]"',),
+        "Notebook format support for export workflows.",
+    ),
     # Search / embeddings
     "sentence_transformers": OptionalDependency(
         "sentence_transformers",
         ('pip install "natural-pdf[all]"', "pip install sentence-transformers"),
         "Embedding models for semantic search.",
+        package_names=("sentence-transformers",),
     ),
     # ML Core
     "torch": OptionalDependency(
@@ -91,7 +146,7 @@ OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
     ),
     "huggingface_hub": OptionalDependency(
         "huggingface_hub",
-        ('pip install "natural-pdf[all]"', "pip install huggingface_hub"),
+        ("pip install natural-pdf", "pip install huggingface_hub"),
         "Model hub utilities required by AI engines.",
     ),
     # Layout
@@ -104,6 +159,33 @@ OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
         "timm",
         ('pip install "natural-pdf[all]"', "pip install timm"),
         "Required backbone models for layout detectors.",
+    ),
+}
+
+OPTIONAL_DEPENDENCY_GROUPS: Dict[str, tuple[str, ...]] = {
+    "ai": (
+        "rapidocr",
+        "torch",
+        "torchvision",
+        "transformers",
+        "sentence_transformers",
+        "timm",
+        "doclayout_yolo",
+    ),
+    "export": ("pikepdf", "img2pdf", "jupytext", "nbformat"),
+    "paddle": ("paddlepaddle", "paddleocr", "paddlex", "numpy"),
+    "all": (
+        "rapidocr",
+        "torch",
+        "torchvision",
+        "transformers",
+        "sentence_transformers",
+        "timm",
+        "doclayout_yolo",
+        "pikepdf",
+        "img2pdf",
+        "jupytext",
+        "nbformat",
     ),
 }
 
@@ -126,17 +208,26 @@ def list_optional_dependencies() -> Mapping[str, Dict[str, Any]]:
     return {
         name: {
             "available": dep.is_available(),
+            "versions": dep.versions(),
             "install_hints": tuple(dep.install_hints),
             "description": dep.description,
+            "package_names": tuple(dep.package_names or (dep.module_name,)),
+            "module_name": dep.module_name,
         }
         for name, dep in OPTIONAL_DEPENDENCIES.items()
     }
 
 
+def list_dependency_groups() -> Mapping[str, tuple[str, ...]]:
+    return dict(OPTIONAL_DEPENDENCY_GROUPS)
+
+
 __all__ = [
     "OptionalDependency",
     "OPTIONAL_DEPENDENCIES",
+    "OPTIONAL_DEPENDENCY_GROUPS",
     "require",
     "is_available",
     "list_optional_dependencies",
+    "list_dependency_groups",
 ]

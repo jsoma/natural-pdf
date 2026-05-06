@@ -48,12 +48,11 @@ dependencies = [
 
 [project.optional-dependencies]
 ai = [
-    "rapidocr_onnxruntime",
+    "rapidocr",
     "torch",
     "torchvision",
     "transformers[sentencepiece]",
     "sentence-transformers",
-    "easyocr",
     "timm",
     "doclayout_yolo",
 ]
@@ -181,8 +180,3 @@ npdf = "natural_pdf.cli:main"
 
 [tool.pyright]
 exclude = ["tests"]
-
-[tool.uv.workspace]
-members = [
-    "agentic",
-]

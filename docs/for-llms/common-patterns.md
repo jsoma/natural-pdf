@@ -205,7 +205,7 @@ from natural_pdf import PDF
 
 pdf = PDF("scanned.pdf")
 page = pdf.pages[0]
-ocr_elements = page.apply_ocr(engine='easyocr', languages=['en'])
+ocr_elements = page.apply_ocr(engine='rapidocr', languages=['en'])
 text = page.extract_text()
 ```
 

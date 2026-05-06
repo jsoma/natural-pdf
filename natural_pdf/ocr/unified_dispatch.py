@@ -10,6 +10,7 @@ import logging
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field
+from inspect import Parameter, signature
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from PIL import Image
@@ -105,7 +106,7 @@ def _build_registry() -> Dict[str, EngineEntry]:
             engine_type="classic",
             provider=RapidOCREngine,
             options_class=RapidOCROptions,
-            install_hint="pip install rapidocr_onnxruntime",
+            install_hint="pip install rapidocr",
         ),
         "surya": EngineEntry(
             engine_type="classic",
@@ -188,6 +189,28 @@ def register_engine(name: str, entry: EngineEntry) -> None:
     """
     registry = get_registry()
     registry[name.strip().lower()] = entry
+
+
+def _instantiate_provider(provider: Any, *, context: Any = None, options: Any = None) -> Any:
+    """Instantiate a class/factory registered for a classic OCR engine."""
+
+    if provider is None:
+        raise RuntimeError("OCR engine registry entry is missing a provider.")
+    if not callable(provider):
+        return provider
+
+    try:
+        params = signature(provider).parameters
+    except (TypeError, ValueError):
+        return provider()
+
+    accepts_kwargs = any(param.kind == Parameter.VAR_KEYWORD for param in params.values())
+    kwargs: Dict[str, Any] = {}
+    if accepts_kwargs or "context" in params:
+        kwargs["context"] = context
+    if accepts_kwargs or "options" in params:
+        kwargs["options"] = options
+    return provider(**kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -522,15 +545,18 @@ def _run_classic(
     init_key = options._init_key() if options is not None else ""
 
     def factory():
-        engine_cls = entry.provider
-        instance = engine_cls()
-        if not instance.is_available():
+        instance = _instantiate_provider(entry.provider, context=context, options=options)
+        is_available = getattr(instance, "is_available", None)
+        if callable(is_available) and not is_available():
             hint = entry.install_hint or f"pip install {engine_name}"
             raise RuntimeError(
                 f"OCR engine {engine_name!r} is not available. Install it with: {hint}"
             )
-        instance._initialize_model(list(effective_languages), effective_device, options)
-        instance._initialized = True
+        initialize = getattr(instance, "_initialize_model", None)
+        if callable(initialize):
+            initialize(list(effective_languages), effective_device, options)
+            if hasattr(instance, "_initialized"):
+                instance._initialized = True
         return instance
 
     engine = _engine_cache.get_or_create(
@@ -541,9 +567,8 @@ def _run_classic(
         factory=factory,
     )
 
-    lock = _get_inference_lock(engine_name)
-    with lock:
-        raw_output = engine.process_image(
+    def process():
+        return engine.process_image(
             image,
             languages=list(effective_languages),
             min_confidence=min_confidence,
@@ -551,6 +576,13 @@ def _run_classic(
             detect_only=detect_only,
             options=options,
         )
+
+    if entry.needs_gpu_lock:
+        lock = _get_inference_lock(engine_name)
+        with lock:
+            raw_output = process()
+    else:
+        raw_output = process()
 
     # Normalize: process_image may return List[Dict] (single) or List[List[Dict]] (batch)
     results = _normalize_engine_output(raw_output)
@@ -630,8 +662,17 @@ def run_detection(
     entry = registry.get(engine_key)
 
     if entry is None:
-        available = sorted(registry.keys())
-        raise LookupError(f"Unknown detection engine {engine_name!r}. Available: {available}")
+        from natural_pdf.engine_provider import get_provider
+
+        provider = get_provider()
+        provider_engines = set()
+        for cap in ("ocr", "ocr.apply", "ocr.extract"):
+            provider_engines.update(provider.list(cap).get(cap, ()))
+        if engine_key in provider_engines:
+            entry = EngineEntry(engine_type="classic_provider")
+        else:
+            available = sorted(set(registry.keys()) | provider_engines)
+            raise LookupError(f"Unknown detection engine {engine_name!r}. Available: {available}")
 
     if entry.engine_type not in ("classic", "classic_provider", "auto_platform"):
         raise ValueError(
@@ -718,6 +759,7 @@ def _run_vlm(
         instructions=instructions,
         languages=languages,
         layout=layout,
+        family=entry.vlm_family,
     )
 
     return OCRRunResult(results=results, image_size=img_size, engine_type="vlm")

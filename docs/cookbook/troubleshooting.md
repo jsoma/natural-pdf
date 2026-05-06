@@ -46,7 +46,7 @@ else:
 ### Apply OCR for Scanned Documents
 
 ```python
-# Default OCR (uses EasyOCR)
+# Default OCR (uses RapidOCR)
 page.apply_ocr()
 
 # If default doesn't work well, try different engines
@@ -54,7 +54,7 @@ page.apply_ocr(engine='paddle')  # Often better for forms
 page.apply_ocr(engine='surya')   # Good for multi-language
 
 # For better quality, increase resolution
-page.apply_ocr(engine='easyocr', resolution=300)
+page.apply_ocr(engine='rapidocr', resolution=300)
 ```
 
 ### Debug What's Actually in the PDF
@@ -274,7 +274,10 @@ Is the image quality poor?
 ### Try Different OCR Engines
 
 ```python
-# EasyOCR (default) - good general purpose
+# RapidOCR (default) - lightweight general purpose OCR
+page.apply_ocr(engine='rapidocr')
+
+# EasyOCR - opt-in alternate OCR engine
 page.apply_ocr(engine='easyocr')
 
 # PaddleOCR - often better for structured documents

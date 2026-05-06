@@ -311,7 +311,7 @@ class PageCollection(
         """Apply OCR uniformly across all pages in the collection.
 
         Args:
-            engine: OCR engine — ``"easyocr"``, ``"surya"``, ``"paddle"``,
+            engine: OCR engine — ``"rapidocr"`` (default), ``"easyocr"``, ``"surya"``, ``"paddle"``,
                 ``"paddlevl"``, ``"doctr"``, or ``"vlm"``.
             options: Engine-specific option object.
             languages: Language codes, e.g. ``["en", "fr"]``.

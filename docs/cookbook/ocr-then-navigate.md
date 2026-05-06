@@ -39,7 +39,7 @@ text = page.extract_text()
 print(text[:200])
 ```
 
-**Default engine:** EasyOCR (works well for most documents)
+**Default engine:** RapidOCR (works well for most documents)
 
 ## Step 2: Navigate Like Normal
 
@@ -69,10 +69,10 @@ Natural PDF supports multiple OCR engines:
 
 | Engine | Notes | Installation |
 |--------|-------|--------------|
-| `easyocr` | Good starting point. Supports 80+ languages. | `pip install easyocr` |
+| `rapidocr` | Default engine. PaddleOCR models via ONNX (~15MB). Easier install than full PaddlePaddle. | `pip install "natural-pdf[all]"` or `pip install rapidocr` |
+| `easyocr` | Opt-in alternate engine. Supports 80+ languages. | `pip install easyocr` |
 | `surya` | Handles multi-language and dense layouts. | `pip install "surya-ocr<0.15"` |
 | `paddle` | Best CJK (Chinese/Japanese/Korean) support. | `pip install paddlepaddle paddleocr` |
-| `rapidocr` | PaddleOCR models via ONNX (~15MB). Easier install than full PaddlePaddle. | `pip install rapidocr` |
 | `paddlevl` | VLM-based — understands charts and complex layouts. | `pip install paddlepaddle paddleocr "paddlex[ocr]"` |
 | `doctr` | Smaller model footprint. | `pip install python-doctr` |
 | `dots` | dots.mocr — combined layout + OCR. MLX-optimized on Apple Silicon. | `pip install mlx-vlm` or `pip install transformers torch` |
@@ -87,7 +87,7 @@ Not sure which engine to use? Compare them side by side with `page.compare_ocr(e
 page.apply_ocr(engine="surya")
 
 # Or for the whole PDF
-pdf.apply_ocr(engine="easyocr")
+pdf.apply_ocr(engine="rapidocr")
 ```
 
 ## Adjusting OCR Quality
@@ -146,11 +146,11 @@ page.find_all('text').show()
 If results don't look right, try increasing resolution or switching engines. Re-applying OCR removes previous results automatically:
 
 ```python
-page.apply_ocr(engine="easyocr")
+page.apply_ocr(engine="rapidocr")
 page.extract_text()  # check the output
 
 # Not good enough — try higher resolution
-page.apply_ocr(engine="easyocr", resolution=300)
+page.apply_ocr(engine="rapidocr", resolution=300)
 
 # Still not great — try a different engine
 page.apply_ocr(engine="surya")
@@ -177,7 +177,7 @@ See the [OCR Integration tutorial](../tutorials/12-ocr-integration.ipynb#detecti
 ```python
 import natural_pdf as npdf
 
-def extract_scanned_form(pdf_path, ocr_engine="easyocr"):
+def extract_scanned_form(pdf_path, ocr_engine="rapidocr"):
     """Extract data from a scanned form."""
     pdf = npdf.PDF(pdf_path)
     page = pdf.pages[0]
@@ -241,7 +241,7 @@ import natural_pdf as npdf
 from pathlib import Path
 import pandas as pd
 
-def process_scanned_batch(pdf_dir, ocr_engine="easyocr"):
+def process_scanned_batch(pdf_dir, ocr_engine="rapidocr"):
     """Process a directory of scanned PDFs."""
     results = []
 

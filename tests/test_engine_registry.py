@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from PIL import Image
 
 from natural_pdf.engine_provider import get_provider
 from natural_pdf.engine_registry import (
@@ -13,6 +14,9 @@ from natural_pdf.engine_registry import (
     register_table_function,
 )
 from natural_pdf.guides.guides_provider import GuidesDetectionResult
+from natural_pdf.ocr import infer_engine_from_options
+from natural_pdf.ocr.ocr_options import BaseOCROptions
+from natural_pdf.ocr.unified_dispatch import get_registry, run_ocr
 from natural_pdf.tables.result import TableResult
 from natural_pdf.tables.table_provider import run_table_engine
 
@@ -104,6 +108,94 @@ def test_register_ocr_engine_registers_all_capabilities():
     for capability in ("ocr", "ocr.apply", "ocr.extract"):
         engine = provider.get(capability, context=None, name=name)
         assert isinstance(engine, DummyOCREngine)
+
+    assert name in get_registry()
+
+
+def test_register_ocr_engine_classic_runs_through_unified_dispatch():
+    name = f"ocr.classic.{uuid.uuid4().hex}"
+
+    class DummyOCREngine:
+        def process_image(self, image, **kwargs):
+            return [{"bbox": [0, 0, 10, 10], "text": "hello", "confidence": 0.99}]
+
+    register_ocr_engine(name, lambda **_: DummyOCREngine(), install_hint="pip install dummy")
+
+    class Target:
+        def render(self, resolution=72, **kwargs):
+            return Image.new("RGB", (20, 20), "white")
+
+    result = run_ocr(target=Target(), engine_name=name, resolution=72)
+    assert result.results[0]["text"] == "hello"
+    assert result.image_size == (20, 20)
+
+
+def test_register_ocr_engine_options_class_infers_engine():
+    name = f"ocr.options.{uuid.uuid4().hex}"
+
+    class DummyOptions(BaseOCROptions):
+        pass
+
+    class DummyOCREngine:
+        def process_image(self, image, **kwargs):
+            return []
+
+    register_ocr_engine(
+        name,
+        lambda **_: DummyOCREngine(),
+        options_class=DummyOptions,
+    )
+
+    assert infer_engine_from_options(DummyOptions()) == name
+
+
+def test_register_ocr_engine_missing_dependency_mentions_install_hint():
+    name = f"ocr.missing.{uuid.uuid4().hex}"
+
+    class MissingOCREngine:
+        def is_available(self):
+            return False
+
+        def process_image(self, image, **kwargs):  # pragma: no cover - should not run
+            return []
+
+    register_ocr_engine(name, lambda **_: MissingOCREngine(), install_hint="pip install missing")
+
+    class Target:
+        def render(self, resolution=72, **kwargs):
+            return Image.new("RGB", (20, 20), "white")
+
+    with pytest.raises(RuntimeError, match="Install it with: pip install missing"):
+        run_ocr(target=Target(), engine_name=name, resolution=72)
+
+
+def test_register_ocr_engine_vlm_shorthand(monkeypatch):
+    name = f"ocr.vlm.{uuid.uuid4().hex}"
+    calls = {}
+
+    def fake_run_vlm_ocr_on_image(image, **kwargs):
+        calls.update(kwargs)
+        return ([{"bbox": [0, 0, 10, 10], "text": "vlm", "confidence": 0.9}], image.size)
+
+    monkeypatch.setattr(
+        "natural_pdf.ocr.vlm_ocr.run_vlm_ocr_on_image",
+        fake_run_vlm_ocr_on_image,
+    )
+    register_ocr_engine(
+        name,
+        kind="vlm",
+        model_resolver=lambda: "custom-model",
+        vlm_family="glm_ocr",
+    )
+
+    class Target:
+        def render(self, resolution=72, **kwargs):
+            return Image.new("RGB", (20, 20), "white")
+
+    result = run_ocr(target=Target(), engine_name=name, resolution=72)
+    assert result.results[0]["text"] == "vlm"
+    assert calls["model"] == "custom-model"
+    assert calls["family"] == "glm_ocr"
 
 
 def test_register_layout_engine_round_trip():

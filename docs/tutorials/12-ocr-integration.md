@@ -88,7 +88,7 @@ pdf = npdf.PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/ne
 pdf.pages[0].apply_ocr()  # Uses: engine='surya', min_confidence=0.7
 
 # You can still override defaults for specific calls
-pdf.pages[0].apply_ocr(engine='easyocr', languages=['fr'])  # Override engine and languages
+pdf.pages[0].apply_ocr(engine='rapidocr', languages=['fr'])  # Override engine and languages
 ```
 
 This is especially useful when processing many documents with the same OCR settings, as you don't need to specify the parameters repeatedly.
@@ -99,10 +99,10 @@ OCR engines auto-detect the best available device by default (`device="auto"`). 
 
 ```python
 # Auto-detect (default behavior)
-page.apply_ocr(engine='easyocr')
+page.apply_ocr(engine='rapidocr')
 
 # Force a specific device
-page.apply_ocr(engine='easyocr', device='cpu')
+page.apply_ocr(engine='rapidocr', device='cpu')
 page.apply_ocr(engine='surya', device='mps')     # Apple Silicon
 page.apply_ocr(engine='doctr', device='cuda')     # NVIDIA GPU
 ```
@@ -273,7 +273,7 @@ page.find_all('text').apply_ocr(
 
 When called on an `ElementCollection` of OCR elements with a VLM, each element is rendered individually and sent to the model for correction. The original bounding boxes are preserved — only the text is updated.
 
-The `detect_only=True` parameter runs detection without recognition. This is useful when you want a fast engine (EasyOCR, Surya) to find where text is, then a separate step to read it.
+The `detect_only=True` parameter runs detection without recognition. This is useful when you want a fast engine (RapidOCR, EasyOCR, Surya) to find where text is, then a separate step to read it.
 
 ## Language Codes
 
@@ -281,7 +281,7 @@ All OCR engines accept standard ISO language codes like `'en'`, `'fr'`, `'de'`, 
 
 ```python
 # Standard codes work across all engines
-page.apply_ocr(engine='easyocr', languages=['ja'])
+page.apply_ocr(engine='rapidocr', languages=['ja'])
 page.apply_ocr(engine='paddle', languages=['ja'])   # auto-normalized to 'japan'
 page.apply_ocr(engine='surya', languages=['ja'])
 ```
@@ -432,7 +432,7 @@ If OCR results aren't perfect, you can use the bundled interactive web applicati
     The correction app is bundled with the library. Start a local server pointing to it:
 
     ```bash
-    python -m http.server 8000 -d "$(python -c 'import natural_pdf; import os; print(os.path.join(os.path.dirname(natural_pdf.__file__), "spa"))')"
+    uv run python -m http.server 8000 -d "$(uv run python -c 'import natural_pdf; import os; print(os.path.join(os.path.dirname(natural_pdf.__file__), "spa"))')"
     ```
 
 3.  **Use the SPA:**
@@ -446,8 +446,8 @@ Apply OCR or layout analysis to all pages using the `PDF` object.
 ```python
 # Process all pages in the document
 
-# Apply OCR to all pages (example using EasyOCR)
-pdf.apply_ocr(engine='easyocr', languages=['en'])
+# Apply OCR to all pages (example using RapidOCR)
+pdf.apply_ocr(engine='rapidocr', languages=['en'])
 print(f"Applied OCR to {len(pdf.pages)} pages.")
 
 # Or apply layout analysis to all pages (example using Paddle)
@@ -481,7 +481,7 @@ pdf = PDF("scanned_invoice.pdf")
 page = pdf.pages[0]
 
 # Apply OCR first
-page.apply_ocr(engine='easyocr', languages=['en'])
+page.apply_ocr(engine='rapidocr', languages=['en'])
 
 # Now use spatial navigation to extract values
 # Find a label and get the value to its right

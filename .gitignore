@@ -3,6 +3,9 @@ research
 .mcp.json
 pal_generated.code
 docs/specs
+artifacts/
+audit/
+planning/
 temp
 .claude
 Untitled*.ipynb
