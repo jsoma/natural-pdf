@@ -138,6 +138,7 @@ class ElementManager:
         self._page = page
         self._store = ElementStore()
         self._load_text = load_text
+        self._raw_char_dicts: Optional[List[Dict[str, Any]]] = None
         # Default to splitting by fontname, size, bold, italic if not specified
         # Renamed internal variable for clarity
         self._word_split_attributes = (
@@ -200,12 +201,13 @@ class ElementManager:
         )
 
         elements_data = {
-            "chars": [TextElement(c_dict, self._page) for c_dict in prepared_char_dicts],
+            "chars": [],
             "words": generated_words,
             "rects": rect_elements,
             "lines": line_elements,
             "images": image_elements,
         }
+        self._raw_char_dicts = prepared_char_dicts
 
         if hasattr(self._page, "_regions") and (
             "detected" in self._page._regions
@@ -226,6 +228,22 @@ class ElementManager:
 
         logger.debug(f"Page {self._page.number}: Element loading complete.")
         self._store.replace(elements_data)
+
+    def _materialize_chars(self) -> List[TextElement]:
+        """Return character TextElements, creating wrappers only on demand."""
+        store = self._element_store()
+        chars = store.get("chars", [])
+        if chars:
+            return list(chars)
+
+        raw_char_dicts = self._raw_char_dicts or []
+        if not raw_char_dicts:
+            return []
+
+        char_elements = [TextElement(c_dict, self._page) for c_dict in raw_char_dicts]
+        self._raw_char_dicts = None
+        self._store.set("chars", char_elements)
+        return list(char_elements)
 
     @property
     def element_loader(self) -> ElementLoader:
@@ -416,7 +434,7 @@ class ElementManager:
             words.extend(word_elements)
             self._store.set("words", words)
         if char_elements:
-            chars = list(store.get("chars", []))
+            chars = self._materialize_chars()
             chars.extend(char_elements)
             self._store.set("chars", chars)
 
@@ -444,6 +462,11 @@ class ElementManager:
         # Load elements if not already loaded
         # Add to the appropriate list
         store = self._element_store()
+
+        if element_type in ("char", "chars"):
+            element_type = "chars"
+            self._materialize_chars()
+            store = self._element_store()
 
         if element_type in store:
             # Avoid adding duplicates
@@ -496,15 +519,13 @@ class ElementManager:
         except RuntimeError:
             return []
 
+        if element_type in ("char", "chars"):
+            return self._materialize_chars()
+
         if element_type:
             return list(store.get(element_type, []))
 
-        # Combine all element types
-        all_elements: List[Any] = []
-        for elements in store.values():
-            all_elements.extend(elements)
-
-        return all_elements
+        return self.get_all_elements()
 
     def get_all_elements(self):
         """
@@ -519,18 +540,21 @@ class ElementManager:
             return []
 
         all_elements: List[Any] = []
-        for elements in store.values():
-            all_elements.extend(elements)
+        for element_type, elements in store.items():
+            if element_type == "chars":
+                all_elements.extend(self._materialize_chars())
+            else:
+                all_elements.extend(elements)
         return all_elements
 
     @property
     def chars(self):
         """Get all character elements."""
-        store = self._element_store()
-        return list(store.get("chars", []))
+        return self._materialize_chars()
 
     def invalidate_cache(self):
         """Invalidate the cached elements, forcing a reload on next access."""
+        self._raw_char_dicts = None
         self._store.clear()
         logger.debug(f"Page {self._page.number}: ElementManager cache invalidated")
 
@@ -618,6 +642,11 @@ class ElementManager:
         store = self._element_store()
 
         # Check if the collection exists
+        if element_type in ("char", "chars"):
+            element_type = "chars"
+            self._materialize_chars()
+            store = self._element_store()
+
         if element_type not in store:
             raise KeyError(f"Element collection '{element_type}' does not exist")
 
@@ -638,6 +667,11 @@ class ElementManager:
     def remove_elements_by_source(self, element_type: str, source: str) -> int:
         """Remove all elements of ``element_type`` whose ``source`` attribute matches ``source``."""
         store = self._element_store()
+
+        if element_type in ("char", "chars"):
+            element_type = "chars"
+            self._materialize_chars()
+            store = self._element_store()
 
         if element_type not in store:
             return 0
@@ -662,6 +696,9 @@ class ElementManager:
 
         removed_words = len(store.get("words", []))
         removed_chars = len(store.get("chars", []))
+        if removed_chars == 0 and self._raw_char_dicts is not None:
+            removed_chars = len(self._raw_char_dicts)
+        self._raw_char_dicts = None
 
         if "words" in store:
             self._store.set("words", [])
