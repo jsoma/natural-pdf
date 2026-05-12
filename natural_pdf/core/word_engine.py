@@ -198,7 +198,7 @@ class WordEngine:
                 spaces_injected = False
                 sgr = options.space_gap_ratio
                 if sgr is None:
-                    sgr = 0.15  # default threshold in em-units
+                    sgr = 0.12  # default threshold in em-units
                 if sgr > 0 and len(char_list) > 1:
                     parts: List[str] = [char_list[0].get("text", "")]
                     for i in range(1, len(char_list)):

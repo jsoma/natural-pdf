@@ -45,3 +45,20 @@ def test_tiny_font_text_extract(dial_config):
     assert (
         "12/2/2016 " in extracted
     ), f"Column spacing missing with dial {dial_config}. Snippet: {first_row_snippet}"
+
+
+def test_tiny_font_region_extract_uses_auto_tolerance():
+    """Region extraction should inherit page auto tolerance for very small text."""
+    pdf_path = _get_test_pdf_path()
+
+    pdf = PDF(pdf_path)
+    try:
+        page = pdf.pages[0]
+        region = page.create_region(50, 55, 200, 62)
+        extracted = region.extract_text()
+
+        assert "OFFICER DATE OF REPORT" in extracted
+        assert "PFEIFER, TIM 12/2/2016" in extracted
+        assert "NICHOLSON, DUSTIN 12/3/2016" in extracted
+    finally:
+        pdf.close()

@@ -57,6 +57,7 @@ from natural_pdf.text.operations import (
     apply_bidi_processing,
     filter_chars_spatially,
     generate_text_layout,
+    word_elements_to_textmap_char_dicts,
 )
 
 # Viewer widget support is lazy-loaded to avoid importing ipywidgets/IPython at startup
@@ -1830,8 +1831,8 @@ class Region(
             if self.x0 <= cx <= self.x1 and self.top <= cy <= self.bottom:
                 alt_text_regions.append(region)
 
-        # 2b. Gather char dicts, suppressing words covered by alt_text regions
-        all_char_dicts = []
+        # 2b. Gather word elements, suppressing words covered by alt_text regions
+        candidate_words = []
         for word in page_words:
             # Quick bbox check to avoid processing words clearly outside
             if get_bbox_overlap(self.bbox, word.bbox) is not None:
@@ -1843,7 +1844,11 @@ class Region(
                         r.x0 <= wcx <= r.x1 and r.top <= wcy <= r.bottom for r in alt_text_regions
                     ):
                         continue
-                all_char_dicts.extend(getattr(word, "_char_dicts", []))
+                candidate_words.append(word)
+
+        # Preserve spaces inferred by the word engine while still using
+        # character-level geometry for region clipping and layout.
+        all_char_dicts = word_elements_to_textmap_char_dicts(candidate_words)
 
         # 2c. Inject alt_text from those regions
         for region in alt_text_regions:
@@ -1920,6 +1925,25 @@ class Region(
 
         if preserve_whitespace_flag is not None and "strip" not in final_kwargs:
             final_kwargs["strip"] = not bool(preserve_whitespace_flag)
+
+        # Region extraction should inherit the same auto-computed tolerances as
+        # page extraction unless the caller explicitly overrides them.
+        tolerance_keys = (
+            "x_tolerance",
+            "x_tolerance_ratio",
+            "y_tolerance",
+            "y_tolerance_ratio",
+            "keep_blank_chars",
+        )
+        page_config = getattr(self.page, "_config", {})
+        pdf_config = getattr(getattr(self.page, "_parent", None), "_config", {})
+        for key in tolerance_keys:
+            if key in final_kwargs:
+                continue
+            if key in page_config:
+                final_kwargs[key] = page_config[key]
+            elif key in pdf_config:
+                final_kwargs[key] = pdf_config[key]
 
         textmap_obj = None
         if return_textmap:

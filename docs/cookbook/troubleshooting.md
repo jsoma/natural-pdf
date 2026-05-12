@@ -478,13 +478,13 @@ for page in pdf.pages:
 Some PDFs don't embed explicit space characters. Natural PDF handles this automatically with two mechanisms:
 
 1. **`x_tolerance_ratio`** — controls how far apart characters can be and still merge into a single word element. Defaults to `0.35` (35% of each character's font size). Characters of different font sizes are never merged together.
-2. **`space_gap_ratio`** — after characters merge into a word, any internal gap ≥ this ratio × font size gets a space injected. Defaults to `0.15` (15% of font size).
+2. **`space_gap_ratio`** — after characters merge into a word, any internal gap ≥ this ratio × font size gets a space injected. Defaults to `0.12` (12% of font size).
 
 ```
 Are words stuck together (e.g. "PublicFinancialDisclosure")?
 ├── Yes, and all text is one font size
-│   └── Increase space_gap_ratio (default 0.15)
-│       pdf = PDF("doc.pdf", text_tolerance={"space_gap_ratio": 0.2})
+│   └── Lower space_gap_ratio (default 0.12)
+│       pdf = PDF("doc.pdf", text_tolerance={"space_gap_ratio": 0.10})
 │
 ├── Yes, but only for larger text
 │   └── Increase x_tolerance_ratio so larger chars merge first
@@ -525,7 +525,7 @@ pdf = PDF("document.pdf", auto_text_tolerance=False,
 | `y_tolerance` | Auto (0.6 × median font size) | Max vertical gap (in points) for chars on the same line |
 | `x_tolerance_ratio` | `0.35` when auto | Per-character tolerance as a fraction of font size. Handles mixed font sizes. |
 | `y_tolerance_ratio` | `None` | Per-character vertical tolerance as a fraction of font size |
-| `space_gap_ratio` | `0.15` | Gap ≥ this × font size within a merged word gets a space injected. Set to `0` to disable. |
+| `space_gap_ratio` | `0.12` | Gap ≥ this × font size within a merged word gets a space injected. Set to `0` to disable. |
 | `keep_blank_chars` | `True` | Whether to keep blank characters in word extraction |
 
 ---

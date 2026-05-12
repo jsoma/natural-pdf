@@ -7,6 +7,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Literal,
     Optional,
@@ -308,6 +309,102 @@ def _create_alt_text_char_dict(region, source_label: str = "alt_text") -> Dict[s
     }
 
 
+def _synthetic_space_char(
+    prev_char: Dict[str, Any],
+    next_char: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a positioned space char between two native character dicts."""
+    px1 = float(prev_char.get("x1", prev_char.get("x0", 0)) or 0)
+    nx0 = float(next_char.get("x0", next_char.get("x1", px1)) or px1)
+    x = (px1 + nx0) / 2
+    epsilon = 1e-6
+
+    top = min(float(prev_char.get("top", 0) or 0), float(next_char.get("top", 0) or 0))
+    bottom = max(
+        float(prev_char.get("bottom", top) or top),
+        float(next_char.get("bottom", top) or top),
+    )
+
+    space = dict(prev_char)
+    space.update(
+        {
+            "text": " ",
+            "x0": x - epsilon,
+            "x1": x + epsilon,
+            "top": top,
+            "bottom": bottom,
+            "width": 2 * epsilon,
+            "height": bottom - top,
+            "adv": 0,
+            "object_type": "char",
+        }
+    )
+    if "doctop" in prev_char:
+        space["doctop"] = (
+            float(prev_char.get("doctop", top) or top)
+            - float(prev_char.get("top", top) or top)
+            + top
+        )
+    return space
+
+
+def _expand_word_chars_for_injected_spaces(
+    char_dicts: List[Dict[str, Any]], word_text: str
+) -> Optional[List[Dict[str, Any]]]:
+    """Return chars plus synthetic spaces when word_text only adds spaces."""
+    raw_text = "".join(c.get("text", "") for c in char_dicts)
+    if not raw_text or word_text == raw_text:
+        return char_dicts
+    if word_text.replace(" ", "") != raw_text:
+        return None
+
+    expanded: List[Dict[str, Any]] = []
+    raw_index = 0
+    for char in word_text:
+        if char == " ":
+            if raw_index <= 0 or raw_index >= len(char_dicts):
+                return None
+            expanded.append(_synthetic_space_char(char_dicts[raw_index - 1], char_dicts[raw_index]))
+            continue
+
+        if raw_index >= len(char_dicts) or char_dicts[raw_index].get("text", "") != char:
+            return None
+        expanded.append(char_dicts[raw_index])
+        raw_index += 1
+
+    if raw_index != len(char_dicts):
+        return None
+    return expanded
+
+
+def word_elements_to_textmap_char_dicts(word_elements: Iterable[Any]) -> List[Dict[str, Any]]:
+    """Collect word chars while preserving word-engine-injected spaces.
+
+    The word engine can merge tightly spaced glyphs and inject spaces into the
+    word text. Feeding only the original glyph chars back into chars_to_textmap
+    loses those inferred spaces, so we reinsert them as lightweight synthetic
+    space chars when the word text otherwise matches the raw glyph sequence.
+    """
+    all_char_dicts: List[Dict[str, Any]] = []
+    for word in word_elements:
+        char_dicts = list(getattr(word, "_char_dicts", []) or [])
+        if not char_dicts:
+            continue
+
+        word_obj = getattr(word, "_obj", {})
+        word_text = word_obj.get("text") if isinstance(word_obj, dict) else None
+        if not isinstance(word_text, str):
+            word_text = getattr(word, "text", None)
+        if isinstance(word_text, str):
+            expanded = _expand_word_chars_for_injected_spaces(char_dicts, word_text)
+            if expanded is not None:
+                all_char_dicts.extend(expanded)
+                continue
+
+        all_char_dicts.extend(char_dicts)
+    return all_char_dicts
+
+
 @overload
 def generate_text_layout(
     char_dicts: List[Dict[str, Any]],
@@ -460,6 +557,7 @@ def apply_bidi_processing(text: str) -> str:
 __all__ = [
     "filter_chars_spatially",
     "generate_text_layout",
+    "word_elements_to_textmap_char_dicts",
     "apply_content_filter",
     "apply_bidi_processing",
 ]

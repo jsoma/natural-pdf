@@ -311,7 +311,7 @@ class ElementManager:
         if yt is None:
             yt = 3.0
 
-        # Resolve space_gap_ratio: None means use default (0.15), 0 disables
+        # Resolve space_gap_ratio: None means use default (0.12), 0 disables
         sgr = _resolve_numeric("space_gap_ratio")
 
         # When auto_text_tolerance is active and the user hasn't set an

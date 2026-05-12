@@ -132,14 +132,14 @@ pdf.pages[5:20].show(cols=4)
 Natural PDF automatically groups characters into words based on font size and spacing. Two settings control this:
 
 - **`x_tolerance_ratio`** — how far apart characters can be (as a fraction of font size) and still form a single word. Default: `0.35`.
-- **`space_gap_ratio`** — within a merged word, gaps ≥ this fraction of font size get a space injected. Default: `0.15`. Handles PDFs that lack explicit space characters.
+- **`space_gap_ratio`** — within a merged word, gaps ≥ this fraction of font size get a space injected. Default: `0.12`. Handles PDFs that lack explicit space characters.
 
 ```python
 # Default settings work for most PDFs
 pdf = PDF("document.pdf")
 
-# For PDFs where words appear stuck together (no spaces)
-pdf = PDF("document.pdf", text_tolerance={"space_gap_ratio": 0.2})
+# For PDFs where words appear stuck together (no spaces), lower the threshold
+pdf = PDF("document.pdf", text_tolerance={"space_gap_ratio": 0.10})
 
 # Disable space injection if it causes problems
 pdf = PDF("document.pdf", text_tolerance={"space_gap_ratio": 0})

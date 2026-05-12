@@ -46,6 +46,19 @@ class TestOGEFormSpaceInjection:
         finally:
             pdf.close()
 
+    def test_region_extract_text_preserves_injected_spaces(self):
+        """Region char extraction should keep spaces inferred by the word engine."""
+        pdf = PDF(OGE_PDF)
+        try:
+            page = pdf.pages[0]
+            title = page.find('text:contains("Public Financial Disclosure")')
+            assert title is not None, "Should find the title word element"
+
+            region = page.create_region(title.x0, title.top, title.x1, title.bottom)
+            assert "Public Financial Disclosure Report (OGE Form 278e)" in region.extract_text()
+        finally:
+            pdf.close()
+
     def test_disabled_with_zero_ratio(self):
         """Setting space_gap_ratio=0 should disable injection for small text."""
         pdf = PDF(OGE_PDF, text_tolerance={"space_gap_ratio": 0})

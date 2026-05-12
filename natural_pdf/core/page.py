@@ -77,6 +77,7 @@ from natural_pdf.text.operations import (
     generate_text_layout,
 )
 from natural_pdf.text.operations import normalize_whitespace as _normalize_whitespace
+from natural_pdf.text.operations import word_elements_to_textmap_char_dicts
 
 # Viewer widget support is lazy-loaded to avoid importing ipywidgets/IPython at startup
 
@@ -1809,10 +1810,10 @@ class Page(
         elif debug:
             logger.debug(f"Page {self.number}: Not applying exclusions.")
 
-        # 4. Collect All Character Dictionaries from remaining Word Elements
-        all_char_dicts = []
-        for word in word_elements:
-            all_char_dicts.extend(getattr(word, "_char_dicts", []))
+        # 4. Collect all character dictionaries from remaining word elements.
+        # Preserve spaces inferred by the word engine so char-based extraction
+        # does not collapse words back together on PDFs without literal spaces.
+        all_char_dicts = word_elements_to_textmap_char_dicts(word_elements)
 
         # 4b. Inject alt_text from regions on this page
         for region in self.iter_regions():
@@ -1845,7 +1846,13 @@ class Page(
             for key, value in merged_kwargs.items()
             if value is not None or key == "layout"
         }
-        tol_keys = ["x_tolerance", "x_tolerance_ratio", "y_tolerance"]
+        tol_keys = [
+            "x_tolerance",
+            "x_tolerance_ratio",
+            "y_tolerance",
+            "y_tolerance_ratio",
+            "keep_blank_chars",
+        ]
         for k in tol_keys:
             if k not in merged_kwargs:
                 if k in self._config:
