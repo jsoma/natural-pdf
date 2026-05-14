@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, cast
 
 import numpy as np
 from PIL import Image
@@ -196,16 +196,20 @@ class ShapeDetectionMixin:
         Core image processing logic to detect lines using projection profiling.
         Returns raw line data (image coordinates) and smoothed profiles.
         """
-        from scipy.ndimage import binary_closing, binary_opening, gaussian_filter1d
+        from scipy.ndimage import gaussian_filter1d
         from scipy.signal import find_peaks
 
         if cv_image is None:
             return [], None, None
 
         # Convert RGB to grayscale using numpy (faster than PIL)
-        # Using standard luminance weights: 0.299*R + 0.587*G + 0.114*B
         if len(cv_image.shape) == 3:
-            gray_image = np.dot(cv_image[..., :3], [0.299, 0.587, 0.114]).astype(np.uint8)
+            # Integer approximation of standard luminance weights:
+            # 0.299*R + 0.587*G + 0.114*B.
+            rgb = cv_image[..., :3].astype(np.uint16, copy=False)
+            gray_image = ((77 * rgb[..., 0] + 150 * rgb[..., 1] + 29 * rgb[..., 2]) >> 8).astype(
+                np.uint8
+            )
         else:
             gray_image = cv_image  # Already grayscale
 
@@ -281,8 +285,6 @@ class ShapeDetectionMixin:
             binarized_image = (gray_image <= otsu_thresh_val).astype(
                 np.uint8
             ) * 255  # Inverted binary
-
-        binarized_norm = binarized_image.astype(float) / 255.0
 
         detected_lines_data = []
         profile_h_smoothed_for_viz: Optional[np.ndarray] = None
@@ -411,13 +413,15 @@ class ShapeDetectionMixin:
             if operation == "none":
                 return image
 
+            from scipy.ndimage import binary_closing, binary_opening
+
             # Create rectangular structuring element
             # kernel_size is (width, height) = (cols, rows)
             cols, rows = kernel_size
-            structure = np.ones((rows, cols))  # Note: numpy uses (rows, cols) order
+            structure = np.ones((rows, cols), dtype=bool)  # Note: numpy uses (rows, cols) order
 
             # Convert to binary for morphological operations
-            binary_img = (image > 0.5).astype(bool)
+            binary_img = image > 0
 
             if operation == "open":
                 result = binary_opening(binary_img, structure=structure)
@@ -429,14 +433,11 @@ class ShapeDetectionMixin:
                 )
                 result = binary_img
 
-            # Convert back to float
-            return result.astype(float)
+            return result
 
         if horizontal:
-            processed_image_h = binarized_norm.copy()
-            if morph_op_h != "none":
-                processed_image_h = apply_morphology(processed_image_h, morph_op_h, morph_kernel_h)
-            profile_h_raw = np.sum(processed_image_h, axis=1)
+            processed_image_h = apply_morphology(binarized_image, morph_op_h, morph_kernel_h)
+            profile_h_raw = np.count_nonzero(processed_image_h, axis=1)
             horizontal_lines, smoothed_h = get_lines_from_profile(
                 profile_h_raw, pil_image_rgb.width, "h", True
             )
@@ -445,10 +446,8 @@ class ShapeDetectionMixin:
             logger.info(f"Detected {len(horizontal_lines)} horizontal lines.")
 
         if vertical:
-            processed_image_v = binarized_norm.copy()
-            if morph_op_v != "none":
-                processed_image_v = apply_morphology(processed_image_v, morph_op_v, morph_kernel_v)
-            profile_v_raw = np.sum(processed_image_v, axis=0)
+            processed_image_v = apply_morphology(binarized_image, morph_op_v, morph_kernel_v)
+            profile_v_raw = np.count_nonzero(processed_image_v, axis=0)
             vertical_lines, smoothed_v = get_lines_from_profile(
                 profile_v_raw, pil_image_rgb.height, "v", False
             )
@@ -676,22 +675,10 @@ class ShapeDetectionMixin:
             logger.warning(f"Skipping line detection for {self} due to image error.")
             return self
 
-        host = cast(Any, self)
-        pil_image_for_dims: Optional[Image.Image] = None
-        render_method = cast(
-            Optional[Callable[..., Optional[Image.Image]]], getattr(host, "render", None)
-        )
-        if callable(render_method) and hasattr(host, "width") and hasattr(host, "height"):
-            try:
-                if hasattr(host, "x0") and hasattr(host, "top") and hasattr(host, "_page"):
-                    pil_image_for_dims = render_method(resolution=resolution, crop=True)
-                else:
-                    pil_image_for_dims = render_method(resolution=resolution)
-            except Exception as exc:  # pragma: no cover - defensive logging
-                logger.debug("Secondary render for dims failed: %s", exc)
-        if pil_image_for_dims is None:
-            logger.warning(f"Could not re-render PIL image for dimensions for {self}.")
-            pil_image_for_dims = Image.fromarray(cv_image)  # Ensure it's not None
+        # _get_image_for_detection() already rendered the exact image being processed.
+        # _find_lines_on_image_data() only needs image dimensions, so avoid a
+        # second render here.
+        pil_image_for_dims = Image.fromarray(cv_image)
 
         if pil_image_for_dims.mode != "RGB":
             pil_image_for_dims = pil_image_for_dims.convert("RGB")
