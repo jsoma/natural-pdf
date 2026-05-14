@@ -21,6 +21,7 @@ from natural_pdf.utils.visualization import (
     ColorManager,
     create_legend,
     merge_images_with_legend,
+    render_cropped_page,
     render_plain_page,
 )
 
@@ -874,15 +875,39 @@ class HighlightingService:
 
         scale_factor = actual_resolution / 72
 
-        # Get base page image
-        logger.debug(f"Calling render_plain_page with page={page}, resolution={actual_resolution}")
-        page_image = render_plain_page(page, resolution=actual_resolution)
-        if page_image is None:
-            raise RuntimeError(f"render_plain_page returned None for page {page}")
-
-        # Apply crop if specified
+        # Get base page image. For cropped specs, ask pypdfium to rasterize the
+        # exact current crop rectangle directly; fall back to full-page render on
+        # unsupported pages or PDF edge cases.
+        page_image = None
         if spec.crop_bbox:
-            page_image = self._crop_image(page_image, spec.crop_bbox, page, scale_factor)
+            try:
+                logger.debug(
+                    "Calling render_cropped_page with page=%s, resolution=%s, crop_bbox=%s",
+                    page,
+                    actual_resolution,
+                    spec.crop_bbox,
+                )
+                page_image = render_cropped_page(
+                    page, resolution=actual_resolution, crop_bbox=spec.crop_bbox
+                )
+            except Exception as exc:  # pragma: no cover - defensive fallback
+                logger.debug(
+                    "render_cropped_page fallback to full-page render due to %s",
+                    exc,
+                    exc_info=True,
+                )
+
+        if page_image is None:
+            logger.debug(
+                "Calling render_plain_page with page=%s, resolution=%s", page, actual_resolution
+            )
+            page_image = render_plain_page(page, resolution=actual_resolution)
+            if page_image is None:
+                raise RuntimeError(f"render_plain_page returned None for page {page}")
+
+            # Apply crop if specified
+            if spec.crop_bbox:
+                page_image = self._crop_image(page_image, spec.crop_bbox, page, scale_factor)
 
         # Apply highlights if any
         if spec.highlights:

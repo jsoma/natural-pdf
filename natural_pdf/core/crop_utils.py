@@ -48,14 +48,15 @@ def resolve_crop_bbox(
     if crop_bbox is not None:
         return _clamp_bbox(crop_bbox, width, height)
 
-    content_bbox = content_bbox_fn() if content_bbox_fn else None
-
     if isinstance(crop, bool):
         if crop:
+            content_bbox = content_bbox_fn() if content_bbox_fn else None
             if content_bbox:
                 return _clamp_bbox(content_bbox, width, height)
             return (0.0, 0.0, width, height)
         return None
+
+    content_bbox = content_bbox_fn() if content_bbox_fn else None
 
     if isinstance(crop, (int, float)):
         if content_bbox:

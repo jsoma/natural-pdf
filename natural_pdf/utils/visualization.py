@@ -4,6 +4,7 @@ Visualization utilities for natural-pdf.
 
 import itertools  # Added for cycling
 import logging
+import math
 import random
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union, cast
 
@@ -523,6 +524,89 @@ def render_plain_page(page, resolution):
         doc.close()
 
     return image
+
+
+def _pdfium_crop_units_from_pixel_crop(pixel_amount: int, scale_factor: float) -> float:
+    """Convert a desired integer crop amount to a pypdfium crop unit.
+
+    pypdfium2 applies ``ceil(crop_amount * scale)`` internally. Subtracting a
+    tiny epsilon preserves the same integer pixel crop used by the existing
+    full-page-render-then-PIL-crop path.
+    """
+    if pixel_amount <= 0:
+        return 0.0
+    return max(0.0, (pixel_amount - 1e-6) / scale_factor)
+
+
+def render_cropped_page(page, resolution, crop_bbox):
+    """
+    Render a page crop directly with pypdfium while preserving existing crop pixels.
+
+    The existing render path rasterizes the full page, then crops with
+    ``int(coord * scale)`` pixel coordinates. pypdfium's native crop API instead
+    rounds page and crop amounts with ``ceil``. This helper computes the current
+    pixel crop rectangle first, then converts those integer crop amounts back to
+    pypdfium crop units so the resulting bitmap has the same size and pixels as
+    the old path.
+    """
+    if pypdfium2 is None:
+        raise RuntimeError(
+            "pypdfium2 is required to render pages. Install with `pip install pypdfium2`."
+        )
+    if not hasattr(page, "_page") or not hasattr(page._page, "pdf"):
+        raise AttributeError("Page does not expose a pdfplumber page for direct crop rendering.")
+
+    scale_factor = resolution / 72.0
+    x0, top, x1, bottom = crop_bbox
+
+    with pdf_render_lock:
+        pdf = page._page.pdf
+        if getattr(pdf, "path", None):
+            src = pdf.path
+        else:
+            pdf.stream.seek(0)
+            src = pdf.stream
+
+        doc = pypdfium2.PdfDocument(src, password=getattr(pdf, "password", None))
+        pdf_page = doc.get_page(page._page.page_number - 1)
+        try:
+            src_width = math.ceil(pdf_page.get_width() * scale_factor)
+            src_height = math.ceil(pdf_page.get_height() * scale_factor)
+
+            left_px = int(x0 * scale_factor)
+            top_px = int(top * scale_factor)
+            right_edge_px = int(x1 * scale_factor)
+            bottom_edge_px = int(bottom * scale_factor)
+
+            left_px = max(0, min(left_px, src_width))
+            top_px = max(0, min(top_px, src_height))
+            right_edge_px = max(0, min(right_edge_px, src_width))
+            bottom_edge_px = max(0, min(bottom_edge_px, src_height))
+
+            if right_edge_px <= left_px or bottom_edge_px <= top_px:
+                raise ValueError(f"Invalid crop bounds: {crop_bbox}")
+
+            right_px = src_width - right_edge_px
+            bottom_px = src_height - bottom_edge_px
+            crop = (
+                _pdfium_crop_units_from_pixel_crop(left_px, scale_factor),
+                _pdfium_crop_units_from_pixel_crop(bottom_px, scale_factor),
+                _pdfium_crop_units_from_pixel_crop(right_px, scale_factor),
+                _pdfium_crop_units_from_pixel_crop(top_px, scale_factor),
+            )
+
+            bitmap = pdf_page.render(
+                scale=scale_factor,
+                crop=crop,
+                no_smoothtext=True,
+                no_smoothpath=True,
+                no_smoothimage=True,
+                prefer_bgrx=True,
+            )
+            return bitmap.to_pil().convert("RGB")
+        finally:
+            pdf_page.close()
+            doc.close()
 
 
 def detect_quantitative_data(values: List[Any]) -> bool:
