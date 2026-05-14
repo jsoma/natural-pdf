@@ -495,6 +495,61 @@ def _find_all_chars_result(pdf_path: Path, page_index: int = 0) -> Mapping[str, 
         pdf.close()
 
 
+def _get_elements_result(pdf_path: Path, page_index: int = 0) -> Mapping[str, Any]:
+    import natural_pdf as npdf
+
+    pdf = npdf.PDF(str(pdf_path))
+    try:
+        page = pdf.pages[page_index]
+        elements = page.get_elements()
+        return {"matches": len(elements)}
+    finally:
+        pdf.close()
+
+
+def _find_all_any_result(pdf_path: Path, page_index: int = 0) -> Mapping[str, Any]:
+    import natural_pdf as npdf
+
+    pdf = npdf.PDF(str(pdf_path))
+    try:
+        page = pdf.pages[page_index]
+        elements = page.find_all("*")
+        return {"matches": len(elements)}
+    finally:
+        pdf.close()
+
+
+def _summary_output(summary: Any) -> dict[str, Any]:
+    try:
+        data = summary.to_dict()
+    except Exception:
+        data = {}
+    return {
+        "sections": len(data) if isinstance(data, dict) else 0,
+        "type": type(summary).__name__,
+    }
+
+
+def _describe_page_result(pdf_path: Path, page_index: int = 0) -> Mapping[str, Any]:
+    import natural_pdf as npdf
+
+    pdf = npdf.PDF(str(pdf_path))
+    try:
+        return _summary_output(pdf.pages[page_index].describe())
+    finally:
+        pdf.close()
+
+
+def _inspect_page_result(pdf_path: Path, page_index: int = 0) -> Mapping[str, Any]:
+    import natural_pdf as npdf
+
+    pdf = npdf.PDF(str(pdf_path))
+    try:
+        return _summary_output(pdf.pages[page_index].inspect())
+    finally:
+        pdf.close()
+
+
 def _extract_text_result(pdf_path: Path, *, layout: bool, page_index: int = 0) -> Mapping[str, Any]:
     import natural_pdf as npdf
 
@@ -502,6 +557,29 @@ def _extract_text_result(pdf_path: Path, *, layout: bool, page_index: int = 0) -
     try:
         text = pdf.pages[page_index].extract_text(layout=layout)
         return {"characters": len(text), "lines": text.count("\n") + 1 if text else 0}
+    finally:
+        pdf.close()
+
+
+def _find_anchor_result(
+    pdf_path: Path,
+    *,
+    selectors: list[str],
+    page_index: int = 0,
+) -> Mapping[str, Any]:
+    import natural_pdf as npdf
+
+    pdf = npdf.PDF(str(pdf_path))
+    try:
+        page = pdf.pages[page_index]
+        found = 0
+        text_chars = 0
+        for selector in selectors:
+            element = page.find(selector)
+            if element:
+                found += 1
+                text_chars += len(getattr(element, "text", "") or "")
+        return {"selector_calls": len(selectors), "found": found, "text_chars": text_chars}
     finally:
         pdf.close()
 
@@ -776,6 +854,49 @@ def _guide_table_result(pdf_path: Path, *, page_index: int = 0) -> Mapping[str, 
         pdf.close()
 
 
+def _guide_lines_result(
+    pdf_path: Path,
+    *,
+    axis: str,
+    detection_method: str,
+    page_index: int = 0,
+    max_lines_h: Optional[int] = 5,
+    max_lines_v: Optional[int] = 5,
+) -> Mapping[str, Any]:
+    import warnings
+
+    import natural_pdf as npdf
+    from natural_pdf.analyzers.guides import Guides
+
+    pdf = npdf.PDF(str(pdf_path))
+    try:
+        page = pdf.pages[page_index]
+        before_lines = len(page.lines)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            guides = Guides.from_lines(
+                page,
+                axis=axis,  # type: ignore[arg-type]
+                detection_method=detection_method,
+                max_lines_h=max_lines_h,
+                max_lines_v=max_lines_v,
+            )
+        detected_lines = [
+            line for line in page.lines if getattr(line, "source", None) == "guides_detection"
+        ]
+        return {
+            "axis": axis,
+            "detection_method": detection_method,
+            "lines_before": before_lines,
+            "lines_after": len(page.lines),
+            "detected_lines": len(detected_lines),
+            "vertical_guides": len(guides.vertical),
+            "horizontal_guides": len(guides.horizontal),
+        }
+    finally:
+        pdf.close()
+
+
 def _warm_repeated_page_result(pdf_path: Path, *, page_index: int = 0) -> Mapping[str, Any]:
     import natural_pdf as npdf
 
@@ -1003,6 +1124,95 @@ def discover_workloads(
             1,
         ),
         (
+            "micro:get-elements:m27",
+            "Broad all-element page access on a dense page",
+            m27_pdf,
+            lambda path=m27_pdf: _get_elements_result(path),
+            1,
+        ),
+        (
+            "micro:get-elements:tiny-text",
+            "Broad all-element page access on a very dense tiny-text page",
+            tiny_pdf,
+            lambda path=tiny_pdf: _get_elements_result(path),
+            1,
+        ),
+        (
+            "micro:find-all-any:m27",
+            "Wildcard selector over all element types on a dense page",
+            m27_pdf,
+            lambda path=m27_pdf: _find_all_any_result(path),
+            1,
+        ),
+        (
+            "micro:describe:m27",
+            "Page describe summary on a dense page",
+            m27_pdf,
+            lambda path=m27_pdf: _describe_page_result(path),
+            1,
+        ),
+        (
+            "micro:inspect:m27",
+            "Page inspect summary on a dense page",
+            m27_pdf,
+            lambda path=m27_pdf: _inspect_page_result(path),
+            1,
+        ),
+        (
+            "micro:describe:tiny-text",
+            "Page describe summary on a very dense tiny-text page",
+            tiny_pdf,
+            lambda path=tiny_pdf: _describe_page_result(path),
+            1,
+        ),
+        (
+            "micro:find-anchors:01-practice",
+            "Cold first-match anchor lookups on the practice form",
+            practice_pdf,
+            lambda path=practice_pdf: _find_anchor_result(
+                path,
+                selectors=[
+                    "text:contains(Site)",
+                    "text:contains(Date)",
+                    "text:contains(Summary)",
+                    "text:contains(Violations)[size=max()]",
+                    "text[color~=red]",
+                ],
+            ),
+            1,
+        ),
+        (
+            "micro:find-anchors:atlanta",
+            "Cold first-match anchor lookups on the Atlanta sample",
+            atlanta_pdf,
+            lambda path=atlanta_pdf: _find_anchor_result(
+                path,
+                selectors=[
+                    "text:contains(Author)",
+                    "text:contains(ISBN)",
+                    "text:contains(Published)",
+                    "text:contains(Barcode)",
+                    "text[size=max()]",
+                ],
+            ),
+            1,
+        ),
+        (
+            "micro:find-anchors:policy-lines",
+            "Cold first-match anchor lookups on a line-heavy policy page",
+            policy_pdf,
+            lambda path=policy_pdf: _find_anchor_result(
+                path,
+                selectors=[
+                    "text[size=max()]",
+                    "text:contains(POLICY)",
+                    "text:contains(RESTAURANT)",
+                    "text:contains(COVERAGE)",
+                ],
+            ),
+            1,
+        ),
+        (
             "micro:extract-text-simple:m27",
             "Native text extraction without layout reconstruction",
             m27_pdf,
@@ -1070,6 +1280,51 @@ def discover_workloads(
             "Guide construction and guide-backed table extraction",
             practice_pdf,
             lambda path=practice_pdf: _guide_table_result(path),
+            1,
+        ),
+        (
+            "micro:guide-lines-vector-both:01-practice",
+            "Guide line detection from existing vector lines, both axes",
+            practice_pdf,
+            lambda path=practice_pdf: _guide_lines_result(
+                path, axis="both", detection_method="vector"
+            ),
+            1,
+        ),
+        (
+            "micro:guide-lines-vector-both:policy-lines",
+            "Guide line detection from existing vector lines on a line-heavy page",
+            policy_pdf,
+            lambda path=policy_pdf: _guide_lines_result(
+                path, axis="both", detection_method="vector"
+            ),
+            1,
+        ),
+        (
+            "micro:guide-lines-pixels-both:01-practice",
+            "Pixel guide line detection, both axes",
+            practice_pdf,
+            lambda path=practice_pdf: _guide_lines_result(
+                path, axis="both", detection_method="pixels"
+            ),
+            1,
+        ),
+        (
+            "micro:guide-lines-pixels-horizontal:01-practice",
+            "Pixel guide line detection, horizontal axis only",
+            practice_pdf,
+            lambda path=practice_pdf: _guide_lines_result(
+                path, axis="horizontal", detection_method="pixels"
+            ),
+            1,
+        ),
+        (
+            "micro:guide-lines-pixels-vertical:01-practice",
+            "Pixel guide line detection, vertical axis only",
+            practice_pdf,
+            lambda path=practice_pdf: _guide_lines_result(
+                path, axis="vertical", detection_method="pixels"
+            ),
             1,
         ),
     ]
