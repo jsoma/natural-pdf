@@ -18,6 +18,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 from natural_pdf.utils.locks import pdf_render_lock
 
+
+class DirectCropRenderUnsupportedError(RuntimeError):
+    """Raised when a page cannot use the direct cropped-render fast path."""
+
+
 # Define a base list of visually distinct colors for highlighting
 # Format: (R, G, B)
 _BASE_HIGHLIGHT_COLORS = [
@@ -550,11 +555,13 @@ def render_cropped_page(page, resolution, crop_bbox):
     the old path.
     """
     if pypdfium2 is None:
-        raise RuntimeError(
+        raise DirectCropRenderUnsupportedError(
             "pypdfium2 is required to render pages. Install with `pip install pypdfium2`."
         )
     if not hasattr(page, "_page") or not hasattr(page._page, "pdf"):
-        raise AttributeError("Page does not expose a pdfplumber page for direct crop rendering.")
+        raise DirectCropRenderUnsupportedError(
+            "Page does not expose a pdfplumber page for direct crop rendering."
+        )
 
     scale_factor = resolution / 72.0
     x0, top, x1, bottom = crop_bbox

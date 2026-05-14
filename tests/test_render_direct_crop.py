@@ -4,7 +4,11 @@ import pytest
 from PIL import ImageChops
 
 from natural_pdf import PDF
-from natural_pdf.utils.visualization import render_cropped_page, render_plain_page
+from natural_pdf.utils.visualization import (
+    DirectCropRenderUnsupportedError,
+    render_cropped_page,
+    render_plain_page,
+)
 
 PDF_PATH = Path("pdfs/01-practice.pdf")
 
@@ -38,5 +42,57 @@ def test_direct_crop_matches_full_render_then_crop_pixels():
 
         assert direct.size == expected.size
         assert ImageChops.difference(direct, expected).getbbox() is None
+    finally:
+        pdf.close()
+
+
+def test_direct_crop_unsupported_falls_back(monkeypatch):
+    if not PDF_PATH.exists():
+        pytest.skip("Test requires pdfs/01-practice.pdf fixture")
+
+    pdf = PDF(str(PDF_PATH))
+    try:
+        page = pdf.pages[0]
+        crop_bbox = (
+            page.width * 0.2,
+            page.height * 0.2,
+            page.width * 0.6,
+            page.height * 0.45,
+        )
+
+        def unsupported(*args, **kwargs):
+            raise DirectCropRenderUnsupportedError("unsupported page wrapper")
+
+        monkeypatch.setattr(
+            "natural_pdf.core.highlighting_service.render_cropped_page", unsupported
+        )
+
+        image = page.render(crop_bbox=crop_bbox)
+        assert image is not None
+    finally:
+        pdf.close()
+
+
+def test_direct_crop_unexpected_failure_propagates(monkeypatch):
+    if not PDF_PATH.exists():
+        pytest.skip("Test requires pdfs/01-practice.pdf fixture")
+
+    pdf = PDF(str(PDF_PATH))
+    try:
+        page = pdf.pages[0]
+        crop_bbox = (
+            page.width * 0.2,
+            page.height * 0.2,
+            page.width * 0.6,
+            page.height * 0.45,
+        )
+
+        def fail(*args, **kwargs):
+            raise RuntimeError("direct crop bug")
+
+        monkeypatch.setattr("natural_pdf.core.highlighting_service.render_cropped_page", fail)
+
+        with pytest.raises(RuntimeError, match="direct crop bug"):
+            page.render(crop_bbox=crop_bbox)
     finally:
         pdf.close()

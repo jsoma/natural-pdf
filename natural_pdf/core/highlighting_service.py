@@ -19,6 +19,7 @@ from natural_pdf.elements.base import extract_bbox
 # Import ColorManager and related utils
 from natural_pdf.utils.visualization import (
     ColorManager,
+    DirectCropRenderUnsupportedError,
     create_legend,
     merge_images_with_legend,
     render_cropped_page,
@@ -876,8 +877,8 @@ class HighlightingService:
         scale_factor = actual_resolution / 72
 
         # Get base page image. For cropped specs, ask pypdfium to rasterize the
-        # exact current crop rectangle directly; fall back to full-page render on
-        # unsupported pages or PDF edge cases.
+        # exact current crop rectangle directly; fall back only when the page
+        # shape cannot support the fast path.
         page_image = None
         if spec.crop_bbox:
             try:
@@ -890,7 +891,7 @@ class HighlightingService:
                 page_image = render_cropped_page(
                     page, resolution=actual_resolution, crop_bbox=spec.crop_bbox
                 )
-            except Exception as exc:  # pragma: no cover - defensive fallback
+            except DirectCropRenderUnsupportedError as exc:
                 logger.debug(
                     "render_cropped_page fallback to full-page render due to %s",
                     exc,
