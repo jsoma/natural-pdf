@@ -527,9 +527,14 @@ class ElementManager:
 
         return self.get_all_elements()
 
-    def get_all_elements(self):
+    def get_all_elements(self, *, include_chars: bool = True):
         """
         Get all elements from all types.
+
+        Args:
+            include_chars: Whether native character TextElements should be
+                included. Internal summary/layout paths can set this to False
+                when character-level elements would be ignored downstream.
 
         Returns:
             List of all elements
@@ -542,6 +547,8 @@ class ElementManager:
         all_elements: List[Any] = []
         for element_type, elements in store.items():
             if element_type == "chars":
+                if not include_chars:
+                    continue
                 all_elements.extend(self._materialize_chars())
             else:
                 all_elements.extend(elements)

@@ -577,7 +577,15 @@ class Page(
 
     def get_all_elements_raw(self) -> List["Element"]:
         """Return all elements without applying exclusions."""
-        return list(self._element_mgr.get_all_elements())
+        return self._get_all_elements_raw(include_chars=True)
+
+    def _get_all_elements_raw(self, *, include_chars: bool = True) -> List["Element"]:
+        """Return raw elements, optionally omitting character wrappers."""
+        if not hasattr(self, "_element_mgr"):
+            instance_getter = self.__dict__.get("get_all_elements_raw")
+            if callable(instance_getter):
+                return list(instance_getter())
+        return list(self._element_mgr.get_all_elements(include_chars=include_chars))
 
     def get_elements_by_type(self, element_type: str) -> List[Any]:
         """Return the elements for a specific backing collection (e.g. 'words')."""
@@ -1368,8 +1376,21 @@ class Page(
         Returns:
             List of all elements on the page, potentially filtered by exclusions.
         """
-        # Get all elements from the element manager
-        all_elements = self.get_all_elements_raw()
+        return self._get_elements(
+            apply_exclusions=apply_exclusions,
+            debug_exclusions=debug_exclusions,
+            include_chars=True,
+        )
+
+    def _get_elements(
+        self,
+        *,
+        apply_exclusions=True,
+        debug_exclusions: bool = False,
+        include_chars: bool = True,
+    ) -> List["Element"]:
+        """Internal element collection path with optional char omission."""
+        all_elements = self._get_all_elements_raw(include_chars=include_chars)
 
         # Apply exclusions if requested
         if apply_exclusions:
@@ -2557,8 +2578,7 @@ class Page(
         """
         Inspect the page content using the describe service.
         """
-        collection = self.find_all("*")
-        return self.services.describe.inspect(collection, limit=limit, **kwargs)
+        return self.services.describe.inspect(self, limit=limit, **kwargs)
 
     def ask(
         self,

@@ -38,7 +38,7 @@ def describe_page(page: "Page") -> ElementSummary:
     Returns:
         ElementSummary with page overview
     """
-    all_elements = page.find_all("*")
+    all_elements = page._get_elements(include_chars=False)
 
     if not all_elements:
         data = {"message": "No elements found on page"}
@@ -156,7 +156,7 @@ def describe_region(region: "Region") -> ElementSummary:
     data["region_info"] = region_info
 
     # Content analysis
-    content_elements = region.find_all("*")
+    content_elements = region._get_elements(include_chars=False)
     if content_elements:
         content_analysis = describe_collection(content_elements)
         # Extract the data and add as "content" section

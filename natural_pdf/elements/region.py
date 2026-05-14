@@ -1625,16 +1625,43 @@ class Region(
         Returns:
             List of elements in the region
         """
+        return self._get_elements(
+            selector=selector,
+            apply_exclusions=apply_exclusions,
+            include_chars=True,
+            **kwargs,
+        )
+
+    def _get_elements(
+        self,
+        selector: Optional[str] = None,
+        apply_exclusions=True,
+        include_chars: bool = True,
+        **kwargs,
+    ) -> List["Element"]:
+        """Internal region element path with optional char omission."""
         if selector:
             # Find elements on the page matching the selector
-            page_elements = self.page.find_all(
-                selector, apply_exclusions=apply_exclusions, **kwargs
-            )
+            if not include_chars and selector in {"*", "any"}:
+                page_elements = self.page._get_elements(
+                    apply_exclusions=apply_exclusions,
+                    include_chars=False,
+                )
+            else:
+                page_elements = self.page.find_all(
+                    selector, apply_exclusions=apply_exclusions, **kwargs
+                )
             # Filter those elements to only include ones within this region
             elements = [e for e in page_elements if self._is_element_in_region(e)]
         else:
             # Get all elements from the page
-            page_elements = self.page.get_elements(apply_exclusions=apply_exclusions)
+            if include_chars:
+                page_elements = self.page.get_elements(apply_exclusions=apply_exclusions)
+            else:
+                page_elements = self.page._get_elements(
+                    apply_exclusions=apply_exclusions,
+                    include_chars=False,
+                )
             # Filter to elements in this region
             elements = [e for e in page_elements if self._is_element_in_region(e)]
 

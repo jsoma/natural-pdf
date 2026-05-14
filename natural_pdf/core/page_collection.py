@@ -389,10 +389,22 @@ class PageCollection(
         return self.services.to_llm.to_llm(self, **kwargs)
 
     def describe(self, **kwargs):
-        return self.services.describe.describe(self.find_all("*"), **kwargs)
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        elements = []
+        for page in self.pages:
+            elements.extend(page._get_elements(include_chars=False))
+        collection = ElementCollection(elements, context=getattr(self, "_context", None))
+        return self.services.describe.describe(collection, **kwargs)
 
     def inspect(self, limit: int = 30, **kwargs):
-        return self.services.describe.inspect(self.find_all("*"), limit=limit, **kwargs)
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        elements = []
+        for page in self.pages:
+            elements.extend(page._get_elements(include_chars=False))
+        collection = ElementCollection(elements, context=getattr(self, "_context", None))
+        return self.services.describe.inspect(collection, limit=limit, **kwargs)
 
     def split(
         self,

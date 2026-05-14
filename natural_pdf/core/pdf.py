@@ -2576,12 +2576,22 @@ class PDF(
         """
         Describe the PDF content using the describe service.
         """
-        collection = self.find_all("*")
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        elements = []
+        for page in self.pages:
+            elements.extend(page._get_elements(include_chars=False))
+        collection = ElementCollection(elements, context=getattr(self, "_context", None))
         return self.services.describe.describe(collection, **kwargs)
 
     def inspect(self, limit: int = 30, **kwargs):
         """
         Inspect the PDF content using the describe service.
         """
-        collection = self.find_all("*")
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        elements = []
+        for page in self.pages:
+            elements.extend(page._get_elements(include_chars=False))
+        collection = ElementCollection(elements, context=getattr(self, "_context", None))
         return self.services.describe.inspect(collection, limit=limit, **kwargs)
