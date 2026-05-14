@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from typing import Any, Dict, List, Optional, Sequence
 
 from natural_pdf.analyzers.guides.helpers import (
@@ -11,7 +12,12 @@ from natural_pdf.analyzers.guides.helpers import (
     _bounds_from_object,
     _collect_line_elements,
 )
-from natural_pdf.guides.guides_provider import Axis, GuidesDetectionResult, GuidesEngine
+from natural_pdf.guides.guides_provider import (
+    Axis,
+    GuidesBothDetectionResult,
+    GuidesDetectionResult,
+    GuidesEngine,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +33,35 @@ class LinesGuidesEngine(GuidesEngine):
         context: GuidesContext,
         options: Dict[str, Any],
     ) -> GuidesDetectionResult:
+        verticals, horizontals = self._detect_coordinates(
+            context=context,
+            options=options,
+            axis_label=axis,
+        )
+        coords = verticals if axis == "vertical" else horizontals
+        return GuidesDetectionResult(coordinates=coords)
+
+    def detect_both(
+        self,
+        *,
+        method: str,
+        context: GuidesContext,
+        options: Dict[str, Any],
+    ) -> GuidesBothDetectionResult:
+        verticals, horizontals = self._detect_coordinates(
+            context=context,
+            options=options,
+            axis_label="both",
+        )
+        return GuidesBothDetectionResult(vertical=verticals, horizontal=horizontals)
+
+    def _detect_coordinates(
+        self,
+        *,
+        context: GuidesContext,
+        options: Dict[str, Any],
+        axis_label: str,
+    ) -> tuple[List[float], List[float]]:
         threshold = options.get("threshold", "auto")
         source_label = options.get("source_label")
         max_lines_h = options.get("max_lines_h")
@@ -68,8 +103,21 @@ class LinesGuidesEngine(GuidesEngine):
             if method == "auto":
                 if lines:
                     method = "vector"
+                    reason = f"{len(lines)} vector line element(s) exist"
                 else:
                     method = "pixels"
+                    if source_label:
+                        reason = f"no vector line elements matched source_label={source_label!r}"
+                    else:
+                        reason = "no vector line elements exist"
+                warnings.warn(
+                    "Guides line detection used detection_method='auto' for "
+                    f"{axis_label} guides and selected detection_method='{method}' because {reason}. "
+                    f"Specify detection_method='{method}' to make this choice explicit and "
+                    "silence this warning.",
+                    UserWarning,
+                    stacklevel=6,
+                )
 
         if method == "pixels":
             if not hasattr(context, "detect_lines"):
@@ -147,23 +195,21 @@ class LinesGuidesEngine(GuidesEngine):
         verticals = self._select_lines(v_line_data, max_lines_v)
 
         if outer:
-            if axis == "vertical":
+            if axis_label in ("vertical", "both"):
                 if not verticals or verticals[0] > bounds[0]:
                     verticals.insert(0, bounds[0])
                 if not verticals or verticals[-1] < bounds[2]:
                     verticals.append(bounds[2])
-            if axis == "horizontal":
+            if axis_label in ("horizontal", "both"):
                 if not horizontals or horizontals[0] > bounds[1]:
                     horizontals.insert(0, bounds[1])
                 if not horizontals or horizontals[-1] < bounds[3]:
                     horizontals.append(bounds[3])
 
-        if axis == "vertical":
-            coords = sorted({float(v) for v in verticals})
-        else:
-            coords = sorted({float(h) for h in horizontals})
-
-        return GuidesDetectionResult(coordinates=coords)
+        return (
+            sorted({float(v) for v in verticals}),
+            sorted({float(h) for h in horizontals}),
+        )
 
     @staticmethod
     def _select_lines(

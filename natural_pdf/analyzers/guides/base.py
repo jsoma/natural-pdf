@@ -41,6 +41,7 @@ from ._generation import (
     build_stripes_options,
     build_whitespace_options,
     generate_axis_coordinates,
+    generate_both_axis_coordinates,
     resolve_generation_context,
 )
 from ._grid_builder import build_single_page_grid
@@ -243,7 +244,7 @@ class GuidesList(UserList[float]):
         source_label: Optional[str] = None,
         max_lines: Optional[int] = None,
         outer: bool = False,
-        detection_method: str = "pixels",
+        detection_method: str = "auto",
         resolution: int = 192,
         *,
         n: Optional[int] = None,
@@ -264,7 +265,9 @@ class GuidesList(UserList[float]):
                 ``min_gap_h`` or ``min_gap_v`` depending on axis (ignored if those
                 keys are already supplied via ``detect_kwargs``).
             outer: Whether to add outer boundary guides
-            detection_method: 'vector', 'pixels' (default), or 'auto' for hybrid detection.
+            detection_method: 'auto' (default), 'vector', or 'pixels'. 'auto'
+                uses vector line information when line elements exist and falls
+                back to pixel detection otherwise.
             resolution: DPI for pixel-based detection (default: 192)
             **detect_kwargs: Additional parameters for pixel-based detection
                 (e.g., min_gap_h, min_gap_v, binarization_method, etc.)
@@ -1070,7 +1073,9 @@ class Guides:
             max_lines_h: Maximum number of horizontal lines to keep
             max_lines_v: Maximum number of vertical lines to keep
             outer: Whether to add outer boundary guides
-            detection_method: 'vector', 'pixels' (default), or 'auto' for hybrid detection.
+            detection_method: 'auto' (default), 'vector', or 'pixels'. 'auto'
+                uses vector line information when line elements exist and falls
+                back to pixel detection otherwise.
             resolution: DPI for pixel-based detection (default: 192)
             **detect_kwargs: Additional parameters for pixel-based detection:
                 - min_gap_h: Minimum gap between horizontal lines (pixels)
@@ -1087,28 +1092,11 @@ class Guides:
         guides = cls(context=obj, bounds=bounds)
 
         if axis == "both":
-            vertical_result = generate_axis_coordinates(
-                axis="vertical",
+            vertical_result, horizontal_result = generate_both_axis_coordinates(
                 method="lines",
                 context=obj,
                 options=build_line_options(
-                    "vertical",
-                    threshold=threshold,
-                    source_label=source_label,
-                    max_lines_h=max_lines_h,
-                    max_lines_v=max_lines_v,
-                    outer=outer,
-                    detection_method=detection_method,
-                    resolution=resolution,
-                    detect_kwargs=detect_kwargs,
-                ),
-            )
-            horizontal_result = generate_axis_coordinates(
-                axis="horizontal",
-                method="lines",
-                context=obj,
-                options=build_line_options(
-                    "horizontal",
+                    "both",
                     threshold=threshold,
                     source_label=source_label,
                     max_lines_h=max_lines_h,
@@ -2658,7 +2646,7 @@ class Guides:
         max_lines_h: Optional[int] = None,
         max_lines_v: Optional[int] = None,
         outer: bool = False,
-        detection_method: str = "vector",
+        detection_method: str = "auto",
         resolution: int = 192,
         **detect_kwargs,
     ) -> "Guides":
@@ -2674,7 +2662,7 @@ class Guides:
             max_lines_h: Maximum horizontal lines to use
             max_lines_v: Maximum vertical lines to use
             outer: Whether to add outer boundary guides
-            detection_method: 'vector', 'pixels', or 'auto' (default). 'auto' uses vector line
+            detection_method: 'auto' (default), 'vector', or 'pixels'. 'auto' uses vector line
                 information when available and falls back to pixel detection otherwise.
             resolution: DPI for pixel-based detection (default: 192)
             **detect_kwargs: Additional parameters for pixel detection (see from_lines)
@@ -2687,7 +2675,27 @@ class Guides:
         if target_obj is None:
             raise ValueError("No object provided and no context available")
 
-        if axis in ("vertical", "both"):
+        if axis == "both":
+            vertical_result, horizontal_result = generate_both_axis_coordinates(
+                method="lines",
+                context=target_obj,
+                options=build_line_options(
+                    "both",
+                    threshold=threshold,
+                    source_label=source_label,
+                    max_lines_h=max_lines_h,
+                    max_lines_v=max_lines_v,
+                    outer=outer,
+                    detection_method=detection_method,
+                    resolution=resolution,
+                    detect_kwargs=detect_kwargs,
+                ),
+            )
+            apply_generation_result(self, vertical_result, append=True)
+            apply_generation_result(self, horizontal_result, append=True)
+            return self
+
+        if axis == "vertical":
             self.vertical.from_lines(
                 obj=target_obj,
                 threshold=threshold,
@@ -2699,7 +2707,7 @@ class Guides:
                 append=True,
                 **detect_kwargs,
             )
-        if axis in ("horizontal", "both"):
+        if axis == "horizontal":
             self.horizontal.from_lines(
                 obj=target_obj,
                 threshold=threshold,

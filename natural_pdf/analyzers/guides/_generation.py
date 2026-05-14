@@ -6,11 +6,12 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional, Sequence, Union
 
 from natural_pdf.elements.element_collection import ElementCollection
-from natural_pdf.guides.guides_provider import run_guides_detect
+from natural_pdf.guides.guides_provider import run_guides_detect, run_guides_detect_both
 
 from .helpers import GuidesContext, _constituent_regions, _is_flow_region
 
 Axis = Literal["vertical", "horizontal"]
+LineOptionsAxis = Literal["vertical", "horizontal", "both"]
 OuterBoundaryMode = Union[bool, Literal["first", "last"]]
 
 
@@ -69,7 +70,7 @@ def build_content_options(
 
 
 def build_line_options(
-    axis: Axis,
+    axis: LineOptionsAxis,
     *,
     threshold: Union[float, str],
     source_label: Optional[str],
@@ -83,8 +84,8 @@ def build_line_options(
     return {
         "threshold": threshold,
         "source_label": source_label,
-        "max_lines_h": max_lines_h if axis == "horizontal" else None,
-        "max_lines_v": max_lines_v if axis == "vertical" else None,
+        "max_lines_h": max_lines_h if axis in ("horizontal", "both") else None,
+        "max_lines_v": max_lines_v if axis in ("vertical", "both") else None,
         "outer": outer,
         "detection_method": detection_method,
         "resolution": resolution,
@@ -162,4 +163,59 @@ def generate_axis_coordinates(
     return AxisGenerationResult(
         axis=axis,
         coordinates=[float(value) for value in result.coordinates],
+    )
+
+
+def generate_both_axis_coordinates(
+    *,
+    method: str,
+    context: GuidesContext,
+    options: Dict[str, Any],
+) -> tuple[AxisGenerationResult, AxisGenerationResult]:
+    if _is_flow_region(context):
+        vertical_region_coordinates: Dict[Any, List[float]] = {}
+        horizontal_region_coordinates: Dict[Any, List[float]] = {}
+        all_verticals: List[float] = []
+        all_horizontals: List[float] = []
+
+        for region in _constituent_regions(context):
+            result = run_guides_detect_both(
+                method=method,
+                context=region,
+                options=options,
+            )
+            verticals = [float(value) for value in result.vertical]
+            horizontals = [float(value) for value in result.horizontal]
+            vertical_region_coordinates[region] = verticals
+            horizontal_region_coordinates[region] = horizontals
+            all_verticals.extend(verticals)
+            all_horizontals.extend(horizontals)
+
+        return (
+            AxisGenerationResult(
+                axis="vertical",
+                coordinates=sorted(set(all_verticals)),
+                region_coordinates=vertical_region_coordinates,
+            ),
+            AxisGenerationResult(
+                axis="horizontal",
+                coordinates=sorted(set(all_horizontals)),
+                region_coordinates=horizontal_region_coordinates,
+            ),
+        )
+
+    result = run_guides_detect_both(
+        method=method,
+        context=context,
+        options=options,
+    )
+    return (
+        AxisGenerationResult(
+            axis="vertical",
+            coordinates=[float(value) for value in result.vertical],
+        ),
+        AxisGenerationResult(
+            axis="horizontal",
+            coordinates=[float(value) for value in result.horizontal],
+        ),
     )

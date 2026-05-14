@@ -373,12 +373,21 @@ class TestGuidesDefaults:
         params = sig.parameters
         assert params["threshold"].default == "auto"
         assert params["outer"].default is False
+        assert params["detection_method"].default == "auto"
 
         # Test main Guides.from_lines defaults
         sig2 = inspect.signature(Guides.from_lines)
         params2 = sig2.parameters
         assert params2["threshold"].default == "auto"
         assert params2["outer"].default is False
+        assert params2["detection_method"].default == "auto"
+
+        # Test Guides.add_lines defaults
+        sig3 = inspect.signature(Guides.add_lines)
+        params3 = sig3.parameters
+        assert params3["threshold"].default == "auto"
+        assert params3["outer"].default is False
+        assert params3["detection_method"].default == "auto"
 
     def test_from_content_defaults(self):
         """Test that from_content has correct defaults."""
@@ -387,6 +396,132 @@ class TestGuidesDefaults:
         sig = inspect.signature(Guides.from_content)
         params = sig.parameters
         assert params["outer"].default is True
+
+    def test_auto_line_detection_warns_vector_branch(self):
+        """Auto line detection should state when it chooses vector lines."""
+        mock_line = Mock()
+        mock_line.is_horizontal = True
+        mock_line.is_vertical = False
+        mock_line.x0, mock_line.x1 = 10, 90
+        mock_line.top, mock_line.bottom = 20, 22
+        mock_line.width = 80
+
+        class MockPage:
+            bbox = (0, 0, 100, 100)
+            lines = [mock_line]
+
+        with pytest.warns(UserWarning, match="selected detection_method='vector'"):
+            guides = Guides.from_lines(MockPage(), axis="horizontal", detection_method="auto")
+
+        assert guides.horizontal == [21.0]
+
+    def test_auto_line_detection_warns_pixels_branch(self):
+        """Auto line detection should state when it falls back to pixels."""
+
+        class MockPage:
+            bbox = (0, 0, 100, 100)
+
+            def __init__(self):
+                self.lines = []
+
+            def detect_lines(self, **kwargs):
+                detected = Mock()
+                detected.is_horizontal = False
+                detected.is_vertical = True
+                detected.x0, detected.x1 = 40, 42
+                detected.top, detected.bottom = 5, 95
+                detected.height = 90
+                detected.source = kwargs["source_label"]
+                self.lines = [detected]
+
+        with pytest.warns(UserWarning, match="selected detection_method='pixels'"):
+            guides = Guides.from_lines(MockPage(), axis="vertical", detection_method="auto")
+
+        assert guides.vertical == [41.0]
+
+    def test_from_lines_pixels_both_detects_once(self):
+        """Both-axis pixel line guides should share one detection pass."""
+
+        class MockPage:
+            bbox = (0, 0, 100, 100)
+
+            def __init__(self):
+                self.lines = []
+                self.detect_calls = []
+
+            def detect_lines(self, **kwargs):
+                self.detect_calls.append(kwargs)
+                vertical = Mock()
+                vertical.is_horizontal = False
+                vertical.is_vertical = True
+                vertical.x0, vertical.x1 = 40, 42
+                vertical.top, vertical.bottom = 5, 95
+                vertical.height = 90
+                vertical.source = kwargs["source_label"]
+
+                horizontal = Mock()
+                horizontal.is_horizontal = True
+                horizontal.is_vertical = False
+                horizontal.x0, horizontal.x1 = 10, 90
+                horizontal.top, horizontal.bottom = 20, 22
+                horizontal.width = 80
+                horizontal.source = kwargs["source_label"]
+                self.lines = [vertical, horizontal]
+
+        page = MockPage()
+        guides = Guides.from_lines(
+            page,
+            axis="both",
+            detection_method="pixels",
+            max_lines_h=3,
+            max_lines_v=4,
+        )
+
+        assert len(page.detect_calls) == 1
+        call = page.detect_calls[0]
+        assert call["horizontal"] is True
+        assert call["vertical"] is True
+        assert call["max_lines_h"] == 3
+        assert call["max_lines_v"] == 4
+        assert guides.vertical == [41.0]
+        assert guides.horizontal == [21.0]
+
+    def test_add_lines_pixels_both_detects_once(self):
+        """Instance add_lines(axis='both') should also share one detection pass."""
+
+        class MockPage:
+            bbox = (0, 0, 100, 100)
+
+            def __init__(self):
+                self.lines = []
+                self.detect_calls = []
+
+            def detect_lines(self, **kwargs):
+                self.detect_calls.append(kwargs)
+                vertical = Mock()
+                vertical.is_horizontal = False
+                vertical.is_vertical = True
+                vertical.x0, vertical.x1 = 30, 32
+                vertical.top, vertical.bottom = 10, 90
+                vertical.height = 80
+                vertical.source = kwargs["source_label"]
+
+                horizontal = Mock()
+                horizontal.is_horizontal = True
+                horizontal.is_vertical = False
+                horizontal.x0, horizontal.x1 = 8, 92
+                horizontal.top, horizontal.bottom = 60, 62
+                horizontal.width = 84
+                horizontal.source = kwargs["source_label"]
+                self.lines = [vertical, horizontal]
+
+        page = MockPage()
+        guides = Guides(page)
+        guides.add_lines(axis="both", detection_method="pixels")
+
+        assert len(page.detect_calls) == 1
+        assert guides.vertical == [31.0]
+        assert guides.horizontal == [61.0]
 
     def test_build_grid_defaults(self):
         """Test that build_grid has correct defaults."""

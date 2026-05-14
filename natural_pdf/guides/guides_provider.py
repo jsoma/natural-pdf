@@ -20,6 +20,13 @@ class GuidesDetectionResult:
     metadata: Optional[Dict[str, Any]] = None
 
 
+@dataclass
+class GuidesBothDetectionResult:
+    vertical: Sequence[float]
+    horizontal: Sequence[float]
+    metadata: Optional[Dict[str, Any]] = None
+
+
 class GuidesEngine:
     def detect(
         self,
@@ -30,6 +37,44 @@ class GuidesEngine:
         options: Dict[str, Any],
     ) -> GuidesDetectionResult:
         raise NotImplementedError
+
+    def detect_both(
+        self,
+        *,
+        method: str,
+        context: Any,
+        options: Dict[str, Any],
+    ) -> GuidesBothDetectionResult:
+        """Detect both guide axes. Engines can override to share expensive setup."""
+        vertical_options = dict(options)
+        horizontal_options = dict(options)
+        if "max_lines_h" in vertical_options:
+            vertical_options["max_lines_h"] = None
+        if "max_lines_v" in horizontal_options:
+            horizontal_options["max_lines_v"] = None
+
+        vertical = self.detect(
+            axis="vertical",
+            method=method,
+            context=context,
+            options=vertical_options,
+        )
+        horizontal = self.detect(
+            axis="horizontal",
+            method=method,
+            context=context,
+            options=horizontal_options,
+        )
+        metadata: Dict[str, Any] = {}
+        if vertical.metadata:
+            metadata["vertical"] = vertical.metadata
+        if horizontal.metadata:
+            metadata["horizontal"] = horizontal.metadata
+        return GuidesBothDetectionResult(
+            vertical=vertical.coordinates,
+            horizontal=horizontal.coordinates,
+            metadata=metadata or None,
+        )
 
 
 DEFAULT_GUIDE_ENGINES = {
@@ -58,6 +103,20 @@ class _RouterGuidesEngine(GuidesEngine):
         provider = get_provider()
         engine = provider.get("guides.detect", context=context, name=target_name)
         return engine.detect(axis=axis, method=method, context=context, options=options)
+
+    def detect_both(
+        self,
+        *,
+        method: str,
+        context: Any,
+        options: Dict[str, Any],
+    ) -> GuidesBothDetectionResult:
+        target_name = DEFAULT_GUIDE_ENGINES.get(method)
+        if not target_name:
+            raise LookupError(f"No built-in engine registered for guides method '{method}'.")
+        provider = get_provider()
+        engine = provider.get("guides.detect", context=context, name=target_name)
+        return engine.detect_both(method=method, context=context, options=options)
 
 
 def register_guides_engines(provider=None) -> None:
@@ -100,7 +159,34 @@ def run_guides_detect(
     return engine.detect(axis=axis, method=method, context=context, options=options or {})
 
 
+def run_guides_detect_both(
+    *,
+    method: str,
+    context: Any,
+    options: Optional[Dict[str, Any]] = None,
+    engine_name: Optional[str] = None,
+) -> GuidesBothDetectionResult:
+    provider = get_provider()
+    resolved_name = engine_name or DEFAULT_GUIDE_ENGINES.get(method) or "builtin"
+    if resolved_name is None:
+        raise ValueError(f"No default engine registered for guides method '{method}'.")
+    try:
+        engine = provider.get("guides.detect", context=context, name=resolved_name)
+    except LookupError as exc:
+        if resolved_name != "builtin":
+            engine = provider.get("guides.detect", context=context, name="builtin")
+        else:
+            raise exc
+    return engine.detect_both(method=method, context=context, options=options or {})
+
+
 register_guides_engines()
 
 
-__all__ = ["GuidesDetectionResult", "run_guides_detect", "register_guides_engines"]
+__all__ = [
+    "GuidesBothDetectionResult",
+    "GuidesDetectionResult",
+    "run_guides_detect",
+    "run_guides_detect_both",
+    "register_guides_engines",
+]
