@@ -6591,6 +6591,28 @@ detection methods or manually specified.</p>
 
 
 
+<h7 id="natural_pdf.Guides.last_ocr_result" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Guides</span><span class="o">.</span><span class="n">last_ocr_result</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Most recent result/plan returned by :meth:<code>apply_ocr</code>, if any.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
 <h7 id="natural_pdf.Guides.n_cols" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Guides</span><span class="o">.</span><span class="n">n_cols</span></code>
 
@@ -7153,7 +7175,7 @@ This allows: Guides.new(page).add_content(axis='vertical', markers=[...])</p>
 
 
 <h7 id="natural_pdf.Guides.add_lines" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Guides</span><span class="o">.</span><span class="n">add_lines</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">source_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_lines_h</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_lines_v</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">detection_method</span><span class="o">=</span><span class="s1">&#39;vector&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">192</span><span class="p">,</span> <span class="o">**</span><span class="n">detect_kwargs</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Guides</span><span class="o">.</span><span class="n">add_lines</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">source_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_lines_h</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_lines_v</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">detection_method</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">192</span><span class="p">,</span> <span class="o">**</span><span class="n">detect_kwargs</span><span class="p">)</span></code>
 
 </h7>
 
@@ -7296,12 +7318,12 @@ This allows: Guides.new(page).add_lines(axis='horizontal')</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>'vector', 'pixels', or 'auto' (default). 'auto' uses vector line
+                <p>'auto' (default), 'vector', or 'pixels'. 'auto' uses vector line
 information when available and falls back to pixel detection otherwise.</p>
               </div>
             </td>
             <td>
-                  <code>&#39;vector&#39;</code>
+                  <code>&#39;auto&#39;</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -7483,6 +7505,35 @@ This allows: Guides.new(page).add_whitespace(axis='both')</p>
           </tr>
       </tbody>
     </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h7 id="natural_pdf.Guides.apply_ocr" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Guides</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">languages</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">min_confidence</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="s1">&#39;ocr&#39;</span><span class="p">,</span> <span class="n">include_outer_boundaries</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">target_cell_px</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span> <span class="n">representative_percentile</span><span class="o">=</span><span class="mf">25.0</span><span class="p">,</span> <span class="n">min_resolution</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">max_resolution</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">max_side_px</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_area_px</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vertical_ratio</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">mixed_cell_threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">large_cell_ratio</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">detect_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">prefer_words</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">show_progress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Apply OCR to cell-aligned guide windows and add text to the page.</p>
+<p>This is a guide-scoped OCR pre-pass for tables whose full-page or
+full-table OCR is too large/dense for the OCR engine.  The default
+<code>window="auto"</code> chooses non-overlapping rectangular groups of whole
+cells, estimates DPI from the trimmed 25th percentile of
+<code>min(cell_width, cell_height)</code>, and keeps rendered crops under a
+conservative engine budget.</p>
+<p>Returns a :class:<code>GuidesOcrResult</code> containing the planned windows and
+OCR settings.  After a non-dry run, <code>extract_table()</code> on either the
+result or the same Guides instance will prefer word-based cell
+assignment unless the caller explicitly passes <code>cell_extract</code> /
+<code>cell_overlap</code>.</p>
 
 
     </div>
@@ -9106,7 +9157,9 @@ region extraction to leverage provider-backed table structure results.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>'vector', 'pixels' (default), or 'auto' for hybrid detection.</p>
+                <p>'auto' (default), 'vector', or 'pixels'. 'auto'
+uses vector line information when line elements exist and falls
+back to pixel detection otherwise.</p>
               </div>
             </td>
             <td>

@@ -2746,12 +2746,12 @@
 <p>Some PDFs don't embed explicit space characters. Natural PDF handles this automatically with two mechanisms:</p>
 <ol>
 <li><strong><code>x_tolerance_ratio</code></strong> — controls how far apart characters can be and still merge into a single word element. Defaults to <code>0.35</code> (35% of each character's font size). Characters of different font sizes are never merged together.</li>
-<li><strong><code>space_gap_ratio</code></strong> — after characters merge into a word, any internal gap ≥ this ratio × font size gets a space injected. Defaults to <code>0.15</code> (15% of font size).</li>
+<li><strong><code>space_gap_ratio</code></strong> — after characters merge into a word, any internal gap ≥ this ratio × font size gets a space injected. Defaults to <code>0.12</code> (12% of font size).</li>
 </ol>
 <div class="highlight"><pre><span></span><code>Are words stuck together (e.g. &quot;PublicFinancialDisclosure&quot;)?
 ├── Yes, and all text is one font size
-│   └── Increase space_gap_ratio (default 0.15)
-│       pdf = PDF(&quot;doc.pdf&quot;, text_tolerance={&quot;space_gap_ratio&quot;: 0.2})
+│   └── Lower space_gap_ratio (default 0.12)
+│       pdf = PDF(&quot;doc.pdf&quot;, text_tolerance={&quot;space_gap_ratio&quot;: 0.10})
 │
 ├── Yes, but only for larger text
 │   └── Increase x_tolerance_ratio so larger chars merge first
@@ -2812,7 +2812,7 @@
 </tr>
 <tr>
 <td><code>space_gap_ratio</code></td>
-<td><code>0.15</code></td>
+<td><code>0.12</code></td>
 <td>Gap ≥ this × font size within a merged word gets a space injected. Set to <code>0</code> to disable.</td>
 </tr>
 <tr>
