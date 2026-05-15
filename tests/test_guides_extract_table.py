@@ -119,6 +119,42 @@ def test_guides_extract_table_with_parameters():
         assert isinstance(result, TableResult)
 
 
+def test_guides_extract_table_prefers_words_after_guide_ocr():
+    mock_page = Mock()
+    mock_page.iter_regions.return_value = []
+    mock_page.remove_element.return_value = True
+    mock_page.add_element.return_value = True
+    mock_page.page_number = 1
+
+    guides = Guides(verticals=[100, 200], horizontals=[100, 200], context=mock_page)
+    guides._ocr_prefer_words = True
+
+    mock_table_region = Mock()
+    mock_grid_result = {
+        "regions": {"table": mock_table_region, "rows": [], "columns": [], "cells": []}
+    }
+    mock_table_region.extract_table.return_value = TableResult([["data"]])
+
+    with patch.object(guides, "build_grid", return_value=mock_grid_result):
+        guides.extract_table()
+
+    mock_table_region.extract_table.assert_called_once_with(
+        method=None,
+        table_settings=None,
+        use_ocr=False,
+        ocr_config=None,
+        text_options=None,
+        cell_extraction_func=None,
+        cell_extract="words",
+        cell_overlap="center",
+        cell_newlines=True,
+        show_progress=False,
+        content_filter=None,
+        apply_exclusions=True,
+        structure_engine=None,
+    )
+
+
 def test_guides_extract_table_cleanup_on_success():
     """Test that temporary regions are cleaned up after successful extraction."""
 

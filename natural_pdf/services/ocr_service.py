@@ -373,8 +373,8 @@ class OCRService:
                 file_stat = os.stat(pdf_path)
                 page_index = getattr(page_obj, "index", 0)
                 options_key = (
-                    normalized_options._init_key()
-                    if hasattr(normalized_options, "_init_key")
+                    normalized_options._cache_key()
+                    if hasattr(normalized_options, "_cache_key")
                     else ""
                 )
                 cache_key = compute_cache_key(
@@ -387,12 +387,14 @@ class OCRService:
                     resolution=final_resolution,
                     detect_only=detect_only,
                     device=resolved_device or "cpu",
-                    options_init_key=options_key,
+                    options_cache_key=options_key,
                     apply_exclusions=apply_exclusions,
+                    min_confidence=resolved_min_conf,
                     model=model,
                     prompt=prompt,
                     instructions=instructions,
                     max_new_tokens=max_new_tokens,
+                    layout=layout,
                     crop_bbox=crop_bbox,
                 )
 

@@ -146,6 +146,20 @@ class TestScaleOCRResults:
         # scale is 2x in both dimensions, plus offset
         assert scaled[0]["bbox"] == [70.0, 140.0, 110.0, 180.0]
 
+    def test_with_crop_offset_larger_than_crop_size(self):
+        results = [{"bbox": [10, 20, 30, 40], "text": "T", "confidence": 1.0}]
+        scaled = scale_ocr_results(
+            results,
+            image_width=100,
+            image_height=100,
+            page_width=80,
+            page_height=60,
+            offset_x=750,
+            offset_y=300,
+        )
+
+        assert scaled[0]["bbox"] == [758.0, 312.0, 774.0, 324.0]
+
     def test_zero_image_size_returns_unscaled(self):
         results = [{"bbox": [10, 20, 30, 40], "text": "T", "confidence": 1.0}]
         scaled = scale_ocr_results(
@@ -341,6 +355,45 @@ class TestApplyOCRVLMPath:
 
         mock_client.chat.completions.create.assert_called_once()
         pdf.close()
+
+    def test_region_vlm_ocr_respects_crop_offsets_larger_than_crop(self):
+        """VLM region OCR should anchor results even when crop offsets exceed crop size."""
+        import natural_pdf
+
+        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
+        try:
+            page = pdf.pages[0]
+            region = page.create_region(300, 400, 360, 460)
+
+            mock_client = MagicMock()
+            mock_response = json.dumps(
+                [{"bbox": [10, 10, 30, 30], "text": "Offset VLM", "confidence": 0.95}]
+            )
+            mock_client.chat.completions.create.return_value = SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content=mock_response))]
+            )
+
+            region.apply_ocr(
+                model="test-model",
+                client=mock_client,
+                resolution=72,
+                replace=False,
+            )
+
+            words = [
+                word
+                for word in page.words
+                if getattr(word, "source", None) == "ocr"
+                and getattr(word, "text", None) == "Offset VLM"
+            ]
+            assert words
+            word = words[-1]
+            assert word.x0 == pytest.approx(310.0, abs=1e-3)
+            assert word.top == pytest.approx(410.0, abs=1e-3)
+            assert word.x1 == pytest.approx(330.0, abs=1e-3)
+            assert word.bottom == pytest.approx(430.0, abs=1e-3)
+        finally:
+            pdf.close()
 
 
 # ---------------------------------------------------------------------------

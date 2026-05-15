@@ -203,6 +203,12 @@ class TestInitKeys:
         opts2 = RapidOCROptions(det_model_type="server")
         assert opts1._init_key() != opts2._init_key()
 
+    def test_rapidocr_runtime_options_change_result_key_not_init_key(self):
+        opts1 = RapidOCROptions(text_score=0.2)
+        opts2 = RapidOCROptions(text_score=0.5)
+        assert opts1._init_key() == opts2._init_key()
+        assert opts1._cache_key() != opts2._cache_key()
+
     def test_doctr_options(self):
         opts = DoctrOCROptions()
         key = opts._init_key()
@@ -223,6 +229,12 @@ class TestInitKeys:
         opts = PaddleOCRVLOptions()
         key = opts._init_key()
         assert isinstance(key, str)
+
+    def test_paddlevl_generation_options_change_result_key_not_init_key(self):
+        opts1 = PaddleOCRVLOptions(max_new_tokens=1024)
+        opts2 = PaddleOCRVLOptions(max_new_tokens=2048)
+        assert opts1._init_key() == opts2._init_key()
+        assert opts1._cache_key() != opts2._cache_key()
 
 
 # ---------------------------------------------------------------------------

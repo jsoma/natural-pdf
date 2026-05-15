@@ -244,10 +244,10 @@ def scale_ocr_results(
         results: OCR result dicts with ``bbox`` in image pixel coordinates.
         image_width: Width of the rendered image in pixels.
         image_height: Height of the rendered image in pixels.
-        page_width: Width of the PDF page/region in points.
-        page_height: Height of the PDF page/region in points.
-        offset_x: X offset for region crops.
-        offset_y: Y offset for region crops.
+        page_width: Width of the PDF page or rendered crop in points.
+        page_height: Height of the PDF page or rendered crop in points.
+        offset_x: Absolute page X offset for region crops.
+        offset_y: Absolute page Y offset for region crops.
 
     Returns:
         New list of result dicts with scaled ``bbox`` values.
@@ -272,11 +272,17 @@ def scale_ocr_results(
         if y0 > y1:
             y0, y1 = y1, y0
 
-        # Clamp to page bounds
-        x0 = max(0.0, min(x0, page_width))
-        y0 = max(0.0, min(y0, page_height))
-        x1 = max(0.0, min(x1, page_width))
-        y1 = max(0.0, min(y1, page_height))
+        # Clamp to the absolute bounds of the rendered target. For region
+        # crops, page_width/page_height are the crop dimensions while offset_*
+        # places that crop on the page.
+        min_x = offset_x
+        min_y = offset_y
+        max_x = offset_x + page_width
+        max_y = offset_y + page_height
+        x0 = max(min_x, min(x0, max_x))
+        y0 = max(min_y, min(y0, max_y))
+        x1 = max(min_x, min(x1, max_x))
+        y1 = max(min_y, min(y1, max_y))
 
         # Skip degenerate boxes
         if x1 - x0 < 0.1 or y1 - y0 < 0.1:

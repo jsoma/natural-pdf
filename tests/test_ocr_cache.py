@@ -1,8 +1,10 @@
 """Tests for OCR result caching."""
 
+import json
 from types import SimpleNamespace
 
 from natural_pdf.ocr.ocr_cache import OCRCache, compute_cache_key, set_default_cache
+from natural_pdf.ocr.ocr_options import RapidOCROptions
 from natural_pdf.ocr.unified_dispatch import OCRRunResult
 from natural_pdf.services.ocr_service import OCRService
 
@@ -67,6 +69,26 @@ class TestCacheKey:
         key1 = compute_cache_key(**self.BASE)
         key2 = compute_cache_key(**{**self.BASE, "crop_bbox": (10, 20, 110, 120)})
         assert key1 != key2
+
+    def test_changes_with_min_confidence(self):
+        key1 = compute_cache_key(**{**self.BASE, "min_confidence": 0.2})
+        key2 = compute_cache_key(**{**self.BASE, "min_confidence": 0.5})
+        assert key1 != key2
+
+    def test_changes_with_options_cache_key(self):
+        key1 = compute_cache_key(**{**self.BASE, "options_cache_key": "text_score=0.2"})
+        key2 = compute_cache_key(**{**self.BASE, "options_cache_key": "text_score=0.5"})
+        assert key1 != key2
+
+    def test_changes_with_layout(self):
+        key1 = compute_cache_key(**self.BASE)
+        key2 = compute_cache_key(**{**self.BASE, "layout": "rapidocr"})
+        assert key1 != key2
+
+    def test_glm_layout_rapidocr_differs_from_plain_rapidocr(self):
+        glm_key = compute_cache_key(**{**self.BASE, "engine_name": "glm_ocr", "layout": "rapidocr"})
+        rapidocr_key = compute_cache_key(**{**self.BASE, "engine_name": "rapidocr", "layout": None})
+        assert glm_key != rapidocr_key
 
 
 # ---------------------------------------------------------------------------
@@ -262,5 +284,50 @@ def test_region_ocr_cache_isolated_from_full_page_payload(monkeypatch, tmp_path)
         assert region_create_call["scale_y"] == 1.0
         assert region_create_call["offset_x"] == 25
         assert region_create_call["offset_y"] == 25
+    finally:
+        set_default_cache(previous_cache)
+
+
+def test_apply_ocr_cache_key_uses_runtime_option_fields(monkeypatch, tmp_path):
+    pdf_path = tmp_path / "source.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+
+    previous_cache = set_default_cache(OCRCache(cache_dir=tmp_path / "ocr-cache"))
+    try:
+        service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+        page = _FakePage(pdf_path)
+        captured = {}
+
+        def fake_run_ocr(**kwargs):
+            return OCRRunResult(
+                results=[{"bbox": [0, 0, 10, 10], "text": "inside", "confidence": 0.99}],
+                image_size=(100, 100),
+            )
+
+        real_compute_cache_key = compute_cache_key
+
+        def recording_compute_cache_key(**kwargs):
+            captured.update(kwargs)
+            return real_compute_cache_key(**kwargs)
+
+        monkeypatch.setattr("natural_pdf.services.ocr_service.run_ocr", fake_run_ocr)
+        monkeypatch.setattr(
+            "natural_pdf.ocr.ocr_cache.compute_cache_key",
+            recording_compute_cache_key,
+        )
+
+        service.apply_ocr(
+            page,
+            engine="rapidocr",
+            options=RapidOCROptions(text_score=0.2),
+            languages=["en"],
+            min_confidence=0.4,
+            device="cpu",
+        )
+
+        options_payload = json.loads(captured["options_cache_key"])
+        assert options_payload["class"] == "RapidOCROptions"
+        assert options_payload["options"]["text_score"] == 0.2
+        assert captured["min_confidence"] == 0.4
     finally:
         set_default_cache(previous_cache)

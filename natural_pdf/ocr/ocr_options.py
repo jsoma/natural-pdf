@@ -1,5 +1,6 @@
 # ocr_options.py
-from dataclasses import dataclass, field
+import json
+from dataclasses import asdict, dataclass, field, is_dataclass
 from typing import Any, Dict, Optional, Tuple, Union
 
 from natural_pdf.utils.option_validation import (
@@ -24,6 +25,37 @@ class BaseOCROptions:
         (not runtime inference params like thresholds or batch sizes).
         """
         return ""
+
+    def _cache_key(self) -> str:
+        """Return a stable string of fields that can affect OCR output.
+
+        This is intentionally broader than ``_init_key()``. Engine instances
+        should be reused across runtime-only changes, but cached OCR results
+        must be invalidated when thresholds, batching, generation settings, or
+        provider-specific extra args can change the emitted text or boxes.
+        """
+        data = asdict(self) if is_dataclass(self) else dict(getattr(self, "__dict__", {}))
+        payload = {
+            "class": self.__class__.__qualname__,
+            "options": _json_safe(data),
+        }
+        return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+def _json_safe(value: Any) -> Any:
+    """Normalize arbitrary option values into stable JSON-compatible data."""
+    if isinstance(value, dict):
+        return {
+            str(key): _json_safe(item)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        }
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, (set, frozenset)):
+        return [_json_safe(item) for item in sorted(value, key=repr)]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return repr(value)
 
 
 # --- EasyOCR Specific Options ---

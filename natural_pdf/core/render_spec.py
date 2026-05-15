@@ -93,6 +93,10 @@ class RenderSpec:
         element: Optional[Any] = None,
         attributes_to_draw: Optional[Dict[str, Any]] = None,
         quantitative_metadata: Optional[Dict[str, Any]] = None,
+        fill: Optional[bool] = None,
+        outline: Optional[bool] = None,
+        line_width: Optional[float] = None,
+        vertices: Optional[bool] = None,
     ) -> None:
         """Add a highlight to this render spec.
 
@@ -127,6 +131,10 @@ class RenderSpec:
             "element": element,
             "attributes_to_draw": attributes_to_draw,
             "quantitative_metadata": quantitative_metadata,
+            "fill": fill,
+            "outline": outline,
+            "line_width": line_width,
+            "vertices": vertices,
         }
         # Remove None values
         highlight = {k: v for k, v in highlight.items() if v is not None}
@@ -198,6 +206,10 @@ def add_explicit_highlights_to_spec(
             label=entry_label,
             attributes_to_draw=entry_dict.get("attributes_to_draw"),
             quantitative_metadata=entry_dict.get("quantitative_metadata"),
+            fill=entry_dict.get("fill"),
+            outline=entry_dict.get("outline"),
+            line_width=entry_dict.get("line_width", entry_dict.get("linewidth")),
+            vertices=entry_dict.get("vertices"),
         )
 
 

@@ -42,18 +42,22 @@ def compute_cache_key(
     resolution: int,
     detect_only: bool,
     device: str,
-    options_init_key: str,
+    options_init_key: str = "",
     apply_exclusions: bool = True,
+    min_confidence: Optional[float] = None,
+    options_cache_key: Optional[str] = None,
     model: Optional[str] = None,
     prompt: Optional[str] = None,
     instructions: Optional[str] = None,
     max_new_tokens: Optional[int] = None,
+    layout: Optional[bool | str] = None,
     crop_bbox: Optional[Tuple[float, float, float, float]] = None,
 ) -> str:
     """Return a SHA-256 hex digest for the given OCR parameters."""
     crop_key = ""
     if crop_bbox is not None:
         crop_key = ",".join(f"{float(coord):.6f}" for coord in crop_bbox)
+    options_key = options_cache_key if options_cache_key is not None else options_init_key
 
     raw = "|".join(
         str(v)
@@ -68,12 +72,14 @@ def compute_cache_key(
             resolution,
             detect_only,
             device,
-            options_init_key,
+            min_confidence if min_confidence is not None else "",
+            options_key,
             apply_exclusions,
             model or "",
             prompt or "",
             instructions or "",
             max_new_tokens or "",
+            layout if layout is not None else "",
         )
     )
     return hashlib.sha256(raw.encode()).hexdigest()

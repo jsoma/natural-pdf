@@ -4,7 +4,7 @@ import pytest
 from PIL import ImageChops
 
 from natural_pdf import PDF
-from natural_pdf.core.render_spec import RenderSpec
+from natural_pdf.core.render_spec import RenderSpec, add_explicit_highlights_to_spec
 from natural_pdf.utils.visualization import ColorManager
 
 PDF_PATH = Path("pdfs/multicolumn.pdf")
@@ -59,6 +59,33 @@ def test_render_with_direct_highlight_changes_pixels(sample_pdf):
     assert clean is not None
     assert highlighted is not None
     assert _images_differ(clean, highlighted)
+
+
+def test_explicit_highlight_style_options_are_preserved():
+    spec = RenderSpec(page=object())
+
+    add_explicit_highlights_to_spec(
+        spec,
+        [
+            {
+                "bbox": (1, 2, 3, 4),
+                "color": "blue",
+                "fill": False,
+                "line_width": 3,
+                "vertices": False,
+            }
+        ],
+    )
+
+    assert spec.highlights == [
+        {
+            "bbox": (1, 2, 3, 4),
+            "color": "blue",
+            "fill": False,
+            "line_width": 3,
+            "vertices": False,
+        }
+    ]
 
 
 def test_highlight_context_render_uses_accumulated_highlights(sample_pdf):

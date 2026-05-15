@@ -69,6 +69,22 @@ def _load_font(size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 
+def _coerce_bool(value: Any, default: bool) -> bool:
+    if value is None:
+        return default
+    return bool(value)
+
+
+def _line_width(value: Any, scale_factor: float) -> int:
+    if value is None:
+        return 1
+    try:
+        width = float(value)
+    except (TypeError, ValueError):
+        return 1
+    return max(1, int(round(width * max(1.0, scale_factor))))
+
+
 def draw_vertices(
     draw: ImageDraw.ImageDraw,
     vertices: List[Tuple[float, float]],
@@ -1099,6 +1115,15 @@ class HighlightingService:
             # Draw the highlight
             border_color = (color[0], color[1], color[2], BORDER_ALPHA)
             vertex_size = max(3, int(2 * scale_factor))
+            draw_fill = _coerce_bool(highlight_dict.get("fill"), True)
+            draw_outline = _coerce_bool(highlight_dict.get("outline"), True)
+            draw_vertices_enabled = _coerce_bool(highlight_dict.get("vertices"), True)
+            line_width = _line_width(
+                highlight_dict.get("line_width", highlight_dict.get("linewidth")),
+                scale_factor,
+            )
+            fill_color = color if draw_fill else None
+            outline_color = border_color if draw_outline else None
             scaled_bbox = None
 
             if polygon is not None:
@@ -1110,8 +1135,13 @@ class HighlightingService:
                     )
                     for p in polygon
                 ]
-                draw.polygon(scaled_polygon, fill=color, outline=border_color)
-                draw_vertices(draw, scaled_polygon, border_color, vertex_size)
+                if fill_color is not None:
+                    draw.polygon(scaled_polygon, fill=fill_color)
+                if outline_color is not None:
+                    outline_points = list(scaled_polygon) + [scaled_polygon[0]]
+                    draw.line(outline_points, fill=outline_color, width=line_width)
+                if draw_vertices_enabled:
+                    draw_vertices(draw, scaled_polygon, border_color, vertex_size)
                 # Compute bounding box from polygon for attribute drawing
                 xs = [p[0] for p in scaled_polygon]
                 ys = [p[1] for p in scaled_polygon]
@@ -1125,14 +1155,20 @@ class HighlightingService:
                     (x1 + page_offset_x) * scale_factor - offset_x,
                     (y1 + page_offset_y) * scale_factor - offset_y,
                 ]
-                draw.rectangle(scaled_bbox, fill=color, outline=border_color)
+                draw.rectangle(
+                    scaled_bbox,
+                    fill=fill_color,
+                    outline=outline_color,
+                    width=line_width,
+                )
                 vertices = [
                     (scaled_bbox[0], scaled_bbox[1]),
                     (scaled_bbox[2], scaled_bbox[1]),
                     (scaled_bbox[2], scaled_bbox[3]),
                     (scaled_bbox[0], scaled_bbox[3]),
                 ]
-                draw_vertices(draw, vertices, border_color, vertex_size)
+                if draw_vertices_enabled:
+                    draw_vertices(draw, vertices, border_color, vertex_size)
 
             # Draw attributes if present
             if scaled_bbox is not None:
