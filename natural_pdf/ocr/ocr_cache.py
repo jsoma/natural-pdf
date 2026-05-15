@@ -3,7 +3,7 @@
 Results are cached in the user's platform cache directory
 (``~/.cache/natural-pdf/ocr/`` on Linux/macOS, AppData on Windows).
 Cache entries are keyed on ``(pdf_path, file_mtime, file_size,
-page_index, engine, languages, resolution, ...)``, so they
+page_index, rendered crop, engine, languages, resolution, ...)``, so they
 auto-invalidate when the PDF changes.
 """
 
@@ -48,8 +48,13 @@ def compute_cache_key(
     prompt: Optional[str] = None,
     instructions: Optional[str] = None,
     max_new_tokens: Optional[int] = None,
+    crop_bbox: Optional[Tuple[float, float, float, float]] = None,
 ) -> str:
     """Return a SHA-256 hex digest for the given OCR parameters."""
+    crop_key = ""
+    if crop_bbox is not None:
+        crop_key = ",".join(f"{float(coord):.6f}" for coord in crop_bbox)
+
     raw = "|".join(
         str(v)
         for v in (
@@ -57,6 +62,7 @@ def compute_cache_key(
             file_mtime_ns,
             file_size,
             page_index,
+            crop_key,
             engine_name,
             ",".join(languages),
             resolution,

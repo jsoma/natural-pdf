@@ -66,27 +66,37 @@ class OCRService:
         return {"apply_exclusions": apply_exclusions}
 
     @staticmethod
-    def _resolve_offsets(host, render_kwargs: Optional[Dict[str, Any]]) -> Tuple[float, float]:
+    def _resolve_crop_bbox(
+        host, render_kwargs: Optional[Dict[str, Any]]
+    ) -> Optional[Tuple[float, float, float, float]]:
         if not render_kwargs:
-            return 0.0, 0.0
+            return None
 
         crop_bbox = render_kwargs.get("crop_bbox")
-        bbox = None
         if (
             isinstance(crop_bbox, (list, tuple))
             and len(crop_bbox) == 4
             and all(isinstance(coord, (int, float)) for coord in crop_bbox)
         ):
-            bbox = crop_bbox
-        elif render_kwargs.get("crop"):
-            bbox = getattr(host, "bbox", None)
+            return tuple(float(coord) for coord in crop_bbox)
 
-        if bbox and len(bbox) >= 2:
-            try:
-                return float(bbox[0]), float(bbox[1])
-            except (TypeError, ValueError):
-                return 0.0, 0.0
-        return 0.0, 0.0
+        if render_kwargs.get("crop"):
+            bbox = getattr(host, "bbox", None)
+            if (
+                isinstance(bbox, (list, tuple))
+                and len(bbox) == 4
+                and all(isinstance(coord, (int, float)) for coord in bbox)
+            ):
+                return tuple(float(coord) for coord in bbox)
+
+        return None
+
+    @classmethod
+    def _resolve_offsets(cls, host, render_kwargs: Optional[Dict[str, Any]]) -> Tuple[float, float]:
+        crop_bbox = cls._resolve_crop_bbox(host, render_kwargs)
+        if crop_bbox is None:
+            return 0.0, 0.0
+        return crop_bbox[0], crop_bbox[1]
 
     def _resolve_resolution(self, host, requested: Optional[int], scope: str) -> int:
         if requested is not None:
@@ -345,6 +355,7 @@ class OCRService:
 
         final_resolution = self._resolve_resolution(host, resolution, scope)
         render_kwargs = self._render_kwargs(host, apply_exclusions=apply_exclusions)
+        crop_bbox = self._resolve_crop_bbox(host, render_kwargs)
         offset_x, offset_y = self._resolve_offsets(host, render_kwargs)
 
         # --- OCR result cache ---
@@ -382,6 +393,7 @@ class OCRService:
                     prompt=prompt,
                     instructions=instructions,
                     max_new_tokens=max_new_tokens,
+                    crop_bbox=crop_bbox,
                 )
 
                 cached = cache.get(cache_key)

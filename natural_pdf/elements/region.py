@@ -322,7 +322,7 @@ class Region(
         return "region"
 
     def _ocr_render_kwargs(self, *, apply_exclusions: bool = True) -> Dict[str, Any]:
-        return {"crop": True}
+        return {"crop": True, "crop_bbox": self.bbox}
 
     def _qa_context_page_number(self) -> int:
         return self.page.number
