@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Sequence
 
 from natural_pdf.analyzers.guides.helpers import (
@@ -160,12 +161,16 @@ class LinesGuidesEngine(GuidesEngine):
                 if key in detect_kwargs:
                     detect_params[key] = detect_kwargs[key]
 
-            context.detect_lines(**detect_params)
-            lines = [
-                line
-                for line in _collect_line_elements(context)
-                if getattr(line, "source", None) == detect_params["source_label"]
-            ]
+            line_element_data = self._detect_pixel_line_element_data(context, detect_params)
+            if line_element_data is not None:
+                lines = [self._line_like_from_element_data(data) for data in line_element_data]
+            else:
+                context.detect_lines(**detect_params)
+                lines = [
+                    line
+                    for line in _collect_line_elements(context)
+                    if getattr(line, "source", None) == detect_params["source_label"]
+                ]
         elif method != "vector":
             raise ValueError(
                 f"Unsupported detection method '{detection_method}'. Use 'pixels', 'vector', or 'auto'."
@@ -224,3 +229,35 @@ class LinesGuidesEngine(GuidesEngine):
         else:
             coords = [coord for coord, _, _ in line_data]
         return sorted({float(coord) for coord in coords})
+
+    @staticmethod
+    def _detect_pixel_line_element_data(
+        context: GuidesContext,
+        detect_params: Dict[str, Any],
+    ) -> Optional[List[Dict[str, Any]]]:
+        services = getattr(context, "services", None)
+        shapes = getattr(services, "shapes", None)
+        detector = getattr(shapes, "detect_line_element_data", None)
+        if not callable(detector):
+            return None
+        return detector(context, **detect_params)
+
+    @staticmethod
+    def _line_like_from_element_data(data: Dict[str, Any]) -> Any:
+        x0 = float(data.get("x0", 0.0))
+        x1 = float(data.get("x1", x0))
+        top = float(data.get("top", 0.0))
+        bottom = float(data.get("bottom", top))
+        width = abs(x1 - x0)
+        height = abs(bottom - top)
+        return SimpleNamespace(
+            x0=x0,
+            x1=x1,
+            top=top,
+            bottom=bottom,
+            width=width,
+            height=height,
+            source=data.get("source"),
+            is_horizontal=width >= height,
+            is_vertical=height > width,
+        )

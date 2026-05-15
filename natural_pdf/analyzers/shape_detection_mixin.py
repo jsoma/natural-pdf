@@ -643,6 +643,125 @@ class ShapeDetectionMixin:
             # This should never happen due to validation above, but just in case
             raise ValueError(f"Unsupported method: {method}")
 
+    def _detect_line_element_data(
+        self,
+        resolution: int,
+        source_label: str,
+        method: str,
+        horizontal: bool,
+        vertical: bool,
+        peak_threshold_h: float,
+        min_gap_h: int,
+        peak_threshold_v: float,
+        min_gap_v: int,
+        max_lines_h: Optional[int],
+        max_lines_v: Optional[int],
+        binarization_method: str,
+        adaptive_thresh_block_size: int,
+        adaptive_thresh_C_val: int,
+        morph_op_h: str,
+        morph_kernel_h: Tuple[int, int],
+        morph_op_v: str,
+        morph_kernel_v: Tuple[int, int],
+        smoothing_sigma_h: float,
+        smoothing_sigma_v: float,
+        peak_width_rel_height: float,
+        off_angle: int,
+        min_line_length: int,
+        merge_angle_tolerance: int,
+        merge_distance_tolerance: int,
+        merge_endpoint_tolerance: int,
+        initial_min_line_length: int,
+        min_nfa_score_horizontal: float,
+        min_nfa_score_vertical: float,
+    ) -> List[Dict]:
+        """Return detected line element dictionaries without adding them to the page."""
+        if not horizontal and not vertical:
+            logger.info("Line detection skipped as both horizontal and vertical are False.")
+            return []
+
+        if method not in ["projection", "lsd"]:
+            raise ValueError(f"Invalid method '{method}'. Supported methods: 'projection', 'lsd'")
+
+        cv_image, scale_factor, origin_offset_pdf, page_object_ctx = self._get_image_for_detection(
+            resolution
+        )
+        if cv_image is None or page_object_ctx is None:
+            logger.warning(f"Skipping line detection for {self} due to image error.")
+            return []
+
+        if method == "projection":
+            pil_image_for_dims = Image.fromarray(cv_image)
+            if pil_image_for_dims.mode != "RGB":
+                pil_image_for_dims = pil_image_for_dims.convert("RGB")
+
+            lines_data_img, _profile_h_smoothed, _profile_v_smoothed = (
+                self._find_lines_on_image_data(
+                    cv_image=cv_image,
+                    pil_image_rgb=pil_image_for_dims,
+                    horizontal=horizontal,
+                    vertical=vertical,
+                    peak_threshold_h=peak_threshold_h,
+                    min_gap_h=min_gap_h,
+                    peak_threshold_v=peak_threshold_v,
+                    min_gap_v=min_gap_v,
+                    max_lines_h=max_lines_h,
+                    max_lines_v=max_lines_v,
+                    binarization_method=binarization_method,
+                    adaptive_thresh_block_size=adaptive_thresh_block_size,
+                    adaptive_thresh_C_val=adaptive_thresh_C_val,
+                    morph_op_h=morph_op_h,
+                    morph_kernel_h=morph_kernel_h,
+                    morph_op_v=morph_op_v,
+                    morph_kernel_v=morph_kernel_v,
+                    smoothing_sigma_h=smoothing_sigma_h,
+                    smoothing_sigma_v=smoothing_sigma_v,
+                    peak_width_rel_height=peak_width_rel_height,
+                )
+            )
+        else:
+            try:
+                import cv2  # noqa: F401
+            except ImportError:
+                raise ImportError(
+                    "OpenCV (cv2) is required for LSD line detection. "
+                    "Install it with: pip install opencv-python\n"
+                    "Alternatively, use method='projection' which requires no additional dependencies."
+                )
+
+            lines_data_img = self._process_image_for_lines_lsd(
+                cv_image,
+                off_angle,
+                min_line_length,
+                merge_angle_tolerance,
+                merge_distance_tolerance,
+                merge_endpoint_tolerance,
+                initial_min_line_length,
+                min_nfa_score_horizontal,
+                min_nfa_score_vertical,
+            )
+            lines_data_img = [
+                line_data
+                for line_data in lines_data_img
+                if (
+                    horizontal
+                    and abs(line_data["y2"] - line_data["y1"])
+                    < abs(line_data["x2"] - line_data["x1"])
+                )
+                or (
+                    vertical
+                    and abs(line_data["y2"] - line_data["y1"])
+                    >= abs(line_data["x2"] - line_data["x1"])
+                )
+            ]
+
+        return [
+            self._convert_line_to_element_data(
+                line_data_item_img, scale_factor, origin_offset_pdf, page_object_ctx, source_label
+            )
+            for line_data_item_img in lines_data_img
+        ]
+
     def _detect_lines_projection(
         self,
         resolution: int,

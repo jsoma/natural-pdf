@@ -486,6 +486,47 @@ class TestGuidesDefaults:
         assert guides.vertical == [41.0]
         assert guides.horizontal == [21.0]
 
+    def test_from_lines_pixels_uses_non_mutating_line_data_when_available(self):
+        """Guide pixel detection should not add detected lines to page elements."""
+
+        class MockShapesService:
+            def __init__(self):
+                self.detect_calls = []
+
+            def detect_line_element_data(self, host, **kwargs):
+                self.detect_calls.append(kwargs)
+                return [
+                    {
+                        "x0": 40,
+                        "x1": 40,
+                        "top": 5,
+                        "bottom": 95,
+                        "source": kwargs["source_label"],
+                    }
+                ]
+
+        class MockServices:
+            def __init__(self):
+                self.shapes = MockShapesService()
+
+        class MockPage:
+            bbox = (0, 0, 100, 100)
+
+            def __init__(self):
+                self.lines = []
+                self.services = MockServices()
+
+            def detect_lines(self, **kwargs):
+                raise AssertionError("guide detection should not add page line elements")
+
+        page = MockPage()
+        guides = Guides.from_lines(page, axis="vertical", detection_method="pixels", max_lines_v=2)
+
+        assert page.lines == []
+        assert len(page.services.shapes.detect_calls) == 1
+        assert page.services.shapes.detect_calls[0]["max_lines_v"] == 2
+        assert guides.vertical == [40.0]
+
     def test_add_lines_pixels_both_detects_once(self):
         """Instance add_lines(axis='both') should also share one detection pass."""
 
@@ -649,8 +690,10 @@ def test_add_method_flexibility(practice_pdf):
 
 def test_pixel_based_line_detection(practice_pdf_fresh):
     """Test that pixel-based line detection works in Guides API."""
-    # Use fresh PDF as pixel detection may add LineElements to the page
     page = practice_pdf_fresh.pages[0]
+    source_lines_before = [
+        l for l in page.lines if getattr(l, "source", None) == "guides_detection"
+    ]
 
     # Test 1: Create guides from pixel-based line detection
     guides = Guides.from_lines(
@@ -689,10 +732,9 @@ def test_pixel_based_line_detection(practice_pdf_fresh):
     # At least one direction should have lines
     assert len(guides3.vertical) > 0 or len(guides3.horizontal) > 0
 
-    # Test 5: Ensure pixel detection creates actual LineElements
-    # Check that the lines were added to the page
+    # Test 5: Guide pixel detection should not add actual LineElements
     pixel_lines = [l for l in page.lines if getattr(l, "source", None) == "guides_detection"]
-    assert len(pixel_lines) > 0, "Pixel detection should create LineElement objects"
+    assert len(pixel_lines) == len(source_lines_before)
 
 
 def test_property_accessors_with_negative_indexing(practice_pdf):
