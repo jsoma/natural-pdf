@@ -4,6 +4,7 @@ Centralized service for managing and rendering highlights in a PDF document.
 
 import logging  # Added
 from dataclasses import dataclass, field
+from numbers import Real
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, Union, cast
 
 from PIL import Image, ImageDraw, ImageFont
@@ -21,6 +22,7 @@ from natural_pdf.utils.visualization import (
     ColorManager,
     DirectCropRenderUnsupportedError,
     create_legend,
+    legend_width_for_image,
     merge_images_with_legend,
     render_cropped_page,
     render_plain_page,
@@ -380,35 +382,33 @@ class HighlightingService:
         if color_input is None:
             return None
 
-        if isinstance(color_input, tuple):
-            # Convert float values (0.0-1.0) to int (0-255)
-            processed = []
-            all_float = all(isinstance(c, float) and 0.0 <= c <= 1.0 for c in color_input[:3])
-
-            for i, c in enumerate(color_input):
-                if isinstance(c, float):
-                    val = (
-                        int(c * 255)
-                        if (i < 3 and all_float) or (i == 3 and 0.0 <= c <= 1.0)
-                        else int(c)
-                    )
-                elif isinstance(c, int):
-                    val = c
-                else:
-                    logger.warning(f"Invalid color component type: {c} in {color_input}")
-                    return None  # Invalid type
-                processed.append(max(0, min(255, val)))  # Clamp to 0-255
-
-            # Check length and add default alpha if needed
-            if len(processed) == 3:
-                # Use alpha from ColorManager instance
-                processed.append(self._color_manager._alpha)
-                return cast(RGBAColor, tuple(processed))
-            elif len(processed) == 4:
-                return cast(RGBAColor, tuple(processed))
-            else:
+        if isinstance(color_input, (tuple, list)):
+            if len(color_input) not in (3, 4):
                 logger.warning(f"Invalid color tuple length: {color_input}")
-                return None  # Invalid length
+                return None
+
+            if any(isinstance(c, bool) or not isinstance(c, Real) for c in color_input):
+                logger.warning(f"Invalid color component type in {color_input}")
+                return None
+
+            rgb_components = [float(c) for c in color_input[:3]]
+            rgb_is_normalized = all(0.0 <= c <= 1.0 for c in rgb_components)
+            processed = [
+                max(0, min(255, int(c * 255 if rgb_is_normalized else c))) for c in rgb_components
+            ]
+
+            if len(color_input) == 4:
+                alpha_component = float(color_input[3])
+                alpha = (
+                    int(alpha_component * 255)
+                    if 0.0 <= alpha_component <= 1.0
+                    else int(alpha_component)
+                )
+                processed.append(max(0, min(255, alpha)))
+            else:
+                processed.append(self._color_manager._alpha)
+
+            return cast(RGBAColor, tuple(processed))
 
         elif isinstance(color_input, str):
             try:
@@ -939,6 +939,7 @@ class HighlightingService:
             from natural_pdf.utils.visualization import (
                 create_colorbar,
                 create_legend,
+                legend_width_for_image,
                 merge_images_with_legend,
             )
 
@@ -980,9 +981,18 @@ class HighlightingService:
                             spec_labels[label] = processed_color
                         else:
                             spec_labels[label] = self._color_manager.get_color(label=label)
+                    elif label and hl.get("_label_generated"):
+                        spec_labels[label] = self._color_manager.get_color(label=label)
 
                 if spec_labels:
-                    legend = create_legend(spec_labels)
+                    legend_position_key = (legend_position or "right").lower()
+                    legend = create_legend(
+                        spec_labels,
+                        width=legend_width_for_image(page_image.width, legend_position_key),
+                        max_height=(
+                            page_image.height if legend_position_key in {"left", "right"} else None
+                        ),
+                    )
                     if legend:
                         page_image = merge_images_with_legend(
                             page_image, legend, position=legend_position
@@ -1052,9 +1062,15 @@ class HighlightingService:
             if bbox is None and polygon is None:
                 raise ValueError(f"Highlight {idx} lacks geometry (bbox or polygon required)")
 
+            # Generate labels before color lookup so label-based colors and legends agree.
+            label = highlight_dict.get("label")
+            if label is None and labels and label_format:
+                label = label_format.format(index=idx, spec_index=spec_index, total=len(highlights))
+                highlight_dict["label"] = label
+                highlight_dict["_label_generated"] = True
+
             # Get color
             color = highlight_dict.get("color")
-            label = highlight_dict.get("label")
 
             if color is None:
                 # Use label-based color assignment for consistency
@@ -1064,11 +1080,6 @@ class HighlightingService:
                 color = self._process_color_input(color)
                 if color is None:
                     color = self._color_manager.get_color(label=label, force_cycle=False)
-
-            # Generate label if needed
-            if label is None and labels and label_format:
-                # Generate label from format
-                label = label_format.format(index=idx, spec_index=spec_index, total=len(highlights))
 
             # Calculate offset for cropped images
             offset_x = 0

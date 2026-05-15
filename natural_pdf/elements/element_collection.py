@@ -30,7 +30,7 @@ from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixi
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsBBox, SupportsElement, SupportsGeometry
-from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 from natural_pdf.elements.base import Element
 from natural_pdf.elements.mixins.classification_batch_mixin import ClassificationBatchMixin
 from natural_pdf.elements.region import Region
@@ -244,7 +244,7 @@ class ElementCollection(
         self,
         mode: Literal["show", "render"] = "show",
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
-        highlights: Optional[List[Dict[str, Any]]] = None,
+        highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
         crop: Union[bool, int, str, "Region", Literal["wide"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         group_by: Optional[str] = None,
@@ -334,7 +334,7 @@ class ElementCollection(
         # Pre-compute highlight data once (outside per-page loop) if group_by is used
         _cached_prepared_highlights = None
         _cached_quantitative_metadata = None
-        if mode == "show" and group_by is not None:
+        if mode == "show" and highlights is not False and group_by is not None:
             _cached_prepared_highlights = self._prepare_highlight_data(
                 group_by=group_by, color=color, bins=bins, annotate=annotate, **kwargs
             )
@@ -400,8 +400,8 @@ class ElementCollection(
                         bbox_source = cast(SupportsBBox, crop)
                         spec.crop_bbox = bbox_source.bbox
 
-            # Add highlights in show mode
-            if mode == "show":
+            # Add highlights in show mode unless explicitly disabled.
+            if mode == "show" and highlights is not False:
                 # Handle group_by parameter for quantitative/categorical grouping
                 if group_by is not None:
                     # Use pre-computed highlight data (hoisted out of per-page loop)
@@ -506,19 +506,9 @@ class ElementCollection(
                                         "attributes_to_draw"
                                     ]
 
-                # Add additional highlight groups if provided
-                if highlights:
-                    for group in highlights:
-                        group_elements = group.get("elements", [])
-                        group_color = group.get("color", color)
-                        group_label = group.get("label")
-
-                        # Only add elements from this page
-                        for elem in group_elements:
-                            if hasattr(elem, "page") and elem.page == page:
-                                spec.add_highlight(
-                                    element=elem, color=group_color, label=group_label
-                                )
+                add_explicit_highlights_to_spec(spec, highlights, default_color=color, page=page)
+            elif mode == "render":
+                add_explicit_highlights_to_spec(spec, highlights, default_color=color, page=page)
 
         return all_specs
 

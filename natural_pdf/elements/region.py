@@ -37,7 +37,7 @@ from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
 from natural_pdf.core.geometry_mixin import RegionGeometryMixin
 from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
 from natural_pdf.core.mixins import SinglePageContextMixin
-from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 from natural_pdf.elements.base import DirectionalMixin, extract_bbox
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
@@ -659,15 +659,9 @@ class Region(
                     label=self.label or self.name or "Region",
                 )
 
-            # Add additional highlight groups if provided (and highlights is a list)
-            if highlights and isinstance(highlights, list):
-                for group in highlights:
-                    elements = group.get("elements", [])
-                    group_color = group.get("color", color)
-                    group_label = group.get("label")
-
-                    for elem in elements:
-                        spec.add_highlight(element=elem, color=group_color, label=group_label)
+            add_explicit_highlights_to_spec(spec, highlights, default_color=color, page=self.page)
+        elif mode == "render":
+            add_explicit_highlights_to_spec(spec, highlights, default_color=color, page=self.page)
 
         return [spec]
 

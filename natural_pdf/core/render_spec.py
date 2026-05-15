@@ -8,6 +8,8 @@ This module provides the core components for the unified image generation system
 """
 
 import logging
+from collections.abc import Iterable as IterableABC
+from collections.abc import Mapping as MappingABC
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import (
@@ -35,7 +37,13 @@ if TYPE_CHECKING:
 
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 
-ColorInput = Union[str, Tuple[int, int, int], Tuple[int, int, int, int]]
+ColorInput = Union[
+    str,
+    Tuple[int, int, int],
+    Tuple[int, int, int, int],
+    Tuple[float, float, float],
+    Tuple[float, float, float, float],
+]
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +131,74 @@ class RenderSpec:
         # Remove None values
         highlight = {k: v for k, v in highlight.items() if v is not None}
         self.highlights.append(highlight)
+
+
+def add_explicit_highlights_to_spec(
+    spec: RenderSpec,
+    highlights: Optional[Union[List[Dict[str, Any]], bool]],
+    *,
+    default_color: Optional[ColorInput] = None,
+    page: Optional[Any] = None,
+) -> None:
+    """Add caller-provided highlight specs/groups to a render spec.
+
+    Supports both grouped highlights of the form ``{"elements": [...]}`` and
+    direct highlight entries such as ``{"bbox": (...), "color": "red"}``.
+    """
+    if not highlights or highlights is False:
+        return
+
+    for entry in highlights:
+        if not isinstance(entry, MappingABC):
+            spec.add_highlight(element=entry, color=default_color)
+            continue
+
+        entry_dict = dict(entry)
+        entry_color = entry_dict.get("color", default_color)
+        entry_label = entry_dict.get("label")
+
+        if "elements" in entry_dict:
+            raw_elements = entry_dict.get("elements")
+            if raw_elements is None:
+                continue
+            if hasattr(raw_elements, "elements"):
+                elements_iter = raw_elements.elements
+            elif isinstance(raw_elements, IterableABC) and not isinstance(
+                raw_elements, (str, bytes, MappingABC)
+            ):
+                elements_iter = raw_elements
+            else:
+                elements_iter = (raw_elements,)
+
+            for elem in elements_iter:
+                elem_page = getattr(elem, "page", None)
+                if page is not None and elem_page is not None and elem_page != page:
+                    continue
+                spec.add_highlight(element=elem, color=entry_color, label=entry_label)
+            continue
+
+        target_page = entry_dict.get("page")
+        target_page_index = entry_dict.get("page_index")
+        if page is not None:
+            if target_page is not None and target_page != page:
+                continue
+            if target_page_index is not None and getattr(page, "index", None) != target_page_index:
+                continue
+
+        elem = entry_dict.get("element")
+        elem_page = getattr(elem, "page", None)
+        if page is not None and elem_page is not None and elem_page != page:
+            continue
+
+        spec.add_highlight(
+            bbox=entry_dict.get("bbox"),
+            polygon=entry_dict.get("polygon"),
+            element=elem,
+            color=entry_color,
+            label=entry_label,
+            attributes_to_draw=entry_dict.get("attributes_to_draw"),
+            quantitative_metadata=entry_dict.get("quantitative_metadata"),
+        )
 
 
 class Visualizable:
@@ -305,6 +381,9 @@ class Visualizable:
         *,
         resolution: Optional[float] = None,
         width: Optional[int] = None,
+        highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
+        labels: bool = False,
+        label_format: Optional[str] = None,
         render_ocr: bool = False,
         layout: Literal["stack", "grid", "single"] = "stack",
         stack_direction: Literal["vertical", "horizontal"] = "vertical",
@@ -314,14 +393,17 @@ class Visualizable:
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
     ) -> Optional[PILImage]:
-        """Generate a clean image without highlights.
+        """Generate a clean image, with optional explicit highlights.
 
         This method produces publication-ready images without
-        any debugging annotations or highlights.
+        any debugging annotations or persistent highlights.
 
         Args:
             resolution: DPI for rendering (default from global settings)
             width: Target width in pixels (overrides resolution)
+            highlights: Optional explicit highlight groups/specs to render
+            labels: Whether to render a legend for explicit highlights
+            label_format: Format string for generated highlight labels
             render_ocr: Whether to render OCR text overlay on the image
             layout: How to arrange multiple pages/regions
             stack_direction: Direction for stack layout
@@ -338,6 +420,9 @@ class Visualizable:
             self,
             resolution=resolution,
             width=width,
+            highlights=highlights,
+            labels=labels,
+            label_format=label_format,
             render_ocr=render_ocr,
             layout=layout,
             stack_direction=stack_direction,

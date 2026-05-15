@@ -10,10 +10,14 @@ on each annotated page.
 import logging
 import unicodedata
 from collections import OrderedDict, defaultdict
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Dict, List, Sequence
 
 from natural_pdf.utils.optional_imports import require
-from natural_pdf.utils.visualization import _BASE_HIGHLIGHT_COLORS, DEFAULT_FILL_ALPHA
+from natural_pdf.utils.visualization import (
+    _BASE_HIGHLIGHT_COLORS,
+    DEFAULT_FILL_ALPHA,
+    pack_legend_columns,
+)
 
 if TYPE_CHECKING:
     from natural_pdf.extraction.result import FieldResult
@@ -21,13 +25,17 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 SIDEBAR_WIDTH = 250  # PDF points
+SIDEBAR_MIN_WIDTH = 180
+SIDEBAR_MAX_WIDTH = 280
 _FONT_SIZE = 11
 _LINE_HEIGHT = 14  # vertical advance per text line
 _SWATCH_SIZE = 12
 _PADDING_TOP = 10
+_PADDING_BOTTOM = 10
 _ITEM_GAP = 6
 _SWATCH_X_OFFSET = 10  # from sidebar left edge
 _TEXT_X_OFFSET = 30  # from sidebar left edge
+_TEXT_RIGHT_PADDING = 10
 
 
 def _pdf_escape(text: str) -> str:
@@ -46,6 +54,93 @@ def _pdf_escape(text: str) -> str:
         .replace(")", "\\)")
         .replace("\n", "\\n")
         .replace("\r", "\\r")
+    )
+
+
+def _pdf_text_width(text: str, font_size: int = _FONT_SIZE) -> float:
+    """Approximate Helvetica text width in PDF points."""
+    width = 0.0
+    for char in text:
+        if char in "ilI.,'`!|":
+            width += 0.25
+        elif char in "mwMW@#%&":
+            width += 0.85
+        elif char.isspace():
+            width += 0.28
+        else:
+            width += 0.52
+    return width * font_size
+
+
+def _split_long_pdf_token(token: str, max_width: float) -> List[str]:
+    if _pdf_text_width(token) <= max_width:
+        return [token]
+
+    parts: List[str] = []
+    current = ""
+    for char in token:
+        candidate = current + char
+        if current and _pdf_text_width(candidate) > max_width:
+            parts.append(current)
+            current = char
+        else:
+            current = candidate
+    if current:
+        parts.append(current)
+    return parts or [token]
+
+
+def _wrap_pdf_lines(label: str, max_width: float) -> List[str]:
+    """Wrap sidebar text to the available PDF point width."""
+    lines: List[str] = []
+    for paragraph in str(label).splitlines() or [""]:
+        prefix = paragraph[: len(paragraph) - len(paragraph.lstrip())]
+        words = paragraph.strip().split()
+        if not words:
+            lines.append("")
+            continue
+
+        current = prefix
+        for word in words:
+            for piece in _split_long_pdf_token(word, max_width):
+                separator = "" if current == prefix else " "
+                candidate = f"{current}{separator}{piece}"
+                if current != prefix and _pdf_text_width(candidate) > max_width:
+                    lines.append(current)
+                    current = f"{prefix}{piece}"
+                else:
+                    current = candidate
+        lines.append(current)
+    return lines
+
+
+def _item_height(lines: Sequence[str]) -> float:
+    return max(_SWATCH_SIZE, _LINE_HEIGHT * max(1, len(lines)))
+
+
+def _prepare_sidebar_columns(
+    legend_items: List[dict],
+    *,
+    text_width: float,
+    available_height: float,
+) -> List[List[dict]]:
+    measured: List[dict] = []
+    for item in legend_items:
+        lines = _wrap_pdf_lines(item["label"], text_width)
+        measured.append({**item, "lines": lines, "height": _item_height(lines)})
+
+    columns = pack_legend_columns(
+        [item["height"] for item in measured],
+        max_height=available_height,
+        item_gap=_ITEM_GAP,
+    )
+    return [[measured[idx] for idx in column] for column in columns]
+
+
+def _effective_sidebar_width(sidebar_width: float, page_width: float) -> float:
+    return min(
+        SIDEBAR_MAX_WIDTH,
+        max(SIDEBAR_MIN_WIDTH, min(sidebar_width, page_width * 0.45)),
     )
 
 
@@ -72,7 +167,17 @@ def _draw_sidebar_legend(target_doc, target_page, legend_items, sidebar_width):
     else:
         page_box = target_page.MediaBox
     box_x0, box_y0, box_x1, box_y1 = [float(c) for c in page_box]
+    page_width = box_x1 - box_x0
     page_height = box_y1 - box_y0
+    column_width = _effective_sidebar_width(float(sidebar_width), page_width)
+    text_width = max(1.0, column_width - _TEXT_X_OFFSET - _TEXT_RIGHT_PADDING)
+    columns = _prepare_sidebar_columns(
+        legend_items,
+        text_width=text_width,
+        available_height=max(0.0, page_height - _PADDING_TOP - _PADDING_BOTTOM),
+    )
+    column_count = max(1, len(columns))
+    sidebar_width = column_width * column_count
 
     # Extend page boxes to the right
     target_page.MediaBox = Array(
@@ -114,43 +219,40 @@ def _draw_sidebar_legend(target_doc, target_page, legend_items, sidebar_width):
     ops.append("1 1 1 rg")
     ops.append(f"{sidebar_x:.2f} {box_y0:.2f} {sidebar_width:.2f} {page_height:.2f} re f")
 
-    # Draw each legend item top-down
-    # PDF y-axis goes up, so we start from box_y1 (top) and subtract
-    cursor_y = box_y1 - _PADDING_TOP
+    # Draw each legend column top-down. PDF y-axis goes up.
+    for column_idx, column in enumerate(columns or [[]]):
+        column_x = sidebar_x + column_idx * column_width
+        ops.append("0.90 0.90 0.90 RG")
+        ops.append("0.5 w")
+        ops.append(f"{column_x:.2f} {box_y0:.2f} m {column_x:.2f} {box_y1:.2f} l S")
 
-    for item in legend_items:
-        label = item["label"]
-        r, g, b, _alpha = item["rgba"]
+        cursor_y = box_y1 - _PADDING_TOP
+        for item in column:
+            r, g, b, _alpha = item["rgba"]
+            lines = item["lines"]
 
-        lines = label.split("\n")
+            swatch_x = column_x + _SWATCH_X_OFFSET
+            swatch_top = cursor_y
+            swatch_bottom = swatch_top - _SWATCH_SIZE
+            ops.append(f"{r / 255.0:.4f} {g / 255.0:.4f} {b / 255.0:.4f} rg")
+            ops.append(
+                f"{swatch_x:.2f} {swatch_bottom:.2f} " f"{_SWATCH_SIZE:.2f} {_SWATCH_SIZE:.2f} re f"
+            )
 
-        # Draw color swatch aligned to first line of text
-        swatch_x = sidebar_x + _SWATCH_X_OFFSET
-        swatch_top = cursor_y
-        swatch_bottom = swatch_top - _SWATCH_SIZE
-        ops.append(f"{r / 255.0:.4f} {g / 255.0:.4f} {b / 255.0:.4f} rg")
-        ops.append(
-            f"{swatch_x:.2f} {swatch_bottom:.2f} " f"{_SWATCH_SIZE:.2f} {_SWATCH_SIZE:.2f} re f"
-        )
+            text_x = column_x + _TEXT_X_OFFSET
+            ops.append("0 0 0 rg")
+            ops.append("BT")
+            ops.append(f"/HelvLegend {_FONT_SIZE} Tf")
+            ops.append("0 Tr")
+            baseline_y = cursor_y - _FONT_SIZE * 0.8
+            ops.append(f"{text_x:.2f} {baseline_y:.2f} Td")
+            ops.append(f"({_pdf_escape(lines[0])}) Tj")
+            for line in lines[1:]:
+                ops.append(f"0 -{_LINE_HEIGHT} Td")
+                ops.append(f"({_pdf_escape(line)}) Tj")
+            ops.append("ET")
 
-        # Draw text lines
-        text_x = sidebar_x + _TEXT_X_OFFSET
-        ops.append("0 0 0 rg")  # black text
-        ops.append("BT")
-        ops.append(f"/HelvLegend {_FONT_SIZE} Tf")
-        ops.append("0 Tr")  # Fill mode (reset from possible invisible text layer)
-        # Position at first line baseline (approx font_size * 0.8 below top)
-        baseline_y = cursor_y - _FONT_SIZE * 0.8
-        ops.append(f"{text_x:.2f} {baseline_y:.2f} Td")
-        ops.append(f"({_pdf_escape(lines[0])}) Tj")
-        for line in lines[1:]:
-            ops.append(f"0 -{_LINE_HEIGHT} Td")
-            ops.append(f"({_pdf_escape(line)}) Tj")
-        ops.append("ET")
-
-        # Advance cursor past all lines + gap
-        total_item_height = max(_SWATCH_SIZE, _LINE_HEIGHT * len(lines))
-        cursor_y -= total_item_height + _ITEM_GAP
+            cursor_y -= item["height"] + _ITEM_GAP
 
     ops.append("Q")
 
@@ -163,6 +265,7 @@ def create_annotated_pdf(
     fields: Dict[str, "FieldResult"],
     output_path: str,
     pages: str = "all",
+    legend_scope: str = "page",
 ) -> None:
     """Create a PDF with /Highlight annotations and a native sidebar legend.
 
@@ -173,11 +276,17 @@ def create_annotated_pdf(
     Args:
         fields: Dict mapping field names to :class:`FieldResult` objects.
         output_path: Path to write the annotated PDF.
+        pages: ``"all"`` for all pages or ``"cited"`` for cited pages only.
+        legend_scope: ``"page"`` for per-page legend items, or ``"document"``
+            to repeat all cited field labels in each sidebar.
 
     Raises:
         ValueError: If no citation elements are found.
         ImportError: If pikepdf is not installed.
     """
+    if legend_scope not in {"page", "document"}:
+        raise ValueError("legend_scope must be 'page' or 'document'")
+
     pikepdf = require("pikepdf")
     from pikepdf import Array, Dictionary, Name
 
@@ -188,6 +297,7 @@ def create_annotated_pdf(
     page_annotations: Dict[int, list] = defaultdict(list)
     # Track which fields (with colors) appear on each page, preserving order
     page_fields: Dict[int, OrderedDict] = defaultdict(OrderedDict)
+    document_fields: OrderedDict = OrderedDict()
     source_page_obj = None
 
     color_cycle = list(_BASE_HIGHLIGHT_COLORS)
@@ -248,6 +358,11 @@ def create_annotated_pdf(
             # Track field for this page's legend
             if field_name not in page_fields[page.index]:
                 page_fields[page.index][field_name] = {
+                    "label": label,
+                    "rgba": rgba,
+                }
+            if field_name not in document_fields:
+                document_fields[field_name] = {
                     "label": label,
                     "rgba": rgba,
                 }
@@ -323,7 +438,7 @@ def create_annotated_pdf(
                 annots.append(target_doc.make_indirect(annot))
 
             # --- Sidebar legend ---
-            pf = page_fields.get(page_idx, {})
+            pf = document_fields if legend_scope == "document" else page_fields.get(page_idx, {})
             if pf:
                 legend_items = list(pf.values())
                 _draw_sidebar_legend(target_doc, target_page, legend_items, SIDEBAR_WIDTH)

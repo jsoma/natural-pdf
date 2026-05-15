@@ -25,7 +25,7 @@ import natural_pdf
 from natural_pdf.classification.accessors import ClassificationResultAccessorMixin
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.interfaces import Bounds, SupportsBBox, SupportsGeometry
-from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 
 # Import selector parsing functions
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
@@ -2035,17 +2035,9 @@ class Element(
                     label=element_label,
                 )
 
-            # Add additional highlight groups if provided (and highlights is a list)
-            if highlights and isinstance(highlights, list):
-                for group in highlights:
-                    group_elements = group.get("elements", [])
-                    group_color = group.get("color", color)
-                    group_label = group.get("label")
-
-                    for elem in group_elements:
-                        # Only add if element is on same page
-                        if hasattr(elem, "page") and elem.page == self.page:
-                            spec.add_highlight(element=elem, color=group_color, label=group_label)
+            add_explicit_highlights_to_spec(spec, highlights, default_color=color, page=self.page)
+        elif mode == "render":
+            add_explicit_highlights_to_spec(spec, highlights, default_color=color, page=self.page)
 
         return [spec]
 

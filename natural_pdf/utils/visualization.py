@@ -5,7 +5,6 @@ Visualization utilities for natural-pdf.
 import itertools  # Added for cycling
 import logging
 import math
-import random
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union, cast
 
 logger = logging.getLogger(__name__)
@@ -46,6 +45,11 @@ _BASE_HIGHLIGHT_COLORS = [
 # Default Alpha for highlight fills
 DEFAULT_FILL_ALPHA = 100
 
+LEGEND_FONT_SIZE = 14
+LEGEND_MIN_WIDTH = 180
+LEGEND_MAX_WIDTH = 340
+LEGEND_SIDE_WIDTH_RATIO = 0.35
+
 # Quantitative color mapping (matplotlib imported lazily in get_colormap_color)
 
 
@@ -62,8 +66,7 @@ class ColorManager:
             alpha (int): The default alpha transparency (0-255) for highlight fills.
         """
         self._alpha = alpha
-        # Shuffle the base colors to avoid the same sequence every time
-        self._available_colors = random.sample(_BASE_HIGHLIGHT_COLORS, len(_BASE_HIGHLIGHT_COLORS))
+        self._available_colors = list(_BASE_HIGHLIGHT_COLORS)
         self._color_cycle = itertools.cycle(self._available_colors)
         self._labels_colors: Dict[str, Tuple[int, int, int, int]] = {}
 
@@ -114,8 +117,7 @@ class ColorManager:
 
     def reset(self) -> None:
         """Resets the color cycle and clears the label-to-color mapping."""
-        # Re-shuffle and reset the cycle
-        self._available_colors = random.sample(_BASE_HIGHLIGHT_COLORS, len(_BASE_HIGHLIGHT_COLORS))
+        self._available_colors = list(_BASE_HIGHLIGHT_COLORS)
         self._color_cycle = itertools.cycle(self._available_colors)
         self._labels_colors = {}
 
@@ -125,7 +127,13 @@ class ColorManager:
 # get_next_highlight_color(), reset_highlight_colors()
 
 
-def create_legend(labels_colors: Mapping[str, Sequence[int]], width: int = 250) -> Image.Image:
+def create_legend(
+    labels_colors: Mapping[str, Sequence[int]],
+    width: int = 250,
+    *,
+    max_height: Optional[int] = None,
+    font_size: int = LEGEND_FONT_SIZE,
+) -> Image.Image:
     """
     Create a legend image for the highlighted elements.
 
@@ -139,79 +147,234 @@ def create_legend(labels_colors: Mapping[str, Sequence[int]], width: int = 250) 
     Returns:
         PIL Image with the legend
     """
-    # Try to load a font, use default if not available
-    font: ImageFont.ImageFont
-    try:
-        font = cast(ImageFont.ImageFont, ImageFont.truetype("DejaVuSans.ttf", 14))
-    except IOError:
-        try:
-            font = cast(ImageFont.ImageFont, ImageFont.truetype("Arial.ttf", 14))
-        except IOError:
-            font = cast(ImageFont.ImageFont, ImageFont.load_default())
+    return create_wrapped_legend(
+        labels_colors, width=width, max_height=max_height, font_size=font_size
+    )
 
-    padding_top = 5
-    padding_bottom = 5
+
+def _load_legend_font(size: int = LEGEND_FONT_SIZE) -> ImageFont.ImageFont:
+    for name in ("DejaVuSans.ttf", "Arial.ttf", "Helvetica.ttf", "FreeSans.ttf"):
+        try:
+            return cast(ImageFont.ImageFont, ImageFont.truetype(name, size))
+        except (IOError, OSError):
+            continue
+    return cast(ImageFont.ImageFont, ImageFont.load_default())
+
+
+def _text_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> int:
+    bbox = draw.textbbox((0, 0), text, font=font)
+    return bbox[2] - bbox[0]
+
+
+def _split_long_token(
+    token: str,
+    *,
+    draw: ImageDraw.ImageDraw,
+    font: ImageFont.ImageFont,
+    max_width: int,
+) -> List[str]:
+    if _text_width(draw, token, font) <= max_width:
+        return [token]
+
+    parts: List[str] = []
+    current = ""
+    for char in token:
+        candidate = current + char
+        if current and _text_width(draw, candidate, font) > max_width:
+            parts.append(current)
+            current = char
+        else:
+            current = candidate
+    if current:
+        parts.append(current)
+    return parts or [token]
+
+
+def _wrap_label_text(
+    label: str,
+    *,
+    draw: ImageDraw.ImageDraw,
+    font: ImageFont.ImageFont,
+    max_width: int,
+) -> str:
+    lines: List[str] = []
+    for paragraph in str(label).splitlines() or [""]:
+        prefix = paragraph[: len(paragraph) - len(paragraph.lstrip())]
+        words = paragraph.strip().split()
+        if not words:
+            lines.append("")
+            continue
+
+        current = prefix
+        for word in words:
+            pieces = _split_long_token(word, draw=draw, font=font, max_width=max_width)
+            for piece in pieces:
+                separator = "" if current == prefix else " "
+                candidate = f"{current}{separator}{piece}"
+                if current != prefix and _text_width(draw, candidate, font) > max_width:
+                    lines.append(current)
+                    current = f"{prefix}{piece}"
+                else:
+                    current = candidate
+        lines.append(current)
+    return "\n".join(lines)
+
+
+def _legend_swatch_color(color: Sequence[int]) -> Tuple[int, int, int, int]:
+    if len(color) == 3:
+        r, g, b = cast(Tuple[int, int, int], tuple(color))  # type: ignore[misc]
+        alpha = 255
+    elif len(color) >= 4:
+        r, g, b, alpha = cast(Tuple[int, int, int, int], tuple(color[:4]))  # type: ignore[misc]
+    else:
+        raise ValueError("Color sequences must have at least three components.")
+
+    alpha_norm = alpha / 255.0
+    apparent_r = int(r * alpha_norm + 255 * (1 - alpha_norm))
+    apparent_g = int(g * alpha_norm + 255 * (1 - alpha_norm))
+    apparent_b = int(b * alpha_norm + 255 * (1 - alpha_norm))
+    return (apparent_r, apparent_g, apparent_b, 255)
+
+
+def pack_legend_columns(
+    item_heights: Sequence[Union[int, float]],
+    *,
+    max_height: Optional[Union[int, float]],
+    item_gap: Union[int, float],
+    padding_top: Union[int, float] = 0,
+    padding_bottom: Union[int, float] = 0,
+) -> List[List[int]]:
+    """Pack legend row indexes into columns constrained by height."""
+    if not item_heights:
+        return []
+    if max_height is None:
+        return [list(range(len(item_heights)))]
+
+    available_height = max(0.0, float(max_height) - float(padding_top) - float(padding_bottom))
+    gap = float(item_gap)
+    columns: List[List[int]] = []
+    current: List[int] = []
+    used_height = 0.0
+
+    for idx, raw_height in enumerate(item_heights):
+        item_height = max(0.0, float(raw_height))
+        needed_height = item_height if not current else gap + item_height
+        if current and used_height + needed_height > available_height:
+            columns.append(current)
+            current = [idx]
+            used_height = item_height
+        else:
+            current.append(idx)
+            used_height += needed_height
+
+    if current:
+        columns.append(current)
+    return columns
+
+
+def create_wrapped_legend(
+    labels_colors: Mapping[str, Sequence[int]],
+    width: int = 250,
+    *,
+    max_height: Optional[int] = None,
+    font_size: int = LEGEND_FONT_SIZE,
+) -> Image.Image:
+    """Create a measured legend with wrapped labels and height-aware columns."""
+    width = max(1, int(width))
+    font = _load_legend_font(font_size)
+
+    padding_top = 8
+    padding_bottom = 8
+    padding_right = 10
     item_gap = 8  # vertical gap between items
     swatch_size = 15
-    text_x = 40  # x position for text (after swatch)
+    swatch_x = 10
+    text_x = 36  # x position for text (after swatch)
     line_spacing = 4  # spacing between lines in multiline text
+    text_width = max(1, width - text_x - padding_right)
 
-    # --- First pass: measure each item to compute total height ---
-    # We need a temporary draw context for measurement
     _tmp = Image.new("RGBA", (1, 1))
     _tmp_draw = ImageDraw.Draw(_tmp)
 
-    item_heights: list = []  # height of each item (text block)
-    for label in labels_colors:
-        bbox = _tmp_draw.multiline_textbbox((0, 0), label, font=font, spacing=line_spacing)
+    measured_items: List[Tuple[str, Sequence[int], int]] = []
+    for label, color in labels_colors.items():
+        wrapped_label = _wrap_label_text(
+            str(label), draw=_tmp_draw, font=font, max_width=text_width
+        )
+        bbox = _tmp_draw.multiline_textbbox((0, 0), wrapped_label, font=font, spacing=line_spacing)
         text_h = bbox[3] - bbox[1]
-        # Item height is at least as tall as the swatch
-        item_heights.append(max(text_h, swatch_size))
+        measured_items.append((wrapped_label, color, max(text_h, swatch_size)))
 
-    total_height = (
-        padding_top + sum(item_heights) + item_gap * max(len(item_heights) - 1, 0) + padding_bottom
+    columns = pack_legend_columns(
+        [item[2] for item in measured_items],
+        max_height=max_height,
+        item_gap=item_gap,
+        padding_top=padding_top,
+        padding_bottom=padding_bottom,
     )
+    column_count = max(1, len(columns))
 
-    # --- Second pass: draw ---
-    legend = Image.new("RGBA", (width, total_height), (255, 255, 255, 255))
+    def column_height(indexes: List[int]) -> int:
+        return (
+            padding_top
+            + sum(measured_items[idx][2] for idx in indexes)
+            + item_gap * max(len(indexes) - 1, 0)
+            + padding_bottom
+        )
+
+    total_height = max(
+        [column_height(column) for column in columns] or [padding_top + padding_bottom]
+    )
+    if max_height is not None:
+        total_height = min(int(max_height), max(1, total_height))
+
+    legend = Image.new("RGBA", (width * column_count, total_height), (255, 255, 255, 255))
     draw = ImageDraw.Draw(legend)
+    for column_idx, column in enumerate(columns or [[]]):
+        x_offset = column_idx * width
+        if total_height > 1:
+            draw.line(
+                [(x_offset, 0), (x_offset, total_height)],
+                fill=(230, 230, 230, 255),
+                width=1,
+            )
 
-    y = padding_top
-    for (label, color), item_h in zip(labels_colors.items(), item_heights):
-        # Parse color components
-        if len(color) == 3:
-            r, g, b = cast(Tuple[int, int, int], tuple(color))  # type: ignore[misc]
-            alpha = 255
-        elif len(color) >= 4:
-            r, g, b, alpha = cast(Tuple[int, int, int, int], tuple(color[:4]))  # type: ignore[misc]
-        else:
-            raise ValueError("Color sequences must have at least three components.")
+        y = padding_top
+        for item_idx in column:
+            label, color, item_h = measured_items[item_idx]
+            legend_color = _legend_swatch_color(color)
 
-        # Alpha-blend onto white to get the apparent color
-        alpha_norm = alpha / 255.0
-        apparent_r = int(r * alpha_norm + 255 * (1 - alpha_norm))
-        apparent_g = int(g * alpha_norm + 255 * (1 - alpha_norm))
-        apparent_b = int(b * alpha_norm + 255 * (1 - alpha_norm))
-        legend_color = (apparent_r, apparent_g, apparent_b, 255)
+            draw.rectangle(
+                [
+                    (x_offset + swatch_x, y),
+                    (x_offset + swatch_x + swatch_size, y + swatch_size),
+                ],
+                fill=legend_color,
+                outline=(120, 120, 120, 255),
+            )
 
-        # Draw color swatch aligned to the first line of text
-        draw.rectangle(
-            [(10, y), (10 + swatch_size, y + swatch_size)],
-            fill=legend_color,
-        )
+            draw.multiline_text(
+                (x_offset + text_x, y),
+                label,
+                fill=(0, 0, 0, 255),
+                font=font,
+                spacing=line_spacing,
+            )
 
-        # Draw (possibly multi-line) label text
-        draw.multiline_text(
-            (text_x, y),
-            label,
-            fill=(0, 0, 0, 255),
-            font=font,
-            spacing=line_spacing,
-        )
-
-        y += item_h + item_gap
+            y += item_h + item_gap
 
     return legend
+
+
+def legend_width_for_image(image_width: int, position: str = "right") -> int:
+    """Choose a capped legend width appropriate for a rendered image."""
+    position = (position or "right").lower()
+    if position in {"top", "bottom"}:
+        return max(1, int(image_width))
+    return max(
+        LEGEND_MIN_WIDTH,
+        min(LEGEND_MAX_WIDTH, int(max(1, image_width) * LEGEND_SIDE_WIDTH_RATIO)),
+    )
 
 
 def create_colorbar(
@@ -432,6 +595,7 @@ def merge_images_with_legend(
     if not legend:
         return image  # Return original image if legend is None or empty
 
+    position = (position or "right").lower()
     bg_color = (255, 255, 255, 255)  # Always use white for the merged background
 
     if position == "right":
@@ -439,43 +603,39 @@ def merge_images_with_legend(
         merged_width = image.width + legend.width
         merged_height = max(image.height, legend.height)
         merged = Image.new("RGBA", (merged_width, merged_height), bg_color)
-        merged.paste(image, (0, 0))
+        image_y = (merged_height - image.height) // 2
+        legend_y = (merged_height - legend.height) // 2
+        merged.paste(image, (0, image_y))
         merged.paste(
-            legend, (image.width, 0), legend if legend.mode == "RGBA" else None
+            legend, (image.width, legend_y), legend if legend.mode == "RGBA" else None
         )  # Handle transparency
     elif position == "bottom":
-        # Scale legend down if wider than content to avoid blowup
-        if legend.width > image.width:
-            scale = image.width / legend.width
-            legend = legend.resize(
-                (image.width, int(legend.height * scale)), Image.Resampling.LANCZOS
-            )
         # Create a new image with extra height for the legend
         merged_width = max(image.width, legend.width)
         merged_height = image.height + legend.height
         merged = Image.new("RGBA", (merged_width, merged_height), bg_color)
-        merged.paste(image, (0, 0))
-        merged.paste(legend, (0, image.height), legend if legend.mode == "RGBA" else None)
+        image_x = (merged_width - image.width) // 2
+        legend_x = (merged_width - legend.width) // 2
+        merged.paste(image, (image_x, 0))
+        merged.paste(legend, (legend_x, image.height), legend if legend.mode == "RGBA" else None)
     elif position == "top":
-        # Scale legend down if wider than content to avoid blowup
-        if legend.width > image.width:
-            scale = image.width / legend.width
-            legend = legend.resize(
-                (image.width, int(legend.height * scale)), Image.Resampling.LANCZOS
-            )
         # Create a new image with extra height for the legend
         merged_width = max(image.width, legend.width)
         merged_height = image.height + legend.height
         merged = Image.new("RGBA", (merged_width, merged_height), bg_color)
-        merged.paste(legend, (0, 0), legend if legend.mode == "RGBA" else None)
-        merged.paste(image, (0, legend.height))
+        image_x = (merged_width - image.width) // 2
+        legend_x = (merged_width - legend.width) // 2
+        merged.paste(legend, (legend_x, 0), legend if legend.mode == "RGBA" else None)
+        merged.paste(image, (image_x, legend.height))
     elif position == "left":
         # Create a new image with extra width for the legend
         merged_width = image.width + legend.width
         merged_height = max(image.height, legend.height)
         merged = Image.new("RGBA", (merged_width, merged_height), bg_color)
-        merged.paste(legend, (0, 0), legend if legend.mode == "RGBA" else None)
-        merged.paste(image, (legend.width, 0))
+        image_y = (merged_height - image.height) // 2
+        legend_y = (merged_height - legend.height) // 2
+        merged.paste(legend, (0, legend_y), legend if legend.mode == "RGBA" else None)
+        merged.paste(image, (legend.width, image_y))
     else:
         # Invalid position, return the original image
         logger.warning("Invalid legend position '%s'. Returning original image.", position)

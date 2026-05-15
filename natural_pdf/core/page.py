@@ -60,7 +60,7 @@ from natural_pdf.core.crop_utils import resolve_crop_bbox
 from natural_pdf.core.element_manager import ElementManager
 from natural_pdf.core.interfaces import Bounds, SupportsGeometry, SupportsSections
 from natural_pdf.core.mixins import SinglePageContextMixin
-from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 from natural_pdf.core.selector_utils import _jaro_winkler_similarity, execute_parsed_selector
 from natural_pdf.deskew import run_deskew_apply, run_deskew_detect
 from natural_pdf.elements.base import Element  # Import base element
@@ -253,7 +253,7 @@ class Page(
         self,
         mode: Literal["show", "render"] = "show",
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
-        highlights: Optional[List[Dict[str, Any]]] = None,
+        highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
         crop: Union[bool, Literal["content"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
@@ -304,8 +304,8 @@ class Page(
             content_bbox_fn=ensure_content_bbox,
         )
 
-        # Add highlights in show mode
-        if mode == "show":
+        # Add highlights in show mode unless explicitly disabled.
+        if mode == "show" and highlights is not False:
             # Add page's persistent highlights if any
             page_highlights = self._highlighter.get_highlights_for_page(self.index)
             for highlight in page_highlights:
@@ -319,25 +319,7 @@ class Page(
                     quantitative_metadata=highlight.quantitative_metadata,
                 )
 
-            # Add additional highlight groups if provided
-            if highlights:
-                for group in highlights:
-                    raw_elements = group.get("elements")
-                    if not raw_elements:
-                        continue
-
-                    if isinstance(raw_elements, ElementCollection):
-                        elements_iter: Iterable[Any] = raw_elements.elements
-                    elif isinstance(raw_elements, Iterable):
-                        elements_iter = cast(Iterable[Any], raw_elements)
-                    else:
-                        elements_iter = (raw_elements,)
-
-                    group_color = group.get("color", color)
-                    group_label = group.get("label")
-
-                    for elem in elements_iter:
-                        spec.add_highlight(element=elem, color=group_color, label=group_label)
+            add_explicit_highlights_to_spec(spec, highlights, default_color=color, page=self)
 
             # Handle exclusions visualization
             exclusions_param = kwargs.get("exclusions")
@@ -358,6 +340,8 @@ class Page(
                             color=exclusion_color,
                             label=f"Exclusion: {region.label or 'unnamed'}",
                         )
+        elif mode == "render":
+            add_explicit_highlights_to_spec(spec, highlights, default_color=color, page=self)
 
         return [spec]
 

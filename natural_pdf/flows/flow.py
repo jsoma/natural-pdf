@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsSections
-from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 from natural_pdf.flows.collections import FlowElementCollection
 from natural_pdf.flows.element import FlowElement
 from natural_pdf.flows.region import FlowRegion
@@ -504,7 +504,7 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
         self,
         mode: Literal["show", "render"] = "show",
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
-        highlights: Optional[List[Dict[str, Any]]] = None,
+        highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
         crop: Union[bool, Literal["content"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         label_prefix: Optional[str] = "FlowSegment",
@@ -590,8 +590,8 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
                 if x_coords and y_coords:
                     spec.crop_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
 
-            # Add highlights in show mode
-            if mode == "show":
+            # Add highlights in show mode unless explicitly disabled.
+            if mode == "show" and highlights is not False:
                 # Highlight segments
                 for i, segment in enumerate(segments_on_this_page):
                     segment_label = None
@@ -622,19 +622,13 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
                         label=segment_label,
                     )
 
-                # Add additional highlight groups if provided
-                if highlights:
-                    for group in highlights:
-                        group_elements = group.get("elements", [])
-                        group_color = group.get("color", color)
-                        group_label = group.get("label")
-
-                        for elem in group_elements:
-                            # Only add if element is on this page
-                            if hasattr(elem, "page") and elem.page == page_obj:
-                                spec.add_highlight(
-                                    element=elem, color=group_color, label=group_label
-                                )
+                add_explicit_highlights_to_spec(
+                    spec, highlights, default_color=color, page=page_obj
+                )
+            elif mode == "render":
+                add_explicit_highlights_to_spec(
+                    spec, highlights, default_color=color, page=page_obj
+                )
 
             specs.append(spec)
 

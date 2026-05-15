@@ -15,14 +15,12 @@ from typing import (
     Union,
 )
 
-from natural_pdf.core.render_spec import RenderSpec
+from natural_pdf.core.render_spec import ColorInput, RenderSpec
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
     from PIL.Image import Image as PILImage
 
     from natural_pdf.core.highlighting_service import HighlightingService
-
-ColorInput = Union[str, Tuple[int, int, int]]
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +121,9 @@ class RenderingService:
         *,
         resolution: Optional[float] = None,
         width: Optional[int] = None,
+        highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
+        labels: bool = False,
+        label_format: Optional[str] = None,
         render_ocr: bool = False,
         layout: Literal["stack", "grid", "single"] = "stack",
         stack_direction: Literal["vertical", "horizontal"] = "vertical",
@@ -133,9 +134,17 @@ class RenderingService:
         **kwargs: Any,
     ) -> Optional["PILImage"]:
         columns = self._resolve_columns_alias(columns, kwargs, guard_value=None)
-        kwargs.pop("labels", None)
+        labels = bool(kwargs.pop("labels", labels))
+        label_format = kwargs.pop("label_format", label_format)
+        highlights = kwargs.pop("highlights", highlights)
 
-        specs = host._get_render_specs(mode="render", crop=crop, crop_bbox=crop_bbox, **kwargs)
+        specs = host._get_render_specs(
+            mode="render",
+            highlights=highlights,
+            crop=crop,
+            crop_bbox=crop_bbox,
+            **kwargs,
+        )
         self._ensure_specs(host, specs, "render")
 
         highlighter = host._get_highlighter()
@@ -145,7 +154,8 @@ class RenderingService:
             specs=specs,
             resolution=effective_resolution,
             width=width,
-            labels=False,
+            labels=labels,
+            label_format=label_format,
             render_ocr=render_ocr,
             layout=layout,
             stack_direction=stack_direction,

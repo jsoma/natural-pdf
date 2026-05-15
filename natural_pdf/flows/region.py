@@ -28,7 +28,7 @@ from natural_pdf.core.exclusion_mixin import ExclusionSpec
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsSections
 from natural_pdf.core.mixins import ContextResolverMixin
-from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
@@ -433,7 +433,7 @@ class FlowRegion(
         self,
         mode: Literal["show", "render"] = "show",
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
-        highlights: Optional[List[Dict[str, Any]]] = None,
+        highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
         crop: Union[bool, Literal["content"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
@@ -491,8 +491,8 @@ class FlowRegion(
                 content_bbox_fn=union_bbox,
             )
 
-            # Add highlights in show mode
-            if mode == "show":
+            # Add highlights in show mode unless explicitly disabled.
+            if mode == "show" and highlights is not False:
                 # Highlight constituent regions
                 for i, region in enumerate(page_regions):
                     # Label each part if multiple regions
@@ -516,19 +516,9 @@ class FlowRegion(
                         label=label,
                     )
 
-                # Add additional highlight groups if provided
-                if highlights:
-                    for group in highlights:
-                        group_elements = group.get("elements", [])
-                        group_color = group.get("color", color)
-                        group_label = group.get("label")
-
-                        for elem in group_elements:
-                            # Only add if element is on this page
-                            if hasattr(elem, "page") and elem.page == page:
-                                spec.add_highlight(
-                                    element=elem, color=group_color, label=group_label
-                                )
+                add_explicit_highlights_to_spec(spec, highlights, default_color=color, page=page)
+            elif mode == "render":
+                add_explicit_highlights_to_spec(spec, highlights, default_color=color, page=page)
 
             specs.append(spec)
 
