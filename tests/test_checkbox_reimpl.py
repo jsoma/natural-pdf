@@ -390,6 +390,7 @@ class TestOptionsHierarchy:
         assert opts.resolution == 150
         assert opts.classify is True
         assert opts.reject_with_text is True
+        assert opts.magnify == "auto"
 
     def test_vector_options_defaults(self):
         opts = VectorCheckboxOptions()
@@ -403,6 +404,7 @@ class TestOptionsHierarchy:
         assert opts.model_file == "checkbox_yolo12n.onnx"
         assert opts.model_revision == "v1"
         assert opts.input_size == 1024
+        assert opts.magnify == "auto"
         assert isinstance(opts, OnnxCheckboxOptions)
 
     def test_vlm_options_defaults(self):
@@ -466,3 +468,110 @@ class TestCanonicalFormat:
         assert det["is_checked"] is None
         assert det["checkbox_state"] == "unknown"
         assert 0 <= det["confidence"] <= 1.0
+
+
+# ============================================================
+# 11. ONNX magnify behavior tests
+# ============================================================
+
+
+class TestOnnxMagnify:
+    def test_auto_magnify_triggers_on_small_detected_boxes(self):
+        from natural_pdf.analyzers.checkbox.onnx_engine import OnnxCheckboxDetector
+
+        detector = OnnxCheckboxDetector()
+        detections = [
+            {"bbox": (0, 0, 9, 9)},
+            {"bbox": (20, 20, 31, 31)},
+            {"bbox": (40, 40, 52, 52)},
+        ]
+
+        assert detector._should_run_magnify(detections, "auto") is True
+
+    def test_auto_magnify_skips_large_detected_boxes(self):
+        from natural_pdf.analyzers.checkbox.onnx_engine import OnnxCheckboxDetector
+
+        detector = OnnxCheckboxDetector()
+        detections = [
+            {"bbox": (0, 0, 18, 18)},
+            {"bbox": (30, 30, 50, 50)},
+            {"bbox": (60, 60, 82, 82)},
+        ]
+
+        assert detector._should_run_magnify(detections, "auto") is False
+
+    def test_magnify_bool_overrides_auto_size_check(self):
+        from natural_pdf.analyzers.checkbox.onnx_engine import OnnxCheckboxDetector
+
+        detector = OnnxCheckboxDetector()
+
+        assert detector._should_run_magnify([], True) is True
+        assert detector._should_run_magnify([{"bbox": (0, 0, 8, 8)}], False) is False
+
+    def test_merge_magnified_detections_suppresses_lower_confidence_overlap(self):
+        from natural_pdf.analyzers.checkbox.onnx_engine import OnnxCheckboxDetector
+
+        detector = OnnxCheckboxDetector()
+        base = [
+            {
+                "bbox": (0, 0, 20, 20),
+                "confidence": 0.7,
+                "_checkbox_pass": "base",
+            }
+        ]
+        magnified = [
+            {
+                "bbox": (1, 1, 21, 21),
+                "confidence": 0.9,
+                "_checkbox_pass": "magnify",
+            },
+            {
+                "bbox": (100, 100, 110, 110),
+                "confidence": 0.8,
+                "_checkbox_pass": "magnify",
+            },
+        ]
+
+        merged = detector._merge_magnified_detections(base, magnified)
+
+        assert len(merged) == 2
+        assert any(
+            det["_checkbox_pass"] == "magnify" and det["confidence"] == 0.9 for det in merged
+        )
+        assert any(det["bbox"] == (100, 100, 110, 110) for det in merged)
+
+    def test_default_detector_preserves_base_magnify_option(self):
+        from natural_pdf.analyzers.checkbox.default_detector import DefaultCheckboxDetector
+        from natural_pdf.analyzers.checkbox.onnx_engine import OnnxCheckboxDetector
+
+        captured = {}
+
+        def fake_detect(self, image, options, context=None):
+            captured["options"] = options
+            return []
+
+        with patch.object(OnnxCheckboxDetector, "detect", fake_detect):
+            DefaultCheckboxDetector().detect(
+                Image.new("RGB", (10, 10)),
+                BaseCheckboxOptions(magnify=True),
+            )
+
+        assert isinstance(captured["options"], DefaultCheckboxOptions)
+        assert captured["options"].magnify is True
+
+    def test_analyzer_build_options_accepts_magnify_kwarg(self):
+        from natural_pdf.analyzers.checkbox.checkbox_analyzer import CheckboxAnalyzer
+
+        analyzer = CheckboxAnalyzer(MagicMock())
+        opts = analyzer._build_options(
+            engine=None,
+            options=None,
+            confidence=None,
+            resolution=None,
+            device=None,
+            classify=None,
+            classify_with=None,
+            magnify=False,
+        )
+
+        assert opts.magnify is False

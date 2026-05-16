@@ -56,6 +56,7 @@ class CheckboxAnalyzer:
             limit: Max checkboxes to return.
             classify: Run classification (default True).
             classify_with: Judge instance for classification.
+            magnify: True, False, or "auto" to run a second 2x pass for small checkboxes.
             **kwargs: Engine-specific arguments.
 
         Returns:
@@ -317,6 +318,8 @@ class CheckboxAnalyzer:
                     "confidence": region.confidence,
                     "model": region.model,
                     "engine": det.get("engine", "unknown"),
+                    "pass": det.get("_checkbox_pass", "base"),
+                    "magnify_scale": det.get("_magnify_scale", 1.0),
                 }
 
                 regions.append(region)

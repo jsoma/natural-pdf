@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,8 @@ class BaseCheckboxOptions:
     reject_with_text: bool = True
     existing: str = "replace"
     limit: Optional[int] = None
+    # True forces a second 2x pass, False disables it, "auto" runs it for small detected boxes.
+    magnify: Union[bool, str] = "auto"
     extra_args: Dict[str, Any] = field(default_factory=dict)
 
 

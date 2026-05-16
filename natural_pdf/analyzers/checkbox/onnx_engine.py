@@ -7,6 +7,7 @@ lazy (inside detect(), never at module import time).
 
 import importlib.util
 import logging
+from dataclasses import replace
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -16,6 +17,12 @@ from .base import CheckboxDetector, DetectionContext
 from .checkbox_options import BaseCheckboxOptions, OnnxCheckboxOptions
 
 logger = logging.getLogger(__name__)
+
+_MAGNIFY_SCALE = 2.0
+_MAGNIFY_CONFIDENCE = 0.6
+_MAGNIFY_MEDIAN_SHORT_SIDE_PX = 12.0
+_MAGNIFY_P25_SHORT_SIDE_PX = 10.0
+_MAGNIFY_NMS_THRESHOLD = 0.5
 
 
 class OnnxCheckboxDetector(CheckboxDetector):
@@ -41,6 +48,7 @@ class OnnxCheckboxDetector(CheckboxDetector):
                 confidence=options.confidence,
                 resolution=options.resolution,
                 device=options.device,
+                magnify=getattr(options, "magnify", "auto"),
             )
 
         model_path = self._resolve_model_path(options)
@@ -72,9 +80,107 @@ class OnnxCheckboxDetector(CheckboxDetector):
         )
 
         if use_sahi:
-            return self._detect_sahi(image, session, model_size, options)
+            detections = self._detect_sahi(image, session, model_size, options)
         else:
-            return self._detect_single(image, session, model_size, options)
+            detections = self._detect_single(image, session, model_size, options)
+
+        for det in detections:
+            det["_checkbox_pass"] = "base"
+            det["_magnify_scale"] = 1.0
+
+        if self._should_run_magnify(detections, getattr(options, "magnify", "auto")):
+            magnified_options = replace(
+                options,
+                confidence=max(float(options.confidence), _MAGNIFY_CONFIDENCE),
+                magnify=False,
+            )
+            magnified = self._detect_magnified(
+                image,
+                session,
+                model_size,
+                magnified_options,
+                _MAGNIFY_SCALE,
+            )
+            detections = self._merge_magnified_detections(detections, magnified)
+
+        return detections
+
+    def _should_run_magnify(self, detections: List[Dict[str, Any]], magnify: Any) -> bool:
+        """Decide whether to run a second high-resolution pass."""
+        if isinstance(magnify, str):
+            mode = magnify.lower()
+        else:
+            mode = magnify
+
+        if mode is True:
+            return True
+        if mode in (False, None, "false", "off", "none", "disabled"):
+            return False
+        if mode != "auto":
+            logger.warning("Unknown checkbox magnify value %r; treating as 'auto'", magnify)
+
+        sides = []
+        for det in detections:
+            try:
+                x0, y0, x1, y1 = [float(v) for v in det["bbox"]]
+            except (KeyError, TypeError, ValueError):
+                continue
+            short_side = min(abs(x1 - x0), abs(y1 - y0))
+            if short_side > 0:
+                sides.append(short_side)
+
+        if not sides:
+            return False
+
+        median = float(np.percentile(sides, 50))
+        p25 = float(np.percentile(sides, 25))
+        return median < _MAGNIFY_MEDIAN_SHORT_SIDE_PX or p25 < _MAGNIFY_P25_SHORT_SIDE_PX
+
+    def _detect_magnified(
+        self,
+        image: Image.Image,
+        session: Any,
+        model_size: int,
+        options: "OnnxCheckboxOptions",
+        scale: float,
+    ) -> List[Dict[str, Any]]:
+        """Run inference on an upscaled image and map boxes back to original image coordinates."""
+        scaled = image.resize(
+            (max(1, round(image.width * scale)), max(1, round(image.height * scale))),
+            Image.Resampling.BICUBIC,
+        )
+        img_w, img_h = scaled.size
+        use_sahi = (
+            options.sahi_enabled and max(img_w, img_h) > model_size * options.sahi_min_image_ratio
+        )
+        if use_sahi:
+            detections = self._detect_sahi(scaled, session, model_size, options)
+        else:
+            detections = self._detect_single(scaled, session, model_size, options)
+
+        for det in detections:
+            x0, y0, x1, y1 = [float(v) for v in det["bbox"]]
+            det["bbox"] = (x0 / scale, y0 / scale, x1 / scale, y1 / scale)
+            det["_checkbox_pass"] = "magnify"
+            det["_magnify_scale"] = scale
+        return detections
+
+    def _merge_magnified_detections(
+        self,
+        base: List[Dict[str, Any]],
+        magnified: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Merge base and magnified detections, preferring higher confidence overlaps."""
+        if not magnified:
+            return base
+        if not base:
+            return magnified
+
+        all_detections = base + magnified
+        boxes = np.array([d["bbox"] for d in all_detections])
+        scores = np.array([d["confidence"] for d in all_detections])
+        keep = self.nms(boxes, scores, _MAGNIFY_NMS_THRESHOLD)
+        return [all_detections[i] for i in keep]
 
     def _detect_single(
         self,

@@ -10,6 +10,7 @@ Only needs onnxruntime + numpy + huggingface_hub.
 """
 
 import logging
+from dataclasses import fields
 from typing import Any, Dict, List, Optional
 
 from PIL import Image
@@ -32,9 +33,13 @@ class DefaultCheckboxDetector(OnnxCheckboxDetector):
     ) -> List[Dict[str, Any]]:
         # Ensure default-model-specific defaults
         if not isinstance(options, DefaultCheckboxOptions):
+            default_fields = {field.name for field in fields(DefaultCheckboxOptions)}
             opts = DefaultCheckboxOptions(
-                confidence=options.confidence,
-                device=options.device,
+                **{
+                    field.name: getattr(options, field.name)
+                    for field in fields(BaseCheckboxOptions)
+                    if field.name in default_fields
+                }
             )
         else:
             opts = options
