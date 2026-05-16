@@ -402,7 +402,7 @@ class TestOptionsHierarchy:
         opts = DefaultCheckboxOptions()
         assert opts.model_repo == "wendys-llc/checkbox-detector"
         assert opts.model_file == "checkbox_yolo12n.onnx"
-        assert opts.model_revision == "v1"
+        assert opts.model_revision == "v2"
         assert opts.input_size == 1024
         assert opts.magnify == "auto"
         assert isinstance(opts, OnnxCheckboxOptions)

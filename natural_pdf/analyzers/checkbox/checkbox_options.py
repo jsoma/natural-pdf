@@ -65,7 +65,7 @@ class DefaultCheckboxOptions(OnnxCheckboxOptions):
 
     model_repo: str = "wendys-llc/checkbox-detector"
     model_file: str = "checkbox_yolo12n.onnx"
-    model_revision: Optional[str] = "v1"
+    model_revision: Optional[str] = "v2"
     input_size: int = 1024
     resolution: int = 72  # Matches training scale (~1000px full-page images)
 
