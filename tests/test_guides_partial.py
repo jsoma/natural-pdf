@@ -105,3 +105,19 @@ def test_guides_from_headers_then_extract(atlanta_pdf):
         # Convert to DataFrame to verify it works
         df = result.to_df()
         assert df is not None
+
+
+def test_guides_from_headers_default_extracts_with_partial_verticals(pdf_factory):
+    """Header-derived vertical-only guides should infer text rows by default."""
+    pdf = pdf_factory("pdfs/use-of-force-raw.pdf")
+    page = pdf.pages[0]
+    headers = page.find_all("text[y0=min()]")
+
+    guides = Guides(page)
+    guides.vertical.from_headers(headers)
+
+    df = guides.extract_table().to_df()
+
+    assert len(df) > 0
+    assert "OFFICER" in df.columns
+    assert "DATE OF REPORT" in df.columns

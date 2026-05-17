@@ -66,13 +66,18 @@ class PdfPlumberTablesEngine:
             getattr(region, "bbox", None),
         )
 
+        def with_default_strategies(
+            base: Dict[str, Any], vertical_strategy: str, horizontal_strategy: str
+        ) -> Dict[str, Any]:
+            merged = dict(base)
+            merged.setdefault("vertical_strategy", vertical_strategy)
+            merged.setdefault("horizontal_strategy", horizontal_strategy)
+            return merged
+
+        lattice_settings = with_default_strategies(settings, "lines", "lines")
         lattice_tables = extract_tables_plumber(
             region,
-            table_settings={
-                **settings,
-                "vertical_strategy": "lines",
-                "horizontal_strategy": "lines",
-            },
+            table_settings=lattice_settings,
             apply_exclusions=apply_exclusions,
         )
         if tables_have_content(lattice_tables):
@@ -83,12 +88,16 @@ class PdfPlumberTablesEngine:
             )
             return lattice_tables
 
+        stream_settings = with_default_strategies(settings, "text", "text")
+        if stream_settings == lattice_settings:
+            return lattice_tables
+
         logger.debug(
             "Region %s: Falling back to 'stream' method for tables",
             getattr(region, "bbox", None),
         )
         return extract_tables_plumber(
             region,
-            table_settings={**settings, "vertical_strategy": "text", "horizontal_strategy": "text"},
+            table_settings=stream_settings,
             apply_exclusions=apply_exclusions,
         )

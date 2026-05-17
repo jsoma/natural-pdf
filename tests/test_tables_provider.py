@@ -49,6 +49,35 @@ def test_pdfplumber_auto_engine_falls_back_to_stream(monkeypatch):
     assert calls[1]["vertical_strategy"] == "text"
 
 
+def test_pdfplumber_auto_engine_preserves_partial_explicit_axis(monkeypatch):
+    calls = []
+
+    def fake_extract(region, table_settings, apply_exclusions):
+        calls.append(table_settings.copy())
+        if table_settings.get("horizontal_strategy") == "lines":
+            return [[[""]]]  # No meaningful content
+        return [[["data"]]]
+
+    monkeypatch.setattr(pdfplumber_mod, "extract_tables_plumber", fake_extract, raising=False)
+
+    engine = PdfPlumberTablesEngine("auto")
+    tables = engine.extract_tables(
+        context=None,
+        region=object(),
+        table_settings={
+            "vertical_strategy": "explicit",
+            "explicit_vertical_lines": [10, 20],
+        },
+    )
+
+    assert tables == [[["data"]]]
+    assert calls[0]["vertical_strategy"] == "explicit"
+    assert calls[0]["horizontal_strategy"] == "lines"
+    assert calls[1]["vertical_strategy"] == "explicit"
+    assert calls[1]["horizontal_strategy"] == "text"
+    assert calls[1]["explicit_vertical_lines"] == [10, 20]
+
+
 def test_normalize_table_settings_returns_copy():
     original = {"vertical_strategy": "text"}
     normalized = normalize_table_settings(original)

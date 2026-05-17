@@ -119,6 +119,9 @@ class TableService:
         if horizontals_floats is not None:
             table_settings["horizontal_strategy"] = "explicit"
             table_settings["explicit_horizontal_lines"] = horizontals_floats
+        has_partial_explicit_guides = (verticals_floats is not None) != (
+            horizontals_floats is not None
+        )
 
         effective_method = method
         if effective_method is None:
@@ -185,6 +188,9 @@ class TableService:
                 if structure_table is not None:
                     return structure_table
 
+                if has_partial_explicit_guides:
+                    effective_method = "auto"
+
         effective_method = effective_method or None
 
         if effective_method == "stream":
@@ -200,11 +206,21 @@ class TableService:
             effective_method or "auto",
         )
 
-        provider_managed_methods = {None, "pdfplumber", "stream", "lattice", "tatr", "text"}
+        provider_managed_methods = {
+            None,
+            "auto",
+            "default",
+            "pdfplumber_auto",
+            "pdfplumber",
+            "stream",
+            "lattice",
+            "tatr",
+            "text",
+        }
         if effective_method not in provider_managed_methods:
             raise ValueError(
                 f"Unknown table extraction method: '{method}'. "
-                "Choose from 'tatr', 'pdfplumber', 'text', 'stream', 'lattice'."
+                "Choose from 'auto', 'tatr', 'pdfplumber', 'text', 'stream', 'lattice'."
             )
 
         normalized_settings = normalize_table_settings(table_settings)
