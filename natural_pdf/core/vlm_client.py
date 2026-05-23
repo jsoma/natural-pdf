@@ -258,7 +258,8 @@ class _MLXVLMAdapter:
             from mlx_vlm.utils import load_config
         except ImportError as exc:
             raise RuntimeError(
-                "MLX VLM inference requires 'mlx-vlm'. " "Install with: pip install mlx-vlm"
+                "MLX VLM inference requires 'mlx-vlm'. "
+                'Install with: pip install "natural-pdf[ai]"'
             ) from exc
 
         logger.info("Loading MLX VLM model %r...", self.model_name)

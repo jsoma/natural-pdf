@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import platform
 from dataclasses import dataclass, field
 from importlib import import_module, metadata, util
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence
@@ -16,10 +17,16 @@ class OptionalDependency:
     description: Optional[str] = None
     import_fn: Optional[Callable[[], Any]] = None
     package_names: Sequence[str] = ()
+    applicable: Callable[[], bool] = lambda: True
     _module: Optional[Any] = field(default=None, init=False)
     _available: Optional[bool] = field(default=None, init=False)
 
+    def is_applicable(self) -> bool:
+        return bool(self.applicable())
+
     def is_available(self) -> bool:
+        if not self.is_applicable():
+            return False
         if self._available is None:
             try:
                 self._available = util.find_spec(self.module_name) is not None
@@ -52,6 +59,10 @@ class OptionalDependency:
             except metadata.PackageNotFoundError:
                 continue
         return versions
+
+
+def _is_apple_silicon() -> bool:
+    return platform.system() == "Darwin" and platform.machine() == "arm64"
 
 
 OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
@@ -94,6 +105,11 @@ OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
         "paddlex",
         ('pip install "natural-pdf[paddle]"', "pip install paddlex[ocr]"),
         "PaddleX OCR pipeline dependency.",
+    ),
+    "chardet": OptionalDependency(
+        "chardet",
+        ('pip install "natural-pdf[paddle]"', "pip install chardet"),
+        "Character encoding detection dependency used by Paddle OCR tooling.",
     ),
     "numpy": OptionalDependency(
         "numpy",
@@ -149,6 +165,16 @@ OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
         ("pip install natural-pdf", "pip install huggingface_hub"),
         "Model hub utilities required by AI engines.",
     ),
+    "mlx_vlm": OptionalDependency(
+        "mlx_vlm",
+        (
+            'pip install "natural-pdf[ai]"',
+            "pip install mlx-vlm",
+        ),
+        "MLX local VLM runtime for Apple Silicon OCR and extraction.",
+        package_names=("mlx-vlm",),
+        applicable=_is_apple_silicon,
+    ),
     # Layout
     "doclayout_yolo": OptionalDependency(
         "doclayout_yolo",
@@ -167,17 +193,21 @@ OPTIONAL_DEPENDENCY_GROUPS: Dict[str, tuple[str, ...]] = {
         "rapidocr",
         "torch",
         "torchvision",
+        "huggingface_hub",
+        "mlx_vlm",
         "transformers",
         "sentence_transformers",
         "timm",
         "doclayout_yolo",
     ),
     "export": ("pikepdf", "img2pdf", "jupytext", "nbformat"),
-    "paddle": ("paddlepaddle", "paddleocr", "paddlex", "numpy"),
+    "paddle": ("chardet", "paddlepaddle", "paddleocr", "paddlex", "numpy"),
     "all": (
         "rapidocr",
         "torch",
         "torchvision",
+        "huggingface_hub",
+        "mlx_vlm",
         "transformers",
         "sentence_transformers",
         "timm",
@@ -213,13 +243,21 @@ def list_optional_dependencies() -> Mapping[str, Dict[str, Any]]:
             "description": dep.description,
             "package_names": tuple(dep.package_names or (dep.module_name,)),
             "module_name": dep.module_name,
+            "applicable": dep.is_applicable(),
         }
         for name, dep in OPTIONAL_DEPENDENCIES.items()
     }
 
 
 def list_dependency_groups() -> Mapping[str, tuple[str, ...]]:
-    return dict(OPTIONAL_DEPENDENCY_GROUPS)
+    return {
+        group: tuple(
+            dep_name
+            for dep_name in dependency_names
+            if OPTIONAL_DEPENDENCIES[dep_name].is_applicable()
+        )
+        for group, dependency_names in OPTIONAL_DEPENDENCY_GROUPS.items()
+    }
 
 
 __all__ = [

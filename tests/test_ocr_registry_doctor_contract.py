@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 import sys
 
+from packaging.requirements import Requirement
+
 
 def _load_pyproject():
     try:
@@ -15,7 +17,17 @@ def _load_pyproject():
 
 
 def _dist_name(requirement: str) -> str:
-    return re.split(r"[<>=!~\[]", requirement, maxsplit=1)[0].lower().replace("-", "_")
+    return Requirement(requirement).name.lower().replace("-", "_")
+
+
+def _active_extra_deps(requirements: list[str]) -> set[str]:
+    deps = set()
+    for requirement in requirements:
+        parsed = Requirement(requirement)
+        if parsed.marker is not None and not parsed.marker.evaluate():
+            continue
+        deps.add(_dist_name(requirement))
+    return deps
 
 
 def test_natural_pdf_ocr_no_longer_exports_legacy_public_symbols():
@@ -46,7 +58,7 @@ def test_optional_dependency_groups_match_pyproject_extras():
     groups = list_dependency_groups()
 
     for group_name in ("ai", "export", "paddle"):
-        expected = {_dist_name(requirement) for requirement in extras[group_name]}
+        expected = _active_extra_deps(extras[group_name])
         actual = {
             package_name.lower().replace("-", "_")
             for dep_name in groups[group_name]
@@ -54,7 +66,7 @@ def test_optional_dependency_groups_match_pyproject_extras():
         }
         assert actual == expected
 
-    ai = {_dist_name(requirement) for requirement in extras["ai"]}
+    ai = _active_extra_deps(extras["ai"])
     assert "easyocr" not in ai
     assert "rapidocr" in ai
     assert "doclayout_yolo" in ai

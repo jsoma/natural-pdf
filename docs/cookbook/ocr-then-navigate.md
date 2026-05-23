@@ -75,7 +75,7 @@ Natural PDF supports multiple OCR engines:
 | `paddle` | Best CJK (Chinese/Japanese/Korean) support. | `pip install paddlepaddle paddleocr` |
 | `paddlevl` | VLM-based — understands charts and complex layouts. | `pip install paddlepaddle paddleocr "paddlex[ocr]"` |
 | `doctr` | Smaller model footprint. | `pip install python-doctr` |
-| `dots` | dots.mocr — combined layout + OCR. MLX-optimized on Apple Silicon. | `pip install mlx-vlm` or `pip install transformers torch` |
+| `dots` | dots.mocr — combined layout + OCR. MLX-optimized on Apple Silicon. | `pip install "natural-pdf[ai]"` or `pip install transformers torch` |
 | `chandra` | VLM-based successor to Surya. | `pip install chandra-ocr[hf]` |
 
 GLM-OCR (0.9B VLM) is also available via `engine="vlm"` with automatic layout detection — see the [OCR tutorial](../tutorials/12-ocr-integration.ipynb#glm-ocr).

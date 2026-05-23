@@ -957,8 +957,8 @@ def _run_glm_ocr_with_layout(
 def resolve_glm_ocr_model() -> str:
     """Pick the best GLM-OCR model variant for the current platform.
 
-    Returns the MLX 4-bit model on Apple Silicon (requires ``pip install
-    mlx-vlm``), otherwise the full HuggingFace model for GPU/CPU.
+    Returns the MLX 4-bit model on Apple Silicon (via ``natural-pdf[ai]``),
+    otherwise the full HuggingFace model for GPU/CPU.
     """
     import platform
 
@@ -970,8 +970,8 @@ def resolve_glm_ocr_model() -> str:
 def resolve_chandra_model() -> str:
     """Pick the best Chandra model variant for the current platform.
 
-    Returns the MLX 4-bit model on Apple Silicon (requires ``pip install
-    mlx-vlm``), otherwise the full HuggingFace model for GPU/CPU.
+    Returns the MLX 4-bit model on Apple Silicon (via ``natural-pdf[ai]``),
+    otherwise the full HuggingFace model for GPU/CPU.
     """
     import platform
 
@@ -983,8 +983,8 @@ def resolve_chandra_model() -> str:
 def resolve_dots_model() -> str:
     """Pick the best dots.mocr model variant for the current platform.
 
-    Returns the MLX 4-bit model on Apple Silicon (requires ``pip install
-    mlx-vlm``), otherwise the full HuggingFace model for GPU/CPU.
+    Returns the MLX 4-bit model on Apple Silicon (via ``natural-pdf[ai]``),
+    otherwise the full HuggingFace model for GPU/CPU.
     """
     import platform
 

@@ -382,7 +382,7 @@ Any engine that works with `apply_ocr()` works with `compare_ocr()`:
 | `surya` | `pip install surya-ocr` | Medium | Line-level boxes |
 | `paddle` | `pip install paddleocr` | Medium | Word-level boxes |
 | `doctr` | `pip install python-doctr` | Medium | Word→line merged boxes |
-| `dots` | `pip install mlx-vlm` or `pip install transformers torch` | Slow | dots.mocr — combined layout + OCR, MLX-optimized on Apple Silicon |
+| `dots` | `pip install "natural-pdf[ai]"` or `pip install transformers torch` | Slow | dots.mocr — combined layout + OCR, MLX-optimized on Apple Silicon |
 | `chandra` | `pip install chandra-ocr[hf]` | Slow | VLM-based, successor to Surya |
 
 VLM-based engines (`engine="vlm"`, `"dots"`, `"chandra"`) can also be compared but produce block-level output and are slower.

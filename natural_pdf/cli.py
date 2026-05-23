@@ -51,12 +51,14 @@ def cmd_doctor(args):
     print("Optional dependency modules:\n")
     for name, payload in sorted(dep_info.items()):
         status = "OK" if payload["available"] else "MISS"
+        if not payload.get("applicable", True):
+            status = "N/A"
         versions = payload["versions"]
         version_text = ", ".join(f"{pkg} {ver}" for pkg, ver in sorted(versions.items()))
         desc = payload.get("description") or ""
         suffix = f" ({version_text})" if version_text else ""
         print(f"{status:<4} {name:<22} -> {desc}{suffix}")
-        if not payload["available"]:
+        if not payload["available"] and payload.get("applicable", True):
             hints = " or ".join(payload["install_hints"]) or "pip install"
             print(f"     install: {hints}")
     print()

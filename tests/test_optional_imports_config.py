@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import platform
 from pathlib import Path
 from typing import Dict
 
@@ -23,6 +24,7 @@ REQUIRED_DEPENDENCIES = {
     "transformers",
     "torchvision",
     "huggingface_hub",
+    "mlx_vlm",
     "doclayout_yolo",
     "timm",
     "img2pdf",
@@ -67,6 +69,8 @@ def test_public_runtime_extras_contract():
     assert {"ai", "export", "paddle", "all"} <= set(extras)
     assert "rapidocr" in extras["ai"]
     assert "easyocr" not in extras["ai"]
+    assert any(req.startswith("mlx-vlm;") for req in extras["ai"])
+    assert "mlx" not in extras
     assert extras["all"] == ["natural-pdf[ai]", "natural-pdf[export]"]
 
     assert "natural-pdf[test]" not in extras["all"]
@@ -83,6 +87,10 @@ def test_cli_public_groups_align_with_runtime_extras():
     assert "rapidocr" in groups["all"]
     assert "rapidocr" in groups["ai"]
     assert "easyocr" not in groups["all"]
+    if platform.system() == "Darwin" and platform.machine() == "arm64":
+        assert "mlx_vlm" in groups["ai"]
+    else:
+        assert "mlx_vlm" not in groups["ai"]
     assert "pikepdf" in groups["export"]
     assert "paddlepaddle" in groups["paddle"]
     assert {"ai", "export", "paddle", "all"} <= set(extras)
