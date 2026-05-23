@@ -189,6 +189,41 @@ class TestPostProcessHook:
         # Verify it overrides the base method
         assert TableTransformerDetector.post_process_regions is not object.__init__
 
+    def test_tatr_sanitizes_legacy_dilation_config(self, monkeypatch):
+        """TATR should fix legacy HF configs with dilation=None before loading."""
+        from natural_pdf.analyzers.layout import tatr as tatr_module
+        from natural_pdf.analyzers.layout.tatr import TableTransformerDetector
+
+        class FakePretrainedConfig:
+            @staticmethod
+            def get_config_dict(model_name, **kwargs):
+                return {"model_type": "table-transformer", "dilation": None}, {}
+
+        class FakeTableTransformerConfig:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+                self.dilation = kwargs["dilation"]
+
+        class FakeAutoModel:
+            calls = []
+
+            @classmethod
+            def from_pretrained(cls, model_name, **kwargs):
+                cls.calls.append((model_name, kwargs))
+                return object()
+
+        monkeypatch.setattr(tatr_module, "PretrainedConfig", FakePretrainedConfig)
+        monkeypatch.setattr(tatr_module, "TableTransformerConfig", FakeTableTransformerConfig)
+        monkeypatch.setattr(tatr_module, "AutoModelForObjectDetection", FakeAutoModel)
+
+        detector = TableTransformerDetector()
+        detector._load_model_with_sanitized_config("model-id", revision="no_timm")
+
+        assert FakeAutoModel.calls
+        _, kwargs = FakeAutoModel.calls[0]
+        assert kwargs["revision"] == "no_timm"
+        assert kwargs["config"].dilation is False
+
 
 # ---------------------------------------------------------------------------
 # Phase 3c: _build_class_filters helper

@@ -18,12 +18,18 @@ transformers_spec = importlib.util.find_spec("transformers")
 torch: Any = None
 transforms: Any = None
 AutoModelForObjectDetection: Any = None
+PretrainedConfig: Any = None
+TableTransformerConfig: Any = None
 
 if torch_spec and torchvision_spec and transformers_spec:
     try:
         import torch
         from torchvision import transforms  # type: ignore[import]
-        from transformers import AutoModelForObjectDetection
+        from transformers import (
+            AutoModelForObjectDetection,
+            PretrainedConfig,
+            TableTransformerConfig,
+        )
     except ImportError as e:
         logger.warning(
             f"Could not import TATR dependencies (torch, torchvision, transformers): {e}"
@@ -104,12 +110,12 @@ class TableTransformerDetector(LayoutDetector):
             f"Loading TATR models: Detection='{options.detection_model}', Structure='{options.structure_model}' onto device='{device}'"
         )
         try:
-            detection_model = AutoModelForObjectDetection.from_pretrained(
+            detection_model = self._load_model_with_sanitized_config(
                 options.detection_model, revision="no_timm"  # Important revision for some versions
             ).to(device)
-            structure_model = AutoModelForObjectDetection.from_pretrained(
-                options.structure_model
-            ).to(device)
+            structure_model = self._load_model_with_sanitized_config(options.structure_model).to(
+                device
+            )
             # Build transforms once per model load
             detection_transform = transforms.Compose(
                 [
@@ -135,6 +141,39 @@ class TableTransformerDetector(LayoutDetector):
         except Exception as e:
             self.logger.error(f"Failed to load TATR models: {e}", exc_info=True)
             raise
+
+    def _load_model_with_sanitized_config(self, model_name: str, **kwargs):
+        """Load a TATR model, normalizing legacy table-transformer config values.
+
+        The upstream Microsoft Table Transformer configs currently expose
+        ``"dilation": null``. Newer Transformers/Hugging Face strict config
+        validation expects a bool, so direct ``from_pretrained`` can fail before
+        weights load. Reading and fixing the config first keeps the model
+        compatible without changing inference behavior.
+        """
+
+        config = self._load_sanitized_table_transformer_config(model_name, **kwargs)
+        if config is None:
+            return AutoModelForObjectDetection.from_pretrained(model_name, **kwargs)
+        return AutoModelForObjectDetection.from_pretrained(model_name, config=config, **kwargs)
+
+    def _load_sanitized_table_transformer_config(self, model_name: str, **kwargs):
+        if PretrainedConfig is None or TableTransformerConfig is None:
+            return None
+
+        try:
+            config_dict, _ = PretrainedConfig.get_config_dict(model_name, **kwargs)
+        except Exception:
+            self.logger.debug("Could not pre-load TATR config for %s", model_name, exc_info=True)
+            return None
+
+        if config_dict.get("model_type") != "table-transformer":
+            return None
+
+        if config_dict.get("dilation") is None:
+            config_dict["dilation"] = False
+
+        return TableTransformerConfig(**config_dict)
 
     # --- Helper methods (box_cxcywh_to_xyxy, rescale_bboxes, outputs_to_objects) ---
     # Keep these as defined in the original tatr.txt file, making them instance methods
