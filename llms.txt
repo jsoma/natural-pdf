@@ -14,7 +14,8 @@ Natural PDF combines traditional PDF parsing with modern AI capabilities. It pro
 - [Element Selection](/docs/element-selection/): CSS-like selector syntax for finding PDF elements
 - [Spatial Navigation](/docs/tutorials/08-spatial-navigation/): Directional methods like .below(), .above(), .left(), .right()
 - [Working with Regions](/docs/tutorials/07-working-with-regions/): Creating and using rectangular page areas
-- [Table Extraction](/docs/tutorials/04-table-extraction/): Extract tables using pdfplumber, TATR, or text methods
+- [Table Extraction](/docs/tutorials/04-table-extraction/): Extract tables using pdfplumber, TATR, guides, or text methods
+- [Guides Cookbook](/docs/cookbook/guides/): Build manual table grids from headers, row anchors, lines, whitespace, or stripes
 
 ## Tutorials
 
@@ -59,11 +60,21 @@ Natural PDF combines traditional PDF parsing with modern AI capabilities. It pro
 - `page.extract_text()` -> str
 - `page.extract_table()` -> TableResult
 - `page.extract_tables()` -> List[TableResult]
+- `page.extract_anchored_rows(anchors, side='right')` -> list[AnchoredRow]
+- `pdf.pages.extract_anchored_rows(anchors, side='right')` -> list[AnchoredRow]
+- `page.extract_table_guided(headers, row_anchors, header_anchor=...)` -> TableResult
+- `page.guides().from_headers_and_row_anchors(headers, row_anchors, header_anchor=...)` -> Guides
 - `page.to_markdown()` -> str (VLM-powered)
 - `pdf.search(query, top_k=5)` -> PageCollection (semantic search)
 - `element.below()` / `.above()` / `.left()` / `.right()` -> Region
 - `page.apply_ocr(engine='rapidocr')` -> ElementCollection
 - `page.analyze_layout(engine='yolo')` -> ElementCollection
+
+### Table Recovery Patterns
+- If `extract_table()` misses a borderless or tiny-font native-text table, do not jump straight to OCR. First try `page.extract_table_guided(headers, row_anchors, header_anchor=...)`: use visible headers for vertical guides, stable first-column IDs/case numbers for horizontal guides, then snap vertical guides to whitespace before extracting cells. Header elements are most reliable; unique header-name strings can infer the header row, and repeated/ambiguous headers should pass `header_anchor`.
+- Use `extract_anchored_rows()` when each row is keyed by a margin number, case number, row ID, or other stable visual anchor and you need same-row text to the left or right.
+- Use `cell_overlap='center'` for small crowded text after the guides are placed, so cells are assigned by text centers instead of incidental bounding-box overlap.
+- If one PDF text object spans adjacent values, such as two dates in neighboring columns, split that value with a pattern after extraction instead of duplicating it across cells.
 
 ### OCR Engines
 - `rapidocr`: Default, lightweight ONNX models (~15MB)

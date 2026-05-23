@@ -9010,6 +9010,328 @@ region extraction to leverage provider-backed table structure results.</p>
 <div class="doc doc-object doc-function">
 
 
+<h7 id="natural_pdf.Guides.from_headers_and_row_anchors" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Guides</span><span class="o">.</span><span class="n">from_headers_and_row_anchors</span><span class="p">(</span><span class="n">headers</span><span class="p">,</span> <span class="n">row_anchors</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">header_anchor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header_method</span><span class="o">=</span><span class="s1">&#39;min_crossings&#39;</span><span class="p">,</span> <span class="n">min_width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">margin</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">row_stabilization</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">snap_vertical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">snap_vertical_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">row_align</span><span class="o">=</span><span class="s1">&#39;between&#39;</span><span class="p">,</span> <span class="n">row_outer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">row_tolerance</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Build table guides from column headers and stable row anchors.</p>
+<p>Use this for crowded or borderless native-text tables where headers
+define columns and a first-column ID, case number, or similar marker
+defines each row. The helper intentionally composes the existing guide
+primitives: vertical guides from headers, optional whitespace snapping,
+and horizontal guides from row-anchor content.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>headers</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="natural_pdf.elements.element_collection.ElementCollection">ElementCollection</span>, <span title="typing.Sequence">Sequence</span>[<span title="typing.Any">Any</span>], None]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Header-row elements used to derive vertical column guides.
+Pass the visible table headers, not output schema names.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>row_anchors</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="natural_pdf.elements.element_collection.ElementCollection">ElementCollection</span>, <span title="typing.Sequence">Sequence</span>[<span title="typing.Any">Any</span>], <span title="typing.Callable">Callable</span>[[<span title="natural_pdf.analyzers.guides.helpers.GuidesContext">GuidesContext</span>], <span title="typing.Iterable">Iterable</span>[<span title="typing.Any">Any</span>]]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selector, elements, or callable identifying stable row
+markers such as first-column IDs or case numbers.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>header_anchor</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional header marker to include as the first
+horizontal guide marker, keeping the header row in the grid.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>obj</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="natural_pdf.analyzers.guides.helpers.GuidesContext">GuidesContext</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional page/region/flow context. Defaults to this guide
+object's context.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>header_method</code>
+            </td>
+            <td>
+                  <code><span title="typing.Literal">Literal</span>[&#39;min_crossings&#39;, &#39;seam_carving&#39;]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Strategy passed to <code>vertical.from_headers(...)</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;min_crossings&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>min_width</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional minimum column width for header-derived guides.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>max_width</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional maximum column width for header-derived guides.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>margin</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Header-search margin used by <code>from_headers</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>row_stabilization</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Stabilize header separators with nearby row text.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>num_samples</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sample count used by seam/min-crossing guide detection.</p>
+              </div>
+            </td>
+            <td>
+                  <code>400</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>snap_vertical</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to snap vertical guides into whitespace gaps.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>snap_vertical_kwargs</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Options for <code>vertical.snap_to_whitespace</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>row_align</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="typing.Literal">Literal</span>[&#39;left&#39;, &#39;right&#39;, &#39;center&#39;, &#39;between&#39;], <span title="typing.Literal">Literal</span>[&#39;top&#39;, &#39;bottom&#39;]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Alignment mode for row-anchor horizontal guides.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;between&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>row_outer</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="bool">bool</span>, <span title="typing.Literal">Literal</span>[&#39;first&#39;, &#39;last&#39;]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to add outer horizontal boundary guides.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>row_tolerance</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tolerance for resolving row-anchor content.</p>
+              </div>
+            </td>
+            <td>
+                  <code>5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>apply_exclusions</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Respect exclusions when resolving row-anchor
+selectors.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="natural_pdf.Guides (natural_pdf.analyzers.guides.base.Guides)" href="#natural_pdf.Guides">Guides</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>This <code>Guides</code> object, with vertical and horizontal guides populated.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h7 id="natural_pdf.Guides.from_lines" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Guides</span><span class="o">.</span><span class="n">from_lines</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">source_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_lines_h</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_lines_v</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">detection_method</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">192</span><span class="p">,</span> <span class="o">**</span><span class="n">detect_kwargs</span><span class="p">)</span></code>
 
@@ -18224,6 +18546,9 @@ Ignored when <code>prompt</code> is passed directly via <code>**kwargs</code>.</
   (default) auto-detects based on model family.</li>
 <li><code>prompt</code> (str): Custom VLM prompt.</li>
 <li><code>max_new_tokens</code> (int): Max generation tokens for VLM.</li>
+<li><code>preserve_markup</code> (bool): Keep raw VLM markup in OCR
+  text. Defaults to <code>False</code>, which normalizes HTML tables
+  to plain text while retaining raw HTML in table metadata.</li>
 </ul>
               </div>
             </td>
@@ -19538,6 +19863,225 @@ result.show()                  # highlight all citations on page
 <div class="doc doc-object doc-function">
 
 
+<h7 id="natural_pdf.Page.extract_anchored_rows" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Page</span><span class="o">.</span><span class="n">extract_anchored_rows</span><span class="p">(</span><span class="n">anchors</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">content_selector</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="n">elements</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">y_tolerance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x_gap</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">include_anchor</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Collect same-row text-like elements relative to anchor elements.</p>
+<p>Use this when the visual structure is row-oriented but not a normal
+table: margin line numbers, stable first-column IDs, or other anchors
+that identify which same-row content belongs together.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>anchors</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="collections.abc.Iterable">Iterable</span>[<span title="typing.Any">Any</span>], <span title="typing.Callable">Callable</span>[[<span title="typing.Any">Any</span>], <span title="collections.abc.Iterable">Iterable</span>[<span title="typing.Any">Any</span>]]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selector, iterable, or callable returning the row anchors.
+Callable inputs receive this page.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>content_selector</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selector used for candidate row content when
+<code>elements</code> is not supplied.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;text&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>elements</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="collections.abc.Iterable">Iterable</span>[<span title="typing.Any">Any</span>], <span title="typing.Callable">Callable</span>[[<span title="typing.Any">Any</span>], <span title="collections.abc.Iterable">Iterable</span>[<span title="typing.Any">Any</span>]]]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional selector, iterable, or callable for candidate row
+content. Use this to limit matching to a table/section band.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>side</code>
+            </td>
+            <td>
+                  <code><span title="typing.Literal">Literal</span>[&#39;right&#39;, &#39;left&#39;, &#39;both&#39;]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Collect content to the <code>"right"</code>, <code>"left"</code>, or on
+<code>"both"</code> sides of each anchor.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;right&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>y_tolerance</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum vertical midpoint distance for same-row
+matching. Defaults to a value derived from anchor height.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>x_gap</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Required gap between anchor and content for left/right
+matching.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>include_anchor</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Include the anchor itself in the returned row text.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sort</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sort row elements by x-position before joining text.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>apply_exclusions</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Respect exclusions when resolving selector inputs.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.List">List</span>[<span title="natural_pdf.extraction.anchored_rows.AnchoredRow">AnchoredRow</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A list of <code>AnchoredRow</code> objects with the anchor, collected elements,</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.List">List</span>[<span title="natural_pdf.extraction.anchored_rows.AnchoredRow">AnchoredRow</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>joined text, union bbox, and page number.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h7 id="natural_pdf.Page.extract_ocr_elements" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Page</span><span class="o">.</span><span class="n">extract_ocr_elements</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
@@ -19587,6 +20131,591 @@ result.show()                  # highlight all citations on page
 <code>cell_extract="words"</code> with <code>cell_overlap</code> and <code>cell_newlines</code>.
 Arbitrary <code>cell_extraction_func</code> callbacks are supported but run once
 per cell and are slower on large tables.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h7 id="natural_pdf.Page.extract_table_guided" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">Page</span><span class="o">.</span><span class="n">extract_table_guided</span><span class="p">(</span><span class="n">headers</span><span class="p">,</span> <span class="n">row_anchors</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">header_anchor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header_method</span><span class="o">=</span><span class="s1">&#39;min_crossings&#39;</span><span class="p">,</span> <span class="n">min_width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">margin</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">row_stabilization</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">snap_vertical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">snap_vertical_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">row_align</span><span class="o">=</span><span class="s1">&#39;between&#39;</span><span class="p">,</span> <span class="n">row_outer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">row_tolerance</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s1">&#39;guides_temp&#39;</span><span class="p">,</span> <span class="n">cell_padding</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">include_outer_boundaries</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">table_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_ocr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ocr_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">text_options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cell_extraction_func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cell_extract</span><span class="o">=</span><span class="s1">&#39;words&#39;</span><span class="p">,</span> <span class="n">cell_overlap</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">cell_newlines</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">show_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">content_filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s1">&#39;first&#39;</span><span class="p">,</span> <span class="n">skip_repeating_headers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">structure_engine</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Extract a table using header-derived columns and row anchors.</p>
+<p>This is a convenience wrapper for the common difficult-table pattern:
+visible headers define approximate vertical column boundaries, stable
+row IDs/case numbers define horizontal row boundaries, and vertical
+guides are optionally snapped into nearby whitespace before extraction.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>headers</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="natural_pdf.elements.element_collection.ElementCollection">ElementCollection</span>[<span title="typing.Any">Any</span>], <span title="typing.Sequence">Sequence</span>[<span title="typing.Any">Any</span>], None]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Header elements or names used for vertical guides. Header text
+strings are accepted for simple unique headers, but selected
+header elements are more reliable for crowded tables, duplicate
+labels, and repeated page text. If element headers are provided
+and <code>header_anchor</code> is omitted, the first header element is
+used to include the header row as the first horizontal guide.
+If header names are provided and <code>header_anchor</code> is omitted,
+the first matching header text is used as the header row anchor
+when it can be found.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>row_anchors</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="collections.abc.Iterable">Iterable</span>[<span title="typing.Any">Any</span>], <span title="typing.Callable">Callable</span>[[<span title="typing.Any">Any</span>], <span title="collections.abc.Iterable">Iterable</span>[<span title="typing.Any">Any</span>]]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selector, iterable, or callable returning stable row
+markers such as IDs, case numbers, or first-column values.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>header_anchor</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional element or selector for the header row
+marker. Use this when string headers are repeated or ambiguous.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>header_method</code>
+            </td>
+            <td>
+                  <code><span title="typing.Literal">Literal</span>[&#39;min_crossings&#39;, &#39;seam_carving&#39;]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Strategy passed to <code>vertical.from_headers(...)</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;min_crossings&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>min_width</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional minimum column width for header-derived guides.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>max_width</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional maximum column width for header-derived guides.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>margin</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Header-search margin used by <code>from_headers</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>row_stabilization</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Stabilize header separators with nearby row text.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>num_samples</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sample count used by seam/min-crossing detection.</p>
+              </div>
+            </td>
+            <td>
+                  <code>400</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>snap_vertical</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to snap vertical guides into whitespace gaps.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>snap_vertical_kwargs</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Options for <code>vertical.snap_to_whitespace</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>row_align</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="typing.Literal">Literal</span>[&#39;left&#39;, &#39;right&#39;, &#39;center&#39;, &#39;between&#39;], <span title="typing.Literal">Literal</span>[&#39;top&#39;, &#39;bottom&#39;]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Alignment mode for row-anchor horizontal guides.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;between&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>row_outer</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="bool">bool</span>, <span title="typing.Literal">Literal</span>[&#39;first&#39;, &#39;last&#39;]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to add outer horizontal boundary guides.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>row_tolerance</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tolerance for resolving row-anchor content.</p>
+              </div>
+            </td>
+            <td>
+                  <code>5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>source</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Source label for temporary guide grid regions.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;guides_temp&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cell_padding</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Padding for guide-built cell regions.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>include_outer_boundaries</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Add table bounds from the page when outer
+guides are missing.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>method</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional table extraction method.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>table_settings</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="dict">dict</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional table-engine settings.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>use_ocr</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to use OCR text for cell extraction.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>ocr_config</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="dict">dict</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>OCR configuration.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>text_options</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Text extraction options.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cell_extraction_func</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Callable">Callable</span>[[<span title="typing.Any">Any</span>], <span title="typing.Optional">Optional</span>[<span title="str">str</span>]]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional custom cell extraction callback.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cell_extract</code>
+            </td>
+            <td>
+                  <code><span title="typing.Literal">Literal</span>[&#39;text&#39;, &#39;words&#39;]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>"words"</code> is the default for crowded native text;
+use <code>"text"</code> for character-map extraction.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;words&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cell_overlap</code>
+            </td>
+            <td>
+                  <code><span title="typing.Literal">Literal</span>[&#39;center&#39;, &#39;full&#39;, &#39;partial&#39;]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Word overlap mode for <code>cell_extract="words"</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;center&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cell_newlines</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="bool">bool</span>, <span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Newline handling for extracted cell text.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>show_progress</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Controls progress reporting in supported engines.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>content_filter</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="typing.Sequence">Sequence</span>[<span title="str">str</span>], <span title="typing.Callable">Callable</span>[[<span title="str">str</span>], <span title="bool">bool</span>]]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional content filtering function or patterns.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>apply_exclusions</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Respect page exclusions while resolving anchors
+and extracting cell text.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>header</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="typing.List">List</span>[<span title="str">str</span>], None]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Header handling passed to <code>Guides.extract_table</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;first&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>skip_repeating_headers</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="bool">bool</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Remove duplicate header rows when relevant.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>structure_engine</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional provider-backed structure engine.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="natural_pdf.tables.result.TableResult">TableResult</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A <code>TableResult</code> extracted from the generated guides.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -22326,6 +23455,212 @@ annotations, or other elements from the original pages will <em>not</em> be carr
 <div class="doc doc-object doc-function">
 
 
+<h7 id="natural_pdf.PageCollection.extract_anchored_rows" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">PageCollection</span><span class="o">.</span><span class="n">extract_anchored_rows</span><span class="p">(</span><span class="n">anchors</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">content_selector</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="n">elements</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">y_tolerance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x_gap</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">include_anchor</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+</h7>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Collect anchored rows across pages in document order.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>anchors</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | <span title="typing.Callable">Callable</span>[[<span title="typing.Any">Any</span>], <span title="typing.Any">Any</span>] | <span title="collections.abc.Iterable">Iterable</span>[<span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selector, iterable, or callable returning anchors for each
+page. Callable inputs receive the current page.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>content_selector</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selector used for candidate row content when
+<code>elements</code> is not supplied.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;text&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>elements</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | <span title="typing.Callable">Callable</span>[[<span title="typing.Any">Any</span>], <span title="typing.Any">Any</span>] | <span title="collections.abc.Iterable">Iterable</span>[<span title="typing.Any">Any</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional selector, iterable, or callable for candidate row
+content. Iterables are partitioned by each element's page.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>side</code>
+            </td>
+            <td>
+                  <code><span title="typing.Literal">Literal</span>[&#39;right&#39;, &#39;left&#39;, &#39;both&#39;]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Collect content to the <code>"right"</code>, <code>"left"</code>, or on
+<code>"both"</code> sides of each anchor.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;right&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>y_tolerance</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum vertical midpoint distance for same-row
+matching. Defaults to a value derived from anchor height.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>x_gap</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Required gap between anchor and content for left/right
+matching.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>include_anchor</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Include anchors in returned row text.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sort</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sort row elements by x-position before joining text.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>apply_exclusions</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Respect exclusions when resolving selector inputs.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="list">list</span>[&#39;AnchoredRow&#39;]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A page-ordered list of <code>AnchoredRow</code> objects.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h7 id="natural_pdf.PageCollection.extract_text" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">natural_pdf</span><span class="o">.</span><span class="n">PageCollection</span><span class="o">.</span><span class="n">extract_text</span><span class="p">(</span><span class="n">separator</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
@@ -24826,6 +26161,9 @@ Ignored when <code>prompt</code> is passed directly via <code>**kwargs</code>.</
   (default) auto-detects based on model family.</li>
 <li><code>prompt</code> (str): Custom VLM prompt.</li>
 <li><code>max_new_tokens</code> (int): Max generation tokens for VLM.</li>
+<li><code>preserve_markup</code> (bool): Keep raw VLM markup in OCR
+  text. Defaults to <code>False</code>, which normalizes HTML tables
+  to plain text while retaining raw HTML in table metadata.</li>
 </ul>
               </div>
             </td>

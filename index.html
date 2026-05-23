@@ -452,6 +452,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#recover-difficult-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recover Difficult Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#document-question-answering" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1833,6 +1844,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#recover-difficult-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recover Difficult Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#document-question-answering" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1993,6 +2015,36 @@ pip install &quot;natural-pdf[all]&quot;
 
 <span class="c1"># Extract data from the first table</span>
 <span class="n">table_data</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;region[type=table]&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="recover-difficult-tables">Recover Difficult Tables</h3>
+<p>Use guides and row anchors when a table is visually clear but automatic table
+extraction misses rows or columns.</p>
+<div class="highlight"><pre><span></span><code><span class="n">header</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;CASE #&quot;)&#39;</span><span class="p">)</span>
+<span class="n">texts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">))</span>
+<span class="n">header_row</span> <span class="o">=</span> <span class="p">[</span><span class="n">el</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">texts</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">top</span> <span class="o">-</span> <span class="n">header</span><span class="o">.</span><span class="n">top</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">]</span>
+<span class="n">row_anchors</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">el</span>
+    <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">texts</span>
+    <span class="k">if</span> <span class="n">el</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;23-&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">el</span><span class="o">.</span><span class="n">top</span> <span class="o">&gt;</span> <span class="n">header</span><span class="o">.</span><span class="n">top</span>
+<span class="p">]</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_table_guided</span><span class="p">(</span>
+    <span class="n">header_row</span><span class="p">,</span>
+    <span class="n">row_anchors</span><span class="p">,</span>
+    <span class="n">cell_extract</span><span class="o">=</span><span class="s2">&quot;words&quot;</span><span class="p">,</span>
+    <span class="n">cell_overlap</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+<span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<p>For row-shaped content that is not a full table, use stable visual anchors:</p>
+<div class="highlight"><pre><span></span><code><span class="n">rows</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="o">.</span><span class="n">extract_anchored_rows</span><span class="p">(</span>
+    <span class="k">lambda</span> <span class="n">page</span><span class="p">:</span> <span class="p">[</span>
+        <span class="n">el</span>
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">el</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">and</span> <span class="n">el</span><span class="o">.</span><span class="n">x1</span> <span class="o">&lt;</span> <span class="mi">70</span>
+    <span class="p">],</span>
+    <span class="n">side</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">clean_lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">]</span>
 </code></pre></div>
 <h3 id="document-question-answering">Document Question Answering</h3>
 <p>Ask natural language questions directly to your documents.</p>

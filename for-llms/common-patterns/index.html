@@ -1537,10 +1537,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6a-extract-all-tables-from-a-page" class="md-nav__link">
+  <a href="#6a-extract-rows-from-stable-anchors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6a. Extract ALL Tables from a Page
+        6a. Extract Rows from Stable Anchors
       
     </span>
   </a>
@@ -1548,10 +1548,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6b-extract-all-tables-from-a-page-shortcut" class="md-nav__link">
+  <a href="#6b-extract-a-crowded-table-with-header-guides-and-row-anchors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6b. Extract All Tables from a Page (Shortcut)
+        6b. Extract a Crowded Table with Header Guides and Row Anchors
       
     </span>
   </a>
@@ -1559,10 +1559,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6c-convert-page-to-markdown-with-vlm" class="md-nav__link">
+  <a href="#6c-extract-all-tables-from-a-page" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6c. Convert Page to Markdown with VLM
+        6c. Extract ALL Tables from a Page
       
     </span>
   </a>
@@ -1570,10 +1570,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6d-semantic-search-across-pages" class="md-nav__link">
+  <a href="#6d-extract-all-tables-from-a-page-shortcut" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6d. Semantic Search Across Pages
+        6d. Extract All Tables from a Page (Shortcut)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6e-convert-page-to-markdown-with-vlm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6e. Convert Page to Markdown with VLM
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6f-semantic-search-across-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6f. Semantic Search Across Pages
       
     </span>
   </a>
@@ -1987,10 +2009,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6a-extract-all-tables-from-a-page" class="md-nav__link">
+  <a href="#6a-extract-rows-from-stable-anchors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6a. Extract ALL Tables from a Page
+        6a. Extract Rows from Stable Anchors
       
     </span>
   </a>
@@ -1998,10 +2020,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6b-extract-all-tables-from-a-page-shortcut" class="md-nav__link">
+  <a href="#6b-extract-a-crowded-table-with-header-guides-and-row-anchors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6b. Extract All Tables from a Page (Shortcut)
+        6b. Extract a Crowded Table with Header Guides and Row Anchors
       
     </span>
   </a>
@@ -2009,10 +2031,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6c-convert-page-to-markdown-with-vlm" class="md-nav__link">
+  <a href="#6c-extract-all-tables-from-a-page" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6c. Convert Page to Markdown with VLM
+        6c. Extract ALL Tables from a Page
       
     </span>
   </a>
@@ -2020,10 +2042,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6d-semantic-search-across-pages" class="md-nav__link">
+  <a href="#6d-extract-all-tables-from-a-page-shortcut" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6d. Semantic Search Across Pages
+        6d. Extract All Tables from a Page (Shortcut)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6e-convert-page-to-markdown-with-vlm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6e. Convert Page to Markdown with VLM
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6f-semantic-search-across-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6f. Semantic Search Across Pages
       
     </span>
   </a>
@@ -2387,7 +2431,93 @@
 </code></pre></div>
 <p><strong>Returns</strong>: <code>TableResult</code> - A sequence of rows (list of lists) with <code>.to_df()</code> method for pandas conversion.</p>
 <hr />
-<h3 id="6a-extract-all-tables-from-a-page">6a. Extract ALL Tables from a Page</h3>
+<h3 id="6a-extract-rows-from-stable-anchors">6a. Extract Rows from Stable Anchors</h3>
+<p><strong>Use case</strong>: Recover rows when a stable visual anchor identifies each row, but
+the content is not a normal table. Common anchors include margin line numbers,
+case numbers, invoice line IDs, and first-column record IDs.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">line_number_anchors</span><span class="p">(</span><span class="n">page</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="n">el</span>
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">el</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">and</span> <span class="n">el</span><span class="o">.</span><span class="n">x1</span> <span class="o">&lt;</span> <span class="mi">70</span>
+    <span class="p">]</span>
+
+<span class="n">rows</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="o">.</span><span class="n">extract_anchored_rows</span><span class="p">(</span>
+    <span class="n">line_number_anchors</span><span class="p">,</span>
+    <span class="n">side</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span>
+    <span class="n">y_tolerance</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">clean_lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">]</span>
+<span class="n">page_numbers</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">page_number</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">]</span>
+</code></pre></div>
+<p><strong>Returns</strong>: <code>list[AnchoredRow]</code> - each row has <code>.anchor</code>, <code>.elements</code>,
+<code>.words</code>, <code>.text</code>, <code>.bbox</code>, and <code>.page_number</code>.</p>
+<p><strong>Pitfall</strong>: Do not replace anchor-based extraction with generic y-position row
+grouping after finding the anchors. The anchor is the evidence that decides
+which rows belong in the output.</p>
+<hr />
+<h3 id="6b-extract-a-crowded-table-with-header-guides-and-row-anchors">6b. Extract a Crowded Table with Header Guides and Row Anchors</h3>
+<p><strong>Use case</strong>: Recover a tiny or borderless table where <code>extract_table()</code> misses
+columns, but headers and a first-column ID establish the visual grid.</p>
+<p>If the table has a stable header row and consistent columns across pages, try
+the simple header-guide path first:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf.analyzers.guides</span><span class="w"> </span><span class="kn">import</span> <span class="n">Guides</span>
+
+<span class="n">headers</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[y0=min()]&#39;</span><span class="p">)</span>
+
+<span class="n">guides</span> <span class="o">=</span> <span class="n">Guides</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_headers</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<p>Use explicit row anchors when row segmentation is ambiguous or you need tighter
+control over which rows belong in the output:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">id_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\d</span><span class="si">{2}</span><span class="s2">-\d</span><span class="si">{4}</span><span class="s2">-\d+&quot;</span><span class="p">)</span>
+<span class="n">id_header</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;CASE #&quot;)&#39;</span><span class="p">)</span>
+<span class="n">texts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">))</span>
+<span class="n">header_row</span> <span class="o">=</span> <span class="p">[</span><span class="n">el</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">texts</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">top</span> <span class="o">-</span> <span class="n">id_header</span><span class="o">.</span><span class="n">top</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">]</span>
+<span class="n">row_anchors</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">el</span>
+    <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">texts</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">id_pattern</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="ow">and</span> <span class="n">el</span><span class="o">.</span><span class="n">top</span> <span class="o">&gt;</span> <span class="n">id_header</span><span class="o">.</span><span class="n">top</span>
+        <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">x0</span> <span class="o">-</span> <span class="n">id_header</span><span class="o">.</span><span class="n">x0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">8</span>
+    <span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">table</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_table_guided</span><span class="p">(</span>
+    <span class="n">header_row</span><span class="p">,</span>
+    <span class="n">row_anchors</span><span class="p">,</span>
+    <span class="n">header_anchor</span><span class="o">=</span><span class="n">id_header</span><span class="p">,</span>
+    <span class="n">cell_extract</span><span class="o">=</span><span class="s2">&quot;words&quot;</span><span class="p">,</span>
+    <span class="n">cell_overlap</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<p><strong>Returns</strong>: <code>TableResult</code>, usually converted to a DataFrame with <code>.to_df()</code>.
+For advanced control, use <code>page.guides().from_headers_and_row_anchors(...)</code>
+directly and then call <code>guides.extract_table(...)</code>.</p>
+<p>You can pass header elements or unique header-name strings. Header elements are
+more reliable on crowded pages; unique header strings let
+<code>extract_table_guided()</code> infer the header row from the first header name. Pass
+<code>header_anchor</code> explicitly when the first header text is repeated or ambiguous.</p>
+<p><strong>Pitfall</strong>: Header x positions, body text starts, and dates/numbers may not
+align the same way. <code>from_headers_and_row_anchors()</code> gets close with headers and
+row IDs, then snaps vertical guides into whitespace before cell extraction. Only
+change <code>cell_overlap</code> after checking the snapped guides.</p>
+<hr />
+<h3 id="6c-extract-all-tables-from-a-page">6c. Extract ALL Tables from a Page</h3>
 <p><strong>Use case</strong>: Find and extract every table on a page using layout analysis.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
 
@@ -2412,7 +2542,7 @@
 <p><strong>Returns</strong>: List of <code>pandas.DataFrame</code> objects, one per table.</p>
 <p><strong>Note</strong>: The <code>tatr</code> (Table Transformer) engine is recommended for table detection. Alternatives include <code>yolo</code> and <code>paddle</code>.</p>
 <hr />
-<h3 id="6b-extract-all-tables-from-a-page-shortcut">6b. Extract All Tables from a Page (Shortcut)</h3>
+<h3 id="6d-extract-all-tables-from-a-page-shortcut">6d. Extract All Tables from a Page (Shortcut)</h3>
 <p><strong>Use case</strong>: Extract every table on a page without manual layout analysis.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
 
@@ -2426,7 +2556,7 @@
 </code></pre></div>
 <p><strong>Returns</strong>: <code>List[TableResult]</code> - All tables found on the page.</p>
 <hr />
-<h3 id="6c-convert-page-to-markdown-with-vlm">6c. Convert Page to Markdown with VLM</h3>
+<h3 id="6e-convert-page-to-markdown-with-vlm">6e. Convert Page to Markdown with VLM</h3>
 <p><strong>Use case</strong>: Get a structured markdown representation of a page using a Vision Language Model.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span><span class="p">,</span> <span class="n">set_default_client</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
@@ -2440,7 +2570,7 @@
 </code></pre></div>
 <p><strong>Returns</strong>: <code>str</code> - Markdown representation of the page. Falls back to <code>extract_text()</code> when no model is configured.</p>
 <hr />
-<h3 id="6d-semantic-search-across-pages">6d. Semantic Search Across Pages</h3>
+<h3 id="6f-semantic-search-across-pages">6f. Semantic Search Across Pages</h3>
 <p><strong>Use case</strong>: Find the most relevant pages for a query using semantic similarity.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
 

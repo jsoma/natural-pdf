@@ -1139,6 +1139,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#from-headers-plus-row-anchors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Headers Plus Row Anchors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#from-stripes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1868,6 +1879,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#from-headers-plus-row-anchors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Headers Plus Row Anchors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#from-stripes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2168,6 +2190,99 @@
 </ul>
 <div class="highlight"><pre><span></span><code><span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_headers</span><span class="p">(</span><span class="n">headers</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;seam_carving&#39;</span><span class="p">)</span>
 </code></pre></div>
+<h3 id="from-headers-plus-row-anchors">From Headers Plus Row Anchors</h3>
+<p>For crowded tables without ruling lines, a reliable row ID is often better than
+whitespace for horizontal guides. Use the header row to seed column boundaries,
+snap those boundaries into nearby whitespace, then use first-column IDs, case
+numbers, or other stable row markers for the row boundaries:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="n">case_number</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\d</span><span class="si">{2}</span><span class="s2">-\d</span><span class="si">{4}</span><span class="s2">-\d+&quot;</span><span class="p">)</span>
+
+<span class="n">header</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;CASE #&quot;)&#39;</span><span class="p">)</span>
+<span class="n">texts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">))</span>
+<span class="n">header_row</span> <span class="o">=</span> <span class="p">[</span><span class="n">el</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">texts</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">top</span> <span class="o">-</span> <span class="n">header</span><span class="o">.</span><span class="n">top</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">]</span>
+<span class="n">row_anchors</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">el</span>
+    <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">texts</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">case_number</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="ow">and</span> <span class="n">el</span><span class="o">.</span><span class="n">top</span> <span class="o">&gt;</span> <span class="n">header</span><span class="o">.</span><span class="n">top</span>
+        <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">x0</span> <span class="o">-</span> <span class="n">header</span><span class="o">.</span><span class="n">x0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">8</span>
+    <span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span><span class="o">.</span><span class="n">from_headers_and_row_anchors</span><span class="p">(</span>
+    <span class="n">header_row</span><span class="p">,</span>
+    <span class="n">row_anchors</span><span class="p">,</span>
+    <span class="n">header_anchor</span><span class="o">=</span><span class="n">header</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span>
+    <span class="n">header</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">,</span>
+    <span class="n">cell_extract</span><span class="o">=</span><span class="s2">&quot;words&quot;</span><span class="p">,</span>
+    <span class="n">cell_overlap</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+    <span class="n">include_outer_boundaries</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<p>This pattern works well when headers, dates, numbers, and names use different
+alignment rules. The helper builds vertical guides from the headers, snaps those
+guides into nearby text whitespace, and builds horizontal guides from the header
+row plus the row anchors. The first guide pass only needs to be close;
+<code>snap_to_whitespace()</code> moves the vertical guides into the gaps between columns.</p>
+<p>For many multi-page native-text tables, header-derived vertical guides are
+enough: <code>extract_table()</code> can infer the row bands while reusing the page-1
+column geometry across the page collection.</p>
+<div class="highlight"><pre><span></span><code><span class="n">headers</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[y0=min()]&#39;</span><span class="p">)</span>
+
+<span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_headers</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<p><code>from_headers()</code> only creates vertical column guides. If row segmentation is
+ambiguous, or if you want explicit review evidence for row boundaries, add
+horizontal guides from row IDs on each page:</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">page_row_markers</span><span class="p">(</span><span class="n">target_page</span><span class="p">):</span>
+    <span class="n">markers</span> <span class="o">=</span> <span class="p">[</span><span class="n">header</span><span class="p">]</span> <span class="k">if</span> <span class="n">target_page</span><span class="o">.</span><span class="n">number</span> <span class="o">==</span> <span class="n">page</span><span class="o">.</span><span class="n">number</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="n">markers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+        <span class="n">el</span>
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">target_page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">case_number</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+            <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">x0</span> <span class="o">-</span> <span class="n">header</span><span class="o">.</span><span class="n">x0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">8</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">markers</span>
+
+<span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">from_headers</span><span class="p">(</span><span class="n">header_row</span><span class="p">)</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">vertical</span><span class="o">.</span><span class="n">snap_to_whitespace</span><span class="p">(</span><span class="n">min_gap</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">detection_method</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
+<span class="n">guides</span><span class="o">.</span><span class="n">horizontal</span><span class="o">.</span><span class="n">from_content</span><span class="p">(</span><span class="n">page_row_markers</span><span class="p">,</span> <span class="n">align</span><span class="o">=</span><span class="s2">&quot;between&quot;</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">guides</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span>
+    <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">,</span>
+    <span class="n">header</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">,</span>
+    <span class="n">cell_extract</span><span class="o">=</span><span class="s2">&quot;words&quot;</span><span class="p">,</span>
+    <span class="n">cell_overlap</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+    <span class="n">include_outer_boundaries</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<p>If one tiny text object spans two adjacent cells, <code>cell_overlap="partial"</code> may
+recover it but can duplicate the same text into both cells. Prefer snapped
+guides with <code>cell_overlap="center"</code> first, then split known merged values by a
+value pattern when the PDF text layer really merged adjacent cells.</p>
+<p>If you want the usual settings in one call, use <code>extract_table_guided()</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">df</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_table_guided</span><span class="p">(</span>
+    <span class="n">header_row</span><span class="p">,</span>
+    <span class="n">row_anchors</span><span class="p">,</span>
+<span class="p">)</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+</code></pre></div>
+<p>By default this uses <code>cell_extract="words"</code>, <code>cell_overlap="center"</code>,
+<code>header="first"</code>, and outer boundaries, which are often the right defaults for
+small or crowded native-text tables. Header elements are the most reliable
+input; header text strings can work when labels are unique, but selected
+elements avoid ambiguity from repeated labels or body text.</p>
 <h3 id="from-stripes">From Stripes</h3>
 <p>For zebra-striped tables with alternating row colors:</p>
 <div class="highlight"><pre><span></span><code><span class="n">guides</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">guides</span><span class="p">()</span>
