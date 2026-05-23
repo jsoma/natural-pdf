@@ -217,7 +217,13 @@ class OCRService:
                 scaled = [r for r in scaled if r.get("confidence", 1.0) >= min_confidence]
 
             page_obj = getattr(host, "page", host)
-            text_results, _table_regions = create_table_regions_from_ocr(page_obj, scaled)
+            text_results, table_regions = create_table_regions_from_ocr(
+                page_obj,
+                scaled,
+                source_label=engine_name,
+            )
+            if table_regions:
+                bump_text_state(host, elements=table_regions)
 
             return self.create_text_elements_from_ocr(
                 host,
@@ -289,13 +295,20 @@ class OCRService:
                 for result in scaled
                 if str(result.get("source_category", "")).lower() != "table"
             ]
+            has_table_results = any(
+                str(result.get("source_category", "")).lower() == "table"
+                and bool(result.get("text"))
+                for result in scaled
+            )
             staged_scale_x = 1.0
             staged_scale_y = 1.0
             staged_offset_x = 0.0
             staged_offset_y = 0.0
+        else:
+            has_table_results = False
 
         if not staged_results:
-            return False
+            return has_table_results
 
         mgr = host._ocr_element_manager()
         converter = getattr(mgr, "_ocr_converter", None)
@@ -339,6 +352,7 @@ class OCRService:
         instructions: Optional[str] = None,
         max_new_tokens: Optional[int] = None,
         layout: Optional[bool | str] = None,
+        preserve_markup: bool = False,
         **kwargs,
     ):
         normalized_options = normalize_ocr_options(options)
@@ -395,6 +409,7 @@ class OCRService:
                     instructions=instructions,
                     max_new_tokens=max_new_tokens,
                     layout=layout,
+                    preserve_markup=preserve_markup,
                     crop_bbox=crop_bbox,
                 )
 
@@ -453,6 +468,7 @@ class OCRService:
             instructions=instructions,
             max_new_tokens=max_new_tokens,
             layout=layout,
+            preserve_markup=preserve_markup,
         )
 
         # Cache the results

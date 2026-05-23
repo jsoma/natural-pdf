@@ -85,6 +85,11 @@ class TestCacheKey:
         key2 = compute_cache_key(**{**self.BASE, "layout": "rapidocr"})
         assert key1 != key2
 
+    def test_changes_with_preserve_markup(self):
+        key1 = compute_cache_key(**self.BASE)
+        key2 = compute_cache_key(**{**self.BASE, "preserve_markup": True})
+        assert key1 != key2
+
     def test_glm_layout_rapidocr_differs_from_plain_rapidocr(self):
         glm_key = compute_cache_key(**{**self.BASE, "engine_name": "glm_ocr", "layout": "rapidocr"})
         rapidocr_key = compute_cache_key(**{**self.BASE, "engine_name": "rapidocr", "layout": None})

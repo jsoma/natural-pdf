@@ -670,6 +670,9 @@ class Page(
                   (default) auto-detects based on model family.
                 - ``prompt`` (str): Custom VLM prompt.
                 - ``max_new_tokens`` (int): Max generation tokens for VLM.
+                - ``preserve_markup`` (bool): Keep raw VLM markup in OCR
+                  text. Defaults to ``False``, which normalizes HTML tables
+                  to plain text while retaining raw HTML in table metadata.
 
         Returns:
             Self for chaining.
@@ -712,6 +715,7 @@ class Page(
             prompt=kwargs.get("prompt"),
             max_new_tokens=kwargs.get("max_new_tokens"),
             layout=kwargs.get("layout"),
+            preserve_markup=bool(kwargs.get("preserve_markup", False)),
         )
         return self
 

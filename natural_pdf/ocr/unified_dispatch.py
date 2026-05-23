@@ -383,6 +383,7 @@ def run_ocr(
     instructions: Optional[str] = None,
     max_new_tokens: Optional[int] = None,
     layout: Optional[bool | str] = None,
+    preserve_markup: bool = False,
 ) -> OCRRunResult:
     """Unified OCR dispatch — single entry point for all engines.
 
@@ -406,6 +407,8 @@ def run_ocr(
         prompt: Custom VLM prompt (VLM only).
         instructions: Additional VLM instructions (VLM only).
         max_new_tokens: Max generation tokens (VLM only).
+        preserve_markup: Preserve raw markup returned by VLM OCR instead of
+            normalizing HTML fragments to plain text (VLM layout mode only).
 
     Returns:
         :class:`OCRRunResult` with results in image pixel coordinates.
@@ -448,6 +451,7 @@ def run_ocr(
                 max_new_tokens=max_new_tokens,
                 languages=languages,
                 layout=True if layout is None else layout,
+                preserve_markup=preserve_markup,
             )
         else:
             # Fold VLM generation params into PaddleOCRVLOptions for the classic path
@@ -499,6 +503,7 @@ def run_ocr(
             max_new_tokens=max_new_tokens,
             languages=languages,
             layout=layout,
+            preserve_markup=preserve_markup,
         )
     else:
         raise ValueError(f"Unknown engine type {entry.engine_type!r} for {engine_name!r}")
@@ -724,6 +729,7 @@ def _run_vlm(
     max_new_tokens: Optional[int],
     languages: Optional[List[str]],
     layout: Optional[bool | str] = None,
+    preserve_markup: bool = False,
 ) -> OCRRunResult:
     """Dispatch to a VLM OCR engine."""
     from natural_pdf.ocr.vlm_ocr import run_vlm_ocr_on_image
@@ -760,6 +766,7 @@ def _run_vlm(
         languages=languages,
         layout=layout,
         family=entry.vlm_family,
+        preserve_markup=preserve_markup,
     )
 
     return OCRRunResult(results=results, image_size=img_size, engine_type="vlm")

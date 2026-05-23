@@ -1236,6 +1236,59 @@ class TestRunDetection:
 class TestLayoutStringRouting:
     """Test that layout='engine_name' routes correctly in run_vlm_ocr_on_image."""
 
+    def test_layout_ocr_converts_html_table_to_plain_text_by_default(self):
+        """Layout VLM OCR should not expose raw HTML through extract_text."""
+        from natural_pdf.ocr.vlm_ocr import _run_layout_ocr_on_image
+
+        dummy_image = Image.new("RGB", (100, 100))
+        html = (
+            "Violations\n"
+            "<table><tr><th>Statute</th><th>Level</th></tr>"
+            "<tr><td>4.12.7</td><td>Critical</td></tr></table>"
+        )
+
+        with patch(
+            "natural_pdf.ocr.vlm_ocr._detect_layout_regions",
+            return_value=[{"label": "table", "bbox": [0, 0, 100, 100], "confidence": 0.9}],
+        ), patch("natural_pdf.core.vlm_client.generate", return_value=html):
+            results, size = _run_layout_ocr_on_image(
+                dummy_image,
+                model="mlx-community/GLM-OCR-4bit",
+                client=MagicMock(),
+                max_new_tokens=1024,
+            )
+
+        assert size == (100, 100)
+        assert len(results) == 1
+        assert "<table" not in results[0]["text"]
+        assert "Violations" in results[0]["text"]
+        assert "Statute\tLevel" in results[0]["text"]
+        assert "4.12.7\tCritical" in results[0]["text"]
+        assert results[0]["raw_html"] == html
+        assert results[0]["source_category"] == "table"
+
+    def test_layout_ocr_can_preserve_markup(self):
+        """Callers can opt into raw VLM markup when they explicitly need it."""
+        from natural_pdf.ocr.vlm_ocr import _run_layout_ocr_on_image
+
+        dummy_image = Image.new("RGB", (100, 100))
+        html = "<table><tr><td>A</td><td>B</td></tr></table>"
+
+        with patch(
+            "natural_pdf.ocr.vlm_ocr._detect_layout_regions",
+            return_value=[{"label": "table", "bbox": [0, 0, 100, 100], "confidence": 0.9}],
+        ), patch("natural_pdf.core.vlm_client.generate", return_value=html):
+            results, _ = _run_layout_ocr_on_image(
+                dummy_image,
+                model="mlx-community/GLM-OCR-4bit",
+                client=MagicMock(),
+                max_new_tokens=1024,
+                preserve_markup=True,
+            )
+
+        assert results[0]["text"] == html
+        assert results[0]["raw_html"] == html
+
     def test_layout_string_forces_layout_pipeline(self):
         """layout='rapidocr' should call _run_layout_ocr_on_image with detection_engine."""
         from unittest.mock import patch

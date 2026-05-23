@@ -312,6 +312,130 @@ _GLM_SKIP_LABELS = {
     "seal",
 }
 
+
+def _strip_markdown_fence(text: str) -> str:
+    """Remove a single surrounding Markdown code fence from model output."""
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = re.sub(r"^```(?:html|xml|json|text)?\s*", "", stripped, flags=re.IGNORECASE)
+        stripped = re.sub(r"\s*```$", "", stripped)
+    return stripped.strip()
+
+
+def _looks_like_html(text: str) -> bool:
+    """Return True when *text* contains probable HTML/XML tags."""
+    return bool(re.search(r"<\s*/?\s*[A-Za-z][^>]*>", text))
+
+
+def _html_fragment_to_text(fragment: str) -> str:
+    """Convert a small HTML fragment to plain text, rendering tables as TSV."""
+    from html.parser import HTMLParser
+
+    class _FragmentParser(HTMLParser):
+        _BLOCK_TAGS = {
+            "address",
+            "article",
+            "aside",
+            "blockquote",
+            "caption",
+            "div",
+            "figcaption",
+            "footer",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "header",
+            "li",
+            "p",
+            "section",
+            "table",
+            "tbody",
+            "tfoot",
+            "thead",
+        }
+
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.parts: List[str] = []
+            self._current_row: List[str] = []
+            self._current_cell: List[str] = []
+            self._in_cell = False
+
+        def _newline(self) -> None:
+            while self.parts and self.parts[-1] == " ":
+                self.parts.pop()
+            if self.parts and self.parts[-1] != "\n":
+                self.parts.append("\n")
+
+        def handle_starttag(self, tag, attrs):
+            tag = tag.lower()
+            if tag == "br":
+                self._newline()
+            elif tag == "tr":
+                self._newline()
+                self._current_row = []
+            elif tag in ("td", "th"):
+                self._in_cell = True
+                self._current_cell = []
+            elif tag in self._BLOCK_TAGS:
+                self._newline()
+
+        def handle_endtag(self, tag):
+            tag = tag.lower()
+            if tag in ("td", "th"):
+                self._in_cell = False
+                cell_text = "".join(self._current_cell).strip()
+                self._current_row.append(cell_text)
+                self._current_cell = []
+            elif tag == "tr":
+                if self._current_row:
+                    self._newline()
+                    self.parts.append("\t".join(self._current_row))
+                    self.parts.append("\n")
+                self._current_row = []
+            elif tag in self._BLOCK_TAGS:
+                self._newline()
+
+        def handle_data(self, data):
+            if self._in_cell:
+                self._current_cell.append(data)
+            else:
+                self.parts.append(data)
+
+    parser = _FragmentParser()
+    parser.feed(fragment)
+    text = "".join(parser.parts)
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n[ \t]+", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    lines = [line.strip() for line in text.splitlines()]
+    return "\n".join(line for line in lines if line).strip()
+
+
+def _normalize_vlm_layout_text(
+    raw_text: str,
+    *,
+    preserve_markup: bool = False,
+) -> Tuple[str, Optional[str]]:
+    """Normalize per-region VLM OCR text and retain raw table HTML when present."""
+    text = _strip_markdown_fence(raw_text)
+    has_html_table = bool(re.search(r"<\s*table\b", text, re.IGNORECASE))
+    raw_html = text if has_html_table else None
+
+    if preserve_markup:
+        return text, raw_html
+
+    if has_html_table or _looks_like_html(text):
+        plain = _html_fragment_to_text(text)
+        if plain:
+            return plain, raw_html
+
+    return text, raw_html
+
+
 _layout_detector_cache: Dict[str, Any] = {}
 _layout_cache_lock = __import__("threading").Lock()
 
@@ -616,6 +740,7 @@ def _run_layout_ocr_on_image(
     detection_engine: Optional[str] = None,
     use_cluster: bool = False,
     languages: Optional[List[str]] = None,
+    preserve_markup: bool = False,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
     """Run layout detection + per-crop VLM recognition on a pre-rendered image.
 
@@ -734,26 +859,37 @@ def _run_layout_ocr_on_image(
         if not raw_text:
             continue
 
+        text, raw_html = _normalize_vlm_layout_text(
+            raw_text,
+            preserve_markup=preserve_markup,
+        )
+        if not text:
+            continue
+
         # Detect VLM hallucination: repetitive output that compresses unusually well.
-        if detect_repetition(raw_text):
+        if detect_repetition(text):
             label = region.get("label", "unknown")
             logger.warning(
                 "Region '%s' produced repetitive output (%d chars, budget %d tokens) "
                 "— discarding. If this region contains dense text, pass a higher "
                 "max_new_tokens.",
                 label,
-                len(raw_text),
+                len(text),
                 region_max,
             )
             continue
 
-        results.append(
-            {
-                "bbox": [float(x0), float(y0), float(x1), float(y1)],
-                "text": raw_text,
-                "confidence": default_confidence,
-            }
-        )
+        result_dict: Dict[str, Any] = {
+            "bbox": [float(x0), float(y0), float(x1), float(y1)],
+            "text": text,
+            "confidence": default_confidence,
+        }
+        label = str(region.get("label", "")).strip()
+        if label:
+            result_dict["source_category"] = label
+        if raw_html:
+            result_dict["raw_html"] = raw_html
+        results.append(result_dict)
 
     logger.info("layout+OCR: recognized text in %d of %d regions.", len(results), len(text_regions))
     return results, (img_w, img_h)
@@ -765,6 +901,7 @@ def _run_glm_ocr_on_image(
     model: Optional[str],
     client: Optional[Any],
     max_new_tokens: int,
+    preserve_markup: bool = False,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
     """Run layout detection + GLM-OCR text recognition on a pre-rendered image.
 
@@ -778,6 +915,7 @@ def _run_glm_ocr_on_image(
         max_new_tokens=max_new_tokens,
         prompt=_GLM_OCR_PROMPT,
         default_confidence=_FAMILY_DEFAULT_CONFIDENCE["glm_ocr"],
+        preserve_markup=preserve_markup,
     )
 
 
@@ -790,6 +928,7 @@ def _run_glm_ocr_with_layout(
     resolution: int,
     render_kwargs: Optional[Dict[str, Any]],
     max_new_tokens: int,
+    preserve_markup: bool = False,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
     """Run layout detection + GLM-OCR on a host (renders internally).
 
@@ -806,7 +945,13 @@ def _run_glm_ocr_with_layout(
     if not isinstance(image, Image.Image):
         raise TypeError(f"Expected render() to return a PIL Image, got {type(image).__name__}")
 
-    return _run_glm_ocr_on_image(image, model=model, client=client, max_new_tokens=max_new_tokens)
+    return _run_glm_ocr_on_image(
+        image,
+        model=model,
+        client=client,
+        max_new_tokens=max_new_tokens,
+        preserve_markup=preserve_markup,
+    )
 
 
 def resolve_glm_ocr_model() -> str:
@@ -858,38 +1003,7 @@ _DOTS_SKIP_LABELS = {"Picture"}
 
 def _html_table_to_tsv(html: str) -> str:
     """Convert an HTML table to tab-separated values."""
-    from html.parser import HTMLParser
-
-    class _TableParser(HTMLParser):
-        def __init__(self):
-            super().__init__()
-            self.rows: List[List[str]] = []
-            self._current_row: List[str] = []
-            self._current_cell: List[str] = []
-            self._in_cell = False
-
-        def handle_starttag(self, tag, attrs):
-            if tag == "tr":
-                self._current_row = []
-            elif tag in ("td", "th"):
-                self._in_cell = True
-                self._current_cell = []
-
-        def handle_endtag(self, tag):
-            if tag in ("td", "th"):
-                self._in_cell = False
-                self._current_row.append("".join(self._current_cell).strip())
-            elif tag == "tr":
-                if self._current_row:
-                    self.rows.append(self._current_row)
-
-        def handle_data(self, data):
-            if self._in_cell:
-                self._current_cell.append(data)
-
-    parser = _TableParser()
-    parser.feed(html)
-    return "\n".join("\t".join(cells) for cells in parser.rows)
+    return _html_fragment_to_text(html)
 
 
 def _parse_dots_mocr_response(raw: str) -> List[Dict[str, Any]]:
@@ -1049,6 +1163,8 @@ def _run_dots_mocr(
 def create_table_regions_from_ocr(
     page: Any,
     results: List[Dict[str, Any]],
+    *,
+    source_label: str = "vlm",
 ) -> Tuple[List[Dict[str, Any]], List[Any]]:
     """Split OCR results: table items become regions, rest stay as text results.
 
@@ -1060,6 +1176,7 @@ def create_table_regions_from_ocr(
     Args:
         page: The Page object to create regions on.
         results: Scaled OCR result dicts (in PDF coordinates).
+        source_label: Source label to attach to created table regions.
 
     Returns:
         Tuple of (non_table_results, created_regions).
@@ -1070,18 +1187,18 @@ def create_table_regions_from_ocr(
     regions = []
 
     for r in results:
-        cat = r.get("source_category", "").lower()
+        cat = str(r.get("source_category", "")).lower()
         if cat == "table":
             bbox = r["bbox"]
             region = Region(page, (bbox[0], bbox[1], bbox[2], bbox[3]))
             region.region_type = "table"
-            region.source = "dots.mocr"
+            region.source = source_label
             region.alt_text = r["text"]  # TSV content
             raw_html = r.get("raw_html")
             if raw_html:
                 region.metadata["raw_html"] = raw_html
             # Register on the page so extract_text() and selectors can find it
-            page.add_region(region, source="dots.mocr")
+            page.add_region(region, source=source_label)
             regions.append(region)
         else:
             non_table.append(r)
@@ -1268,6 +1385,7 @@ def run_vlm_ocr_on_image(
     languages: Optional[List[str]] = None,
     layout: Optional[bool | str] = None,
     family: Optional[str] = None,
+    preserve_markup: bool = False,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
     """Run VLM-based OCR on a pre-rendered image.
 
@@ -1298,6 +1416,9 @@ def run_vlm_ocr_on_image(
             If ``False``, always use full-page prompt.
         family: Optional parser family override for registered VLM shorthand
             engines.
+        preserve_markup: Preserve raw VLM markup in returned text. By default,
+            HTML fragments are normalized to plain text and table HTML is
+            retained separately in ``raw_html``.
 
     Returns:
         Tuple of (ocr_results, (image_width, image_height)).
@@ -1349,6 +1470,7 @@ def run_vlm_ocr_on_image(
             detection_engine=detection_engine,
             use_cluster=use_cluster,
             languages=languages,
+            preserve_markup=preserve_markup,
         )
 
     # Family-specific single-pass handlers

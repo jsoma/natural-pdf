@@ -51,6 +51,7 @@ def compute_cache_key(
     instructions: Optional[str] = None,
     max_new_tokens: Optional[int] = None,
     layout: Optional[bool | str] = None,
+    preserve_markup: bool = False,
     crop_bbox: Optional[Tuple[float, float, float, float]] = None,
 ) -> str:
     """Return a SHA-256 hex digest for the given OCR parameters."""
@@ -80,6 +81,7 @@ def compute_cache_key(
             instructions or "",
             max_new_tokens or "",
             layout if layout is not None else "",
+            preserve_markup,
         )
     )
     return hashlib.sha256(raw.encode()).hexdigest()
