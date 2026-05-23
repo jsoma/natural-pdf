@@ -28,20 +28,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8
         with:
           version: "latest"
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
 
       - name: Cache uv & nox virtualenvs
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/uv
@@ -56,10 +56,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
 
-      - name: Install Nox and uv dependencies
-        run: |
-          uv pip install --system nox nox-uv
-
       - name: Run Nox sessions (full)
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.11'
         env:
@@ -67,7 +63,7 @@ jobs:
           PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.5"
           PYTEST_ADDOPTS: "--durations=25"
         run: |
-          nox --non-interactive -s test_full
+          uv run --with nox --with nox-uv nox --non-interactive -s test_full
 
       - name: Run Nox sessions (minimal)
         if: matrix.os != 'ubuntu-latest' || matrix.python != '3.11'
@@ -75,4 +71,4 @@ jobs:
           NOTEBOOK_WORKERS: 1
           PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.5"
         run: |
-          nox --non-interactive -s test_minimal
+          uv run --with nox --with nox-uv nox --non-interactive -s test_minimal

@@ -19,6 +19,6 @@ repos:
     hooks:
       - id: enforce-uv-run
         name: enforce uv run command policy
-        entry: uv run --no-project python scripts/check_uv_run_usage.py
+        entry: uv --no-config run --no-project python scripts/check_uv_run_usage.py
         language: system
         files: ^(CLAUDE\.md|README\.md|docs/.*\.md|scripts/.*\.(md|sh)|\.github/workflows/.*\.ya?ml|tests/test_markdown_docs\.py)$
