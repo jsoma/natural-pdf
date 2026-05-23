@@ -84,6 +84,28 @@ class TestLayoutBoundarySeparators:
         site_lines = [l for l in lines if "Site:" in l and self.SEPARATOR in l]
         assert len(site_lines) > 0, "'Site:' label should be separated from value"
 
+    def test_dense_layout_preview_is_capped(self):
+        """Dense pages should not explode the LLM representation."""
+        pdf = PDF("pdfs/use-of-force-raw.pdf")
+        try:
+            output = pdf.pages[0].to_llm(detail="standard", max_chars=6000)
+            assert len(output) <= 6000
+            assert "output capped" in output or "capped" in output
+        finally:
+            pdf.close()
+
+    def test_standard_to_llm_does_not_render_by_default(self, practice_page, monkeypatch):
+        """Rendered diagnostics should be opt-in, not part of default standard output."""
+        import natural_pdf.describe.to_llm_sections as sections
+
+        def fail_if_called(page):
+            raise AssertionError("render_pixel_histogram should not be called by default")
+
+        monkeypatch.setattr(sections, "render_pixel_histogram", fail_if_called)
+        output = practice_page.to_llm(detail="standard")
+
+        assert "TEXT LAYER" in output
+
 
 # ---------------------------------------------------------------------------
 # Feature 2: Garble rate

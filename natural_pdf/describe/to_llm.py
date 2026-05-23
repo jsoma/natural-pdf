@@ -24,6 +24,10 @@ def page_to_llm(
     include_text: bool = True,
     include_hints: str = "none",
     show_boundaries: bool = True,
+    include_rendered_diagnostics: bool = False,
+    max_chars: int | None = 6000,
+    max_preview_line_chars: int = 240,
+    max_elements_per_preview_line: int = 20,
 ) -> str:
     """Build LLM representation for a single page.
 
@@ -31,6 +35,8 @@ def page_to_llm(
     include_text: whether to show text samples in style tiers
     include_hints: "none" | "descriptive" | "api"
     show_boundaries: show element boundary separators (┃) in layout preview
+    include_rendered_diagnostics: opt into render-dependent diagnostics
+    max_chars: cap final output length; None disables final cap
     """
     from natural_pdf.describe.to_llm_sections import (
         render_alignment,
@@ -65,7 +71,13 @@ def page_to_llm(
     if preview_lines > 0:
         parts.append("")
         parts.append(
-            render_layout_preview(page, max_lines=preview_lines, show_boundaries=show_boundaries)
+            render_layout_preview(
+                page,
+                max_lines=preview_lines,
+                show_boundaries=show_boundaries,
+                max_line_chars=max_preview_line_chars,
+                max_elements_per_line=max_elements_per_preview_line,
+            )
         )
 
     # STYLES & CONTENT — always included, detail controls caps
@@ -93,8 +105,8 @@ def page_to_llm(
     parts.append("")
     parts.append(render_rectangles(page, detail=detail))
 
-    # PIXEL HISTOGRAM — standard and full only
-    if not is_brief:
+    # PIXEL HISTOGRAM — render-dependent, opt-in only
+    if include_rendered_diagnostics and not is_brief:
         histogram = render_pixel_histogram(page)
         if histogram:
             parts.append("")
@@ -105,7 +117,14 @@ def page_to_llm(
         parts.append("")
         parts.append(render_hints(page, style=include_hints))
 
-    return "\n".join(parts)
+    return _cap_output("\n".join(parts), max_chars)
+
+
+def _cap_output(text: str, max_chars: int | None) -> str:
+    if max_chars is None or len(text) <= max_chars:
+        return text
+    suffix = f"\n\n[output capped at {max_chars} chars]"
+    return text[: max(0, max_chars - len(suffix))].rstrip() + suffix
 
 
 def region_to_llm(

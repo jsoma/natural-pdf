@@ -766,7 +766,12 @@ def _group_words_into_runs(sorted_elements: list) -> list:
 _SEPARATOR = "\u2503"  # ┃ heavy vertical box drawing
 
 
-def _render_layout_with_separators(page: "Page") -> str:
+def _render_layout_with_separators(
+    page: "Page",
+    *,
+    max_elements_per_line: int = 20,
+    max_line_chars: int = 240,
+) -> str:
     """Build layout text with ┃ separators between text elements."""
     text_elements = page.find_all("text")
     if not text_elements:
@@ -786,16 +791,28 @@ def _render_layout_with_separators(page: "Page") -> str:
         # Indent based on first element's x position
         indent = int(line_elements[0].x0 * chars_per_pt)
 
+        omitted_elements = max(0, len(line_elements) - max_elements_per_line)
+        line_elements = line_elements[:max_elements_per_line]
+
         # Each element is its own unit — pipe between them
         texts = [el.text.replace(_SEPARATOR, "|") for el in line_elements]
+        if omitted_elements:
+            texts.append(f"...(+{omitted_elements} elements)")
         line = (" " * indent) + f" {_SEPARATOR} ".join(texts)
+        line = _cap_preview_line(line, max_line_chars)
         if line.strip():
             output_lines.append(line)
 
     return "\n".join(output_lines)
 
 
-def render_layout_preview(page: "Page", max_lines: int = 15, show_boundaries: bool = False) -> str:
+def render_layout_preview(
+    page: "Page",
+    max_lines: int = 15,
+    show_boundaries: bool = False,
+    max_line_chars: int = 240,
+    max_elements_per_line: int = 20,
+) -> str:
     """Render the LAYOUT PREVIEW section.
 
     When *show_boundaries* is True, element groups are separated by ``┃``
@@ -808,7 +825,11 @@ def render_layout_preview(page: "Page", max_lines: int = 15, show_boundaries: bo
         return "LAYOUT PREVIEW\n  (no text on this page)"
 
     if show_boundaries:
-        text = _render_layout_with_separators(page)
+        text = _render_layout_with_separators(
+            page,
+            max_elements_per_line=max_elements_per_line,
+            max_line_chars=max_line_chars,
+        )
     else:
         text = page.extract_text(layout=True)
 
@@ -831,13 +852,25 @@ def render_layout_preview(page: "Page", max_lines: int = 15, show_boundaries: bo
     else:
         out.append("LAYOUT PREVIEW")
 
+    capped_lines = 0
     for line in shown:
-        out.append(f"  {line}")
+        capped = _cap_preview_line(line, max_line_chars)
+        if capped != line:
+            capped_lines += 1
+        out.append(f"  {capped}")
 
     if total_count > max_lines:
         out.append("  ...")
+    if capped_lines:
+        out.append(f"  ({capped_lines} preview line{'s' if capped_lines != 1 else ''} capped)")
 
     return "\n".join(out)
+
+
+def _cap_preview_line(line: str, max_chars: int) -> str:
+    if max_chars <= 0 or len(line) <= max_chars:
+        return line
+    return line[: max(0, max_chars - 16)].rstrip() + " ...[capped]"
 
 
 def render_hints(page: "Page", style: str = "api") -> str:
