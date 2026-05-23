@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from natural_pdf.core.page_groupby import PageGroupBy
     from natural_pdf.elements.base import Element
     from natural_pdf.elements.region import Region
+    from natural_pdf.extraction.anchored_rows import AnchoredRow
     from natural_pdf.flows.flow import Flow
 else:  # pragma: no cover - runtime typing helpers
     Page = Any  # type: ignore[assignment]
@@ -242,6 +243,78 @@ class PageCollection(
             texts.append(text)
 
         return separator.join(texts)
+
+    def extract_anchored_rows(
+        self,
+        anchors: str | Callable[[Any], Any] | Iterable[Any],
+        *,
+        content_selector: str = "text",
+        elements: str | Callable[[Any], Any] | Iterable[Any] | None = None,
+        side: Literal["right", "left", "both"] = "right",
+        y_tolerance: float | None = None,
+        x_gap: float = 0,
+        include_anchor: bool = False,
+        sort: bool = True,
+        apply_exclusions: bool = True,
+    ) -> list["AnchoredRow"]:
+        """Collect anchored rows across pages in document order.
+
+        Args:
+            anchors: Selector, iterable, or callable returning anchors for each
+                page. Callable inputs receive the current page.
+            content_selector: Selector used for candidate row content when
+                ``elements`` is not supplied.
+            elements: Optional selector, iterable, or callable for candidate row
+                content. Iterables are partitioned by each element's page.
+            side: Collect content to the ``"right"``, ``"left"``, or on
+                ``"both"`` sides of each anchor.
+            y_tolerance: Maximum vertical midpoint distance for same-row
+                matching. Defaults to a value derived from anchor height.
+            x_gap: Required gap between anchor and content for left/right
+                matching.
+            include_anchor: Include anchors in returned row text.
+            sort: Sort row elements by x-position before joining text.
+            apply_exclusions: Respect exclusions when resolving selector inputs.
+
+        Returns:
+            A page-ordered list of ``AnchoredRow`` objects.
+        """
+
+        if not isinstance(anchors, str) and not callable(anchors):
+            anchor_items = list(anchors)
+        else:
+            anchor_items = None
+        if elements is not None and not isinstance(elements, str) and not callable(elements):
+            element_items = list(elements)
+        else:
+            element_items = None
+
+        rows = []
+        for page in self.pages:
+            page_anchors = anchors
+            if anchor_items is not None:
+                page_anchors = [
+                    anchor for anchor in anchor_items if getattr(anchor, "page", None) is page
+                ]
+            page_elements = elements
+            if element_items is not None:
+                page_elements = [
+                    item for item in element_items if getattr(item, "page", None) is page
+                ]
+            rows.extend(
+                page.extract_anchored_rows(
+                    page_anchors,
+                    content_selector=content_selector,
+                    elements=page_elements,
+                    side=side,
+                    y_tolerance=y_tolerance,
+                    x_gap=x_gap,
+                    include_anchor=include_anchor,
+                    sort=sort,
+                    apply_exclusions=apply_exclusions,
+                )
+            )
+        return rows
 
     def update_text(
         self,

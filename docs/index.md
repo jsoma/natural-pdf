@@ -43,7 +43,7 @@ clean_text = page.extract_text()
 
 ### New to Natural PDF?
 - **[Choose Your Path](getting-started/choose-your-path.md)** - Find the best starting point for your background and goals
-- **[Installation](installation/)** - Get Natural PDF installed and run your first extraction
+- **[Installation](installation/index.md)** - Get Natural PDF installed and run your first extraction
 - **[Quickstart](getting-started/quickstart.md)** - Jump in with a hands-on introduction
 - **[Selectors 101](getting-started/selectors.md)** - Learn the selector syntax for finding elements
 - **[Concepts](getting-started/concepts.md)** - Understand the core ideas behind Natural PDF
@@ -131,6 +131,43 @@ page.find_all('region[type=table]').show()
 table_data = page.find('region[type=table]').extract_table()
 ```
 
+### Recover Difficult Tables
+
+Use guides and row anchors when a table is visually clear but automatic table
+extraction misses rows or columns.
+
+```python
+header = page.find('text:contains("CASE #")')
+texts = list(page.find_all("text"))
+header_row = [el for el in texts if abs(el.top - header.top) <= 2]
+row_anchors = [
+    el
+    for el in texts
+    if el.extract_text().strip().startswith("23-") and el.top > header.top
+]
+
+df = page.extract_table_guided(
+    header_row,
+    row_anchors,
+    cell_extract="words",
+    cell_overlap="center",
+).to_df()
+```
+
+For row-shaped content that is not a full table, use stable visual anchors:
+
+```python
+rows = pdf.pages.extract_anchored_rows(
+    lambda page: [
+        el
+        for el in page.find_all("text")
+        if el.extract_text().strip().isdigit() and el.x1 < 70
+    ],
+    side="right",
+)
+clean_lines = [row.text for row in rows]
+```
+
 ### Document Question Answering
 
 Ask natural language questions directly to your documents.
@@ -155,7 +192,7 @@ page.viewer()
 
 ## Reference
 
-- **[Quick Reference](quick-reference/)** - Essential commands and patterns in one place
-- **[API Reference](api/)** - Complete library documentation
+- **[Quick Reference](quick-reference/index.ipynb)** - Essential commands and patterns in one place
+- **[API Reference](api/index.md)** - Complete library documentation
 - **[Patterns & Pitfalls](for-llms/common-patterns.md)** - Common patterns and mistakes to avoid
 - **[Troubleshooting](cookbook/troubleshooting.md)** - Solutions to common issues

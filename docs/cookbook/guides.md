@@ -128,6 +128,115 @@ Two detection methods are available:
 guides.vertical.from_headers(headers, method='seam_carving')
 ```
 
+### From Headers Plus Row Anchors
+
+For crowded tables without ruling lines, a reliable row ID is often better than
+whitespace for horizontal guides. Use the header row to seed column boundaries,
+snap those boundaries into nearby whitespace, then use first-column IDs, case
+numbers, or other stable row markers for the row boundaries:
+
+```python
+import re
+
+case_number = re.compile(r"\d{2}-\d{4}-\d+")
+
+header = page.find('text:contains("CASE #")')
+texts = list(page.find_all("text"))
+header_row = [el for el in texts if abs(el.top - header.top) <= 2]
+row_anchors = [
+    el
+    for el in texts
+    if (
+        case_number.fullmatch(el.extract_text().strip())
+        and el.top > header.top
+        and abs(el.x0 - header.x0) <= 8
+    )
+]
+
+guides = page.guides().from_headers_and_row_anchors(
+    header_row,
+    row_anchors,
+    header_anchor=header,
+)
+
+df = guides.extract_table(
+    header="first",
+    cell_extract="words",
+    cell_overlap="center",
+    include_outer_boundaries=True,
+).to_df()
+```
+
+This pattern works well when headers, dates, numbers, and names use different
+alignment rules. The helper builds vertical guides from the headers, snaps those
+guides into nearby text whitespace, and builds horizontal guides from the header
+row plus the row anchors. The first guide pass only needs to be close;
+`snap_to_whitespace()` moves the vertical guides into the gaps between columns.
+
+For many multi-page native-text tables, header-derived vertical guides are
+enough: `extract_table()` can infer the row bands while reusing the page-1
+column geometry across the page collection.
+
+```python
+headers = page.find_all('text[y0=min()]')
+
+guides = page.guides()
+guides.vertical.from_headers(headers)
+
+df = guides.extract_table(pdf.pages).to_df()
+```
+
+`from_headers()` only creates vertical column guides. If row segmentation is
+ambiguous, or if you want explicit review evidence for row boundaries, add
+horizontal guides from row IDs on each page:
+
+```python
+def page_row_markers(target_page):
+    markers = [header] if target_page.number == page.number else []
+    markers.extend(
+        el
+        for el in target_page.find_all("text")
+        if (
+            case_number.fullmatch(el.extract_text().strip())
+            and abs(el.x0 - header.x0) <= 8
+        )
+    )
+    return markers
+
+guides = page.guides()
+guides.vertical.from_headers(header_row)
+guides.vertical.snap_to_whitespace(min_gap=2, detection_method="text")
+guides.horizontal.from_content(page_row_markers, align="between", outer=True)
+
+df = guides.extract_table(
+    pdf.pages,
+    header="first",
+    cell_extract="words",
+    cell_overlap="center",
+    include_outer_boundaries=True,
+).to_df()
+```
+
+If one tiny text object spans two adjacent cells, `cell_overlap="partial"` may
+recover it but can duplicate the same text into both cells. Prefer snapped
+guides with `cell_overlap="center"` first, then split known merged values by a
+value pattern when the PDF text layer really merged adjacent cells.
+
+If you want the usual settings in one call, use `extract_table_guided()`:
+
+```python
+df = page.extract_table_guided(
+    header_row,
+    row_anchors,
+).to_df()
+```
+
+By default this uses `cell_extract="words"`, `cell_overlap="center"`,
+`header="first"`, and outer boundaries, which are often the right defaults for
+small or crowded native-text tables. Header elements are the most reliable
+input; header text strings can work when labels are unique, but selected
+elements avoid ambiguity from repeated labels or body text.
+
 ### From Stripes
 
 For zebra-striped tables with alternating row colors:

@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from natural_pdf.core.pdf import PDF
     from natural_pdf.describe.summary import InspectionSummary
     from natural_pdf.elements.base import Element
+    from natural_pdf.extraction.anchored_rows import AnchoredRow
     from natural_pdf.extraction.result import StructuredDataResult
 else:  # pragma: no cover - runtime typing helper
     PdfPlumberPage = Any  # type: ignore[assignment]
@@ -1908,6 +1909,241 @@ class Page(
         if return_textmap:
             return result, textmap_obj
         return result
+
+    def extract_anchored_rows(
+        self,
+        anchors: Union[str, Iterable[Any], Callable[[Any], Iterable[Any]]],
+        *,
+        content_selector: str = "text",
+        elements: Optional[Union[str, Iterable[Any], Callable[[Any], Iterable[Any]]]] = None,
+        side: Literal["right", "left", "both"] = "right",
+        y_tolerance: Optional[float] = None,
+        x_gap: float = 0,
+        include_anchor: bool = False,
+        sort: bool = True,
+        apply_exclusions: bool = True,
+    ) -> List["AnchoredRow"]:
+        """Collect same-row text-like elements relative to anchor elements.
+
+        Use this when the visual structure is row-oriented but not a normal
+        table: margin line numbers, stable first-column IDs, or other anchors
+        that identify which same-row content belongs together.
+
+        Args:
+            anchors: Selector, iterable, or callable returning the row anchors.
+                Callable inputs receive this page.
+            content_selector: Selector used for candidate row content when
+                ``elements`` is not supplied.
+            elements: Optional selector, iterable, or callable for candidate row
+                content. Use this to limit matching to a table/section band.
+            side: Collect content to the ``"right"``, ``"left"``, or on
+                ``"both"`` sides of each anchor.
+            y_tolerance: Maximum vertical midpoint distance for same-row
+                matching. Defaults to a value derived from anchor height.
+            x_gap: Required gap between anchor and content for left/right
+                matching.
+            include_anchor: Include the anchor itself in the returned row text.
+            sort: Sort row elements by x-position before joining text.
+            apply_exclusions: Respect exclusions when resolving selector inputs.
+
+        Returns:
+            A list of ``AnchoredRow`` objects with the anchor, collected elements,
+            joined text, union bbox, and page number.
+        """
+
+        from natural_pdf.extraction.anchored_rows import extract_anchored_rows
+
+        return extract_anchored_rows(
+            self,
+            anchors,
+            content_selector=content_selector,
+            elements=elements,
+            side=side,
+            y_tolerance=y_tolerance,
+            x_gap=x_gap,
+            include_anchor=include_anchor,
+            sort=sort,
+            apply_exclusions=apply_exclusions,
+        )
+
+    def extract_table_guided(
+        self,
+        headers: Union[str, ElementCollection[Any], Sequence[Any], None],
+        row_anchors: Union[str, Iterable[Any], Callable[[Any], Iterable[Any]]],
+        *,
+        header_anchor: Optional[Any] = None,
+        header_method: Literal["min_crossings", "seam_carving"] = "min_crossings",
+        min_width: Optional[float] = None,
+        max_width: Optional[float] = None,
+        margin: float = 0.5,
+        row_stabilization: bool = True,
+        num_samples: int = 400,
+        snap_vertical: bool = True,
+        snap_vertical_kwargs: Optional[Dict[str, Any]] = None,
+        row_align: Union[
+            Literal["left", "right", "center", "between"],
+            Literal["top", "bottom"],
+        ] = "between",
+        row_outer: Union[bool, Literal["first", "last"]] = True,
+        row_tolerance: float = 5,
+        source: str = "guides_temp",
+        cell_padding: float = 0.5,
+        include_outer_boundaries: bool = True,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        use_ocr: bool = False,
+        ocr_config: Optional[dict] = None,
+        text_options: Optional[Dict[str, Any]] = None,
+        cell_extraction_func: Optional[Callable[[Any], Optional[str]]] = None,
+        cell_extract: Literal["text", "words"] = "words",
+        cell_overlap: Literal["center", "full", "partial"] = "center",
+        cell_newlines: Union[bool, str] = True,
+        show_progress: bool = False,
+        content_filter: Optional[Union[str, Sequence[str], Callable[[str], bool]]] = None,
+        apply_exclusions: bool = True,
+        header: Union[str, List[str], None] = "first",
+        skip_repeating_headers: Optional[bool] = None,
+        structure_engine: Optional[str] = None,
+    ) -> TableResult:
+        """Extract a table using header-derived columns and row anchors.
+
+        This is a convenience wrapper for the common difficult-table pattern:
+        visible headers define approximate vertical column boundaries, stable
+        row IDs/case numbers define horizontal row boundaries, and vertical
+        guides are optionally snapped into nearby whitespace before extraction.
+
+        Args:
+            headers: Header elements or names used for vertical guides. Header text
+                strings are accepted for simple unique headers, but selected
+                header elements are more reliable for crowded tables, duplicate
+                labels, and repeated page text. If element headers are provided
+                and ``header_anchor`` is omitted, the first header element is
+                used to include the header row as the first horizontal guide.
+                If header names are provided and ``header_anchor`` is omitted,
+                the first matching header text is used as the header row anchor
+                when it can be found.
+            row_anchors: Selector, iterable, or callable returning stable row
+                markers such as IDs, case numbers, or first-column values.
+            header_anchor: Optional element or selector for the header row
+                marker. Use this when string headers are repeated or ambiguous.
+            header_method: Strategy passed to ``vertical.from_headers(...)``.
+            min_width: Optional minimum column width for header-derived guides.
+            max_width: Optional maximum column width for header-derived guides.
+            margin: Header-search margin used by ``from_headers``.
+            row_stabilization: Stabilize header separators with nearby row text.
+            num_samples: Sample count used by seam/min-crossing detection.
+            snap_vertical: Whether to snap vertical guides into whitespace gaps.
+            snap_vertical_kwargs: Options for ``vertical.snap_to_whitespace``.
+            row_align: Alignment mode for row-anchor horizontal guides.
+            row_outer: Whether to add outer horizontal boundary guides.
+            row_tolerance: Tolerance for resolving row-anchor content.
+            source: Source label for temporary guide grid regions.
+            cell_padding: Padding for guide-built cell regions.
+            include_outer_boundaries: Add table bounds from the page when outer
+                guides are missing.
+            method: Optional table extraction method.
+            table_settings: Optional table-engine settings.
+            use_ocr: Whether to use OCR text for cell extraction.
+            ocr_config: OCR configuration.
+            text_options: Text extraction options.
+            cell_extraction_func: Optional custom cell extraction callback.
+            cell_extract: ``"words"`` is the default for crowded native text;
+                use ``"text"`` for character-map extraction.
+            cell_overlap: Word overlap mode for ``cell_extract="words"``.
+            cell_newlines: Newline handling for extracted cell text.
+            show_progress: Controls progress reporting in supported engines.
+            content_filter: Optional content filtering function or patterns.
+            apply_exclusions: Respect page exclusions while resolving anchors
+                and extracting cell text.
+            header: Header handling passed to ``Guides.extract_table``.
+            skip_repeating_headers: Remove duplicate header rows when relevant.
+            structure_engine: Optional provider-backed structure engine.
+
+        Returns:
+            A ``TableResult`` extracted from the generated guides.
+        """
+
+        resolved_headers = headers
+        resolved_header_anchor = header_anchor
+        if resolved_header_anchor is None and headers is not None:
+            header_items = [headers] if isinstance(headers, str) else list(headers)
+            resolved_headers = header_items
+            if header_items and all(isinstance(item, str) for item in header_items):
+                resolved_header_anchor = self._find_guided_table_header_anchor(
+                    header_items[0],
+                    apply_exclusions=apply_exclusions,
+                )
+            elif header_items:
+                resolved_header_anchor = header_items[0]
+
+        guides = self.guides().from_headers_and_row_anchors(
+            resolved_headers,
+            row_anchors,
+            header_anchor=resolved_header_anchor,
+            header_method=header_method,
+            min_width=min_width,
+            max_width=max_width,
+            margin=margin,
+            row_stabilization=row_stabilization,
+            num_samples=num_samples,
+            snap_vertical=snap_vertical,
+            snap_vertical_kwargs=snap_vertical_kwargs,
+            row_align=row_align,
+            row_outer=row_outer,
+            row_tolerance=row_tolerance,
+            apply_exclusions=apply_exclusions,
+        )
+        return guides.extract_table(
+            source=source,
+            cell_padding=cell_padding,
+            include_outer_boundaries=include_outer_boundaries,
+            method=method,
+            table_settings=table_settings,
+            use_ocr=use_ocr,
+            ocr_config=ocr_config,
+            text_options=text_options,
+            cell_extraction_func=cell_extraction_func,
+            cell_extract=cell_extract,
+            cell_overlap=cell_overlap,
+            cell_newlines=cell_newlines,
+            show_progress=show_progress,
+            content_filter=content_filter,
+            apply_exclusions=apply_exclusions,
+            header=header,
+            skip_repeating_headers=skip_repeating_headers,
+            structure_engine=structure_engine,
+        )
+
+    def _find_guided_table_header_anchor(
+        self,
+        header_text: str,
+        *,
+        apply_exclusions: bool,
+    ) -> Optional[Any]:
+        """Find the first text element matching a string header name."""
+
+        normalized_header = str(header_text).strip()
+        if not normalized_header:
+            return None
+
+        text_elements = list(self.find_all("text", apply_exclusions=apply_exclusions))
+        for element in text_elements:
+            if self._guided_table_element_text(element) == normalized_header:
+                return element
+        for element in text_elements:
+            if normalized_header in self._guided_table_element_text(element):
+                return element
+        return None
+
+    @staticmethod
+    def _guided_table_element_text(element: Any) -> str:
+        extractor = getattr(element, "extract_text", None)
+        if callable(extractor):
+            return str(extractor()).strip()
+        text = getattr(element, "text", "")
+        if callable(text):
+            text = text()
+        return str(text).strip()
 
     def extract_table(
         self,

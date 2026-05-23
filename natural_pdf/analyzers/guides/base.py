@@ -1418,6 +1418,163 @@ class Guides:
             raise ValueError("No context available for bounds computation")
         return _require_bounds(self.context, context="guide context")
 
+    def from_headers_and_row_anchors(
+        self,
+        headers: Union["ElementCollection", Sequence[Any], None],
+        row_anchors: Union[
+            str, "ElementCollection", Sequence[Any], Callable[[GuidesContext], Iterable[Any]]
+        ],
+        *,
+        header_anchor: Optional[Any] = None,
+        obj: Optional[GuidesContext] = None,
+        header_method: Literal["min_crossings", "seam_carving"] = "min_crossings",
+        min_width: Optional[float] = None,
+        max_width: Optional[float] = None,
+        margin: float = 0.5,
+        row_stabilization: bool = True,
+        num_samples: int = 400,
+        snap_vertical: bool = True,
+        snap_vertical_kwargs: Optional[Dict[str, Any]] = None,
+        row_align: Union[
+            Literal["left", "right", "center", "between"],
+            Literal["top", "bottom"],
+        ] = "between",
+        row_outer: Union[bool, Literal["first", "last"]] = True,
+        row_tolerance: float = 5,
+        apply_exclusions: bool = True,
+    ) -> "Guides":
+        """Build table guides from column headers and stable row anchors.
+
+        Use this for crowded or borderless native-text tables where headers
+        define columns and a first-column ID, case number, or similar marker
+        defines each row. The helper intentionally composes the existing guide
+        primitives: vertical guides from headers, optional whitespace snapping,
+        and horizontal guides from row-anchor content.
+
+        Args:
+            headers: Header-row elements used to derive vertical column guides.
+                Pass the visible table headers, not output schema names.
+            row_anchors: Selector, elements, or callable identifying stable row
+                markers such as first-column IDs or case numbers.
+            header_anchor: Optional header marker to include as the first
+                horizontal guide marker, keeping the header row in the grid.
+            obj: Optional page/region/flow context. Defaults to this guide
+                object's context.
+            header_method: Strategy passed to ``vertical.from_headers(...)``.
+            min_width: Optional minimum column width for header-derived guides.
+            max_width: Optional maximum column width for header-derived guides.
+            margin: Header-search margin used by ``from_headers``.
+            row_stabilization: Stabilize header separators with nearby row text.
+            num_samples: Sample count used by seam/min-crossing guide detection.
+            snap_vertical: Whether to snap vertical guides into whitespace gaps.
+            snap_vertical_kwargs: Options for ``vertical.snap_to_whitespace``.
+            row_align: Alignment mode for row-anchor horizontal guides.
+            row_outer: Whether to add outer horizontal boundary guides.
+            row_tolerance: Tolerance for resolving row-anchor content.
+            apply_exclusions: Respect exclusions when resolving row-anchor
+                selectors.
+
+        Returns:
+            This ``Guides`` object, with vertical and horizontal guides populated.
+        """
+
+        target_obj = resolve_generation_context(obj, self.context)
+        self.vertical.from_headers(
+            headers,
+            obj=target_obj,
+            method=header_method,
+            min_width=min_width,
+            max_width=max_width,
+            margin=margin,
+            row_stabilization=row_stabilization,
+            num_samples=num_samples,
+        )
+        if snap_vertical:
+            snap_options = {
+                "min_gap": 2,
+                "detection_method": "text",
+                "on_no_snap": "ignore",
+            }
+            if snap_vertical_kwargs:
+                snap_options.update(snap_vertical_kwargs)
+            self.vertical.snap_to_whitespace(obj=target_obj, **snap_options)
+
+        row_markers = self._resolve_row_anchor_markers(
+            target_obj,
+            row_anchors,
+            header_anchor=header_anchor,
+            apply_exclusions=apply_exclusions,
+        )
+        self.horizontal.from_content(
+            row_markers,
+            obj=target_obj,
+            align=row_align,
+            outer=row_outer,
+            tolerance=row_tolerance,
+            apply_exclusions=apply_exclusions,
+        )
+        return self
+
+    @staticmethod
+    def _resolve_row_anchor_markers(
+        target_obj: GuidesContext,
+        row_anchors: Union[
+            str, "ElementCollection", Sequence[Any], Callable[[GuidesContext], Iterable[Any]]
+        ],
+        *,
+        header_anchor: Optional[Any],
+        apply_exclusions: bool,
+    ) -> list[Any]:
+        markers: list[Any] = []
+        if header_anchor is not None:
+            markers.extend(
+                Guides._resolve_marker_items(
+                    target_obj,
+                    header_anchor,
+                    find_one=True,
+                    apply_exclusions=apply_exclusions,
+                )
+            )
+        markers.extend(
+            Guides._resolve_marker_items(
+                target_obj,
+                row_anchors,
+                find_one=False,
+                apply_exclusions=apply_exclusions,
+            )
+        )
+        return markers
+
+    @staticmethod
+    def _resolve_marker_items(
+        target_obj: GuidesContext,
+        markers: Any,
+        *,
+        find_one: bool,
+        apply_exclusions: bool,
+    ) -> list[Any]:
+        if callable(markers):
+            return list(markers(target_obj))
+        if isinstance(markers, str):
+            if find_one:
+                finder = getattr(target_obj, "find", None)
+                if finder is None:
+                    return []
+                item = finder(markers, apply_exclusions=apply_exclusions)
+                return [item] if item is not None else []
+            finder_all = getattr(target_obj, "find_all", None)
+            if finder_all is None:
+                return []
+            return list(finder_all(markers, apply_exclusions=apply_exclusions))
+        if isinstance(markers, ElementCollection):
+            return list(markers)
+        if _bounds_from_object(markers) is not None or hasattr(markers, "x0"):
+            return [markers]
+        try:
+            return list(markers)
+        except TypeError:
+            return [markers]
+
     @property
     def last_ocr_result(self) -> Optional[GuidesOcrResult]:
         """Most recent result/plan returned by :meth:`apply_ocr`, if any."""

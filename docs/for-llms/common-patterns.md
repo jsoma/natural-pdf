@@ -104,7 +104,112 @@ table = page.extract_table()
 
 ---
 
-### 6a. Extract ALL Tables from a Page
+### 6a. Extract Rows from Stable Anchors
+
+**Use case**: Recover rows when a stable visual anchor identifies each row, but
+the content is not a normal table. Common anchors include margin line numbers,
+case numbers, invoice line IDs, and first-column record IDs.
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("document.pdf")
+
+def line_number_anchors(page):
+    return [
+        el
+        for el in page.find_all("text")
+        if el.extract_text().strip().isdigit() and el.x1 < 70
+    ]
+
+rows = pdf.pages.extract_anchored_rows(
+    line_number_anchors,
+    side="right",
+    y_tolerance=4,
+)
+
+clean_lines = [row.text for row in rows]
+page_numbers = [row.page_number for row in rows]
+```
+
+**Returns**: `list[AnchoredRow]` - each row has `.anchor`, `.elements`,
+`.words`, `.text`, `.bbox`, and `.page_number`.
+
+**Pitfall**: Do not replace anchor-based extraction with generic y-position row
+grouping after finding the anchors. The anchor is the evidence that decides
+which rows belong in the output.
+
+---
+
+### 6b. Extract a Crowded Table with Header Guides and Row Anchors
+
+**Use case**: Recover a tiny or borderless table where `extract_table()` misses
+columns, but headers and a first-column ID establish the visual grid.
+
+If the table has a stable header row and consistent columns across pages, try
+the simple header-guide path first:
+
+```python
+from natural_pdf.analyzers.guides import Guides
+
+headers = page.find_all('text[y0=min()]')
+
+guides = Guides(page)
+guides.vertical.from_headers(headers)
+df = guides.extract_table(pdf.pages).to_df()
+```
+
+Use explicit row anchors when row segmentation is ambiguous or you need tighter
+control over which rows belong in the output:
+
+```python
+import re
+from natural_pdf import PDF
+
+pdf = PDF("document.pdf")
+page = pdf.pages[0]
+
+id_pattern = re.compile(r"\d{2}-\d{4}-\d+")
+id_header = page.find('text:contains("CASE #")')
+texts = list(page.find_all("text"))
+header_row = [el for el in texts if abs(el.top - id_header.top) <= 2]
+row_anchors = [
+    el
+    for el in texts
+    if (
+        id_pattern.fullmatch(el.extract_text().strip())
+        and el.top > id_header.top
+        and abs(el.x0 - id_header.x0) <= 8
+    )
+]
+
+table = page.extract_table_guided(
+    header_row,
+    row_anchors,
+    header_anchor=id_header,
+    cell_extract="words",
+    cell_overlap="center",
+)
+df = table.to_df()
+```
+
+**Returns**: `TableResult`, usually converted to a DataFrame with `.to_df()`.
+For advanced control, use `page.guides().from_headers_and_row_anchors(...)`
+directly and then call `guides.extract_table(...)`.
+
+You can pass header elements or unique header-name strings. Header elements are
+more reliable on crowded pages; unique header strings let
+`extract_table_guided()` infer the header row from the first header name. Pass
+`header_anchor` explicitly when the first header text is repeated or ambiguous.
+
+**Pitfall**: Header x positions, body text starts, and dates/numbers may not
+align the same way. `from_headers_and_row_anchors()` gets close with headers and
+row IDs, then snaps vertical guides into whitespace before cell extraction. Only
+change `cell_overlap` after checking the snapped guides.
+
+---
+
+### 6c. Extract ALL Tables from a Page
 
 **Use case**: Find and extract every table on a page using layout analysis.
 
@@ -136,7 +241,7 @@ for i, table_region in enumerate(table_regions):
 
 ---
 
-### 6b. Extract All Tables from a Page (Shortcut)
+### 6d. Extract All Tables from a Page (Shortcut)
 
 **Use case**: Extract every table on a page without manual layout analysis.
 
@@ -156,7 +261,7 @@ for i, table in enumerate(tables):
 
 ---
 
-### 6c. Convert Page to Markdown with VLM
+### 6e. Convert Page to Markdown with VLM
 
 **Use case**: Get a structured markdown representation of a page using a Vision Language Model.
 
@@ -176,7 +281,7 @@ md = page.to_markdown()
 
 ---
 
-### 6d. Semantic Search Across Pages
+### 6f. Semantic Search Across Pages
 
 **Use case**: Find the most relevant pages for a query using semantic similarity.
 
