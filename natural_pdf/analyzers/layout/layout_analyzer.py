@@ -44,6 +44,8 @@ class LayoutAnalyzer:
         classes: Optional[List[str]] = None,
         exclude_classes: Optional[List[str]] = None,
         device: Optional[str] = None,
+        existing: str = "replace",
+        show_progress: Optional[bool] = None,
         **kwargs,
     ) -> List[Region]:
         """
@@ -59,6 +61,8 @@ class LayoutAnalyzer:
             classes: Specific classes to detect (simple mode).
             exclude_classes: Classes to exclude (simple mode).
             device: Device for inference (simple mode).
+            existing: Service-level replacement mode. Currently only replacement is supported.
+            show_progress: Service-level progress option consumed before engine options are built.
             **kwargs: Additional engine-specific arguments (added to options.extra_args or used by constructor if options=None).
 
         Returns:
@@ -67,6 +71,10 @@ class LayoutAnalyzer:
         logger.info(
             f"Page {self._page.number}: Analyzing layout (Engine: {engine or 'default'}, Options provided: {options is not None})..."
         )
+        if existing != "replace":
+            logger.warning(
+                "analyze_layout(existing=%r) is not implemented; replacing regions.", existing
+            )
 
         # --- Render Page Image (Standard Resolution) ---
         logger.debug(
@@ -141,12 +149,10 @@ class LayoutAnalyzer:
             # Separate client from other kwargs
             client_instance = kwargs.pop("client", None)  # Get client, remove from kwargs
 
-            # Separate model_name/model if provided for VLM
-            model_name_kwarg = None
-            languages_kwarg = None
-            if issubclass(options_class, VLMLayoutOptions):
-                model_name_kwarg = kwargs.pop("model_name", None) or kwargs.pop("model", None)
-                languages_kwarg = kwargs.pop("languages", None)
+            # Separate VLM-only arguments from engine-specific kwargs so they
+            # do not leak into non-VLM engine extra_args.
+            model_name_kwarg = kwargs.pop("model_name", None) or kwargs.pop("model", None)
+            languages_kwarg = kwargs.pop("languages", None)
 
             # Prepare args for constructor, prioritizing explicit args over defaults
             constructor_args = {

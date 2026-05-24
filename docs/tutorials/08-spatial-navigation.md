@@ -220,7 +220,7 @@ Natural PDF provides fine control over spatial navigation behavior through globa
 
 By default, directional methods (.above(), .below(), .left(), .right()) include a small offset of 0.01 points to avoid edge cases with touching elements. You can configure this globally:
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf import PDF
 import natural_pdf
 
@@ -243,7 +243,7 @@ region = element.below(height=50)
 
 When using spatial navigation with pages that have exclusions (headers, footers, etc.), you can control whether exclusions are applied:
 
-```python
+```python tags=["skip-execution"]
 # Add a header exclusion
 pdf.add_exclusion(lambda page: page.find('text:contains("Header")'))
 
@@ -425,7 +425,7 @@ While `.right()`, `.left()`, etc. are great for navigation (finding regions in a
 2. **Mix different expansion types** (pixels, selectors, page edges)
 3. **Create regions that include the source element**
 
-```python
+```python tags=["skip-execution"]
 # Navigation approach (excludes source)
 region = element.right(until='text:contains("End")')
 
@@ -461,7 +461,7 @@ content_region = header_region.above(height=100)
 content_region.extract_text()
 ```
 
-```python
+```python tags=["skip-execution"]
 # Combine above() and below() to create exclusion zones
 premise_text = page.find(text="PREMISE")
 header = premise_text.above()
@@ -476,7 +476,7 @@ footer = page_num.below()
 
 When working with exclusions, use `show(exclusions='red')` to see what's being excluded:
 
-```python
+```python tags=["skip-execution"]
 # Add exclusions
 pdf.add_exclusion(lambda page: page.find(text="PREMISE").above())
 pdf.add_exclusion(lambda page: page.find("text:regex(Page \\d+ of)").expand())

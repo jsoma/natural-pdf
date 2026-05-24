@@ -80,12 +80,12 @@ You can set global default OCR options using `natural_pdf.options`. These defaul
 import natural_pdf as npdf
 
 # Set global OCR defaults
-npdf.options.ocr.engine = 'surya'          # Default OCR engine
+npdf.options.ocr.engine = 'rapidocr'       # Default OCR engine
 npdf.options.ocr.min_confidence = 0.7      # Default confidence threshold
 
 # Now all OCR calls use these defaults
 pdf = npdf.PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf")
-pdf.pages[0].apply_ocr()  # Uses: engine='surya', min_confidence=0.7
+pdf.pages[0].apply_ocr()  # Uses: engine='rapidocr', min_confidence=0.7
 
 # You can still override defaults for specific calls
 pdf.pages[0].apply_ocr(engine='rapidocr', languages=['fr'])  # Override engine and languages
@@ -103,8 +103,8 @@ page.apply_ocr(engine='rapidocr')
 
 # Force a specific device
 page.apply_ocr(engine='rapidocr', device='cpu')
-page.apply_ocr(engine='surya', device='mps')     # Apple Silicon
-page.apply_ocr(engine='doctr', device='cuda')     # NVIDIA GPU
+# Apple Silicon: page.apply_ocr(engine='surya', device='mps')
+# NVIDIA GPU: page.apply_ocr(engine='doctr', device='cuda')
 ```
 
 Most engines support GPU acceleration: EasyOCR, Surya, DocTR, and VLM-based engines work with both CUDA and MPS. PaddleOCR uses its own GPU backend. RapidOCR runs on CPU only (ONNX runtime).
@@ -113,7 +113,7 @@ Most engines support GPU acceleration: EasyOCR, Surya, DocTR, and VLM-based engi
 
 For more control, import and use the specific `Options` class for your chosen engine within the `apply_ocr` call.
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf.ocr import PaddleOCROptions, EasyOCROptions, SuryaOCROptions, RapidOCROptions
 
 # Re-apply OCR using EasyOCR with specific options
@@ -142,7 +142,7 @@ page.apply_ocr(engine='rapidocr', languages=['en'])
 
 PaddleOCR-VL uses a Vision Language Model for document understanding. It can handle complex layouts, charts, and mixed content better than traditional OCR. It's heavy, though, so it'll take a lot to install and a lot to run. **I've found Qwen3 (see below) is a more flexible alternative most of the time.**
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf.ocr import PaddleOCRVLOptions
 
 # Basic usage
@@ -169,7 +169,7 @@ When you use GLM-OCR via `engine="vlm"`, natural-pdf automatically runs a two-st
 
 Both models are loaded from HuggingFace and run in-process.
 
-```python
+```python tags=["skip-execution"]
 page.apply_ocr(engine="vlm", model="zai-org/GLM-OCR")
 ```
 
@@ -181,7 +181,7 @@ The `layout` parameter controls how regions are detected before being sent to th
 - **rapidocr** or any other "traditional" LLM is slightly more granular, and detects words or lines
 - **cluster** uses rapidocr but then combines nearby elements
 
-```python
+```python tags=["skip-execution"]
 # Uses PP-DocLayout-V3, which ends up as big
 page.apply_ocr(engine="glm_ocr")
 page.apply_ocr(engine="paddlevl")
@@ -203,7 +203,7 @@ Uses a vision-language model to return grounded bounding boxes with text. Best r
 
 Pass just `model=` with a HuggingFace model ID. The model is downloaded and run locally — requires `transformers` and `torch`.
 
-```python
+```python tags=["skip-execution"]
 page.apply_ocr(
     engine="vlm",
     model="Qwen/Qwen3-VL-2B-Instruct",
@@ -218,7 +218,7 @@ Small models (2B–4B) produce good text content but imprecise bounding boxes �
 
 Pass `client=` with any OpenAI-compatible client pointing at a service that hosts the model. The `openai` Python package works as a client for any compatible endpoint. Larger models produce more accurate bounding boxes.
 
-```python
+```python tags=["skip-execution"]
 from openai import OpenAI
 
 # OpenRouter — access large models without local GPU
@@ -238,7 +238,7 @@ page.apply_ocr(engine="vlm", model="gemini-2.5-flash", client=client)
 
 Use `instructions` to append hints to the auto-generated prompt (e.g., expected language or document type):
 
-```python
+```python tags=["skip-execution"]
 page.apply_ocr(
     engine="vlm",
     model="gemini-2.5-flash",
@@ -251,7 +251,7 @@ page.apply_ocr(
 
 A common pattern: use a fast engine to detect text locations, then use a VLM to correct the text per-element. This combines fast detection with high-quality recognition.
 
-```python
+```python tags=["skip-execution"]
 from openai import OpenAI
 
 client = OpenAI(
@@ -282,15 +282,15 @@ All OCR engines accept standard ISO language codes like `'en'`, `'fr'`, `'de'`, 
 ```python
 # Standard codes work across all engines
 page.apply_ocr(engine='rapidocr', languages=['ja'])
-page.apply_ocr(engine='paddle', languages=['ja'])   # auto-normalized to 'japan'
-page.apply_ocr(engine='surya', languages=['ja'])
+# PaddleOCR normalizes 'ja' to 'japan': page.apply_ocr(engine='paddle', languages=['ja'])
+# Surya also accepts ISO codes: page.apply_ocr(engine='surya', languages=['ja'])
 ```
 
 ## Comparing OCR Engines
 
 When working with scanned documents, different OCR engines produce different results. `compare_ocr()` runs multiple engines on the same page and shows you where they agree and disagree — without modifying the page's elements.
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf import PDF
 
 pdf = PDF("scanned_document.pdf")
@@ -306,7 +306,7 @@ The result object displays a summary: how many regions the engines agreed on, ho
 
 **Side-by-side grid** — see each engine's bounding boxes and recognized text overlaid on the page:
 
-```python
+```python tags=["skip-execution"]
 result.show()
 
 # For 2 engines, use toggle mode: hover to swap between engines
@@ -315,7 +315,7 @@ result.show(mode="toggle")
 
 **Disagreement heatmap** — quickly find problem areas on the page:
 
-```python
+```python tags=["skip-execution"]
 result.heatmap()
 ```
 
@@ -323,7 +323,7 @@ Green = agreement, orange = near-miss, red = catastrophic disagreement.
 
 **Detection coverage** — see where each engine found text (regardless of what it read):
 
-```python
+```python tags=["skip-execution"]
 result.coverage()
 ```
 
@@ -333,7 +333,7 @@ This answers "did the fast engine even see the text?" Regions detected by only o
 
 **Diff table** — per-region text comparison with character-level highlighting:
 
-```python
+```python tags=["skip-execution"]
 result.diff()
 
 # Filter to specific categories
@@ -346,7 +346,7 @@ Each row shows the image crop, both engines' text (disagreements highlighted in 
 
 **Interactive magnifier** — hover over the page to zoom in and see per-engine text for each region:
 
-```python
+```python tags=["skip-execution"]
 result.loupe()
 ```
 
@@ -356,7 +356,7 @@ The loupe follows your cursor with a 3x magnified view. When you hover over a co
 
 **Summary DataFrame** for programmatic access:
 
-```python
+```python tags=["skip-execution"]
 result.summary()
 ```
 
@@ -364,7 +364,7 @@ Returns a pandas DataFrame with per-engine stats: regions found, agreement/near-
 
 **Apply the chosen engine** — once you've decided which engine to use, persist its results to the page:
 
-```python
+```python tags=["skip-execution"]
 result.apply("rapidocr")
 
 # Now the page has rapidocr's elements — continue with normal workflow
@@ -387,7 +387,7 @@ Any engine that works with `apply_ocr()` works with `compare_ocr()`:
 
 VLM-based engines (`engine="vlm"`, `"dots"`, `"chandra"`) can also be compared but produce block-level output and are slower.
 
-```python
+```python tags=["skip-execution"]
 # Compare a fast local engine against a VLM
 from openai import OpenAI
 client = OpenAI(base_url="https://generativelanguage.googleapis.com/v1beta/openai/", api_key="...")
@@ -400,7 +400,7 @@ result = page.compare_ocr(
 
 ### Options
 
-```python
+```python tags=["skip-execution"]
 result = page.compare_ocr(
     engines=["rapidocr", "easyocr"],
     resolution=150,              # render DPI (default 150)
@@ -420,7 +420,7 @@ If OCR results aren't perfect, you can use the bundled interactive web applicati
 1.  **Package the data:**
     After running `apply_ocr` (or `apply_layout`), use `create_correction_task_package` to create a zip file containing the PDF images and detected elements.
 
-    ```python
+    ```python tags=["skip-execution"]
     from natural_pdf.utils.packaging import create_correction_task_package
 
     page.apply_ocr()
@@ -464,7 +464,7 @@ print(f"\nCombined text from all pages:\n{all_text_content[:500]}...")
 
 After applying OCR to a PDF, you can save a new version with the recognized text embedded as an invisible layer. This makes the text searchable and copyable in standard PDF viewers.
 
-```python
+```python tags=["skip-execution"]
 pdf.save_pdf("searchable_output.pdf", ocr=True)
 ```
 
@@ -474,7 +474,7 @@ pdf.save_pdf("searchable_output.pdf", ocr=True)
 
 After OCR, use spatial navigation to extract structured data from scanned documents. This is especially useful for forms and invoices.
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf import PDF
 
 pdf = PDF("scanned_invoice.pdf")
@@ -592,7 +592,7 @@ page.detect_checkboxes(engine="onnx", model="some-user/some-model")
 
 If OCR results aren't perfect, you can programmatically correct them using `correct_ocr()`. It takes a callback function that receives each OCR element and returns corrected text.
 
-```python
+```python tags=["skip-execution"]
 from openai import OpenAI
 from natural_pdf import PDF
 
@@ -620,7 +620,7 @@ page.correct_ocr(correct_text)
 
 For difficult documents, use a vision model to re-OCR specific regions instead of correcting text:
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf.ocr.utils import direct_ocr_llm
 
 def correct_with_vision(region):
@@ -639,7 +639,7 @@ page.correct_ocr(correct_with_vision)
 
 Scanned documents are often slightly rotated. You can detect and correct skew before or after OCR.
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf import PDF
 
 pdf = PDF("skewed_scan.pdf")
@@ -655,7 +655,7 @@ deskewed_image = page.deskew()
 
 To create a new deskewed PDF (image-based):
 
-```python
+```python tags=["skip-execution"]
 # Deskew all pages and get a new PDF
 deskewed_pdf = pdf.deskew()
 

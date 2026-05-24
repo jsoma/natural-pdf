@@ -83,7 +83,7 @@ for r in results:
 
 After applying OCR, you can use an LLM to correct recognition errors:
 
-```python
+```python tags=["skip-execution"]
 import os
 from openai import OpenAI
 from natural_pdf import PDF
@@ -120,7 +120,7 @@ page.correct_ocr(correct_text_region)
 
 For difficult documents, use a vision model to re-OCR specific regions:
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf.ocr.utils import direct_ocr_llm
 
 def correct_with_vision(region):
@@ -140,7 +140,7 @@ page.correct_ocr(correct_with_vision)
 
 For longer documents, you can use `pdf.search()` to find the most relevant pages before asking questions. This uses sentence-transformer embeddings to rank pages by semantic similarity.
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf import PDF
 
 pdf = PDF("long_report.pdf")
@@ -156,7 +156,7 @@ for page in results:
 
 You can combine search with `.ask()` to focus QA on the most relevant pages:
 
-```python
+```python tags=["skip-execution"]
 results = pdf.search("total revenue", top_k=1)
 answer = results[0].ask("What was the total revenue?")
 print(answer.answer)

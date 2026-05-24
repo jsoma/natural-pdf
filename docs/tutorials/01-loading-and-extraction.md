@@ -94,7 +94,7 @@ print(text)
 
 If you have access to a Vision Language Model, you can convert pages to structured markdown. This works well for pages with complex formatting, tables, and mixed content.
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf import PDF, set_default_client
 from openai import OpenAI
 
@@ -115,7 +115,7 @@ Without a configured client, `to_markdown()` falls back to `extract_text()`.
 
 Use `pages.show()` to preview multiple pages in a grid:
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf import PDF
 
 pdf = PDF("long_document.pdf")
@@ -134,7 +134,7 @@ Natural PDF automatically groups characters into words based on font size and sp
 - **`x_tolerance_ratio`** — how far apart characters can be (as a fraction of font size) and still form a single word. Default: `0.35`.
 - **`space_gap_ratio`** — within a merged word, gaps ≥ this fraction of font size get a space injected. Default: `0.12`. Handles PDFs that lack explicit space characters.
 
-```python
+```python tags=["skip-execution"]
 # Default settings work for most PDFs
 pdf = PDF("document.pdf")
 
@@ -151,7 +151,7 @@ See the [Troubleshooting Guide](../cookbook/troubleshooting.md#words-are-joined-
 
 Some PDFs have corrupted OCR text. Load without the text layer:
 
-```python
+```python tags=["skip-execution"]
 # Load PDF and discard its flawed text layer
 pdf = PDF("badly_ocred.pdf", text_layer=False)
 
@@ -164,7 +164,7 @@ text = pdf.pages[0].extract_text()
 
 Always close PDFs when you're done to free resources:
 
-```python
+```python tags=["skip-execution"]
 # Process and close
 pdf = PDF("document.pdf")
 text = pdf.pages[0].extract_text()

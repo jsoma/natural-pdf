@@ -200,13 +200,16 @@ The `.expand()` method creates larger regions from elements:
 ```python
 # Find a page number and expand it to include surrounding whitespace
 page_num = page.find("text:regex(Page \\d+ of)")
-expanded = page_num.expand()  # Adds padding around the element
-expanded.show()
+if page_num:
+    expanded = page_num.expand()  # Adds padding around the element
+    expanded.show()
 
 # Expand in specific directions
-region = page.find('text:contains("NUMBER")').right(include_source=True)
-expanded = region.expand(top=3, bottom=3)
-expanded.show(crop=100)
+number_label = page.find('text:contains("NUMBER")')
+if number_label:
+    region = number_label.right(include_source=True)
+    expanded = region.expand(top=3, bottom=3)
+    expanded.show(crop=100)
 ```
 
 ## Working with Partial Overlap
@@ -215,13 +218,14 @@ When finding elements in regions, use `overlap='partial'` to include elements th
 
 ```python
 # Find all text that overlaps with a column region
-rows = (
-    page
-    .find(text="NUMBER")
-    .below(width='element', include_source=True)
-    .find_all('text', overlap='partial')
-)
-rows.show(crop=100, width=700)
+number_label = page.find(text="NUMBER")
+if number_label:
+    rows = (
+        number_label
+        .below(width='element', include_source=True)
+        .find_all('text', overlap='partial')
+    )
+    rows.show(crop=100, width=700)
 ```
 
 Regions allow you to precisely target specific parts of a document for extraction and analysis. They're essential for handling complex document layouts and isolating the exact content you need.

@@ -1,6 +1,7 @@
 """Regression tests for layout module bug fixes and improvements."""
 
 import dataclasses
+import inspect
 from unittest.mock import MagicMock
 
 import pytest
@@ -297,6 +298,18 @@ class TestPaddleEngineFields:
         from natural_pdf.analyzers.layout.paddle import PaddleLayoutDetector
 
         assert not hasattr(PaddleLayoutDetector, "_SKIP_FIELDS")
+
+    def test_service_control_kwargs_not_engine_extra_args(self):
+        """Page-level control kwargs should be consumed before engine-specific kwargs."""
+        from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
+
+        signature = inspect.signature(LayoutAnalyzer.analyze_layout)
+        assert "existing" in signature.parameters
+        assert "show_progress" in signature.parameters
+
+        source = inspect.getsource(LayoutAnalyzer.analyze_layout)
+        assert 'kwargs.pop("model_name"' in source
+        assert 'kwargs.pop("model"' in source
 
 
 # ---------------------------------------------------------------------------

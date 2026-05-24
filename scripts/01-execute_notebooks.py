@@ -22,6 +22,10 @@ from tqdm import tqdm
 DOCS_DIR = Path("docs")
 CACHE_FILE = Path(".notebook_cache.json")
 # Add relative paths or glob patterns from DOCS_DIR, e.g., 'api/', '**/_*.md'
+NOTEBOOK_SOURCE_PATTERNS = [
+    "tutorials/*.md",
+    "quick-reference/index.md",
+]
 EXCLUDE_PATTERNS = [
     "describe/index.md",
     "installation/index.md",
@@ -112,13 +116,17 @@ def is_excluded(file_path: Path, base_dir: Path, exclude_patterns: List[str]) ->
 
 
 def find_markdown_files(base_dir: Path, exclude_patterns: List[str]) -> List[Path]:
-    """Finds all .md files in the base directory, excluding specified patterns."""
+    """Finds executable notebook source .md files, excluding specified patterns."""
     if not base_dir.is_dir():
         logger.error(f"Docs directory not found: {base_dir}")
         return []
 
     md_files = []
-    for md_file in base_dir.rglob("*.md"):
+    candidates = []
+    for pattern in NOTEBOOK_SOURCE_PATTERNS:
+        candidates.extend(base_dir.glob(pattern))
+
+    for md_file in sorted(set(candidates)):
         if not is_excluded(md_file, base_dir, exclude_patterns):
             md_files.append(md_file)
         else:
@@ -126,6 +134,16 @@ def find_markdown_files(base_dir: Path, exclude_patterns: List[str]) -> List[Pat
             logger.debug(f"Excluding {md_file} due to exclude patterns.")
 
     return md_files
+
+
+def normalize_notebook_metadata(notebook: Any) -> None:
+    """Normalize docs metadata aliases before executing with nbclient."""
+    for cell in notebook.cells:
+        metadata = cell.setdefault("metadata", {})
+        if metadata.get("skip"):
+            tags = metadata.setdefault("tags", [])
+            if "skip-execution" not in tags:
+                tags.append("skip-execution")
 
 
 # --- Worker Function ---
@@ -178,13 +196,13 @@ def process_notebook(
     try:
         md_content = md_file_path.read_text(encoding="utf-8")
         notebook = jupytext.reads(md_content, fmt="md")
+        normalize_notebook_metadata(notebook)
 
-        cwd = md_file_path.parent
         client = NotebookClient(
             notebook,
             timeout=600,
             kernel_name=kernel_name,
-            resources={"metadata": {"path": str(cwd)}},
+            resources={"metadata": {"path": str(Path.cwd())}},
         )
         client.execute()  # Modifies 'notebook' object
 

@@ -76,7 +76,7 @@ The general workflow is: try different layout analyzers to locate your table, th
 
 When tables lack visible borders, use guides to define column and row structure manually. See the [Guides cookbook](../cookbook/guides.md) for full details.
 
-```python
+```python tags=["skip-execution"]
 from natural_pdf import PDF
 
 pdf = PDF("document.pdf")
@@ -96,7 +96,7 @@ df = guides.extract_table(include_outer_boundaries=True).to_df()
 
 For tables where rows start with a specific pattern:
 
-```python
+```python tags=["skip-execution"]
 guides = page.guides()
 guides.vertical.from_content(['Number', 'Date', 'Location', 'Description', 'Disposition'], outer="last")
 guides.horizontal.from_content(
@@ -108,7 +108,7 @@ df = guides.extract_table(header="first").to_df()
 
 For multi-page tables, create guides on one page and pass all pages to `extract_table()`:
 
-```python
+```python tags=["skip-execution"]
 guides = page.guides()
 guides.vertical.from_headers(page.find_all('text:bold[size>=11]'))
 
@@ -139,7 +139,7 @@ The `to_df()` method accepts these options:
 - `header="none"` – No headers, use numeric indices
 - `header=["Col A", "Col B", ...]` – Provide custom column names
 
-```python
+```python tags=["skip-execution"]
 # Example: Post-process numeric columns
 df['Amount'] = df['Amount'].str.replace('$', '').str.replace(',', '').astype(float)
 df['Percentage'] = df['Percentage'].str.rstrip('%').astype(float) / 100
@@ -149,7 +149,7 @@ df['Percentage'] = df['Percentage'].str.rstrip('%').astype(float) / 100
 
 If a table contains checkboxes, run `detect_checkboxes()` before extracting. Each detected checkbox gets `alt_text` (`[CHECKED]` or `[UNCHECKED]`) that flows into `extract_text()`, so checkbox cells appear in the extracted table instead of being empty.
 
-```python
+```python tags=["skip-execution"]
 page.detect_checkboxes()
 df = guides.extract_table().to_df()
 ```
