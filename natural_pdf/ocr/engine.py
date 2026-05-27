@@ -18,7 +18,7 @@ class TextRegion:
 
     TextRegion provides a standardized format for representing text detected by
     OCR engines, regardless of the underlying engine implementation. This ensures
-    consistent interfaces across different OCR backends (RapidOCR, EasyOCR, Surya, PaddleOCR, etc.).
+    consistent interfaces across different OCR backends (RapidOCR, PaddleOCR, DocTR, VLM, etc.).
 
     The class handles coordinate normalization and provides utilities for converting
     between different coordinate formats (bounding boxes vs. polygons).
@@ -91,7 +91,7 @@ class OCREngine(ABC):
 
     This class defines the standard interface that all OCR engines must implement
     in natural-pdf. It provides a consistent API for text recognition regardless
-    of the underlying OCR technology (RapidOCR, EasyOCR, Surya, PaddleOCR, DocTR, etc.).
+    of the underlying OCR technology (RapidOCR, PaddleOCR, DocTR, VLM, etc.).
 
     The base class handles common functionality like model caching, parameter
     validation, and result standardization, while concrete implementations

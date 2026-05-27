@@ -27,7 +27,7 @@ Natural PDF combines traditional PDF parsing with modern AI capabilities. It pro
 - [Layout Analysis](/docs/tutorials/07-layout-analysis/): YOLO, TATR, and other layout detection
 - [Section Extraction](/docs/tutorials/09-section-extraction/): Extracting document sections
 - [Form Fields](/docs/tutorials/10-form-field-extraction/): Extracting form data
-- [OCR Integration](/docs/tutorials/12-ocr-integration/): RapidOCR, EasyOCR, PaddleOCR, Surya, DocTR
+- [OCR Integration](/docs/tutorials/12-ocr-integration/): RapidOCR, PaddleOCR, DocTR, and VLM OCR
 - [Categorizing Documents](/docs/tutorials/14-categorizing-documents/): Document classification
 
 ## For LLMs
@@ -78,14 +78,11 @@ Natural PDF combines traditional PDF parsing with modern AI capabilities. It pro
 
 ### OCR Engines
 - `rapidocr`: Default, lightweight ONNX models (~15MB)
-- `easyocr`: Good accuracy, supports many languages
 - `paddle`: Fast, CPU-friendly
 - `paddlevl`: VLM-based document understanding (charts, complex layouts)
-- `surya`: High accuracy for invoices/forms
 - `doctr`: Document-focused OCR
 
 ### Layout Engines
 - `yolo`: Fast, good for standard documents
 - `tatr`: Table-focused (Microsoft Table Transformer)
 - `paddle`: Lightweight layout detection
-- `surya`: Tuned for invoices and forms

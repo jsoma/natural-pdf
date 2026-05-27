@@ -116,7 +116,7 @@ def set_option(name: str, value):
     Example:
         import natural_pdf as npdf
         npdf.set_option('layout.auto_multipage', True)
-        npdf.set_option('ocr.engine', 'surya')
+        npdf.set_option('ocr.engine', 'rapidocr')
     """
     from natural_pdf.utils.option_validation import is_strict_mode
 

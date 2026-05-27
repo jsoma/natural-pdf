@@ -136,6 +136,18 @@ class OCRCache:
             logger.debug("OCR cache read failed for %s", cache_key, exc_info=True)
             return None
 
+    def delete(self, cache_key: str) -> bool:
+        """Remove one cached entry. Returns ``True`` if an entry was removed."""
+        path = self._key_path(cache_key)
+        try:
+            path.unlink()
+            return True
+        except FileNotFoundError:
+            return False
+        except OSError:
+            logger.debug("OCR cache delete failed for %s", cache_key, exc_info=True)
+            return False
+
     def put(
         self,
         cache_key: str,

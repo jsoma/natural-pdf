@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class ChandraOCREngine(OCREngine):
-    """Chandra OCR engine — VLM-based successor to Surya.
+    """Chandra OCR engine — VLM-based document OCR.
 
     Chandra uses a single vision-language model (based on Qwen) to perform
     OCR with layout detection in one pass. It returns block-level bounding

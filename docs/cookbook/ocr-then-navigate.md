@@ -70,21 +70,19 @@ Natural PDF supports multiple OCR engines:
 | Engine | Notes | Installation |
 |--------|-------|--------------|
 | `rapidocr` | Default engine. PaddleOCR models via ONNX (~15MB). Easier install than full PaddlePaddle. | `pip install "natural-pdf[all]"` or `pip install rapidocr` |
-| `easyocr` | Opt-in alternate engine. Supports 80+ languages. | `pip install easyocr` |
-| `surya` | Handles multi-language and dense layouts. | `pip install "surya-ocr<0.15"` |
 | `paddle` | Best CJK (Chinese/Japanese/Korean) support. | `pip install paddlepaddle paddleocr` |
 | `paddlevl` | VLM-based — understands charts and complex layouts. | `pip install paddlepaddle paddleocr "paddlex[ocr]"` |
 | `doctr` | Smaller model footprint. | `pip install python-doctr` |
 | `dots` | dots.mocr — combined layout + OCR. MLX-optimized on Apple Silicon. | `pip install "natural-pdf[ai]"` or `pip install transformers torch` |
-| `chandra` | VLM-based successor to Surya. | `pip install chandra-ocr[hf]` |
+| `chandra` | VLM-based document OCR. | `pip install chandra-ocr[hf]` |
 
 GLM-OCR (0.9B VLM) is also available via `engine="vlm"` with automatic layout detection — see the [OCR tutorial](../tutorials/12-ocr-integration.ipynb#glm-ocr).
 
-Not sure which engine to use? Compare them side by side with `page.compare_ocr(engines=["rapidocr", "easyocr"])` — see [Comparing OCR Engines](../tutorials/12-ocr-integration.ipynb#comparing-ocr-engines).
+Not sure which engine to use? Compare them side by side with `page.compare_ocr(engines=["rapidocr", "paddle"])` — see [Comparing OCR Engines](../tutorials/12-ocr-integration.ipynb#comparing-ocr-engines).
 
 ```python
 # Use a specific engine
-page.apply_ocr(engine="surya")
+page.apply_ocr(engine="paddle")
 
 # Or for the whole PDF
 pdf.apply_ocr(engine="rapidocr")
@@ -153,7 +151,7 @@ page.extract_text()  # check the output
 page.apply_ocr(engine="rapidocr", resolution=300)
 
 # Still not great — try a different engine
-page.apply_ocr(engine="surya")
+page.apply_ocr(engine="paddle")
 ```
 
 ## Extracting Form Fields
@@ -266,7 +264,7 @@ def process_scanned_batch(pdf_dir, ocr_engine="rapidocr"):
 ### "OCR returns garbage text"
 
 - Increase resolution: `apply_ocr(resolution=300)`
-- Try a different engine: `apply_ocr(engine="surya")` or `apply_ocr(engine="rapidocr")`
+- Try a different engine: `apply_ocr(engine="paddle")` or `apply_ocr(engine="rapidocr")`
 - Check the scan quality - very poor scans may need preprocessing
 
 ### "Can't find labels after OCR"

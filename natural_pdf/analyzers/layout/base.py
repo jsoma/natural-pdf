@@ -19,7 +19,7 @@ class LayoutDetector(ABC):
 
     The base class provides common functionality including model caching, result
     standardization, and configuration management, while concrete implementations
-    handle engine-specific detection logic for different models (YOLO, TATR, Surya, etc.).
+    handle engine-specific detection logic for different models (YOLO, TATR, Paddle, VLM, etc.).
 
     Subclasses must implement:
     - detect(): Core layout detection for a single image
@@ -166,7 +166,7 @@ class LayoutDetector(ABC):
             Model object(s) - format varies by detector:
             - Single model instance (YOLO, Paddle, Docling)
             - Dict with multiple models (TATR: {"detection", "structure"},
-              Surya: {"layout", "table_rec"})
+              Paddle: {"layout"})
             - Model name string (Gemini - actual client provided separately)
         """
         ...

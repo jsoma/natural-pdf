@@ -20,13 +20,11 @@ pip install "natural-pdf[paddle]"   # PaddleOCR stack (paddlepaddle + paddleocr 
 
 # Individual packages
 pip install rapidocr                # Default OCR backend
-pip install easyocr                 # EasyOCR engine
-pip install "surya-ocr<0.15"        # Surya OCR engine
 pip install python-doctr            # Doctr OCR engine
 pip install doclayout_yolo          # YOLO layout detection
 ```
 
-`natural-pdf[all]` means the recommended runtime bundle: the default RapidOCR backend, sentence-transformers-based semantic search, QA/extraction dependencies, YOLO layout detection, and export support. It does not include every optional backend. Engines such as EasyOCR, PaddleOCR, Surya, and Doctr remain opt-in.
+`natural-pdf[all]` means the recommended runtime bundle: the default RapidOCR backend, sentence-transformers-based semantic search, QA/extraction dependencies, YOLO layout detection, and export support. It does not include every optional backend. Engines such as PaddleOCR and Doctr remain opt-in.
 
 If you attempt to use an engine that is missing, the library will raise an
 error with the `pip install` command you need.

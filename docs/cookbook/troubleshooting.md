@@ -51,7 +51,7 @@ page.apply_ocr()
 
 # If default doesn't work well, try different engines
 page.apply_ocr(engine='paddle')  # Often better for forms
-page.apply_ocr(engine='surya')   # Good for multi-language
+page.apply_ocr(engine='doctr')   # Good for dense text
 
 # For better quality, increase resolution
 page.apply_ocr(engine='rapidocr', resolution=300)
@@ -268,7 +268,7 @@ Is the image quality poor?
     │   └── page.apply_ocr(languages=['en', 'es'])
     │
     └── Try a different OCR engine
-        └── paddle, paddlevl, surya, or doctr
+        └── paddle, paddlevl, or doctr
 ```
 
 ### Try Different OCR Engines
@@ -277,14 +277,8 @@ Is the image quality poor?
 # RapidOCR (default) - lightweight general purpose OCR
 page.apply_ocr(engine='rapidocr')
 
-# EasyOCR - opt-in alternate OCR engine
-page.apply_ocr(engine='easyocr')
-
 # PaddleOCR - often better for structured documents
 page.apply_ocr(engine='paddle')
-
-# Surya - good for multi-language documents
-page.apply_ocr(engine='surya')
 
 # DocTR - good for dense text
 page.apply_ocr(engine='doctr')

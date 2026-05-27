@@ -443,7 +443,7 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
         Apply OCR to all PDFs in the collection, potentially in parallel.
 
         Args:
-            engine: OCR engine to use (e.g., 'rapidocr', 'easyocr', 'paddleocr', 'surya')
+            engine: OCR engine to use (e.g., 'rapidocr', 'paddle', 'doctr')
             languages: List of language codes for OCR
             min_confidence: Minimum confidence threshold for text detection
             device: Device to use for OCR (e.g., 'cpu', 'cuda')

@@ -330,6 +330,35 @@ class OCRService:
 
         return bool(staged_words or staged_chars)
 
+    def _payload_should_cache(
+        self,
+        host,
+        ocr_payload,
+        engine_name,
+        min_confidence,
+        offset_x,
+        offset_y,
+        replace,
+    ) -> bool:
+        """Return whether an OCR payload is safe to persist in the disk cache."""
+        if getattr(ocr_payload, "engine_type", None) != "vlm":
+            return True
+
+        if not getattr(ocr_payload, "results", None):
+            return False
+
+        if replace is True or replace == "all":
+            return self._payload_can_replace_text(
+                host,
+                ocr_payload,
+                engine_name,
+                min_confidence,
+                offset_x,
+                offset_y,
+            )
+
+        return True
+
     @register_delegate("ocr", "apply_ocr")
     def apply_ocr(
         self,
@@ -416,38 +445,45 @@ class OCRService:
                 cached = cache.get(cache_key)
                 if cached is not None:
                     logger.info("OCR cache hit for page %d (%s)", page_index, engine_name)
-                    if replace is True or replace == "all":
-                        if not self._payload_can_replace_text(
-                            host,
-                            cached,
-                            engine_name,
-                            resolved_min_conf,
-                            offset_x,
-                            offset_y,
-                        ):
-                            logger.warning(
-                                "Skipping replacement OCR because the cached payload could not be validated."
-                            )
-                            return host
-                        words, chars = self.clear_text_layer(host)
-                        if words or chars:
-                            logger.info(
-                                "Cleared text layer (%d words, %d chars) before OCR.", words, chars
-                            )
-                    elif replace == "ocr":
-                        removed = self.remove_ocr_elements(host)
-                        if removed:
-                            logger.info("Removed %d OCR elements before new OCR run.", removed)
-                    created = self._process_ocr_payload(
-                        host, cached, engine_name, resolved_min_conf, offset_x, offset_y
-                    )
-                    if created is not None:
-                        logger.info(
-                            "Added %d OCR elements from cache using '%s'.",
-                            len(created),
+                    if not self._payload_should_cache(
+                        host,
+                        cached,
+                        engine_name,
+                        resolved_min_conf,
+                        offset_x,
+                        offset_y,
+                        replace,
+                    ):
+                        cache.delete(cache_key)
+                        logger.warning(
+                            "Ignoring invalid cached OCR payload for page %d (%s); retrying OCR.",
+                            page_index,
                             engine_name,
                         )
-                        return host
+                        cached = None
+                    if cached is not None:
+                        if replace is True or replace == "all":
+                            words, chars = self.clear_text_layer(host)
+                            if words or chars:
+                                logger.info(
+                                    "Cleared text layer (%d words, %d chars) before OCR.",
+                                    words,
+                                    chars,
+                                )
+                        elif replace == "ocr":
+                            removed = self.remove_ocr_elements(host)
+                            if removed:
+                                logger.info("Removed %d OCR elements before new OCR run.", removed)
+                        created = self._process_ocr_payload(
+                            host, cached, engine_name, resolved_min_conf, offset_x, offset_y
+                        )
+                        if created is not None:
+                            logger.info(
+                                "Added %d OCR elements from cache using '%s'.",
+                                len(created),
+                                engine_name,
+                            )
+                            return host
             except OSError:
                 pass  # Can't stat file — skip cache
 
@@ -471,8 +507,18 @@ class OCRService:
             preserve_markup=preserve_markup,
         )
 
-        # Cache the results
-        if cache_key is not None:
+        # Cache only valid VLM payloads; malformed/empty VLM responses should
+        # not poison later retries. Classic engines may legitimately return
+        # empty pages, so keep their existing cache behavior.
+        if cache_key is not None and self._payload_should_cache(
+            host,
+            ocr_payload,
+            engine_name,
+            resolved_min_conf,
+            offset_x,
+            offset_y,
+            replace,
+        ):
             page_index = getattr(page_obj, "index", 0)
             cache.put(cache_key, ocr_payload, engine_name, page_index)
 

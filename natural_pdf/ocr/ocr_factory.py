@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 # Preference order for recommended engine selection
 # RapidOCR first: lightweight ONNX-based, same quality as paddle, easiest to install
-_ENGINE_PREFERENCE = ["rapidocr", "easyocr", "doctr", "paddle", "surya"]
+_ENGINE_PREFERENCE = ["rapidocr", "paddle", "doctr"]
 
 
 class OCRFactory:
@@ -24,7 +24,7 @@ class OCRFactory:
         """Create and return an OCR engine instance.
 
         Args:
-            engine_type: One of 'surya', 'easyocr', 'paddle', 'doctr'
+            engine_type: OCR engine name, such as 'rapidocr', 'paddle', or 'doctr'
             **kwargs: Arguments to pass to the engine constructor
 
         Returns:
@@ -61,7 +61,7 @@ class OCRFactory:
     def get_recommended_engine(**kwargs) -> OCREngine:
         """Returns the best available OCR engine based on what's installed.
 
-        First tries engines in order of preference: RapidOCR, EasyOCR, Doctr, Paddle, Surya.
+        First tries engines in order of preference: RapidOCR, Paddle, Doctr.
         If none are available, raises ImportError with installation instructions.
 
         Args:
@@ -85,7 +85,6 @@ class OCRFactory:
         raise ImportError(
             "No OCR engines are installed. You can add one with pip, e.g.:\n"
             "  pip install rapidocr                # default lightweight OCR engine\n"
-            "  pip install easyocr                 # opt-in alternate OCR engine\n"
             '  pip install "natural-pdf[paddle]"   # PaddleOCR engine\n'
-            '  pip install "surya-ocr<0.15"        # Surya OCR engine\n'
+            "  pip install python-doctr            # Doctr OCR engine\n"
         )

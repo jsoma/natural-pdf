@@ -1,11 +1,12 @@
 from pathlib import Path
 
 import pytest
-from PIL import ImageChops
+from PIL import Image, ImageChops
 
 from natural_pdf import PDF
 from natural_pdf.utils.visualization import (
     DirectCropRenderUnsupportedError,
+    _validate_direct_crop_size,
     render_cropped_page,
     render_plain_page,
 )
@@ -44,6 +45,13 @@ def test_direct_crop_matches_full_render_then_crop_pixels():
         assert ImageChops.difference(direct, expected).getbbox() is None
     finally:
         pdf.close()
+
+
+def test_direct_crop_size_validation_rejects_uncropped_bitmap():
+    image = Image.new("RGB", (3400, 4403), "white")
+
+    with pytest.raises(DirectCropRenderUnsupportedError, match="expected \\(3400, 2108\\)"):
+        _validate_direct_crop_size(image, (3400, 2108))
 
 
 def test_direct_crop_unsupported_falls_back(monkeypatch):

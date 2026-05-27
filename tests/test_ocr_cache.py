@@ -174,6 +174,15 @@ class TestOCRCache:
         # JSON round-trip converts tuples to lists
         assert retrieved.results[0]["bbox"] == [10, 20, 30, 40]
 
+    def test_delete_removes_single_entry(self, tmp_path):
+        cache = OCRCache(cache_dir=tmp_path)
+        result = self._make_result()
+        cache.put("key", result, "rapidocr", 0)
+
+        assert cache.delete("key") is True
+        assert cache.get("key") is None
+        assert cache.delete("key") is False
+
 
 # ---------------------------------------------------------------------------
 # Service integration regression tests
@@ -334,5 +343,81 @@ def test_apply_ocr_cache_key_uses_runtime_option_fields(monkeypatch, tmp_path):
         assert options_payload["class"] == "RapidOCROptions"
         assert options_payload["options"]["text_score"] == 0.2
         assert captured["min_confidence"] == 0.4
+    finally:
+        set_default_cache(previous_cache)
+
+
+def test_invalid_cached_vlm_payload_is_evicted_and_retried(monkeypatch, tmp_path):
+    pdf_path = tmp_path / "source.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+
+    cache = OCRCache(cache_dir=tmp_path / "ocr-cache")
+    previous_cache = set_default_cache(cache)
+    try:
+        service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+        page = _FakePage(pdf_path)
+        calls = []
+
+        def fake_run_ocr(**kwargs):
+            calls.append(kwargs)
+            return OCRRunResult(
+                results=[{"bbox": [0, 0, 10, 10], "text": "fresh", "confidence": 0.99}],
+                image_size=(100, 100),
+                engine_type="vlm",
+            )
+
+        monkeypatch.setattr("natural_pdf.services.ocr_service.run_ocr", fake_run_ocr)
+        key = "shared-vlm-cache-key"
+        monkeypatch.setattr("natural_pdf.ocr.ocr_cache.compute_cache_key", lambda **kwargs: key)
+        cache.put(
+            key,
+            OCRRunResult(results=[], image_size=(100, 100), engine_type="vlm"),
+            "vlm",
+            0,
+        )
+
+        service.apply_ocr(
+            page,
+            engine="vlm",
+            model="gemini-3.1-flash-lite",
+            languages=["en"],
+            device="cpu",
+        )
+
+        assert len(calls) == 1
+        assert page.manager.created[-1]["ocr_results"][0]["text"] == "fresh"
+        cached = cache.get(key)
+        assert cached is not None
+        assert cached.results[0]["text"] == "fresh"
+    finally:
+        set_default_cache(previous_cache)
+
+
+def test_empty_vlm_payload_is_not_cached(monkeypatch, tmp_path):
+    pdf_path = tmp_path / "source.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+
+    cache = OCRCache(cache_dir=tmp_path / "ocr-cache")
+    previous_cache = set_default_cache(cache)
+    try:
+        service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+        page = _FakePage(pdf_path)
+
+        def fake_run_ocr(**kwargs):
+            return OCRRunResult(results=[], image_size=(100, 100), engine_type="vlm")
+
+        monkeypatch.setattr("natural_pdf.services.ocr_service.run_ocr", fake_run_ocr)
+        key = "empty-vlm-cache-key"
+        monkeypatch.setattr("natural_pdf.ocr.ocr_cache.compute_cache_key", lambda **kwargs: key)
+
+        service.apply_ocr(
+            page,
+            engine="vlm",
+            model="gemini-3.1-flash-lite",
+            languages=["en"],
+            device="cpu",
+        )
+
+        assert cache.get(key) is None
     finally:
         set_default_cache(previous_cache)

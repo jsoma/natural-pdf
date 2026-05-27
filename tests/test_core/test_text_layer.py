@@ -80,7 +80,7 @@ def test_remove_text_layer_method():
 def test_text_layer_false_then_ocr():
     """Test that we can apply OCR to a PDF loaded with text_layer=False."""
     # Skip if OCR dependencies are not available
-    pytest.importorskip("easyocr")
+    pytest.importorskip("rapidocr")
 
     pdf = PDF("pdfs/01-practice.pdf", text_layer=False)
     page = pdf.pages[0]
@@ -89,7 +89,7 @@ def test_text_layer_false_then_ocr():
     assert len(page.words) == 0, "Should have no words with text_layer=False"
 
     # Apply OCR
-    page.apply_ocr(engine="easyocr", languages=["en"])
+    page.apply_ocr(engine="rapidocr", languages=["en"])
 
     # Now we should have OCR text
     assert len(page.words) > 0, "Should have words after OCR"

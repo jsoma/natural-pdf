@@ -103,30 +103,27 @@ page.apply_ocr(engine='rapidocr')
 
 # Force a specific device
 page.apply_ocr(engine='rapidocr', device='cpu')
-# Apple Silicon: page.apply_ocr(engine='surya', device='mps')
+# Apple Silicon: page.apply_ocr(engine='doctr', device='mps')
 # NVIDIA GPU: page.apply_ocr(engine='doctr', device='cuda')
 ```
 
-Most engines support GPU acceleration: EasyOCR, Surya, DocTR, and VLM-based engines work with both CUDA and MPS. PaddleOCR uses its own GPU backend. RapidOCR runs on CPU only (ONNX runtime).
+GPU support depends on the engine: DocTR and VLM-based engines can use CUDA or MPS, PaddleOCR uses its own GPU backend, and RapidOCR runs on CPU through ONNX runtime.
 
 ## Advanced OCR Configuration
 
 For more control, import and use the specific `Options` class for your chosen engine within the `apply_ocr` call.
 
 ```python tags=["skip-execution"]
-from natural_pdf.ocr import PaddleOCROptions, EasyOCROptions, SuryaOCROptions, RapidOCROptions
+from natural_pdf.ocr import DoctrOCROptions, PaddleOCROptions, RapidOCROptions
 
-# Re-apply OCR using EasyOCR with specific options
-easy_opts = EasyOCROptions(
-    paragraph=False,
-)
-page.apply_ocr(engine='easyocr', languages=['en'], min_confidence=0.1, options=easy_opts)
+rapid_opts = RapidOCROptions(text_score=0.5)
+page.apply_ocr(engine='rapidocr', languages=['en'], options=rapid_opts)
 
 paddle_opts = PaddleOCROptions()
 page.apply_ocr(engine='paddle', languages=['en'], options=paddle_opts)
 
-surya_opts = SuryaOCROptions()
-page.apply_ocr(engine='surya', languages=['en'], min_confidence=0.5, options=surya_opts)
+doctr_opts = DoctrOCROptions(batch_size=2)
+page.apply_ocr(engine='doctr', languages=['en'], options=doctr_opts)
 ```
 
 RapidOCR is a lightweight alternative that uses ONNX-converted PaddleOCR models (~15MB vs ~500MB):
@@ -273,7 +270,7 @@ page.find_all('text').apply_ocr(
 
 When called on an `ElementCollection` of OCR elements with a VLM, each element is rendered individually and sent to the model for correction. The original bounding boxes are preserved — only the text is updated.
 
-The `detect_only=True` parameter runs detection without recognition. This is useful when you want a fast engine (RapidOCR, EasyOCR, Surya) to find where text is, then a separate step to read it.
+The `detect_only=True` parameter runs detection without recognition. This is useful when you want a fast local engine to find where text is, then a separate step to read it.
 
 ## Language Codes
 
@@ -283,7 +280,6 @@ All OCR engines accept standard ISO language codes like `'en'`, `'fr'`, `'de'`, 
 # Standard codes work across all engines
 page.apply_ocr(engine='rapidocr', languages=['ja'])
 # PaddleOCR normalizes 'ja' to 'japan': page.apply_ocr(engine='paddle', languages=['ja'])
-# Surya also accepts ISO codes: page.apply_ocr(engine='surya', languages=['ja'])
 ```
 
 ## Comparing OCR Engines
@@ -296,7 +292,7 @@ from natural_pdf import PDF
 pdf = PDF("scanned_document.pdf")
 page = pdf.pages[0]
 
-result = page.compare_ocr(engines=["rapidocr", "easyocr"])
+result = page.compare_ocr(engines=["rapidocr", "paddle"])
 result
 ```
 
@@ -378,12 +374,10 @@ Any engine that works with `apply_ocr()` works with `compare_ocr()`:
 | Engine | Install | Speed | Notes |
 |--------|---------|-------|-------|
 | `rapidocr` | `pip install rapidocr` | Fast | Default engine, lightweight ONNX models (~15MB) |
-| `easyocr` | `pip install easyocr` | Fast | Word-level boxes |
-| `surya` | `pip install surya-ocr` | Medium | Line-level boxes |
 | `paddle` | `pip install paddleocr` | Medium | Word-level boxes |
 | `doctr` | `pip install python-doctr` | Medium | Word→line merged boxes |
 | `dots` | `pip install "natural-pdf[ai]"` or `pip install transformers torch` | Slow | dots.mocr — combined layout + OCR, MLX-optimized on Apple Silicon |
-| `chandra` | `pip install chandra-ocr[hf]` | Slow | VLM-based, successor to Surya |
+| `chandra` | `pip install chandra-ocr[hf]` | Slow | VLM-based document OCR |
 
 VLM-based engines (`engine="vlm"`, `"dots"`, `"chandra"`) can also be compared but produce block-level output and are slower.
 
@@ -393,7 +387,7 @@ from openai import OpenAI
 client = OpenAI(base_url="https://generativelanguage.googleapis.com/v1beta/openai/", api_key="...")
 
 result = page.compare_ocr(
-    engines=["rapidocr", "easyocr"],
+    engines=["rapidocr", "paddle"],
     resolution=150,
 )
 ```
@@ -402,14 +396,11 @@ result = page.compare_ocr(
 
 ```python tags=["skip-execution"]
 result = page.compare_ocr(
-    engines=["rapidocr", "easyocr"],
+    engines=["rapidocr", "paddle"],
     resolution=150,              # render DPI (default 150)
     normalize="collapse",        # whitespace handling: "collapse" (default), "strict", "ignore"
     strategy="auto",             # alignment: "auto" (default), "rows", "tiles"
     languages=["en"],            # language codes for OCR
-    engine_options={             # per-engine overrides
-        "easyocr": {"resolution": 200},
-    },
 )
 ```
 

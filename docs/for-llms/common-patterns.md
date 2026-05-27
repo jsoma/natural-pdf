@@ -631,7 +631,6 @@ if element:
 ```python
 # WRONG
 page.find('text:contains("X")', case_sensitive=False)  # Use: case=False
-page.apply_ocr(engine="easy_ocr")                      # Use: engine="easyocr"
 page.apply_ocr(engine="paddle_ocr")                    # Use: engine="paddle"
 ```
 
@@ -674,6 +673,5 @@ first = elements.first  # Returns None if empty
 | `PDF.open("file")` | `PDF("file")` | Direct instantiation |
 | `'text.bold'` | `'text:bold'` | Colon for pseudo-classes |
 | `case_sensitive=False` | `case=False` | Wrong parameter name |
-| `engine="easy_ocr"` | `engine="easyocr"` | No underscores |
 | `apply_layout()` | `analyze_layout()` | Wrong method name |
 | `pdf[0]` | `pdf.pages[0]` | Access via `.pages` |

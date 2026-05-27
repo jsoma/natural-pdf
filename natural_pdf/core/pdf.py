@@ -389,7 +389,7 @@ class PDF(
             pdf = PDF.from_images(images, apply_ocr=False)
 
             # With specific engine
-            pdf = PDF.from_images(images, ocr_engine='surya')
+            pdf = PDF.from_images(images, ocr_engine='rapidocr')
             ```
         """
         import urllib.request
@@ -830,8 +830,8 @@ class PDF(
         supports multiple OCR engines and provides batch processing for efficiency.
 
         Args:
-            engine: OCR engine — ``"rapidocr"`` (default), ``"easyocr"``, ``"surya"``,
-                ``"paddle"``, ``"paddlevl"``, ``"doctr"``,
+            engine: OCR engine — ``"rapidocr"`` (default), ``"paddle"``,
+                ``"paddlevl"``, ``"doctr"``,
                 or ``"vlm"`` (requires ``model=``/``client=`` or a default
                 client via ``natural_pdf.set_default_client()``).
                 If None, uses the global default from natural_pdf.options.ocr.engine.
@@ -851,7 +851,7 @@ class PDF(
                 character recognition. Useful for layout analysis workflows.
             replace: If True, replace any existing OCR elements on the pages.
                 If False, append new OCR results to existing elements.
-            options: Engine-specific options object (e.g., EasyOCROptions, SuryaOptions).
+            options: Engine-specific options object (e.g., RapidOCROptions, PaddleOCROptions).
                 Allows fine-tuning of engine behavior beyond common parameters.
             pages: Page indices to process. Can be:
                 - None: Process all pages

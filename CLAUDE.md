@@ -13,7 +13,7 @@ natural_pdf/          # Library source
   selectors/          # CSS-like selector engine
   flows/              # Multi-page/multi-column content reflow (FlowRegion)
   guides/             # Guides provider and guide engines
-  ocr/                # OCR engine adapters (easyocr, surya, paddleocr, doctr)
+  ocr/                # OCR engine adapters (rapidocr, paddleocr, doctr, VLM)
   extraction/         # Structured data extraction (LLM, VLM, doc_qa)
   classification/     # Text and vision classification providers
   qa/                 # Document QA workflows
@@ -64,7 +64,7 @@ Elements support directional methods that return Regions:
 - Exclusions are read-time filters over canonical content. Treat them as "show me the non-excluded view" rather than as a write operation.
 
 ### OCR
-Multiple engines: `rapidocr` (default), `easyocr`, `surya`, `paddle`, `paddlevl`, `doctr`. Applied via `page.apply_ocr(engine="rapidocr")`. `natural-pdf[all]` is the recommended runtime install: it includes the default RapidOCR path, semantic search, QA/extraction dependencies, and export support, but not every optional backend. GLM-OCR (0.9B VLM) works via `engine="vlm"` with `model="zai-org/GLM-OCR"` — runs layout detection + per-region OCR in-process.
+Multiple engines: `rapidocr` (default), `paddle`, `paddlevl`, `doctr`, and VLM-backed OCR. Applied via `page.apply_ocr(engine="rapidocr")`. `natural-pdf[all]` is the recommended runtime install: it includes the default RapidOCR path, semantic search, QA/extraction dependencies, and export support, but not every optional backend. GLM-OCR (0.9B VLM) works via `engine="vlm"` with `model="zai-org/GLM-OCR"` — runs layout detection + per-region OCR in-process.
 
 ### Extraction
 - **Structured data**: `page.extract(MyPydanticModel)` or `page.extract(MyPydanticModel, engine="llm", client=...)`
@@ -114,8 +114,6 @@ page.find('text(size>12)')          # Use brackets: 'text[size>12]'
 
 # WRONG parameter names
 page.find('text:contains("X")', case_sensitive=False)  # Use: case=False
-page.apply_ocr(engine="easy_ocr")                      # Use: engine="easyocr"
-
 # Must handle None from find()
 element = page.find('text:contains("Missing")')
 if element:

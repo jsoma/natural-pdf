@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import List, Optional
 
-# Mapping of language codes (ISO 639-1, PaddleOCR, EasyOCR) to human-readable names.
+# Mapping of language codes (ISO 639-1, PaddleOCR) to human-readable names.
 _LANGUAGE_NAMES = {
     # ISO 639-1
     "en": "English",

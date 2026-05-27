@@ -940,7 +940,7 @@ class TestElementCollectionVLMCorrection:
         pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        page.apply_ocr(engine="easyocr")
+        page.apply_ocr(engine="rapidocr")
         ocr_elements = page.find_all("text[source=ocr]")
         if not ocr_elements:
             pdf.close()
@@ -977,7 +977,7 @@ class TestElementCollectionVLMCorrection:
         pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        page.apply_ocr(engine="easyocr")
+        page.apply_ocr(engine="rapidocr")
         ocr_elements = page.find_all("text[source=ocr]")
         if not ocr_elements:
             pdf.close()
@@ -1035,9 +1035,6 @@ class TestElementCollectionVLMCorrection:
 
 
 @pytest.mark.optional_deps
-@pytest.mark.xfail(
-    reason="replace=True removes OCR elements before new run; empty VLM results cause data loss"
-)
 class TestRegionVLMOCRTransactional:
     """VLM OCR should not delete existing OCR elements when
     the VLM returns no parseable results."""
@@ -1049,7 +1046,7 @@ class TestRegionVLMOCRTransactional:
         pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        page.apply_ocr(engine="easyocr")
+        page.apply_ocr(engine="rapidocr")
         before_count = len(page.find_all("text[source=ocr]"))
         if before_count == 0:
             pdf.close()

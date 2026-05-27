@@ -91,9 +91,9 @@ def test_pdf_ask_with_client(practice_pdf):
 def test_pdf_ask_with_ocr_page(practice_pdf_fresh):
     _require_qa()
     try:
-        practice_pdf_fresh.apply_ocr(engine="easyocr", pages=[0])
+        practice_pdf_fresh.apply_ocr(engine="rapidocr", pages=[0])
     except RuntimeError as exc:
-        pytest.skip(f"EasyOCR unavailable: {exc}")
+        pytest.skip(f"RapidOCR unavailable: {exc}")
 
     result = practice_pdf_fresh.ask("Is OCR text available?", pages=0)
     _assert_result_schema(result)

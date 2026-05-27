@@ -157,4 +157,4 @@ def test_close_is_partial_but_blocks_live_backing_operations(tmp_path: Path):
         _ = pdf.pages[1]
 
     with pytest.raises(RuntimeError, match="closed"):
-        page.apply_ocr(engine="easyocr")
+        page.apply_ocr(engine="rapidocr")

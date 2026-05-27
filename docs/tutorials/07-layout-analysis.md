@@ -7,7 +7,6 @@ Beyond simple text and lines, `natural-pdf` can use layout analysis models (like
 * **yolo** – YOLOv5 model trained on DocLayNet. Detects paragraphs, tables, figures, headings. Install: `pip install doclayout_yolo`.
 * **tatr** – Microsoft Table Transformer. Specialized in table structure (rows, columns, cells). Install: `pip install torch transformers`.
 * **paddle** – PaddleOCR's layout detector. Runs on CPU without PyTorch. Install: `pip install paddlepaddle paddleocr`.
-* **surya** – Surya Layout Parser (DETR backbone). Install: `pip install "surya-ocr<0.15"`.
 * **vlm** – Calls any OpenAI-compatible Vision API (e.g. Gemini, GPT-4o) for layout detection. Requires an API client.
 
 `page.analyze_layout()` defaults to the first available engine (search order `yolo → paddle → tatr`), but you can pick one explicitly with `engine="..."`.

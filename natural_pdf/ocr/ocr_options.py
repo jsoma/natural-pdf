@@ -267,7 +267,7 @@ class SuryaOCROptions(BaseOCROptions):
 # --- Chandra Specific Options ---
 @dataclass
 class ChandraOCROptions(BaseOCROptions):
-    """Specific options for the Chandra OCR engine (VLM-based successor to Surya).
+    """Specific options for the Chandra OCR engine (VLM-based document OCR).
 
     Install: ``pip install chandra-ocr[hf]``
     """

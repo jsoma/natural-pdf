@@ -703,6 +703,16 @@ def _pdfium_crop_units_from_pixel_crop(pixel_amount: int, scale_factor: float) -
     return max(0.0, (pixel_amount - 1e-6) / scale_factor)
 
 
+def _validate_direct_crop_size(image: Image.Image, expected_size: Tuple[int, int]) -> Image.Image:
+    """Ensure pypdfium honored the requested direct crop rectangle."""
+    if image.size != expected_size:
+        raise DirectCropRenderUnsupportedError(
+            "Direct crop render returned image size "
+            f"{image.size}, expected {expected_size}. Falling back to PIL crop."
+        )
+    return image
+
+
 def render_cropped_page(page, resolution, crop_bbox):
     """
     Render a page crop directly with pypdfium while preserving existing crop pixels.
@@ -753,6 +763,7 @@ def render_cropped_page(page, resolution, crop_bbox):
             if right_edge_px <= left_px or bottom_edge_px <= top_px:
                 raise ValueError(f"Invalid crop bounds: {crop_bbox}")
 
+            expected_size = (right_edge_px - left_px, bottom_edge_px - top_px)
             right_px = src_width - right_edge_px
             bottom_px = src_height - bottom_edge_px
             crop = (
@@ -770,7 +781,8 @@ def render_cropped_page(page, resolution, crop_bbox):
                 no_smoothimage=True,
                 prefer_bgrx=True,
             )
-            return bitmap.to_pil().convert("RGB")
+            image = bitmap.to_pil().convert("RGB")
+            return _validate_direct_crop_size(image, expected_size)
         finally:
             pdf_page.close()
             doc.close()

@@ -26,7 +26,7 @@ def _surya_compat_hint() -> str:
         return (
             f"surya-ocr is not yet compatible with transformers {tf_ver}. "
             "Surya requires transformers 4.x. If other dependencies need transformers 5, "
-            "you may need to use a different OCR engine (easyocr, paddlevl, or vlm) "
+            "you may need to use a different OCR engine (rapidocr, paddlevl, or vlm) "
             "until surya releases a compatible update.\n"
             'To downgrade: pip install "transformers<5"'
         )

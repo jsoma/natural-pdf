@@ -25,16 +25,62 @@ def _shape_proxy_factory(host: Any):
             def __init__(self, wrapped):
                 object.__setattr__(self, "_host", wrapped)
 
+            @property
+            def host(self):
+                return object.__getattribute__(self, "_host")
+
+            @property
+            def bbox(self):
+                host = self.host
+                bbox = getattr(host, "bbox", None)
+                if bbox is not None:
+                    return bbox
+                return (0.0, 0.0, float(host.width), float(host.height))
+
+            @property
+            def x0(self):
+                return self.bbox[0]
+
+            @property
+            def top(self):
+                return self.bbox[1]
+
+            @property
+            def x1(self):
+                return self.bbox[2]
+
+            @property
+            def bottom(self):
+                return self.bbox[3]
+
+            @property
+            def width(self):
+                return self.x1 - self.x0
+
+            @property
+            def height(self):
+                return self.bottom - self.top
+
+            @property
+            def page(self):
+                host = self.host
+                return getattr(host, "page", host)
+
+            @property
+            def pages(self):
+                pages = getattr(self.host, "pages", None)
+                if pages is not None:
+                    return pages
+                return (self.page,)
+
+            def __repr__(self) -> str:
+                return f"<ShapeDetectionProxy host={self.host!r}>"
+
             def __getattr__(self, name: str) -> Any:
                 return getattr(self._host, name)
 
             def __setattr__(self, name: str, value: Any) -> None:
                 setattr(self._host, name, value)
-
-            @property
-            def page(self):
-                host = object.__getattribute__(self, "_host")
-                return getattr(host, "page", host)
 
         _SHAPE_PROXY_CLASS = _Proxy
     return _SHAPE_PROXY_CLASS(host)

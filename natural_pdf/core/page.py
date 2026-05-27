@@ -641,8 +641,8 @@ class Page(
         """Apply OCR to the entire page.
 
         Args:
-            engine: OCR engine — ``"rapidocr"`` (default), ``"easyocr"``, ``"surya"``,
-                ``"paddle"``, ``"paddlevl"``, ``"doctr"``, ``"vlm"``,
+            engine: OCR engine — ``"rapidocr"`` (default), ``"paddle"``,
+                ``"paddlevl"``, ``"doctr"``, ``"vlm"``,
                 ``"dots"`` (dots.mocr), ``"glm_ocr"``, or ``"chandra"``.
                 ``"dots"``, ``"glm_ocr"``, and ``"chandra"`` auto-select MLX on Apple
                 Silicon, HF transformers elsewhere.
@@ -741,7 +741,7 @@ class Page(
 
         Args:
             engines: Engine specs to compare. Each can be a string
-                (e.g. ``"easyocr"``) or a dict with ``"engine"`` key plus
+                (e.g. ``"rapidocr"``) or a dict with ``"engine"`` key plus
                 overrides (e.g. ``{"engine": "rapidocr", "resolution": 72}``).
             normalize: Text normalization — ``"collapse"`` (default),
                 ``"strict"``, or ``"ignore"`` (strip spaces).
