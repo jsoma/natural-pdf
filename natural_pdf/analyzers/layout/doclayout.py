@@ -91,10 +91,12 @@ class DocLayoutDetector(LayoutDetector):
         options, _ = validate_option_type(options, DocLayoutOptions, "DocLayoutDetector")
 
         import torch
-        from transformers import PPDocLayoutV3ForObjectDetection, PPDocLayoutV3ImageProcessor
+
+        from natural_pdf.utils.transformers_compat import get_pp_doclayout_v3_classes
 
         self.logger.info("Loading DocLayout model: %s", options.model_name)
 
+        PPDocLayoutV3ImageProcessor, PPDocLayoutV3ForObjectDetection = get_pp_doclayout_v3_classes()
         processor = PPDocLayoutV3ImageProcessor.from_pretrained(options.model_name)
         model = PPDocLayoutV3ForObjectDetection.from_pretrained(options.model_name)
         model.eval()

@@ -3112,7 +3112,7 @@ requires-dist = [
     { name = "torch", marker = "extra == 'ai'" },
     { name = "torchvision", marker = "extra == 'ai'" },
     { name = "tqdm" },
-    { name = "transformers", extras = ["sentencepiece"], marker = "extra == 'ai'", specifier = ">=5,<6" },
+    { name = "transformers", extras = ["sentencepiece"], marker = "extra == 'ai'", specifier = ">=5.1.0,<6" },
     { name = "urllib3" },
     { name = "uv", marker = "extra == 'dev'" },
 ]

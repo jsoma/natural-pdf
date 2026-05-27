@@ -446,15 +446,12 @@ def _get_layout_detector(model_name: str = _LAYOUT_MODEL) -> Any:
         if model_name not in _layout_detector_cache:
             try:
                 import torch
-                from transformers import PPDocLayoutV3ForObjectDetection
 
-                # transformers 5.x renamed to PPDocLayoutV3ImageProcessorFast
-                try:
-                    from transformers import (
-                        PPDocLayoutV3ImageProcessorFast as PPDocLayoutV3ImageProcessor,
-                    )
-                except ImportError:
-                    from transformers import PPDocLayoutV3ImageProcessor
+                from natural_pdf.utils.transformers_compat import get_pp_doclayout_v3_classes
+
+                PPDocLayoutV3ImageProcessor, PPDocLayoutV3ForObjectDetection = (
+                    get_pp_doclayout_v3_classes()
+                )
             except ImportError as exc:
                 raise RuntimeError(
                     "Layout detection requires transformers and torch. "
