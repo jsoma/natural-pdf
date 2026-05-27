@@ -76,6 +76,15 @@ export = [
     "nbformat",
 ]
 
+notebook = [
+    "jupytext",
+    "nbclient==0.10.2",
+    "nbformat",
+    "jupyter_core==5.7.2",
+    "ipykernel",
+    "PyYAML",
+]
+
 docs = [
     "mkdocs<2",
     "mkdocs-exclude",
@@ -92,6 +101,7 @@ test = [
     "setuptools",
     "tomli",
     "mktestdocs",
+    "natural-pdf[notebook]",
 ]
 
 dev = [
@@ -106,11 +116,7 @@ dev = [
     "build",
     "uv",
     "pipdeptree",
-    "nbformat",
-    "jupytext",
-    "nbclient==0.10.2",
-    "jupyter_core==5.7.2",
-    "ipykernel",
+    "natural-pdf[notebook]",
     "pre-commit",
     "setuptools",
     "mktestdocs",
