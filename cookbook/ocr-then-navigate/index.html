@@ -2102,16 +2102,6 @@
 <td><code>pip install "natural-pdf[all]"</code> or <code>pip install rapidocr</code></td>
 </tr>
 <tr>
-<td><code>easyocr</code></td>
-<td>Opt-in alternate engine. Supports 80+ languages.</td>
-<td><code>pip install easyocr</code></td>
-</tr>
-<tr>
-<td><code>surya</code></td>
-<td>Handles multi-language and dense layouts.</td>
-<td><code>pip install "surya-ocr&lt;0.15"</code></td>
-</tr>
-<tr>
 <td><code>paddle</code></td>
 <td>Best CJK (Chinese/Japanese/Korean) support.</td>
 <td><code>pip install paddlepaddle paddleocr</code></td>
@@ -2133,15 +2123,15 @@
 </tr>
 <tr>
 <td><code>chandra</code></td>
-<td>VLM-based successor to Surya.</td>
+<td>VLM-based document OCR.</td>
 <td><code>pip install chandra-ocr[hf]</code></td>
 </tr>
 </tbody>
 </table>
 <p>GLM-OCR (0.9B VLM) is also available via <code>engine="vlm"</code> with automatic layout detection — see the <a href="../../tutorials/12-ocr-integration/#glm-ocr">OCR tutorial</a>.</p>
-<p>Not sure which engine to use? Compare them side by side with <code>page.compare_ocr(engines=["rapidocr", "easyocr"])</code> — see <a href="../../tutorials/12-ocr-integration/#comparing-ocr-engines">Comparing OCR Engines</a>.</p>
+<p>Not sure which engine to use? Compare them side by side with <code>page.compare_ocr(engines=["rapidocr", "paddle"])</code> — see <a href="../../tutorials/12-ocr-integration/#comparing-ocr-engines">Comparing OCR Engines</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Use a specific engine</span>
-<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;surya&quot;</span><span class="p">)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;paddle&quot;</span><span class="p">)</span>
 
 <span class="c1"># Or for the whole PDF</span>
 <span class="n">pdf</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;rapidocr&quot;</span><span class="p">)</span>
@@ -2190,7 +2180,7 @@
 <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;rapidocr&quot;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
 
 <span class="c1"># Still not great — try a different engine</span>
-<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;surya&quot;</span><span class="p">)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;paddle&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="extracting-form-fields">Extracting Form Fields</h2>
 <p>Scanned forms often have checkboxes. Use <code>detect_checkboxes()</code> instead of text matching — it uses a YOLO model that works on both scanned and vector PDFs:</p>
@@ -2290,7 +2280,7 @@
 <h3 id="ocr-returns-garbage-text">"OCR returns garbage text"</h3>
 <ul>
 <li>Increase resolution: <code>apply_ocr(resolution=300)</code></li>
-<li>Try a different engine: <code>apply_ocr(engine="surya")</code> or <code>apply_ocr(engine="rapidocr")</code></li>
+<li>Try a different engine: <code>apply_ocr(engine="paddle")</code> or <code>apply_ocr(engine="rapidocr")</code></li>
 <li>Check the scan quality - very poor scans may need preprocessing</li>
 </ul>
 <h3 id="cant-find-labels-after-ocr">"Can't find labels after OCR"</h3>

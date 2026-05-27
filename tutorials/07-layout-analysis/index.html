@@ -2408,7 +2408,6 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <li><strong>yolo</strong> – YOLOv5 model trained on DocLayNet; fast and good at classic page objects (paragraph, table, figure, heading).  Included in the <code>ai</code> extra.</li>
 <li><strong>tatr</strong> – Microsoft's Table Transformer (LayoutLM) specialised in tables; already included in the <strong>ai</strong> extra.</li>
 <li><strong>paddle</strong> – PaddleOCR`s layout detector; lightweight and CPU-friendly.</li>
-<li><strong>surya</strong> – Surya Layout Parser (DETR backbone) tuned for invoices and forms.</li>
 <li><strong>vlm</strong> – Calls any OpenAI-compatible Vision API (e.g. Gemini, GPT-4o) for layout detection.</li>
 </ul>
 <p><code>page.analyze_layout()</code> defaults to the first available engine (search order <code>yolo → paddle → tatr</code>), but you can pick one explicitly with <code>engine="..."</code>.</p>
@@ -2776,9 +2775,9 @@ tables_and_figs = paddle_regions.filter(lambda r: r.normalized_type in {"table",
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="70ef74cb-f7c5-4ef1-9696-70fb49e03506" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="432d4169-1f62-4f3b-b07a-0b7edc20c3b0" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('70ef74cb-f7c5-4ef1-9696-70fb49e03506');
+var element = document.getElementById('432d4169-1f62-4f3b-b07a-0b7edc20c3b0');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "49a5087d38a64480983f3ebf46973335", "version_major": 2, "version_minor": 0}
@@ -2801,9 +2800,9 @@ var element = document.getElementById('70ef74cb-f7c5-4ef1-9696-70fb49e03506');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="ad30ac74-be60-424a-91ce-a4062ce32f88" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="0e97f2b4-3b6c-4787-9a3e-9f330cd5faf9" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('ad30ac74-be60-424a-91ce-a4062ce32f88');
+var element = document.getElementById('0e97f2b4-3b6c-4787-9a3e-9f330cd5faf9');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "b54063856f0448a2a6e5968648c1fe61", "version_major": 2, "version_minor": 0}
@@ -2826,9 +2825,9 @@ var element = document.getElementById('ad30ac74-be60-424a-91ce-a4062ce32f88');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="0b6da316-292e-4335-9c0a-05348c3b9704" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="812b7b68-ca0d-4d3f-9710-8775cdc1ab04" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('0b6da316-292e-4335-9c0a-05348c3b9704');
+var element = document.getElementById('812b7b68-ca0d-4d3f-9710-8775cdc1ab04');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "18bc26387a624758ba6e70ef5821b945", "version_major": 2, "version_minor": 0}
@@ -2851,9 +2850,9 @@ var element = document.getElementById('0b6da316-292e-4335-9c0a-05348c3b9704');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="e0d7ad78-a3d6-4da2-8420-13fb8f829869" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="3a8e3566-7a95-4a34-b32e-8f3304686fe6" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('e0d7ad78-a3d6-4da2-8420-13fb8f829869');
+var element = document.getElementById('3a8e3566-7a95-4a34-b32e-8f3304686fe6');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "47d94ce5555245ff8d6040d50a7df9b9", "version_major": 2, "version_minor": 0}
@@ -2876,9 +2875,9 @@ var element = document.getElementById('e0d7ad78-a3d6-4da2-8420-13fb8f829869');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="b9cbcdbc-5fb1-43e4-a98f-0d6a8d276031" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="5815d397-815f-4a1c-a34b-6e9da903d138" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('b9cbcdbc-5fb1-43e4-a98f-0d6a8d276031');
+var element = document.getElementById('5815d397-815f-4a1c-a34b-6e9da903d138');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "a2d20487fa4948e6aad1a4395736b49c", "version_major": 2, "version_minor": 0}
@@ -2901,9 +2900,9 @@ var element = document.getElementById('b9cbcdbc-5fb1-43e4-a98f-0d6a8d276031');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="937c19c8-1a4a-4e7e-b6a5-ba127e8998e2" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="37f4fb2f-d28d-4335-ad88-edb26c424ad7" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('937c19c8-1a4a-4e7e-b6a5-ba127e8998e2');
+var element = document.getElementById('37f4fb2f-d28d-4335-ad88-edb26c424ad7');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "bb3c4ee4447247bc987359a2ae13a4f3", "version_major": 2, "version_minor": 0}
@@ -2926,9 +2925,9 @@ var element = document.getElementById('937c19c8-1a4a-4e7e-b6a5-ba127e8998e2');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="7a0fa33e-f93a-489a-bf11-761999ac6efa" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="a3d4f27b-1ca4-4dfa-b644-6c2162a1c366" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('7a0fa33e-f93a-489a-bf11-761999ac6efa');
+var element = document.getElementById('a3d4f27b-1ca4-4dfa-b644-6c2162a1c366');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "d073ca92272d475f86fc64232d8c7660", "version_major": 2, "version_minor": 0}
@@ -2951,9 +2950,9 @@ var element = document.getElementById('7a0fa33e-f93a-489a-bf11-761999ac6efa');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="0caf5010-f073-4ecf-b113-32606f122489" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="3a07ede9-930c-4478-a1c8-8e9a4bad946c" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('0caf5010-f073-4ecf-b113-32606f122489');
+var element = document.getElementById('3a07ede9-930c-4478-a1c8-8e9a4bad946c');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "af980a9d32b14cdfbfe86e9e729f41ac", "version_major": 2, "version_minor": 0}
@@ -2976,9 +2975,9 @@ var element = document.getElementById('0caf5010-f073-4ecf-b113-32606f122489');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="532abdc4-cb2d-40a8-9088-e07e650c8476" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="36bb46bd-ff97-458b-9014-80b3b75788bf" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('532abdc4-cb2d-40a8-9088-e07e650c8476');
+var element = document.getElementById('36bb46bd-ff97-458b-9014-80b3b75788bf');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "1891356c426241d4a61bdd443a8ac898", "version_major": 2, "version_minor": 0}
@@ -3001,9 +3000,9 @@ var element = document.getElementById('532abdc4-cb2d-40a8-9088-e07e650c8476');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="07b6ae30-4dbb-4561-9f00-d73a346fa42e" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="75211e64-cb70-4eb7-bd1c-0deeab0396cd" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('07b6ae30-4dbb-4561-9f00-d73a346fa42e');
+var element = document.getElementById('75211e64-cb70-4eb7-bd1c-0deeab0396cd');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "387294e32dc94259aacb3cfa9080496d", "version_major": 2, "version_minor": 0}
@@ -3026,9 +3025,9 @@ var element = document.getElementById('07b6ae30-4dbb-4561-9f00-d73a346fa42e');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="f9a28924-647e-4ed0-bc42-8eb819508923" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="27651e23-3684-47f1-900a-c8a041bd0959" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('f9a28924-647e-4ed0-bc42-8eb819508923');
+var element = document.getElementById('27651e23-3684-47f1-900a-c8a041bd0959');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "cf16dd07607e42459f23c0fb0f159296", "version_major": 2, "version_minor": 0}
@@ -3051,9 +3050,9 @@ var element = document.getElementById('f9a28924-647e-4ed0-bc42-8eb819508923');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="43380544-a416-4bd3-940d-b0074253b03f" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="0856f080-08b6-49c4-8b43-57f2f4604f29" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('43380544-a416-4bd3-940d-b0074253b03f');
+var element = document.getElementById('0856f080-08b6-49c4-8b43-57f2f4604f29');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "01f14d864d2e40b5b0f3edee7af7ea9b", "version_major": 2, "version_minor": 0}
@@ -3076,9 +3075,9 @@ var element = document.getElementById('43380544-a416-4bd3-940d-b0074253b03f');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="b7ff2a86-4476-482d-9867-2d5a1b8ce8bd" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="48311444-8615-43c5-8930-156091bc994f" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('b7ff2a86-4476-482d-9867-2d5a1b8ce8bd');
+var element = document.getElementById('48311444-8615-43c5-8930-156091bc994f');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "82fcb85dc9fb41bc88c2e86485d0ff0a", "version_major": 2, "version_minor": 0}
@@ -3152,9 +3151,9 @@ If your task is similar to the task the model of the checkpoint was trained on, 
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="307710cc-da16-4da7-8944-2e69f4719aea" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="9b9aeb86-3897-4de6-82ab-f867ba8b2e9c" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('307710cc-da16-4da7-8944-2e69f4719aea');
+var element = document.getElementById('9b9aeb86-3897-4de6-82ab-f867ba8b2e9c');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "03504cef5f244cb4bed215ae802288a7", "version_major": 2, "version_minor": 0}
@@ -3177,9 +3176,9 @@ var element = document.getElementById('307710cc-da16-4da7-8944-2e69f4719aea');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="bcb708f6-efb7-4640-80c9-07b856b03299" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="dfb39c9b-701d-424e-8626-ba40a875f8da" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('bcb708f6-efb7-4640-80c9-07b856b03299');
+var element = document.getElementById('dfb39c9b-701d-424e-8626-ba40a875f8da');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "29229837df974e4198324b62fc57bb61", "version_major": 2, "version_minor": 0}
@@ -3202,9 +3201,9 @@ var element = document.getElementById('bcb708f6-efb7-4640-80c9-07b856b03299');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="ec0362b4-3778-444e-b3aa-df9bed726698" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="139ad914-7de7-47eb-844a-34c8a544fcc3" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('ec0362b4-3778-444e-b3aa-df9bed726698');
+var element = document.getElementById('139ad914-7de7-47eb-844a-34c8a544fcc3');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "87321a78461e4009bc0edcdd5657ca0c", "version_major": 2, "version_minor": 0}
@@ -3227,9 +3226,9 @@ var element = document.getElementById('ec0362b4-3778-444e-b3aa-df9bed726698');
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="166a4f2f-f2cf-4d3f-9e9f-a44b688685e0" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="a38f751c-7eaf-4eee-acf1-e77634a0675c" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('166a4f2f-f2cf-4d3f-9e9f-a44b688685e0');
+var element = document.getElementById('a38f751c-7eaf-4eee-acf1-e77634a0675c');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "417c7c070b9c470386cdb6b3b91e2b41", "version_major": 2, "version_minor": 0}

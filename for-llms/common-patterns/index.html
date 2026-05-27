@@ -2891,7 +2891,6 @@ change <code>cell_overlap</code> after checking the snapped guides.</p>
 <h3 id="wrong-parameter-names">Wrong Parameter Names</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># WRONG</span>
 <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;X&quot;)&#39;</span><span class="p">,</span> <span class="n">case_sensitive</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># Use: case=False</span>
-<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;easy_ocr&quot;</span><span class="p">)</span>                      <span class="c1"># Use: engine=&quot;easyocr&quot;</span>
 <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">&quot;paddle_ocr&quot;</span><span class="p">)</span>                    <span class="c1"># Use: engine=&quot;paddle&quot;</span>
 </code></pre></div>
 <h3 id="not-closing-pdfs-in-loops">Not Closing PDFs in Loops</h3>
@@ -2952,11 +2951,6 @@ change <code>cell_overlap</code> after checking the snapped guides.</p>
 <td><code>case_sensitive=False</code></td>
 <td><code>case=False</code></td>
 <td>Wrong parameter name</td>
-</tr>
-<tr>
-<td><code>engine="easy_ocr"</code></td>
-<td><code>engine="easyocr"</code></td>
-<td>No underscores</td>
 </tr>
 <tr>
 <td><code>apply_layout()</code></td>

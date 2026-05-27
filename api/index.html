@@ -3973,7 +3973,7 @@ seamlessly across boundaries.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"easyocr"</code>, <code>"surya"</code>, <code>"paddle"</code>,
+                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"paddle"</code>,
 <code>"paddlevl"</code>, <code>"doctr"</code>, or <code>"vlm"</code>.</p>
               </div>
             </td>
@@ -5233,7 +5233,7 @@ This is an alias for normalized_type.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"easyocr"</code>, <code>"surya"</code>, <code>"paddle"</code>,
+                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"paddle"</code>,
 <code>"paddlevl"</code>, <code>"doctr"</code>, or <code>"vlm"</code>.</p>
               </div>
             </td>
@@ -12790,8 +12790,8 @@ supports multiple OCR engines and provides batch processing for efficiency.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"easyocr"</code>, <code>"surya"</code>,
-<code>"paddle"</code>, <code>"paddlevl"</code>, <code>"doctr"</code>,
+                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"paddle"</code>,
+<code>"paddlevl"</code>, <code>"doctr"</code>,
 or <code>"vlm"</code> (requires <code>model=</code>/<code>client=</code> or a default
 client via <code>natural_pdf.set_default_client()</code>).
 If None, uses the global default from natural_pdf.options.ocr.engine.</p>
@@ -12931,7 +12931,7 @@ If False, append new OCR results to existing elements.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Engine-specific options object (e.g., EasyOCROptions, SuryaOptions).
+                <p>Engine-specific options object (e.g., RapidOCROptions, PaddleOCROptions).
 Allows fine-tuning of engine behavior beyond common parameters.</p>
               </div>
             </td>
@@ -14653,7 +14653,7 @@ requires either <code>client=...</code> or <code>engine='vlm'</code>.</p>
 <span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="o">.</span><span class="n">from_images</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">apply_ocr</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <span class="c1"># With specific engine</span>
-<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="o">.</span><span class="n">from_images</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">ocr_engine</span><span class="o">=</span><span class="s1">&#39;surya&#39;</span><span class="p">)</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="o">.</span><span class="n">from_images</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">ocr_engine</span><span class="o">=</span><span class="s1">&#39;rapidocr&#39;</span><span class="p">)</span>
 </code></pre></div>
 </details>
 
@@ -15907,7 +15907,7 @@ embeddings. Embeddings are cached so repeated searches are fast.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCR engine to use (e.g., 'rapidocr', 'easyocr', 'paddleocr', 'surya')</p>
+                <p>OCR engine to use (e.g., 'rapidocr', 'paddle', 'doctr')</p>
               </div>
             </td>
             <td>
@@ -18322,8 +18322,8 @@ Call <code>get_regions()</code> on the returned annotator to retrieve results.</
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"easyocr"</code>, <code>"surya"</code>,
-<code>"paddle"</code>, <code>"paddlevl"</code>, <code>"doctr"</code>, <code>"vlm"</code>,
+                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"paddle"</code>,
+<code>"paddlevl"</code>, <code>"doctr"</code>, <code>"vlm"</code>,
 <code>"dots"</code> (dots.mocr), <code>"glm_ocr"</code>, or <code>"chandra"</code>.
 <code>"dots"</code>, <code>"glm_ocr"</code>, and <code>"chandra"</code> auto-select MLX on Apple
 Silicon, HF transformers elsewhere.
@@ -18935,7 +18935,7 @@ result to persist the chosen engine's output.</p>
             <td>
               <div class="doc-md-description">
                 <p>Engine specs to compare. Each can be a string
-(e.g. <code>"easyocr"</code>) or a dict with <code>"engine"</code> key plus
+(e.g. <code>"rapidocr"</code>) or a dict with <code>"engine"</code> key plus
 overrides (e.g. <code>{"engine": "rapidocr", "resolution": 72}</code>).</p>
               </div>
             </td>
@@ -23051,7 +23051,7 @@ Provides methods for batch operations on these pages.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"easyocr"</code>, <code>"surya"</code>, <code>"paddle"</code>,
+                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"paddle"</code>,
 <code>"paddlevl"</code>, <code>"doctr"</code>, or <code>"vlm"</code>.</p>
               </div>
             </td>
@@ -25937,8 +25937,8 @@ adapted from pdfplumber.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"easyocr"</code>, <code>"surya"</code>,
-<code>"paddle"</code>, <code>"paddlevl"</code>, <code>"doctr"</code>, <code>"vlm"</code>,
+                <p>OCR engine — <code>"rapidocr"</code> (default), <code>"paddle"</code>,
+<code>"paddlevl"</code>, <code>"doctr"</code>, <code>"vlm"</code>,
 <code>"dots"</code> (dots.mocr), <code>"glm_ocr"</code>, or <code>"chandra"</code>.
 <code>"dots"</code>, <code>"glm_ocr"</code>, and <code>"chandra"</code> auto-select MLX on Apple
 Silicon, HF transformers elsewhere.
@@ -30200,7 +30200,7 @@ include_attributes : list[str], optional
   <summary>Example</summary>
   <p>import natural_pdf as npdf
 npdf.set_option('layout.auto_multipage', True)
-npdf.set_option('ocr.engine', 'surya')</p>
+npdf.set_option('ocr.engine', 'rapidocr')</p>
 </details>
 
     </div>

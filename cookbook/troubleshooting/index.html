@@ -2410,7 +2410,7 @@
 
 <span class="c1"># If default doesn&#39;t work well, try different engines</span>
 <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;paddle&#39;</span><span class="p">)</span>  <span class="c1"># Often better for forms</span>
-<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;surya&#39;</span><span class="p">)</span>   <span class="c1"># Good for multi-language</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;doctr&#39;</span><span class="p">)</span>   <span class="c1"># Good for dense text</span>
 
 <span class="c1"># For better quality, increase resolution</span>
 <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;rapidocr&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
@@ -2579,20 +2579,14 @@
     │   └── page.apply_ocr(languages=[&#39;en&#39;, &#39;es&#39;])
     │
     └── Try a different OCR engine
-        └── paddle, paddlevl, surya, or doctr
+        └── paddle, paddlevl, or doctr
 </code></pre></div>
 <h3 id="try-different-ocr-engines">Try Different OCR Engines</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># RapidOCR (default) - lightweight general purpose OCR</span>
 <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;rapidocr&#39;</span><span class="p">)</span>
 
-<span class="c1"># EasyOCR - opt-in alternate OCR engine</span>
-<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;easyocr&#39;</span><span class="p">)</span>
-
 <span class="c1"># PaddleOCR - often better for structured documents</span>
 <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;paddle&#39;</span><span class="p">)</span>
-
-<span class="c1"># Surya - good for multi-language documents</span>
-<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;surya&#39;</span><span class="p">)</span>
 
 <span class="c1"># DocTR - good for dense text</span>
 <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;doctr&#39;</span><span class="p">)</span>
