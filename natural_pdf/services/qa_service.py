@@ -264,6 +264,7 @@ class QAService:
 
         best_conf = float("-inf")
         best_result: Optional[StructuredDataResult] = None
+        segment_errors: List[str] = []
 
         for region in segment_list:
             try:
@@ -278,12 +279,13 @@ class QAService:
                     engine=engine,
                     **kwargs,
                 )
-            except Exception as exc:  # pragma: no cover - defensive
-                logger.debug(
+            except Exception as exc:
+                logger.warning(
                     "QA segment evaluation failed for %s: %s",
                     getattr(region, "bbox", None),
                     exc,
                 )
+                segment_errors.append(f"{type(exc).__name__}: {exc}")
                 continue
 
             confidence = self._extract_confidence(candidate)
@@ -292,6 +294,14 @@ class QAService:
                 best_result = candidate
 
         if best_result is None:
+            if segment_errors:
+                return self._blank_structured_result(
+                    question,
+                    error_message=(
+                        f"All {len(segment_list)} QA segment(s) failed. "
+                        f"Errors: {'; '.join(segment_errors)}"
+                    ),
+                )
             return self._blank_structured_result(question)
         return best_result
 
@@ -355,13 +365,15 @@ class QAService:
         return float("-inf")
 
     @staticmethod
-    def _blank_structured_result(_question: str = "") -> StructuredDataResult:
+    def _blank_structured_result(
+        _question: str = "", error_message: Optional[str] = None
+    ) -> StructuredDataResult:
         """Return a failed StructuredDataResult for unanswered questions."""
         instance = _QA_SCHEMA(answer=None)
         return StructuredDataResult(
             data=instance,
             success=False,
-            error_message="No content available to answer the question.",
+            error_message=error_message or "No content available to answer the question.",
             raw_output=None,
             model_used=None,
         )

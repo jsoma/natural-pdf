@@ -171,7 +171,7 @@ def _generate_hocr_for_page(page: "Page", image_width: int, image_height: int) -
     if lines:
         for line_words in lines:
             for word in line_words:
-                (x0, y0, x1, y1) = word.bbox
+                x0, y0, x1, y1 = word.bbox
                 img_x0 = int(x0 * scale_x)
                 img_y0 = int(y0 * scale_y)
                 img_x1 = int(x1 * scale_x)
@@ -221,7 +221,7 @@ def _generate_hocr_for_page(page: "Page", image_width: int, image_height: int) -
         min_line_x0, min_line_y0 = image_width, image_height
         max_line_x1, max_line_y1 = 0, 0
         for word in current_line_words:
-            (x0, y0, x1, y1) = word.bbox
+            x0, y0, x1, y1 = word.bbox
             img_x0, img_y0 = int(x0 * scale_x), int(y0 * scale_y)
             img_x1, img_y1 = int(x1 * scale_x), int(y1 * scale_y)
             min_line_x0, min_line_y0 = min(min_line_x0, img_x0), min(min_line_y0, img_y0)
@@ -245,7 +245,7 @@ def _generate_hocr_for_page(page: "Page", image_width: int, image_height: int) -
 
         # Add words to line
         for word in current_line_words:
-            (x0, y0, x1, y1) = word.bbox
+            x0, y0, x1, y1 = word.bbox
             img_x0, img_y0 = int(x0 * scale_x), int(y0 * scale_y)
             img_x1, img_y1 = int(x1 * scale_x), int(y1 * scale_y)
 

@@ -4,6 +4,7 @@
 RapidOCR uses PaddleOCR models converted to ONNX format, providing
 the same accuracy with simpler installation (~15MB vs ~500MB).
 """
+
 import importlib.util
 import logging
 from typing import Any, List, Optional

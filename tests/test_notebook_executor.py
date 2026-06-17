@@ -3,7 +3,10 @@
 import importlib.util
 from pathlib import Path
 
-import nbformat
+import pytest
+
+nbformat = pytest.importorskip("nbformat")
+pytest.importorskip("jupytext", reason="executor script imports jupytext at load time")
 
 
 def load_executor_module():

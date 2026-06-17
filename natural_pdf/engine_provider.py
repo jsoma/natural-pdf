@@ -79,11 +79,12 @@ class EngineProvider:
     def list(self, capability: Optional[str] = None) -> Dict[str, Iterable[str]]:
         """Return registered engine names per capability."""
 
-        if capability is None:
-            return {cap: tuple(regs.keys()) for cap, regs in self._registry.items()}
+        with self._lock:
+            if capability is None:
+                return {cap: tuple(regs.keys()) for cap, regs in self._registry.items()}
 
-        cap = capability.strip().lower()
-        return {cap: tuple(self._registry.get(cap, {}).keys())}
+            cap = capability.strip().lower()
+            return {cap: tuple(self._registry.get(cap, {}).keys())}
 
     def get_metadata(
         self,
@@ -93,8 +94,9 @@ class EngineProvider:
         """Return the metadata dict for a registered engine, or None if not found."""
         cap = capability.strip().lower()
         engine_name = name.strip().lower()
-        reg = self._registry.get(cap, {}).get(engine_name)
-        return dict(reg.metadata) if reg and reg.metadata else None
+        with self._lock:
+            reg = self._registry.get(cap, {}).get(engine_name)
+            return dict(reg.metadata) if reg and reg.metadata else None
 
     # ------------------------------------------------------------------
     # Retrieval
@@ -127,8 +129,14 @@ class EngineProvider:
         with self._lock:
             registration = self._registry.get(cap, {}).get(engine_name)
             if registration is None:
+                available = sorted(self._registry.get(cap, {}).keys())
+                hint = (
+                    f" Available engines for '{cap}': {', '.join(available)}."
+                    if available
+                    else f" No engines are registered for capability '{cap}'."
+                )
                 raise LookupError(
-                    f"Engine '{engine_name}' is not registered for capability '{cap}'."
+                    f"Engine '{engine_name}' is not registered for capability '{cap}'." + hint
                 )
 
             if key not in self._instances:
@@ -169,12 +177,15 @@ class EngineProvider:
 
 
 _PROVIDER: Optional[EngineProvider] = None
+_PROVIDER_LOCK = threading.Lock()
 
 
 def get_provider() -> EngineProvider:
     global _PROVIDER
     if _PROVIDER is None:
-        _PROVIDER = EngineProvider()
+        with _PROVIDER_LOCK:
+            if _PROVIDER is None:
+                _PROVIDER = EngineProvider()
     return _PROVIDER
 
 

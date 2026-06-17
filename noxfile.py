@@ -56,14 +56,46 @@ OPTIONAL_PACKAGES = [
 ]
 
 
+# Pinned so local runs and CI agree on formatting; bump deliberately and
+# reformat the repo in the same commit.
+LINT_TOOLS = ["black==26.5.1", "isort==7.0.0"]
+
+
 @nox.session
 def lint(session):
     """Run linters."""
-    session.install("black", "isort")
+    session.install(*LINT_TOOLS)
     session.run("black", "--check", ".")
     session.run("isort", "--check-only", ".")
     # Consider adding mypy checks if types are consistently added
     # session.run("mypy", "src", "tests") # Adjust paths as needed
+
+
+@nox.session
+def test_bare_install(session):
+    """Smoke-test a bare `pip install natural-pdf` (no extras).
+
+    Catches import-time reliance on optional dependencies and dependency
+    creep in the core install. Unlike test_minimal, this installs NO test
+    extras — only the package's own required dependencies.
+    """
+    session.install(".")
+    session.run(
+        "python",
+        "-c",
+        (
+            "import natural_pdf; "
+            "pdf = natural_pdf.PDF('pdfs/01-practice.pdf'); "
+            "page = pdf.pages[0]; "
+            "text = page.extract_text(); "
+            "assert text and len(text) > 50, 'extract_text returned too little text'; "
+            "el = page.find('text:contains(\"Durham\")'); "
+            "assert el is not None, 'selector lookup failed'; "
+            "tables = page.extract_table(); "
+            "pdf.close(); "
+            "print('bare-install smoke test OK')"
+        ),
+    )
 
 
 @nox.session

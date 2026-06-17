@@ -151,10 +151,13 @@ local_scheme = "no-local-version"
 [tool.black]
 line-length = 100
 target-version = ['py37']
+extend-exclude = '/(\.testenv|\.nox)/'
 
 [tool.isort]
 profile = "black"
 line_length = 100
+skip_gitignore = true
+extend_skip = [".testenv", ".nox", ".venv"]
 
 [tool.mypy]
 python_version = "3.10"

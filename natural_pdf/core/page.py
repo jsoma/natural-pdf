@@ -78,7 +78,9 @@ from natural_pdf.text.operations import (
     generate_text_layout,
 )
 from natural_pdf.text.operations import normalize_whitespace as _normalize_whitespace
-from natural_pdf.text.operations import word_elements_to_textmap_char_dicts
+from natural_pdf.text.operations import (
+    word_elements_to_textmap_char_dicts,
+)
 
 # Viewer widget support is lazy-loaded to avoid importing ipywidgets/IPython at startup
 
@@ -902,6 +904,13 @@ class Page(
             for pdf_exclusion in self._parent._exclusions:
                 label = pdf_exclusion[1] if len(pdf_exclusion) >= 2 else None
                 if label and label in existing_labels:
+                    logger.warning(
+                        "Page %s: PDF-level exclusion with label '%s' is shadowed by a "
+                        "page-level exclusion with the same label and will not be applied. "
+                        "Use a different label to apply both.",
+                        self.index,
+                        label,
+                    )
                     continue
                 if len(pdf_exclusion) == 2:
                     all_exclusions.append((pdf_exclusion[0], pdf_exclusion[1], "region"))

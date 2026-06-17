@@ -842,7 +842,7 @@ class FlowRegionCollection(
 
     @staticmethod
     def _normalize_crop_mode(
-        value: Union[bool, int, Literal["content", "wide"]]
+        value: Union[bool, int, Literal["content", "wide"]],
     ) -> Union[bool, Literal["content"]]:
         if value == "content":
             return "content"

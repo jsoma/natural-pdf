@@ -2,9 +2,10 @@ from __future__ import annotations
 
 """Internal registry that maps public capability names to service methods."""
 
+import threading
 from collections import defaultdict
 from importlib import import_module
-from typing import Any, Callable, Dict, ItemsView, Iterator, Tuple
+from typing import Any, Callable, Dict, Iterator, Tuple
 
 DelegateFunc = Callable[..., Any]
 
@@ -12,19 +13,24 @@ DelegateFunc = Callable[..., Any]
 class DelegateRegistry:
     def __init__(self) -> None:
         self._entries: Dict[str, Dict[str, DelegateFunc]] = defaultdict(dict)
+        # RLock so a registration triggered while we hold the lock (e.g. a
+        # decorator running during a same-thread import) cannot deadlock.
+        self._lock = threading.RLock()
 
     def register(self, capability: str, method_name: str, func: DelegateFunc) -> None:
         """Store a delegate and guard against accidental duplicates."""
-        methods = self._entries[capability]
-        if method_name in methods:
-            raise ValueError(
-                f"Delegate '{method_name}' already registered for capability '{capability}'"
-            )
-        methods[method_name] = func
+        with self._lock:
+            methods = self._entries[capability]
+            if method_name in methods:
+                raise ValueError(
+                    f"Delegate '{method_name}' already registered for capability '{capability}'"
+                )
+            methods[method_name] = func
 
-    def iter_entries(self, capability: str) -> ItemsView[str, DelegateFunc]:
-        """Return an iterable of (method_name, func) pairs for the capability."""
-        return self._entries.get(capability, {}).items()
+    def iter_entries(self, capability: str) -> Tuple[Tuple[str, DelegateFunc], ...]:
+        """Return a snapshot of (method_name, func) pairs for the capability."""
+        with self._lock:
+            return tuple(self._entries.get(capability, {}).items())
 
 
 _REGISTRY = DelegateRegistry()

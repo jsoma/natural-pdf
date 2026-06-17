@@ -8,7 +8,9 @@ from natural_pdf.tables import TableResult
 from natural_pdf.tables.structure_provider import (
     resolve_structure_engine_name as resolve_table_structure_engine_name,
 )
-from natural_pdf.tables.structure_provider import run_table_structure_engine
+from natural_pdf.tables.structure_provider import (
+    run_table_structure_engine,
+)
 from natural_pdf.tables.table_provider import (
     normalize_table_settings,
     resolve_table_engine_name,

@@ -188,7 +188,8 @@ def register_engine(name: str, entry: EngineEntry) -> None:
     Useful for tests and plugins that add custom engines.
     """
     registry = get_registry()
-    registry[name.strip().lower()] = entry
+    with _registry_lock:
+        registry[name.strip().lower()] = entry
 
 
 def _instantiate_provider(provider: Any, *, context: Any = None, options: Any = None) -> Any:
@@ -264,11 +265,16 @@ class EngineCache:
             # Re-check in case another thread created the same key
             if key in self._cache:
                 self._cache.move_to_end(key)
-                return self._cache[key]
+                winner = self._cache[key]
+            else:
+                self._cache[key] = engine
+                self._evict_to_capacity()
+                return engine
 
-            self._cache[key] = engine
-            self._evict_to_capacity()
-            return engine
+        # Lost the creation race: release the engine we built so it does not
+        # leak model memory, then return the cached winner.
+        self._cleanup_engine(engine)
+        return winner
 
     def clear(self) -> int:
         """Evict all cached engines, calling cleanup on each."""

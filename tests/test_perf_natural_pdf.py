@@ -166,8 +166,7 @@ def test_reports_include_menu_categories(tmp_path):
 
 def test_patch_loading_records_metadata(tmp_path):
     patch_path = tmp_path / "noop_patch.py"
-    patch_path.write_text(
-        """
+    patch_path.write_text("""
 from contextlib import contextmanager
 
 METADATA = {"track": "test", "candidate": "noop"}
@@ -175,9 +174,7 @@ METADATA = {"track": "test", "candidate": "noop"}
 @contextmanager
 def install():
     yield
-""".strip()
-        + "\n"
-    )
+""".strip() + "\n")
     output_dir = tmp_path / "run"
 
     exit_code = perf.main(
@@ -207,15 +204,12 @@ def install():
 
 def test_failed_patch_install_writes_failure_artifacts(tmp_path):
     patch_path = tmp_path / "bad_patch.py"
-    patch_path.write_text(
-        """
+    patch_path.write_text("""
 METADATA = {"track": "test", "candidate": "bad"}
 
 def install():
     raise RuntimeError("boom")
-""".strip()
-        + "\n"
-    )
+""".strip() + "\n")
     output_dir = tmp_path / "run"
 
     exit_code = perf.main(

@@ -11,7 +11,7 @@ from natural_pdf.guides.guides_provider import Axis, GuidesDetectionResult, Guid
 
 
 def _normalize_stripes_input(
-    stripes: Optional[Union[ElementCollection, Sequence[Any]]]
+    stripes: Optional[Union[ElementCollection, Sequence[Any]]],
 ) -> List[Any]:
     if stripes is None:
         return []

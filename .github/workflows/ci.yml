@@ -14,6 +14,27 @@ permissions:
   contents: read
 
 jobs:
+  bare-install:
+    name: bare install smoke (no extras)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: '3.11'
+
+      - name: Run bare-install smoke test
+        run: |
+          uv run --with nox --with nox-uv nox --non-interactive -s test_bare_install
+
   tests:
     name: nox (${{ matrix.os }} | py${{ matrix.python }})
     runs-on: ${{ matrix.os }}

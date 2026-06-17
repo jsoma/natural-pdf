@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Mapping, MutableMapping, Optional
 
@@ -13,6 +14,9 @@ class PDFContext:
     service_factories: Optional[Mapping[str, ServiceFactory]] = None
     options: Optional[Mapping[str, Mapping[str, Any]]] = None
     _shared_services: MutableMapping[str, Any] = field(default_factory=dict, init=False)
+    _services_lock: threading.RLock = field(
+        default_factory=threading.RLock, init=False, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         factories = dict(self.service_factories or {})
@@ -62,14 +66,19 @@ class PDFContext:
         return cls()
 
     def get_service(self, capability: str) -> Any:
-        if capability in self._shared_services:
-            return self._shared_services[capability]
+        existing = self._shared_services.get(capability)
+        if existing is not None:
+            return existing
         if capability not in self._service_factories:
             raise KeyError(f"Unknown service capability '{capability}'")
-        factory = self._service_factories[capability]
-        service = factory(self)
-        self._shared_services[capability] = service
-        return service
+        with self._services_lock:
+            existing = self._shared_services.get(capability)
+            if existing is not None:
+                return existing
+            factory = self._service_factories[capability]
+            service = factory(self)
+            self._shared_services[capability] = service
+            return service
 
     def get_option(
         self,

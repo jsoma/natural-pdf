@@ -548,8 +548,13 @@ class PDF(
                     path_or_url_or_stream.seek(0)
                     self._original_bytes = path_or_url_or_stream.read()
                     path_or_url_or_stream.seek(current_pos)
-            except Exception:
-                pass
+            except Exception as capture_err:
+                logger.warning(
+                    "Could not capture stream bytes for re-export (%s). The PDF will "
+                    "still load, but exports that need the original bytes (e.g. "
+                    "save_searchable) may be unavailable.",
+                    capture_err,
+                )
         elif isinstance(path_or_url_or_stream, (str, Path)):
             path_or_url = str(path_or_url_or_stream)
             self.source_path = path_or_url  # Store original path/URL as source

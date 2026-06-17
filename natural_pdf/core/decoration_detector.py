@@ -5,6 +5,47 @@ from typing import Any, Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 
+
+def _union_coverage(
+    char_x0: float,
+    char_x1: float,
+    segments: List[Tuple[float, float]],
+) -> float:
+    """Fraction of [char_x0, char_x1] covered by the union of x-segments.
+
+    A single decoration (underline/strike) is often drawn as several abutting
+    or overlapping line segments.  Testing each segment in isolation can leave a
+    glyph that straddles a segment join below the coverage threshold even though
+    the decoration runs continuously beneath it.  Merging the segments first and
+    measuring the combined overlap avoids spurious per-char gaps (which would
+    otherwise fragment words at those glyphs).
+    """
+    width = char_x1 - char_x0
+    if width <= 0:
+        return 0.0
+
+    clipped = []
+    for sx0, sx1 in segments:
+        lo = max(char_x0, min(sx0, sx1))
+        hi = min(char_x1, max(sx0, sx1))
+        if hi > lo:
+            clipped.append((lo, hi))
+
+    if not clipped:
+        return 0.0
+
+    clipped.sort()
+    covered = 0.0
+    cur_lo, cur_hi = clipped[0]
+    for lo, hi in clipped[1:]:
+        if lo <= cur_hi:
+            cur_hi = max(cur_hi, hi)
+        else:
+            covered += cur_hi - cur_lo
+            cur_lo, cur_hi = lo, hi
+    covered += cur_hi - cur_lo
+    return covered / width
+
 STRIKE_DEFAULTS = {
     "thickness_tol": 1.5,
     "horiz_tol": 1.0,
@@ -154,12 +195,13 @@ class DecorationDetector:
             mid_y0 = top + STRIKE_DEFAULTS["band_top_frac"] * height
             mid_y1 = top + STRIKE_DEFAULTS["band_bottom_frac"] * height
 
-            for lx0, ly0, lx1, ly1 in candidates:
-                if (ly0 >= (mid_y0 - 1.0)) and (ly1 <= (mid_y1 + 1.0)):
-                    overlap = min(x1, lx1) - max(x0, lx0)
-                    if overlap > 0 and (overlap / width) >= STRIKE_DEFAULTS["coverage_ratio"]:
-                        ch["strike"] = True
-                        break
+            in_band = [
+                (lx0, lx1)
+                for lx0, ly0, lx1, ly1 in candidates
+                if (ly0 >= (mid_y0 - 1.0)) and (ly1 <= (mid_y1 + 1.0))
+            ]
+            if _union_coverage(x0, x1, in_band) >= STRIKE_DEFAULTS["coverage_ratio"]:
+                ch["strike"] = True
 
     def _mark_underline_chars(
         self,
@@ -207,13 +249,13 @@ class DecorationDetector:
             band_top = bottom - UNDERLINE_DEFAULTS["band_frac"] * height
             band_bottom = bottom + UNDERLINE_DEFAULTS["below_pad"]
 
-            for lx0, ly0, lx1, ly1 in candidates:
-                line_mid = (ly0 + ly1) / 2.0
-                if band_top <= line_mid <= band_bottom:
-                    overlap = min(x1, lx1) - max(x0, lx0)
-                    if overlap > 0 and (overlap / width) >= UNDERLINE_DEFAULTS["coverage_ratio"]:
-                        ch["underline"] = True
-                        break
+            in_band = [
+                (lx0, lx1)
+                for lx0, ly0, lx1, ly1 in candidates
+                if band_top <= (ly0 + ly1) / 2.0 <= band_bottom
+            ]
+            if _union_coverage(x0, x1, in_band) >= UNDERLINE_DEFAULTS["coverage_ratio"]:
+                ch["underline"] = True
 
     def _mark_highlight_chars(self, char_dicts: List[Dict[str, Any]]) -> None:
         cfg = self._page._parent._config.get("highlight_detection", {})
