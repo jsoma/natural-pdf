@@ -8,7 +8,9 @@ from importlib import metadata as importlib_metadata
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Type
 
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
+# Preserve an application's explicit preference while suppressing the warning
+# in the common case where it has not configured tokenizers itself.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 # Create library logger
 logger = logging.getLogger("natural_pdf")
@@ -184,6 +186,8 @@ from natural_pdf.elements.region import Region
 from natural_pdf.exceptions import (
     ClassificationError,
     ConfigurationError,
+    ContentFilterError,
+    ExclusionError,
     ExportError,
     InvalidOptionError,
     LayoutEngineNotAvailableError,
@@ -234,6 +238,8 @@ __all__ = [
     "SelectorError",
     "SelectorParseError",
     "SelectorMatchError",
+    "ContentFilterError",
+    "ExclusionError",
     "ConfigurationError",
     "InvalidOptionError",
     "ExportError",

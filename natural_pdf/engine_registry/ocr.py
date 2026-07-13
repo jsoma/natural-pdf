@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from inspect import Parameter, signature
 from typing import TYPE_CHECKING, Any, Optional, Type
 
 from .base import register_engine
@@ -11,6 +12,56 @@ if TYPE_CHECKING:
     from natural_pdf.ocr.ocr_options import BaseOCROptions
 
 __all__ = ["register_ocr_engine"]
+
+
+def _call_custom_factory(factory: Callable[..., Any], **kwargs: Any) -> Any:
+    """Call a public OCR factory with only the constructor inputs it accepts."""
+
+    try:
+        parameters = signature(factory).parameters
+    except (TypeError, ValueError):
+        return factory()
+
+    if any(parameter.kind == Parameter.VAR_KEYWORD for parameter in parameters.values()):
+        return factory(**kwargs)
+
+    accepted = {
+        name: value
+        for name, value in kwargs.items()
+        if name in parameters
+        and parameters[name].kind in (Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY)
+    }
+    return factory(**accepted)
+
+
+def _wrap_classic_factory(
+    factory: Callable[..., Any],
+    *,
+    engine_name: str,
+    install_hint: Optional[str],
+) -> Callable[..., Any]:
+    """Adapt the public factory API and initialize each provider variant."""
+
+    def provider_factory(*, context: Any = None, **constructor_options: Any) -> Any:
+        instance = _call_custom_factory(factory, context=context, **constructor_options)
+
+        is_available = getattr(instance, "is_available", None)
+        if callable(is_available) and not is_available():
+            hint = install_hint or f"pip install {engine_name}"
+            raise RuntimeError(
+                f"OCR engine {engine_name!r} is not available. Install it with: {hint}"
+            )
+
+        initialize = getattr(instance, "_initialize_model", None)
+        if callable(initialize):
+            languages = list(constructor_options.get("languages") or ["en"])
+            device = constructor_options.get("device") or "auto"
+            initialize(languages, device, constructor_options.get("options"))
+            if hasattr(instance, "_initialized"):
+                instance._initialized = True
+        return instance
+
+    return provider_factory
 
 
 def register_ocr_engine(
@@ -47,20 +98,41 @@ def register_ocr_engine(
 
     normalized_kind = kind.strip().lower()
     if normalized_kind in {"classic", "ocr"}:
-        from natural_pdf.ocr.unified_dispatch import EngineEntry
+        from natural_pdf.engine_provider import get_provider
+        from natural_pdf.ocr.unified_dispatch import EngineEntry, get_registry
         from natural_pdf.ocr.unified_dispatch import register_engine as register_unified_engine
 
         if factory is None:
             raise ValueError("Classic OCR registration requires a factory.")
+
+        # Provider.register() deliberately skips existing registrations when
+        # replace=False. Do the same before touching the unified metadata so
+        # dispatch and provider resolution cannot disagree about the factory.
+        if not replace:
+            provider = get_provider()
+            provider_conflict = any(
+                normalized_name in provider.list(capability).get(capability, ())
+                for capability in ("ocr", "ocr.apply", "ocr.extract")
+            )
+            if provider_conflict or normalized_name in get_registry():
+                return
+
+        provider_factory = _wrap_classic_factory(
+            factory,
+            engine_name=normalized_name,
+            install_hint=install_hint,
+        )
         entry = EngineEntry(
-            engine_type="classic",
-            provider=factory,
+            # Custom classics are owned by EngineProvider. Built-ins retain
+            # the specialized unified EngineCache used for model setup/LRU.
+            engine_type="classic_provider",
+            provider=provider_factory,
+            provider_init_options=True,
             options_class=options_class,
             needs_gpu_lock=needs_gpu_lock,
             install_hint=install_hint,
             cache_namespace=cache_namespace,
         )
-        register_unified_engine(normalized_name, entry)
 
         provider_metadata = dict(metadata or {})
         if install_hint:
@@ -72,10 +144,11 @@ def register_ocr_engine(
             register_engine(
                 capability,
                 normalized_name,
-                factory,
+                provider_factory,
                 replace=replace,
                 metadata=provider_metadata,
             )
+        register_unified_engine(normalized_name, entry)
         return
 
     if normalized_kind in {"vlm", "vlm_shorthand"}:

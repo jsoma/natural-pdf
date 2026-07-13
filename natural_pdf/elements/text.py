@@ -10,6 +10,7 @@ from pdfplumber.utils.text import chars_to_textmap
 
 from natural_pdf.elements.base import Element
 from natural_pdf.text.font_style import detect_bold_style, detect_italic_style, resolve_fontname
+from natural_pdf.text.operations import apply_content_filter_to_text, validate_content_filter
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -340,39 +341,14 @@ class TextElement(Element):
             apply_exclusions = kwargs.pop("use_exclusions")
         if keep_blank_chars is not None:
             preserve_whitespace = keep_blank_chars
+        validate_content_filter(content_filter)
 
         # Basic retrieval
         result = self.text or ""
 
         # Apply content filtering if provided
-        if content_filter is not None and result:
-            import re
-
-            if isinstance(content_filter, str):
-                # Single regex pattern - remove matching characters
-                try:
-                    result = re.sub(content_filter, "", result)
-                except re.error:
-                    pass  # Invalid regex, skip filtering
-
-            elif isinstance(content_filter, list):
-                # List of regex patterns - remove characters matching ANY pattern
-                try:
-                    for pattern in content_filter:
-                        result = re.sub(pattern, "", result)
-                except re.error:
-                    pass  # Invalid regex, skip filtering
-
-            elif callable(content_filter):
-                # Callable filter - apply to individual characters
-                try:
-                    filtered_chars = []
-                    for char in result:
-                        if content_filter(char):
-                            filtered_chars.append(char)
-                    result = "".join(filtered_chars)
-                except Exception:
-                    pass  # Function error, skip filtering
+        if content_filter is not None:
+            result = apply_content_filter_to_text(result, content_filter)
 
         # Apply optional stripping – align with global convention where simple
         # element extraction is stripped by default.

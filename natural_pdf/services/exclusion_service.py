@@ -10,6 +10,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
 from natural_pdf.elements.base import extract_bbox
+from natural_pdf.exceptions import ExclusionError
 from natural_pdf.services.registry import register_delegate
 
 logger = logging.getLogger(__name__)
@@ -108,10 +109,15 @@ class ExclusionService:
                 try:
                     with context_mgr:
                         result = exclusion_item(host)
-                except Exception as exc:  # pragma: no cover - defensive logging
-                    logger.error("Exclusion callable '%s' failed: %s", exclusion_label, exc)
-                    continue
-                regions.extend(self._normalize_callable_result(host, result, label, debug=debug))
+                    normalized = self._normalize_callable_result(host, result, label, debug=debug)
+                except ExclusionError:
+                    raise
+                except Exception as exc:
+                    raise ExclusionError(
+                        f"Exclusion callable {exclusion_label!r} failed for "
+                        f"{type(host).__name__}: {exc}"
+                    ) from exc
+                regions.extend(normalized)
                 continue
 
             if isinstance(exclusion_item, Region):
@@ -147,11 +153,18 @@ class ExclusionService:
                     continue
                 try:
                     expanded = exclusion_item.expand()
-                    if isinstance(expanded, Region):
-                        expanded.label = label
-                        regions.append(expanded)
-                except Exception as exc:  # pragma: no cover - defensive
-                    logger.debug("Failed to convert element exclusion to region: %s", exc)
+                except Exception as exc:
+                    raise ExclusionError(
+                        f"Failed to expand exclusion {exclusion_label!r} from "
+                        f"{type(exclusion_item).__name__}: {exc}"
+                    ) from exc
+                if not isinstance(expanded, Region):
+                    raise ExclusionError(
+                        f"Exclusion {exclusion_label!r} expanded to unsupported "
+                        f"{type(expanded).__name__}; expected Region."
+                    )
+                expanded.label = label
+                regions.append(expanded)
                 continue
 
             region = self._element_to_region(host, exclusion_item, label)
@@ -263,12 +276,14 @@ class ExclusionService:
             raise TypeError(f"Element source must be iterable, got {type(elements)!r}")
 
         results: List["Region"] = []
-        for elem in iterable:
+        for index, elem in enumerate(iterable):
             region = self._element_to_region(host, elem, label)
-            if region is not None:
-                results.append(region)
-            elif debug:
-                logger.debug("Failed to convert element %r into region", elem)
+            if region is None:
+                raise ExclusionError(
+                    "Unable to convert exclusion result item "
+                    f"{index} ({type(elem).__name__}) into a Region."
+                )
+            results.append(region)
         return results
 
     def _normalize_callable_result(
@@ -287,13 +302,17 @@ class ExclusionService:
             return [result]
         if isinstance(result, ElementCollection):
             return self._elements_to_regions(host, result.elements, label, debug)
-        if isinstance(result, Iterable):
-            return self._elements_to_regions(host, result, label, debug)
         if result is None:
             return []
+
+        # A four-coordinate sequence is itself a valid bbox. Try scalar
+        # conversion before treating generic iterables as collections.
         region = self._element_to_region(host, result, label)
         if region is not None:
             return [region]
-        if debug:
-            logger.debug("Exclusion callable returned unsupported value %r", result)
-        return []
+        if isinstance(result, Iterable) and not isinstance(result, (str, bytes)):
+            return self._elements_to_regions(host, result, label, debug)
+        raise ExclusionError(
+            "Exclusion callable returned unsupported non-None value "
+            f"of type {type(result).__name__}."
+        )

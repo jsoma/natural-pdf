@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Optional
 
-from natural_pdf.engine_provider import get_provider
+from natural_pdf.engine_provider import EngineCacheKey, EngineLifetime, get_provider
 
 __all__ = ["register_engine", "register_builtin", "list_engines"]
 
@@ -16,8 +16,16 @@ def register_engine(
     *,
     replace: bool = True,
     metadata: Optional[dict[str, Any]] = None,
+    lifetime: EngineLifetime = "context",
+    cache_key: Optional[EngineCacheKey] = None,
 ) -> None:
-    """Register an engine factory for the given capability/name pair."""
+    """Register an engine factory for the given capability/name pair.
+
+    Extension engines default to context-and-options caching. Pass
+    ``lifetime="singleton"`` only for factories independent of retrieval
+    inputs, or ``lifetime="transient"`` when callers own every instance.
+    ``cache_key`` can define intentional sharing for context-lifetime engines.
+    """
 
     provider = get_provider()
     provider.register(
@@ -26,6 +34,8 @@ def register_engine(
         factory,
         metadata=metadata,
         replace=replace,
+        lifetime=lifetime,
+        cache_key=cache_key,
     )
 
 
@@ -53,14 +63,16 @@ def register_builtin(
             factory,
             replace=replace,
             metadata=metadata,
+            lifetime="singleton",
         )
     else:
-        register_engine(
+        get_provider().register(
             capability,
             name,
             factory,
             replace=replace,
             metadata=metadata,
+            lifetime="singleton",
         )
 
 

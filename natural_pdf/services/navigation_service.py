@@ -21,11 +21,18 @@ class NavigationService:
     def __init__(self, context):
         self._context = context
 
-    def _offset(self, offset: Optional[float]) -> float:
+    def _option(self, host: _DirectionalHost, key: str):
+        """Resolve PDFContext navigation defaults with global compatibility fallback."""
+
+        global_default = getattr(natural_pdf.options.layout, key)
+        host_context = getattr(host, "_context", self._context)
+        context = host_context if hasattr(host_context, "get_option") else self._context
+        return context.get_option("layout", key, host=host, default=global_default)
+
+    def _offset(self, host: _DirectionalHost, offset: Optional[float]) -> float:
         if offset is not None:
             return offset
-        layout_options = natural_pdf.options.layout
-        return getattr(layout_options, "directional_offset", 0.0)
+        return self._option(host, "directional_offset")
 
     @register_delegate("navigation", "above")
     def above(
@@ -50,7 +57,7 @@ class NavigationService:
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
-            offset=self._offset(offset),
+            offset=self._offset(host, offset),
             apply_exclusions=apply_exclusions,
             multipage=multipage,
             within=within,
@@ -81,7 +88,7 @@ class NavigationService:
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
-            offset=self._offset(offset),
+            offset=self._offset(host, offset),
             apply_exclusions=apply_exclusions,
             multipage=multipage,
             within=within,
@@ -112,7 +119,7 @@ class NavigationService:
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
-            offset=self._offset(offset),
+            offset=self._offset(host, offset),
             apply_exclusions=apply_exclusions,
             multipage=multipage,
             within=within,
@@ -143,7 +150,7 @@ class NavigationService:
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
-            offset=self._offset(offset),
+            offset=self._offset(host, offset),
             apply_exclusions=apply_exclusions,
             multipage=multipage,
             within=within,

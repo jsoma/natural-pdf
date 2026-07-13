@@ -221,6 +221,7 @@ def apply_content_filter(
     Returns:
         Filtered list of character dictionaries.
     """
+    validate_content_filter(content_filter)
     if not char_dicts or content_filter is None:
         return char_dicts
 
@@ -229,52 +230,199 @@ def apply_content_filter(
 
     # Handle different filter types
     if isinstance(content_filter, str):
-        # Single regex pattern - exclude matching characters
+        # Single regex pattern - remove matching text from each positioned
+        # character record. Native records normally contain one character,
+        # while synthetic/alt-text records may contain a longer string.
         try:
             pattern = re.compile(content_filter)
-            for char_dict in char_dicts:
-                text = char_dict.get("text", "")
-                if not pattern.search(text):
-                    filtered_chars.append(char_dict)
         except re.error as e:
-            logger.warning(
-                f"Invalid regex pattern '{content_filter}': {e}. Skipping content filtering."
-            )
-            return char_dicts
+            from natural_pdf.exceptions import ContentFilterError
+
+            raise ContentFilterError(
+                f"Invalid content_filter regular expression {content_filter!r}: {e}"
+            ) from e
+        for char_dict in char_dicts:
+            text = char_dict.get("text", "")
+            filtered_text = pattern.sub("", text)
+            if filtered_text == text:
+                filtered_chars.append(char_dict)
+            elif filtered_text:
+                filtered = dict(char_dict)
+                filtered["text"] = filtered_text
+                filtered_chars.append(filtered)
 
     elif isinstance(content_filter, list):
         # List of regex patterns - exclude characters matching ANY pattern
-        try:
-            patterns = [re.compile(p) for p in content_filter]
-            for char_dict in char_dicts:
-                text = char_dict.get("text", "")
-                if not any(pattern.search(text) for pattern in patterns):
-                    filtered_chars.append(char_dict)
-        except re.error as e:
-            logger.warning(f"Invalid regex pattern in list: {e}. Skipping content filtering.")
-            return char_dicts
+        patterns = []
+        for index, pattern_text in enumerate(content_filter):
+            if not isinstance(pattern_text, str):
+                raise TypeError(
+                    "content_filter list entries must be regular expression strings; "
+                    f"entry {index} is {type(pattern_text).__name__}"
+                )
+            try:
+                patterns.append(re.compile(pattern_text))
+            except re.error as e:
+                from natural_pdf.exceptions import ContentFilterError
+
+                raise ContentFilterError(
+                    "Invalid content_filter regular expression at "
+                    f"index {index} ({pattern_text!r}): {e}"
+                ) from e
+        for char_dict in char_dicts:
+            text = char_dict.get("text", "")
+            filtered_text = text
+            for pattern in patterns:
+                filtered_text = pattern.sub("", filtered_text)
+            if filtered_text == text:
+                filtered_chars.append(char_dict)
+            elif filtered_text:
+                filtered = dict(char_dict)
+                filtered["text"] = filtered_text
+                filtered_chars.append(filtered)
 
     elif callable(content_filter):
-        # Callable filter - keep characters where function returns True
-        try:
-            for char_dict in char_dicts:
-                text = char_dict.get("text", "")
-                if content_filter(text):
-                    filtered_chars.append(char_dict)
-        except Exception as e:
-            logger.warning(f"Error in content filter function: {e}. Skipping content filtering.")
-            return char_dicts
+        # Callable filter - keep characters where function returns True. Some
+        # synthetic records contain multiple characters, so evaluate each
+        # codepoint rather than passing an unexpected multi-character value.
+        for char_dict in char_dicts:
+            text = char_dict.get("text", "")
+            kept: List[str] = []
+            for character in text:
+                try:
+                    if content_filter(character):
+                        kept.append(character)
+                except Exception as e:
+                    from natural_pdf.exceptions import ContentFilterError
+
+                    raise ContentFilterError(
+                        f"content_filter callable failed while evaluating {character!r}: {e}"
+                    ) from e
+            filtered_text = "".join(kept)
+            if filtered_text == text:
+                filtered_chars.append(char_dict)
+            elif filtered_text:
+                filtered = dict(char_dict)
+                filtered["text"] = filtered_text
+                filtered_chars.append(filtered)
     else:
-        logger.warning(
-            f"Unsupported content_filter type: {type(content_filter)}. Skipping content filtering."
+        raise TypeError(
+            "content_filter must be a regular expression string, a list of regular "
+            f"expression strings, or a callable; received {type(content_filter).__name__}"
         )
-        return char_dicts
 
     filtered_count = initial_count - len(filtered_chars)
     if filtered_count > 0:
         logger.debug(f"Content filter removed {filtered_count} characters.")
 
     return filtered_chars
+
+
+def apply_content_filter_to_text(
+    text: str,
+    content_filter: Union[str, Callable[[str], bool], List[str], None],
+) -> str:
+    """Apply the public content-filter contract to a string.
+
+    Regex filters remove matching spans. Callable filters receive one character
+    at a time and return truthy values for characters that should be kept.
+    Invalid filters raise instead of returning potentially sensitive,
+    unfiltered text.
+    """
+    validate_content_filter(content_filter)
+    if not text or content_filter is None:
+        return text
+
+    from natural_pdf.exceptions import ContentFilterError
+
+    if isinstance(content_filter, str):
+        try:
+            return re.sub(content_filter, "", text)
+        except re.error as e:
+            raise ContentFilterError(
+                f"Invalid content_filter regular expression {content_filter!r}: {e}"
+            ) from e
+
+    if isinstance(content_filter, list):
+        result = text
+        for index, pattern_text in enumerate(content_filter):
+            if not isinstance(pattern_text, str):
+                raise TypeError(
+                    "content_filter list entries must be regular expression strings; "
+                    f"entry {index} is {type(pattern_text).__name__}"
+                )
+            try:
+                result = re.sub(pattern_text, "", result)
+            except re.error as e:
+                raise ContentFilterError(
+                    "Invalid content_filter regular expression at "
+                    f"index {index} ({pattern_text!r}): {e}"
+                ) from e
+        return result
+
+    if callable(content_filter):
+        filtered_chars = []
+        for char in text:
+            try:
+                keep = content_filter(char)
+            except Exception as e:
+                raise ContentFilterError(
+                    f"content_filter callable failed while evaluating {char!r}: {e}"
+                ) from e
+            if keep:
+                filtered_chars.append(char)
+        return "".join(filtered_chars)
+
+    raise TypeError(
+        "content_filter must be a regular expression string, a list of regular "
+        f"expression strings, or a callable; received {type(content_filter).__name__}"
+    )
+
+
+def validate_content_filter(
+    content_filter: Union[str, Callable[[str], bool], List[str], None],
+) -> None:
+    """Validate a content filter even when the extraction host has no text.
+
+    Empty pages/regions must not make invalid filter configuration appear valid;
+    otherwise behavior changes with document content. Callable failures can only
+    be observed when a character is evaluated, but their type is still checked.
+    """
+
+    if content_filter is None or callable(content_filter):
+        return
+
+    from natural_pdf.exceptions import ContentFilterError
+
+    if isinstance(content_filter, str):
+        try:
+            re.compile(content_filter)
+        except re.error as exc:
+            raise ContentFilterError(
+                f"Invalid content_filter regular expression {content_filter!r}: {exc}"
+            ) from exc
+        return
+
+    if isinstance(content_filter, list):
+        for index, pattern_text in enumerate(content_filter):
+            if not isinstance(pattern_text, str):
+                raise TypeError(
+                    "content_filter list entries must be regular expression strings; "
+                    f"entry {index} is {type(pattern_text).__name__}"
+                )
+            try:
+                re.compile(pattern_text)
+            except re.error as exc:
+                raise ContentFilterError(
+                    "Invalid content_filter regular expression at "
+                    f"index {index} ({pattern_text!r}): {exc}"
+                ) from exc
+        return
+
+    raise TypeError(
+        "content_filter must be a regular expression string, a list of regular "
+        f"expression strings, or a callable; received {type(content_filter).__name__}"
+    )
 
 
 def _create_alt_text_char_dict(region, source_label: str = "alt_text") -> Dict[str, Any]:
@@ -454,6 +602,12 @@ def generate_text_layout(
     Returns:
         String representation of the text, or (text, textmap) tuple when return_textmap=True.
     """
+    # Make a working copy before any empty-text short circuit so invalid
+    # content-filter configuration fails consistently on empty hosts.
+    incoming_kwargs = user_kwargs.copy() if user_kwargs else {}
+    content_filter = incoming_kwargs.pop("content_filter", None)
+    validate_content_filter(content_filter)
+
     # --- Filter out invalid char dicts early ---
     initial_count = len(char_dicts)
     valid_char_dicts = [c for c in char_dicts if isinstance(c.get("text"), str)]
@@ -467,11 +621,7 @@ def generate_text_layout(
         logger.debug("generate_text_layout: No valid character dicts found after filtering.")
         return ("", None) if return_textmap else ""
 
-    # Make a working copy of user_kwargs so we can safely pop custom keys
-    incoming_kwargs = user_kwargs.copy() if user_kwargs else {}
-
     # --- Apply content filtering if specified ---
-    content_filter = incoming_kwargs.pop("content_filter", None)
     if content_filter is not None:
         valid_char_dicts = apply_content_filter(valid_char_dicts, content_filter)
 
@@ -559,5 +709,7 @@ __all__ = [
     "generate_text_layout",
     "word_elements_to_textmap_char_dicts",
     "apply_content_filter",
+    "apply_content_filter_to_text",
+    "validate_content_filter",
     "apply_bidi_processing",
 ]

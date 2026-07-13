@@ -5,6 +5,7 @@ import logging
 import os
 import re
 from collections.abc import Iterable, Mapping
+from contextvars import ContextVar
 from pathlib import Path
 from types import MethodType
 from typing import (
@@ -82,6 +83,7 @@ from natural_pdf.text.operations import (
 )
 from natural_pdf.text.operations import normalize_whitespace as _normalize_whitespace
 from natural_pdf.text.operations import (
+    validate_content_filter,
     word_elements_to_textmap_char_dicts,
 )
 
@@ -90,6 +92,44 @@ from natural_pdf.text.operations import (
 # End Deskew Imports
 
 logger = logging.getLogger(__name__)
+
+
+class _RegionRegistryView(Mapping[str, Any]):
+    """Read-only compatibility view over the ElementManager Region repository.
+
+    ``Page._regions`` historically owned separate ``detected`` and ``named``
+    containers. Keeping those mutable containers synchronized with selector
+    storage caused duplicate and resurrected Regions. Private callers that
+    still inspect ``_regions`` receive fresh snapshots here; all mutations must
+    go through ``Page.add_region`` / ``Page.remove_regions``.
+    """
+
+    _KEYS = ("detected", "named")
+
+    def __init__(self, page: "Page") -> None:
+        self._page = page
+
+    def __getitem__(self, key: str) -> Any:
+        manager = getattr(self._page, "_element_mgr", None)
+        if manager is None:
+            if key == "named":
+                return {}
+            if key == "detected":
+                return []
+            raise KeyError(key)
+        if key == "named":
+            return manager.named_regions()
+        if key == "detected":
+            # The old list actually contained every unnamed registered Region,
+            # including checkbox, form-cell, manual, and OCR table regions.
+            return manager.unnamed_regions()
+        raise KeyError(key)
+
+    def __iter__(self):
+        return iter(self._KEYS)
+
+    def __len__(self) -> int:
+        return len(self._KEYS)
 
 
 class Page(
@@ -219,11 +259,9 @@ class Page(
 
         self.metadata: Dict[str, Any] = {}
 
-        # Region management
-        self._regions = {
-            "detected": [],  # Layout detection results
-            "named": {},  # Named regions (name -> region)
-        }
+        # Backward-compatible read-only view. ElementStore (through
+        # ElementManager) is the sole authoritative Region repository.
+        self._regions: Mapping[str, Any] = _RegionRegistryView(self)
 
         if not hasattr(self._parent, "_config"):
             raise AttributeError(
@@ -250,8 +288,38 @@ class Page(
         self._load_elements()
         self._to_image_cache: Dict[tuple, Optional["Image.Image"]] = {}
 
-        # Flag to prevent infinite recursion when computing exclusions
-        self._computing_exclusions = False
+        # Exclusion evaluation can recursively invoke find(). Keep the guard
+        # task/thread-local so one concurrent operation never suppresses
+        # exclusion filtering for another operation on the same Page.
+        self._exclusion_computation_depth: ContextVar[int] = ContextVar(
+            "natural_pdf_page_exclusion_computation_depth", default=0
+        )
+
+    def _get_exclusion_computation_depth(self) -> ContextVar[int]:
+        """Return this Page's task-local exclusion-evaluation depth.
+
+        The lazy branch preserves compatibility with tests and integrations
+        that construct a ``Page`` via ``Page.__new__`` before assigning the
+        legacy ``_computing_exclusions`` attribute.
+        """
+
+        depth = getattr(self, "_exclusion_computation_depth", None)
+        if depth is None:
+            depth = ContextVar("natural_pdf_page_exclusion_computation_depth", default=0)
+            self._exclusion_computation_depth = depth
+        return depth
+
+    @property
+    def _computing_exclusions(self) -> bool:
+        """Whether this task is currently evaluating exclusions for this Page."""
+
+        return self._get_exclusion_computation_depth().get() > 0
+
+    @_computing_exclusions.setter
+    def _computing_exclusions(self, value: bool) -> None:
+        """Retain legacy boolean assignment while storing it task-locally."""
+
+        self._get_exclusion_computation_depth().set(1 if value else 0)
 
     def _bump_text_state_version(self) -> None:
         self._text_state_version += 1
@@ -487,12 +555,12 @@ class Page(
         Yields:
             The page object with exclusions temporarily disabled.
         """
-        old_value = self._computing_exclusions
-        self._computing_exclusions = True
+        depth = self._get_exclusion_computation_depth()
+        token = depth.set(depth.get() + 1)
         try:
             yield self
         finally:
-            self._computing_exclusions = old_value
+            depth.reset(token)
 
     def add_region(
         self, region: "Region", name: Optional[str] = None, *, source: Optional[str] = None
@@ -512,22 +580,11 @@ class Page(
         if not isinstance(region, Region):
             raise TypeError("region must be a Region object")
 
-        # Respect an explicitly provided source, otherwise keep any existing label.
-        if source is not None:
-            region.source = source
-        elif getattr(region, "source", None) is None:
-            region.source = "named"
-
-        if name:
-            region.name = name
-            # Add to named regions dictionary (overwriting if name already exists)
-            self._regions["named"][name] = region
-        else:
-            # Add to detected regions list (unnamed but registered)
-            self._regions["detected"].append(region)
-
-        # Add to element manager for selector queries
-        self._element_mgr.add_region(region)
+        registration_name = name or None
+        # The manager assigns public name/source metadata together with the
+        # canonical registration key. A repeated name replaces the prior
+        # Region in place, and re-registering as unnamed clears both names.
+        self._element_mgr.add_region(region, name=registration_name, source=source)
 
         return self
 
@@ -773,11 +830,12 @@ class Page(
 
     def remove_regions_by_source(self, source: str) -> int:
         """Remove all registered regions that match the requested source."""
-        return int(self._element_mgr.remove_elements_by_source("regions", source))
+        return self.remove_regions(source=source)
 
     def remove_regions(
         self,
         *,
+        name: Optional[str] = None,
         source: Optional[str] = None,
         region_type: Optional[str] = None,
         predicate: Optional[Callable[["Region"], bool]] = None,
@@ -786,6 +844,7 @@ class Page(
         Remove regions from the page based on optional filters.
 
         Args:
+            name: Match the stable name used when the Region was registered.
             source: Match regions whose ``region.source`` equals this string.
             region_type: Match regions whose ``region.region_type`` equals this string.
             predicate: Additional callable that returns True when a region should be removed.
@@ -795,6 +854,8 @@ class Page(
         """
 
         def _matches(region: "Region") -> bool:
+            if name is not None and self._element_mgr.region_registry_name(region) != name:
+                return False
             if source is not None and getattr(region, "source", None) != source:
                 return False
             if region_type is not None and getattr(region, "region_type", None) != region_type:
@@ -803,38 +864,7 @@ class Page(
                 return False
             return True
 
-        removed_ids: set[int] = set()
-
-        # Remove from element manager store (the authoritative source for
-        # iter_regions / selector queries).  We must write back via _store.set
-        # because the .regions property returns a copy.
-        if hasattr(self, "_element_mgr"):
-            store = self._element_mgr._element_store()
-            current = store.get("regions", [])
-            if current:
-                filtered = [r for r in current if not _matches(r)]
-                removed_regions = [r for r in current if _matches(r)]
-                if removed_regions:
-                    self._element_mgr._store.set("regions", filtered)
-                    self._element_mgr._mark_content_mutated()
-                    removed_ids.update(id(region) for region in removed_regions)
-
-        # Remove from detected collection
-        detected = self._regions.get("detected", [])
-        if detected:
-            retained = [region for region in detected if not _matches(region)]
-            removed_ids.update(id(region) for region in detected if _matches(region))
-            self._regions["detected"] = retained
-
-        # Remove from named collection
-        named = self._regions.get("named", {})
-        if named:
-            keys_to_delete = [key for key, region in named.items() if _matches(region)]
-            for key in keys_to_delete:
-                removed_ids.add(id(named[key]))
-                del named[key]
-
-        return len(removed_ids)
+        return len(self._element_mgr.remove_regions(_matches))
 
     def _get_exclusion_regions(self, include_callable=True, debug=False) -> List["Region"]:
         """
@@ -1726,6 +1756,7 @@ class Page(
             y_density,
         )
         debug = debug_exclusions
+        validate_content_filter(content_filter)
 
         # 1. Get Word Elements (triggers load_elements if needed)
         word_elements = self.words
@@ -1742,10 +1773,13 @@ class Page(
                 return ""
             # Generate text from alt_text regions only
             page_bbox = (0, 0, self.width, self.height)
+            alt_text_kwargs = {"layout": layout}
+            if content_filter is not None:
+                alt_text_kwargs["content_filter"] = content_filter
             result = generate_text_layout(
                 char_dicts=alt_char_dicts,
                 layout_context_bbox=page_bbox,
-                user_kwargs={"layout": layout},
+                user_kwargs=alt_text_kwargs,
             )
             if return_textmap:
                 return result, None
@@ -2417,8 +2451,8 @@ class Page(
         Removes all regions from this page that were added by layout analysis
         (i.e., regions where `source` attribute is 'detected').
 
-        This clears the regions both from the page's internal `_regions['detected']` list
-        and from the ElementManager's internal list of regions.
+        The ElementManager repository is authoritative; the compatibility
+        ``page._regions`` view reflects the removal automatically.
 
         Returns:
             Self for method chaining.

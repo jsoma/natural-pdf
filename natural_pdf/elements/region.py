@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping as MappingABC
 from collections.abc import Sequence as SequenceABC
+from contextvars import ContextVar, Token
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
@@ -37,9 +38,13 @@ from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
 from natural_pdf.core.geometry_mixin import RegionGeometryMixin
 from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
 from natural_pdf.core.mixins import SinglePageContextMixin
+from natural_pdf.core.navigation_context import (
+    reset_directional_within,
+    set_directional_within,
+)
 from natural_pdf.core.ocr_mixin import OCRDirectTargetMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
-from natural_pdf.elements.base import DirectionalMixin, extract_bbox
+from natural_pdf.elements.base import DirectionalMixin, _get_directional_option, extract_bbox
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.ocr.replacement import OCRReplaceMode, normalize_ocr_replace_mode
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
@@ -57,8 +62,10 @@ from natural_pdf.tables.result import TableResult
 from natural_pdf.text.operations import (
     _create_alt_text_char_dict,
     apply_bidi_processing,
+    apply_content_filter_to_text,
     filter_chars_spatially,
     generate_text_layout,
+    validate_content_filter,
     word_elements_to_textmap_char_dicts,
 )
 
@@ -113,21 +120,26 @@ class RegionContext:
             region: The Region to use as a constraint for directional operations
         """
         self.region = region
-        self.previous_within: Optional["Region"] = None
+        # The context-manager object itself may be reused by independent
+        # threads/tasks. Keep its nesting stack local to each execution
+        # context so one exit can never reset another task's token.
+        self._tokens: ContextVar[Tuple[Token[Optional["Region"]], ...]] = ContextVar(
+            "natural_pdf_region_context_tokens", default=()
+        )
 
     def __enter__(self):
-        """Enter the context, setting the global directional_within option."""
-        layout_options = _layout_options()
-
-        self.previous_within = layout_options.directional_within
-        layout_options.directional_within = self.region
+        """Enter the context, setting a task-local directional constraint."""
+        tokens = self._tokens.get()
+        self._tokens.set((*tokens, set_directional_within(self.region)))
         return self.region
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Exit the context, restoring the previous directional_within option."""
-        layout_options = _layout_options()
-
-        layout_options.directional_within = self.previous_within
+        """Exit the context, restoring the prior task-local constraint."""
+        tokens = self._tokens.get()
+        if not tokens:
+            raise RuntimeError("RegionContext exited without being entered")
+        reset_directional_within(tokens[-1])
+        self._tokens.set(tokens[:-1])
         return False  # Don't suppress exceptions
 
 
@@ -745,7 +757,7 @@ class Region(
 
         effective_offset = offset
         if effective_offset is None:
-            effective_offset = _layout_options().directional_offset
+            effective_offset = _get_directional_option(self, "directional_offset")
 
         # Delegate to the shared implementation on DirectionalMixin
         result = super()._direction(
@@ -1790,6 +1802,7 @@ class Region(
         # Validate granularity parameter
         if granularity not in ("chars", "words"):
             raise ValueError(f"granularity must be 'chars' or 'words', got '{granularity}'")
+        validate_content_filter(content_filter)
 
         # Handle legacy keyword arguments that Element.extract_text accepted for
         # compatibility with earlier APIs.
@@ -1813,9 +1826,10 @@ class Region(
 
         # Self short-circuit: if this region carries alt_text, return it directly
         if self.alt_text is not None:
+            result = apply_content_filter_to_text(self.alt_text, content_filter)
             if return_textmap:
-                return self.alt_text, None
-            return self.alt_text
+                return result, None
+            return result
 
         # Handle word-level extraction
         if granularity == "words":
@@ -1832,6 +1846,9 @@ class Region(
                     text_parts.append(word_text)
 
             result = " ".join(text_parts)
+
+            if content_filter is not None:
+                result = apply_content_filter_to_text(result, content_filter)
 
             # Apply newlines processing if requested
             if newlines is False:
@@ -2471,26 +2488,35 @@ class Region(
 
         Returns:
             List of child regions matching the selector
+
+        Raises:
+            SelectorParseError: If ``selector`` is malformed or unsupported.
+            SelectorMatchError: If evaluating the selector against a child fails.
         """
-        import logging
-
-        logger = logging.getLogger("natural_pdf.elements.region")
-
         if selector is None:
             return self.child_regions
 
-        # Use existing selector parser to filter
+        from natural_pdf.exceptions import SelectorMatchError, SelectorParseError
+
         try:
             selector_obj = parse_selector(selector)
-            filter_func = selector_to_filter_func(selector_obj)  # Removed region=self
+            filter_func = selector_to_filter_func(selector_obj)
+        except Exception as exc:
+            raise SelectorParseError(f"Invalid child-region selector {selector!r}: {exc}") from exc
+
+        try:
             matched = [child for child in self.child_regions if filter_func(child)]
-            logger.debug(
-                f"get_children: found {len(matched)} of {len(self.child_regions)} children matching '{selector}'"
-            )
-            return matched
-        except Exception as e:
-            logger.error(f"Error applying selector in get_children: {e}", exc_info=True)
-            return []  # Return empty list on error
+        except Exception as exc:
+            raise SelectorMatchError(
+                f"Failed to match child-region selector {selector!r}: {exc}"
+            ) from exc
+        logger.debug(
+            "get_children: found %s of %s children matching %r",
+            len(matched),
+            len(self.child_regions),
+            selector,
+        )
+        return matched
 
     def get_descendants(self, selector=None):
         """
@@ -2501,11 +2527,11 @@ class Region(
 
         Returns:
             List of descendant regions matching the selector
+
+        Raises:
+            SelectorParseError: If ``selector`` is malformed or unsupported.
+            SelectorMatchError: If evaluating the selector against a descendant fails.
         """
-        import logging
-
-        logger = logging.getLogger("natural_pdf.elements.region")
-
         from collections import deque
 
         all_descendants = []
@@ -2522,15 +2548,24 @@ class Region(
 
         # Filter by selector if provided
         if selector is not None:
+            from natural_pdf.exceptions import SelectorMatchError, SelectorParseError
+
             try:
                 selector_obj = parse_selector(selector)
-                filter_func = selector_to_filter_func(selector_obj)  # Removed region=self
+                filter_func = selector_to_filter_func(selector_obj)
+            except Exception as exc:
+                raise SelectorParseError(
+                    f"Invalid descendant-region selector {selector!r}: {exc}"
+                ) from exc
+
+            try:
                 matched = [desc for desc in all_descendants if filter_func(desc)]
-                logger.debug(f"get_descendants: filtered to {len(matched)} matching '{selector}'")
-                return matched
-            except Exception as e:
-                logger.error(f"Error applying selector in get_descendants: {e}", exc_info=True)
-                return []  # Return empty list on error
+            except Exception as exc:
+                raise SelectorMatchError(
+                    f"Failed to match descendant-region selector {selector!r}: {exc}"
+                ) from exc
+            logger.debug("get_descendants: filtered to %s matching %r", len(matched), selector)
+            return matched
 
         return all_descendants
 
@@ -2984,40 +3019,7 @@ class Region(
         Returns:
             Filtered text string
         """
-        if not text or content_filter is None:
-            return text
-
-        import re
-
-        if isinstance(content_filter, str):
-            # Single regex pattern - remove matching parts
-            try:
-                return re.sub(content_filter, "", text)
-            except re.error:
-                return text  # Invalid regex, return original
-
-        elif isinstance(content_filter, list):
-            # List of regex patterns - remove parts matching ANY pattern
-            try:
-                result = text
-                for pattern in content_filter:
-                    result = re.sub(pattern, "", result)
-                return result
-            except re.error:
-                return text  # Invalid regex, return original
-
-        elif callable(content_filter):
-            # Callable filter - apply to individual characters
-            try:
-                filtered_chars = []
-                for char in text:
-                    if content_filter(char):
-                        filtered_chars.append(char)
-                return "".join(filtered_chars)
-            except Exception:
-                return text  # Function error, return original
-
-        return text
+        return apply_content_filter_to_text(text, content_filter)
 
     # Interactive Viewer Support
 
@@ -3153,7 +3155,9 @@ class Region(
         """Context manager that constrains directional operations to this region.
 
         When used as a context manager, all directional navigation operations
-        (above, below, left, right) will be constrained to the bounds of this region.
+        (above, below, left, right) in the current thread/task will be constrained
+        to the bounds of this region. Nested contexts restore their outer constraint
+        even if the inner block raises an exception.
 
         Returns:
             RegionContext: A context manager that yields this region

@@ -562,13 +562,7 @@ class FormCellAnalyzer:
 
     def _remove_existing_regions(self):
         """Remove previously detected form_cell regions."""
-        existing = self._page.find_all("region[type=form_cell]")
-        if existing:
-            for r in existing:
-                try:
-                    self._page._regions.remove(r)
-                except (ValueError, AttributeError):
-                    pass
+        self._page.remove_regions(source="form_cell", region_type="form_cell")
 
     # --- CV helper methods ---
 

@@ -102,6 +102,29 @@ class SelectorMatchError(SelectorError):
     pass
 
 
+# --- Text Filtering Errors ---
+
+
+class ContentFilterError(NaturalPDFError):
+    """Raised when a content filter cannot be compiled or evaluated safely.
+
+    Content filters are commonly used to remove sensitive or unwanted text.
+    Silently ignoring a broken filter would return the unfiltered content, so
+    filter failures are surfaced to the caller instead.
+    """
+
+    pass
+
+
+# --- Exclusion Errors ---
+
+
+class ExclusionError(NaturalPDFError):
+    """Raised when an exclusion rule cannot be evaluated safely."""
+
+    pass
+
+
 # --- Configuration Errors ---
 
 

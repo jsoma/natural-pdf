@@ -39,7 +39,7 @@ from natural_pdf.elements.region import Region
 from natural_pdf.elements.text import TextElement
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
-from natural_pdf.text.operations import apply_content_filter
+from natural_pdf.text.operations import apply_content_filter, validate_content_filter
 from natural_pdf.utils.color_utils import format_color_value
 
 try:
@@ -765,6 +765,8 @@ class ElementCollection(
         Returns:
             Combined text from elements, potentially with layout-based spacing.
         """
+        validate_content_filter(content_filter)
+
         # Check if we have any elements at all
         if not self._elements:
             return ""

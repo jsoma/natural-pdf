@@ -2,6 +2,7 @@ import io
 import logging
 import os
 import ssl
+import threading
 import urllib.request
 import warnings
 import weakref
@@ -121,6 +122,111 @@ except ImportError:
 # --- Lazy Page List Helper --- #
 
 
+class _PageMaterializationState:
+    """Coordinate lazy Page construction for one parent PDF.
+
+    The parent owns this state, rather than individual views/slices, so every
+    route to an actual PDF page shares one construction lock and one close
+    boundary.
+    """
+
+    def __init__(self) -> None:
+        # Construction and named-region factories are one parent-owned critical
+        # section.  Per-page locks allow the classic cycle where page A's
+        # factory requests B while page B's factory requests A.  A single
+        # re-entrant lock keeps the materialization graph acyclic while still
+        # allowing a factory to re-enter the parent from its own thread.
+        self._materialization_lock = threading.RLock()
+        # Close coordination remains independent so close() can mark the
+        # boundary while construction holds the materialization lock, then
+        # wait for that active creation to decline publication.
+        self._condition = threading.Condition(threading.RLock())
+        self._in_progress_pages: Dict[int, "Page"] = {}
+        self._active_creations = 0
+        self._closing = False
+
+    def lock_for(self, actual_page_index: int) -> Any:
+        """Return the shared parent-owned materialization lock.
+
+        ``actual_page_index`` remains part of this private API for compatibility
+        with existing lazy-list callers, but all indices intentionally resolve
+        to the same lock.
+        """
+
+        del actual_page_index
+        return self._materialization_lock
+
+    def registry_lock(self) -> Any:
+        """Return the lock shared by page publication and factory registration."""
+
+        return self._materialization_lock
+
+    def begin_creation(self, parent_pdf: "PDF") -> None:
+        """Reserve the right to read an underlying page while the PDF is open."""
+        with self._condition:
+            parent_attrs = getattr(parent_pdf, "__dict__", {})
+            if (
+                self._closing
+                or bool(parent_attrs.get("_closed", False))
+                or ("_pdf" in parent_attrs and parent_attrs["_pdf"] is None)
+            ):
+                raise RuntimeError("Cannot load page: parent PDF has been closed.")
+            self._active_creations += 1
+
+    def mark_in_progress(self, actual_page_index: int, page: "Page") -> None:
+        with self._condition:
+            self._in_progress_pages[actual_page_index] = page
+
+    def in_progress_page(self, actual_page_index: int) -> Optional["Page"]:
+        with self._condition:
+            return self._in_progress_pages.get(actual_page_index)
+
+    def clear_in_progress(self, actual_page_index: int) -> None:
+        with self._condition:
+            self._in_progress_pages.pop(actual_page_index, None)
+
+    def abort_creation(self) -> None:
+        """Release a failed creation reservation without publishing anything."""
+        with self._condition:
+            self._release_creation_unlocked()
+
+    def complete_creation(
+        self,
+        parent_pdf: "PDF",
+        publish: Callable[[], None],
+    ) -> bool:
+        """Atomically choose publication-before-close or close-before-publication."""
+        with self._condition:
+            try:
+                parent_attrs = getattr(parent_pdf, "__dict__", {})
+                if (
+                    self._closing
+                    or bool(parent_attrs.get("_closed", False))
+                    or ("_pdf" in parent_attrs and parent_attrs["_pdf"] is None)
+                ):
+                    return False
+                publish()
+                return True
+            finally:
+                self._release_creation_unlocked()
+
+    def _release_creation_unlocked(self) -> None:
+        self._active_creations -= 1
+        if self._active_creations == 0:
+            self._condition.notify_all()
+
+    def begin_close(self) -> None:
+        """Reject new materialization and wait for active readers to finish."""
+        with self._condition:
+            self._closing = True
+            while self._active_creations:
+                self._condition.wait()
+
+    def is_closing(self) -> bool:
+        with self._condition:
+            return self._closing
+
+
 class _LazyPageList(Sequence["Page"]):
     """A lightweight, list-like object that lazily instantiates natural-pdf Page objects.
 
@@ -177,99 +283,124 @@ class _LazyPageList(Sequence["Page"]):
             self._indices = list(range(len(plumber_pdf.pages)))
             self._cache = [None] * len(plumber_pdf.pages)
 
+    _state_install_lock = threading.Lock()
+
+    def _materialization_state(self) -> _PageMaterializationState:
+        """Get the state shared by the parent list and every slice/view.
+
+        ``PDF`` installs this during initialization. The guarded fallback keeps
+        direct construction of ``_LazyPageList`` (used by compatibility tests
+        and downstream integrations) correct as well.
+        """
+        parent_attrs = getattr(self._parent_pdf, "__dict__", {})
+        state = parent_attrs.get("_page_materialization_state")
+        if isinstance(state, _PageMaterializationState):
+            return state
+
+        with self._state_install_lock:
+            parent_attrs = getattr(self._parent_pdf, "__dict__", {})
+            state = parent_attrs.get("_page_materialization_state")
+            if not isinstance(state, _PageMaterializationState):
+                state = _PageMaterializationState()
+                setattr(self._parent_pdf, "_page_materialization_state", state)
+            return state
+
+    def _assert_parent_open(self, state: _PageMaterializationState) -> None:
+        parent_attrs = getattr(self._parent_pdf, "__dict__", {})
+        if (
+            state.is_closing()
+            or bool(parent_attrs.get("_closed", False))
+            or ("_pdf" in parent_attrs and parent_attrs["_pdf"] is None)
+        ):
+            raise RuntimeError("Cannot load page: parent PDF has been closed.")
+
     # Internal helper -----------------------------------------------------
     def _create_page(self, index: int) -> "Page":
         """Create and cache a page at the given index within this list."""
-        cached: Optional["Page"] = self._cache[index]
-        if cached is None:
-            parent_attrs = getattr(self._parent_pdf, "__dict__", {})
-            parent_closed = bool(parent_attrs.get("_closed", False))
-            parent_pdf_cleared = "_pdf" in parent_attrs and parent_attrs["_pdf"] is None
-            if parent_closed or parent_pdf_cleared:
-                raise RuntimeError("Cannot load page: parent PDF has been closed.")
+        actual_page_index = self._indices[index]
+        state = self._materialization_state()
 
-            # Get the actual page index in the full PDF
-            actual_page_index = self._indices[index]
+        # A slice has its own local cache, but every actual index is synchronized
+        # by one parent lock. This makes all views converge on canonical Pages
+        # and prevents cross-page named-region factory lock cycles.
+        with state.lock_for(actual_page_index):
+            self._assert_parent_open(state)
 
-            # First check if this page is already cached in the parent PDF's main page list
-            if (
-                hasattr(self._parent_pdf, "_pages")
-                and hasattr(self._parent_pdf._pages, "_cache")
-                and actual_page_index < len(self._parent_pdf._pages._cache)
-                and self._parent_pdf._pages._cache[actual_page_index] is not None
-            ):
-                # Reuse the already-cached page from the parent PDF
-                # This ensures we get any exclusions that were already applied
-                cached = self._parent_pdf._pages._cache[actual_page_index]
-                self._cache[index] = cached
-                return cast("Page", cached)
+            # Directly-constructed lazy lists are supported even when their
+            # lightweight parent does not expose a main ``_pages`` cache.
+            cached = self._cache[index]
+            if cached is not None:
+                return cached
 
-            # Import here to avoid circular import problems
-            from natural_pdf.core.page import Page
+            # A named-region callback may re-enter this exact Page while its
+            # post-construction regions are being attached.
+            in_progress = state.in_progress_page(actual_page_index)
+            if in_progress is not None:
+                return in_progress
 
-            # Create new page
-            plumber_page = self._plumber_pdf.pages[actual_page_index]
-            cached = Page(
-                plumber_page,
-                parent=self._parent_pdf,
-                index=actual_page_index,
-                font_attrs=self._font_attrs,
-                load_text=self._load_text,
-                context=self._parent_pdf._context,
-            )
+            parent_pages = getattr(self._parent_pdf, "_pages", None)
+            parent_cache = getattr(parent_pages, "_cache", None)
+            if parent_cache is not None and actual_page_index < len(parent_cache):
+                cached = parent_cache[actual_page_index]
+                if cached is not None:
+                    self._cache[index] = cached
+                    return cast("Page", cached)
 
-            # Check if the parent PDF already has a cached page with page-specific exclusions
-            if hasattr(self._parent_pdf, "_pages") and hasattr(self._parent_pdf._pages, "_cache"):
-                parent_cache = self._parent_pdf._pages._cache
-                if actual_page_index < len(parent_cache):
-                    existing_page = parent_cache[actual_page_index]
-                    if existing_page is not None and getattr(existing_page, "_exclusions", None):
-                        for exclusion_data in existing_page._exclusions:
-                            exclusion_item = exclusion_data[0]
-                            if not callable(exclusion_item):
-                                try:
-                                    label = exclusion_data[1] if len(exclusion_data) >= 2 else None
-                                    method = (
-                                        exclusion_data[2] if len(exclusion_data) >= 3 else "region"
-                                    )
-                                    cached.add_exclusion(
-                                        exclusion_item,
-                                        label=label,
-                                        method=method,
-                                    )
-                                except Exception as e:
-                                    logger.warning(
-                                        f"Failed to copy page-specific exclusion to page {cached.number}: {e}"
-                                    )
+            state.begin_creation(self._parent_pdf)
+            created_page: Optional["Page"] = None
+            try:
+                # Import here to avoid circular import problems.
+                from natural_pdf.core.page import Page
 
-            # Apply any stored regions to the newly created page
-            if hasattr(self._parent_pdf, "_regions"):
-                for region_data in self._parent_pdf._regions:
-                    region_func, name = region_data
-                    try:
-                        region_instance = region_func(cached)
-                        if region_instance and hasattr(region_instance, "__class__"):
-                            # Check if it's a Region-like object (avoid importing Region here)
-                            cached.add_region(region_instance, name=name, source="named")
-                        elif region_instance is not None:
+                plumber_page = self._plumber_pdf.pages[actual_page_index]
+                created_page = Page(
+                    plumber_page,
+                    parent=self._parent_pdf,
+                    index=actual_page_index,
+                    font_attrs=self._font_attrs,
+                    load_text=self._load_text,
+                    context=self._parent_pdf._context,
+                )
+                state.mark_in_progress(actual_page_index, created_page)
+
+                # Apply stored named regions before the canonical Page is made
+                # observable through any list view.
+                if hasattr(self._parent_pdf, "_regions"):
+                    for region_data in self._parent_pdf._regions:
+                        region_func, name = region_data
+                        try:
+                            region_instance = region_func(created_page)
+                            if region_instance and hasattr(region_instance, "__class__"):
+                                created_page.add_region(region_instance, name=name, source="named")
+                            elif region_instance is not None:
+                                logger.warning(
+                                    f"Region function did not return a valid Region for page "
+                                    f"{created_page.number}"
+                                )
+                        except Exception as e:
                             logger.warning(
-                                f"Region function did not return a valid Region for page {cached.number}"
+                                f"Failed to apply region to page {created_page.number}: {e}"
                             )
-                    except Exception as e:
-                        logger.warning(f"Failed to apply region to page {cached.number}: {e}")
+            except BaseException:
+                state.clear_in_progress(actual_page_index)
+                state.abort_creation()
+                raise
+            state.clear_in_progress(actual_page_index)
 
-            self._cache[index] = cached
+            if created_page is None:  # pragma: no cover - defensive type narrowing
+                state.abort_creation()
+                raise RuntimeError("Unable to create page.")
 
-            # Also cache in the parent PDF's main page list if this is a slice
-            if (
-                hasattr(self._parent_pdf, "_pages")
-                and hasattr(self._parent_pdf._pages, "_cache")
-                and actual_page_index < len(self._parent_pdf._pages._cache)
-                and self._parent_pdf._pages._cache[actual_page_index] is None
-            ):
-                self._parent_pdf._pages._cache[actual_page_index] = cached
+            # The parent cache is authoritative; a slice only retains a local
+            # pointer to that canonical object.
+            def publish() -> None:
+                if parent_cache is not None and actual_page_index < len(parent_cache):
+                    parent_cache[actual_page_index] = created_page
+                self._cache[index] = created_page
 
-        return cast("Page", cached)
+            if not state.complete_creation(self._parent_pdf, publish):
+                raise RuntimeError("Cannot load page: parent PDF has been closed.")
+            return created_page
 
     # Sequence protocol ---------------------------------------------------
     def __len__(self) -> int:
@@ -614,6 +745,10 @@ class PDF(
         self.highlighter: HighlightingService = HighlightingService(self)
         self._manager_factories: ManagerFactories = {}
         self._managers: ManagerCache = {}
+        # All lazy-list views share this parent-owned materialization state.
+        # It is initialized before ``_pages`` so slices can never create an
+        # independent cache/lock domain.
+        self._page_materialization_state = _PageMaterializationState()
 
         # Lazily instantiate pages only when accessed
         self._pages: _LazyPageList = _LazyPageList(
@@ -942,23 +1077,29 @@ class PDF(
             raise AttributeError("PDF pages not yet initialized.")
 
         region_data = (region_func, name)
-        self._regions.append(region_data)
+        state = self._page_materialization_state
+        # Registry append, cached-page application, Page construction, factory
+        # execution, and publication share one ordering boundary.  Therefore a
+        # concurrent Page either sees this registry entry while constructing or
+        # is published early enough to receive it in the cached-page pass.
+        with state.registry_lock():
+            self._regions.append(region_data)
 
-        # Apply only to already-created (cached) pages to avoid forcing page creation
-        for i in range(len(self._pages)):
-            cached_page = self._pages._cache[i]
-            if cached_page is None:
-                continue
-            try:
-                region_instance = region_func(cached_page)
-                if region_instance and isinstance(region_instance, Region):
-                    cached_page.add_region(region_instance, name=name, source="named")
-                elif region_instance is not None:
-                    logger.warning(
-                        f"Region function did not return a valid Region for page {cached_page.number}"
-                    )
-            except Exception as e:
-                logger.error(f"Error adding region for page {cached_page.number}: {e}")
+            # Apply only to already-created (cached) pages to avoid forcing page creation
+            for i in range(len(self._pages)):
+                cached_page = self._pages._cache[i]
+                if cached_page is None:
+                    continue
+                try:
+                    region_instance = region_func(cached_page)
+                    if region_instance and isinstance(region_instance, Region):
+                        cached_page.add_region(region_instance, name=name, source="named")
+                    elif region_instance is not None:
+                        logger.warning(
+                            f"Region function did not return a valid Region for page {cached_page.number}"
+                        )
+                except Exception as e:
+                    logger.error(f"Error adding region for page {cached_page.number}: {e}")
 
         return self
 
@@ -1821,6 +1962,11 @@ class PDF(
 
     def close(self):
         """Close the underlying PDF file and clean up any temporary files."""
+        materialization_state = getattr(self, "_page_materialization_state", None)
+        if isinstance(materialization_state, _PageMaterializationState):
+            # Do not let pdfplumber close its file while a lazy Page is reading
+            # from it. New access attempts observe the closing boundary.
+            materialization_state.begin_close()
         self._closed = True
         # Delegate to the weakref finalizer which handles closing pdfplumber
         # and cleaning up temp files. Calling it marks it as dead, so

@@ -19,6 +19,11 @@ import logging
 import re
 from typing import Any, Dict, List
 
+from natural_pdf.exceptions import (
+    SelectorError,
+    SelectorMatchError,
+    SelectorParseError,
+)
 from natural_pdf.selectors.registry import (
     ClauseEvalContext,
     register_post_pseudo,
@@ -46,8 +51,16 @@ def _resolve_reference_elements(ctx: ClauseEvalContext, selector: Any) -> List[A
 
     try:
         collection = host.find_all(selector=selector_str, **find_kwargs)
-    except Exception:  # pragma: no cover - defensive
-        return []
+    except SelectorError:
+        raise
+    except ValueError as exc:
+        raise SelectorParseError(
+            f"Invalid relational reference selector {selector_str!r}: {exc}"
+        ) from exc
+    except Exception as exc:
+        raise SelectorMatchError(
+            f"Failed to resolve relational reference selector {selector_str!r}: {exc}"
+        ) from exc
 
     if collection is None:
         return []
@@ -223,8 +236,8 @@ def _post_nth(elements: List[Any], pseudo: Dict[str, Any], _ctx: ClauseEvalConte
         return elements
     try:
         idx = int(args)
-    except (TypeError, ValueError):
-        return elements
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f":nth requires an integer argument, got {args!r}") from exc
     if not elements:
         return []
     try:
@@ -252,8 +265,10 @@ def _post_slice(elements: List[Any], pseudo: Dict[str, Any], _ctx: ClauseEvalCon
         try:
             stop = int(args)
             return elements[:stop]
-        except (TypeError, ValueError):
-            return elements
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f":slice requires integer start/stop/step arguments, got {args!r}"
+            ) from exc
     return elements
 
 
@@ -265,8 +280,8 @@ def _post_limit(elements: List[Any], pseudo: Dict[str, Any], _ctx: ClauseEvalCon
         return elements
     try:
         n = int(args)
-    except (TypeError, ValueError):
-        return elements
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f":limit requires an integer argument, got {args!r}") from exc
     if n < 0:
         return elements
     return elements[:n]

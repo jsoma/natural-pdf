@@ -487,11 +487,19 @@ def run_ocr_engine(
     """Backward compatible helper that executes OCR on provided image(s)."""
 
     options = normalize_ocr_options(options, engine_name=engine_name)
+    constructor_options = _provider_constructor_options(
+        engine_name=engine_name,
+        languages=languages,
+        device=device,
+        options=options,
+    )
     provider = get_provider()
     try:
-        engine = provider.get("ocr.extract", context=context, name=engine_name)
+        engine = provider.get(
+            "ocr.extract", context=context, name=engine_name, **constructor_options
+        )
     except LookupError:
-        engine = provider.get("ocr", context=context, name=engine_name)
+        engine = provider.get("ocr", context=context, name=engine_name, **constructor_options)
     lock = _get_engine_inference_lock(engine_name)
     with lock:
         return engine.process_image(
@@ -561,9 +569,20 @@ def _call_engine(
     detect_only: bool,
     options: Optional[BaseOCROptions],
 ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
-    provider = get_provider()
-    engine = provider.get(capability, context=context, name=engine_name)
     options = normalize_ocr_options(options, engine_name=engine_name)
+    constructor_options = _provider_constructor_options(
+        engine_name=engine_name,
+        languages=languages,
+        device=device,
+        options=options,
+    )
+    provider = get_provider()
+    engine = provider.get(
+        capability,
+        context=context,
+        name=engine_name,
+        **constructor_options,
+    )
 
     lock = _get_engine_inference_lock(engine_name)
     with lock:
@@ -575,6 +594,36 @@ def _call_engine(
             detect_only=detect_only,
             options=options,
         )
+
+
+def _provider_constructor_options(
+    *,
+    engine_name: str,
+    languages: Optional[List[str]],
+    device: Optional[str],
+    options: Optional[BaseOCROptions],
+) -> Dict[str, Any]:
+    """Build provider kwargs without widening provider-only factory contracts."""
+
+    constructor_options: Dict[str, Any] = {}
+    try:
+        from natural_pdf.ocr.unified_dispatch import get_registry
+
+        entry = get_registry().get(engine_name.strip().lower())
+        public_custom = (
+            entry is not None
+            and entry.engine_type == "classic_provider"
+            and entry.provider_init_options
+        )
+    except Exception:  # pragma: no cover - defensive around optional dispatch imports
+        public_custom = False
+
+    if options is not None or public_custom:
+        constructor_options["options"] = options
+    if public_custom:
+        constructor_options["languages"] = list(languages or ["en"])
+        constructor_options["device"] = device or "auto"
+    return constructor_options
 
 
 def _normalize_engine_output(
@@ -597,28 +646,28 @@ def cleanup_engine(engine_name: Optional[str] = None) -> int:
     """Clean up OCR engine instances from the provider cache and unified cache."""
     provider = get_provider()
     cleaned = 0
-    targets = [engine_name.lower()] if engine_name else list(ENGINE_REGISTRY.keys())
+    if engine_name:
+        targets = [engine_name.lower()]
+    else:
+        targets = list(ENGINE_REGISTRY.keys())
+        for capability in ("ocr", "ocr.apply", "ocr.extract"):
+            targets.extend(provider.list(capability).get(capability, ()))
+        targets = list(dict.fromkeys(targets))
 
     for target in targets:
         # Remove from provider's instance cache for all OCR capabilities
         for capability in ("ocr", "ocr.apply", "ocr.extract"):
-            key = (capability, target)
-            engine = provider._instances.pop(key, None)
-            if engine is not None:
-                cleanup_fn = getattr(engine, "cleanup", None)
-                if callable(cleanup_fn):
-                    try:
-                        cleanup_fn()
-                    except Exception:  # pragma: no cover
-                        logger.debug("Cleanup for OCR engine %s failed", target)
-                cleaned += 1
+            cleaned += provider.evict(capability, target)
         _engine_inference_locks.pop(target, None)
 
     # Also clear the unified dispatch cache
     try:
         from natural_pdf.ocr.unified_dispatch import get_engine_cache
 
-        cleaned += get_engine_cache().clear()
+        if engine_name:
+            cleaned += get_engine_cache().invalidate(engine_name)
+        else:
+            cleaned += get_engine_cache().clear()
     except Exception:  # pragma: no cover
         pass
 

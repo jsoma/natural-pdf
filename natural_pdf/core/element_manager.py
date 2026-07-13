@@ -155,7 +155,7 @@ class ElementManager:
         if not self._store.is_populated():
             return {}
 
-        store = self._store.data_view()
+        store = self._store.mapping_snapshot()
         words = list(store.get("words", []))
         preserved_words = [
             word
@@ -182,8 +182,6 @@ class ElementManager:
         preserved: Dict[str, List[Any]] = {
             "words": preserved_words,
             "chars": preserved_chars,
-            # Regions are synthetic registry entries, never raw pdfplumber objects.
-            "regions": list(store.get("regions", [])),
         }
         for kind in ("rects", "lines", "images"):
             preserved[kind] = [
@@ -242,7 +240,7 @@ class ElementManager:
 
         preserved_words = list(preserved.get("words", []))
         self._extend_unique(elements_data["words"], preserved_words)
-        for kind in ("rects", "lines", "images", "regions"):
+        for kind in ("rects", "lines", "images"):
             self._extend_unique(elements_data[kind], list(preserved.get(kind, [])))
 
         preserved_chars = list(preserved.get("chars", []))
@@ -294,6 +292,12 @@ class ElementManager:
     def _populate_store(self) -> None:
         logger.debug(f"Page {self._page.number}: Loading elements...")
 
+        # Registered Regions are repository state, not a derivative of the
+        # native pdfplumber element cache.  Ordinary invalidation retains this
+        # key in ElementStore, so reload can preserve exact object identities
+        # without consulting a second Page-level registry.
+        registered_regions = list(self._store.snapshot("regions"))
+
         # 1. Prepare character dictionaries only if loading text
         if self._load_text:
             native_chars = getattr(self._page._page, "chars", []) or []
@@ -335,24 +339,14 @@ class ElementManager:
             "rects": rect_elements,
             "lines": line_elements,
             "images": image_elements,
+            "regions": registered_regions,
         }
-
-        if hasattr(self._page, "_regions") and (
-            "detected" in self._page._regions
-            or "named" in self._page._regions
-            or "checkbox" in self._page._regions
-        ):
-            regions = []
-            if "detected" in self._page._regions:
-                regions.extend(self._page._regions["detected"])
-            if "named" in self._page._regions:
-                regions.extend(self._page._regions["named"].values())
-            if "checkbox" in self._page._regions:
-                regions.extend(self._page._regions["checkbox"])
-            elements_data["regions"] = regions
-            logger.debug(f"Page {self._page.number}: Added {len(regions)} regions.")
-        else:
-            elements_data["regions"] = []
+        if registered_regions:
+            logger.debug(
+                "Page %s: Preserved %d registered regions.",
+                self._page.number,
+                len(registered_regions),
+            )
 
         prepared_char_dicts = self._merge_preserved_elements(elements_data, prepared_char_dicts)
         self._raw_char_dicts = prepared_char_dicts or None
@@ -664,29 +658,97 @@ class ElementManager:
             self._mark_content_mutated()
             return True
 
-    def add_region(self, region, name=None):
+    def add_region(self, region, name=None, *, source=None):
         """
         Add a region to the managed elements.
 
         Args:
             region: The region to add
             name: Optional name for the region
+            source: Optional provenance label. If omitted, an existing source is
+                retained and otherwise defaults to ``"named"``.
 
         Returns:
             True if added successfully, False otherwise
         """
-        store = self._element_store()
+        # Population, public selector metadata, and repository mutation form a
+        # single transaction. Otherwise invalidation can clear the freshly
+        # loaded store before append_unique marks a regions-only store loaded,
+        # or observers can see a new public name/source paired with an old key.
+        with self._store.transaction():
+            self.load_elements()
+            registration_name = name or None
+            prior_public_name = getattr(region, "name", None)
+            prior_source = getattr(region, "source", None)
+            prior_registry_name = self.region_registry_name(region)
 
-        # Make sure regions is in _elements
-        # Add to elements for selector queries
-        regions = list(store.get("regions", []))
-        if region not in regions:
-            regions.append(region)
-            self._store.set("regions", regions)
-            self._mark_content_mutated()
-            return True
+            if source is not None:
+                region.source = source
+            elif prior_source is None:
+                region.source = "named"
+            region.name = registration_name
 
-        return False
+            if registration_name is None:
+                setattr(region, "_natural_pdf_registry_name", None)
+                changed = self._store.append_unique("regions", region)
+                if prior_registry_name is not None and not changed:
+                    # Re-registering the same object without a name changes its
+                    # compatibility classification even though identity/order
+                    # in the canonical list stay unchanged.
+                    self._store.mark_dirty(["regions"])
+                    changed = True
+            else:
+                setattr(region, "_natural_pdf_registry_name", registration_name)
+                changed, _ = self._store.upsert(
+                    "regions",
+                    region,
+                    replace_if=lambda candidate: getattr(
+                        candidate, "_natural_pdf_registry_name", None
+                    )
+                    == registration_name,
+                )
+            metadata_changed = (
+                prior_public_name != registration_name
+                or prior_source != getattr(region, "source", None)
+                or prior_registry_name != registration_name
+            )
+            if metadata_changed and not changed:
+                self._store.mark_dirty(["regions"])
+                changed = True
+            if changed:
+                self._mark_content_mutated()
+            return changed
+
+    @staticmethod
+    def region_registry_name(region: Any) -> Optional[str]:
+        """Return the stable registration key for a named Region."""
+
+        name = getattr(region, "_natural_pdf_registry_name", None)
+        return str(name) if name is not None else None
+
+    def named_regions(self) -> Dict[str, Any]:
+        """Return a snapshot of registered named Regions keyed by name."""
+
+        return {
+            name: region
+            for region in self.regions
+            if (name := self.region_registry_name(region)) is not None
+        }
+
+    def unnamed_regions(self) -> List[Any]:
+        """Return a snapshot of registered Regions without a name key."""
+
+        return [region for region in self.regions if self.region_registry_name(region) is None]
+
+    def remove_regions(self, predicate: Callable[[Any], bool]) -> List[Any]:
+        """Atomically remove and return registered Regions matching ``predicate``."""
+
+        with self._store.transaction():
+            self.load_elements()
+            removed = list(self._store.remove_where("regions", predicate))
+            if removed:
+                self._mark_content_mutated()
+            return removed
 
     def get_elements(self, element_type=None):
         """
@@ -968,7 +1030,7 @@ class ElementManager:
             else:
                 self._preserved_elements = {}
             self._raw_char_dicts = None
-            self._store.clear()
+            self._store.clear(preserve_kinds=("regions",) if preserve_overlays else ())
             if had_content:
                 self._mark_content_mutated()
         logger.debug(f"Page {self._page.number}: ElementManager cache invalidated")
@@ -1236,6 +1298,8 @@ class ElementManager:
                 self._remove_text_members(store, words_to_remove=(element,))
             elif normalized_type == "chars":
                 self._remove_text_members(store, chars_to_remove=(element,))
+            elif normalized_type == "regions":
+                self._store.remove_where("regions", lambda candidate: candidate is element)
             else:
                 remaining = [item for item in store[normalized_type] if item is not element]
                 self._store.set(normalized_type, remaining)
@@ -1267,6 +1331,9 @@ class ElementManager:
                 self._remove_text_members(store, words_to_remove=selected)
             elif normalized_type == "chars":
                 self._remove_text_members(store, chars_to_remove=selected)
+            elif normalized_type == "regions":
+                selected_ids = {id(element) for element in selected}
+                self._store.remove_where("regions", lambda element: id(element) in selected_ids)
             else:
                 selected_ids = {id(element) for element in selected}
                 self._store.set(

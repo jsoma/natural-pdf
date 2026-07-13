@@ -30,10 +30,12 @@ logger = logging.getLogger(__name__)
 class EngineEntry:
     """Metadata for a registered OCR engine."""
 
-    engine_type: str  # "classic" | "vlm_shorthand" | "vlm_generic"
+    engine_type: str  # "classic" | "classic_provider" | "vlm_shorthand" | "vlm_generic"
 
     # Classic engines:
     provider: Optional[Any] = None  # OCREngine class or factory
+    # Public custom providers accept language/device constructor variants.
+    provider_init_options: bool = False
     options_class: Optional[Type[BaseOCROptions]] = None
 
     # VLM shorthand engines (dots, glm_ocr, chandra):
@@ -567,9 +569,11 @@ def _run_classic(
         effective_device = resolve_auto_device()
 
     if entry.engine_type == "classic_provider":
-        # Engine only exists in EngineProvider (e.g. test/plugin engines)
+        # Public custom engines and provider-only plugins are lifecycle-owned
+        # by EngineProvider rather than the built-in model LRU.
         return _run_via_provider(
             image=image,
+            entry=entry,
             engine_name=engine_name,
             languages=effective_languages,
             min_confidence=min_confidence,
@@ -644,6 +648,7 @@ def _run_classic(
 def _run_via_provider(
     *,
     image: Image.Image,
+    entry: EngineEntry,
     engine_name: str,
     languages: tuple,
     min_confidence: Optional[float],
@@ -652,18 +657,49 @@ def _run_via_provider(
     options: Optional[BaseOCROptions],
     context: Any,
 ) -> OCRRunResult:
-    """Fallback: run OCR via EngineProvider for engines not in unified registry."""
+    """Run a provider-owned classic engine with constructor options intact."""
     from natural_pdf.engine_provider import get_provider
 
     provider = get_provider()
-    try:
-        engine = provider.get("ocr.apply", context=context, name=engine_name)
-    except LookupError:
-        engine = provider.get("ocr", context=context, name=engine_name)
+    constructor_options: Dict[str, Any] = {}
+    if options is not None or entry.provider_init_options:
+        constructor_options["options"] = options
 
-    lock = _get_inference_lock(engine_name)
-    with lock:
-        raw_output = engine.process_image(
+    # Public register_ocr_engine factories are wrapped to accept these inputs,
+    # which makes language/device model variants part of provider identity.
+    # Provider-only registrations keep their existing factory contract and
+    # receive only the explicit normalized options object.
+    if entry.provider_init_options:
+        constructor_options["languages"] = list(languages)
+        constructor_options["device"] = device
+
+    try:
+        engine = provider.get(
+            "ocr.apply",
+            context=context,
+            name=engine_name,
+            **constructor_options,
+        )
+    except LookupError:
+        engine = provider.get(
+            "ocr",
+            context=context,
+            name=engine_name,
+            **constructor_options,
+        )
+
+    # Public custom wrappers validate before EngineProvider caches the instance.
+    # Provider-only registrations still need the dispatch-level availability check.
+    if not entry.provider_init_options:
+        is_available = getattr(engine, "is_available", None)
+        if callable(is_available) and not is_available():
+            hint = entry.install_hint or f"pip install {engine_name}"
+            raise RuntimeError(
+                f"OCR engine {engine_name!r} is not available. Install it with: {hint}"
+            )
+
+    def process():
+        return engine.process_image(
             image,
             languages=list(languages),
             min_confidence=min_confidence,
@@ -671,6 +707,13 @@ def _run_via_provider(
             detect_only=detect_only,
             options=options,
         )
+
+    if entry.needs_gpu_lock:
+        lock = _get_inference_lock(engine_name)
+        with lock:
+            raw_output = process()
+    else:
+        raw_output = process()
 
     results = _normalize_engine_output(raw_output)
     return OCRRunResult(results=results, image_size=image.size, engine_type="classic")

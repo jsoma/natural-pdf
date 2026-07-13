@@ -25,6 +25,7 @@ import natural_pdf
 from natural_pdf.classification.accessors import ClassificationResultAccessorMixin
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.interfaces import Bounds, SupportsBBox, SupportsGeometry
+from natural_pdf.core.navigation_context import get_directional_within
 from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 
 # Import selector parsing functions
@@ -68,6 +69,43 @@ class _ImageConfig(Protocol):
 
 def _get_layout_config() -> _LayoutConfig:
     return cast(_LayoutConfig, natural_pdf.options.layout)
+
+
+def _get_directional_context(host: Any) -> Optional[PDFContext]:
+    """Return the host's PDF context, falling back to its owning Page.
+
+    Directional defaults belong to a PDFContext when one is available, so two
+    PDFs can use different navigation policies in the same process.  Objects
+    created outside a PDF retain the long-standing process-global option
+    fallback.
+    """
+
+    context = getattr(host, "_context", None)
+    if isinstance(context, PDFContext):
+        return context
+
+    page = getattr(host, "page", None)
+    context = getattr(page, "_context", None)
+    return context if isinstance(context, PDFContext) else None
+
+
+def _get_directional_option(host: Any, key: str) -> Any:
+    """Resolve a layout option as PDFContext, host, then global fallback."""
+
+    global_default = getattr(_get_layout_config(), key)
+    context = _get_directional_context(host)
+    if context is None:
+        return global_default
+    return context.get_option("layout", key, host=host, default=global_default)
+
+
+def _get_directional_within(host: Any) -> Optional["Region"]:
+    """Resolve explicit temporary, contextual, then global navigation bounds."""
+
+    temporary_constraint = get_directional_within()
+    if temporary_constraint is not None:
+        return temporary_constraint
+    return cast(Optional["Region"], _get_directional_option(host, "directional_within"))
 
 
 def extract_bbox(obj: SupportsBBox | Mapping[str, Any] | Sequence[float]) -> Optional[Bounds]:
@@ -218,9 +256,8 @@ class DirectionalMixin:
 
         is_horizontal = direction in ("left", "right")
         is_positive = direction in ("right", "below")  # right/below are positive directions
-        pixel_offset = offset  # Use provided offset for excluding elements/endpoints
-        layout_config = _get_layout_config()
         host = cast(_DirectionalHost, self)
+        pixel_offset = offset  # Use provided offset for excluding elements/endpoints
 
         # initialise optional coordinate holders to satisfy static checkers
         x0_initial = x1_initial = host.x0
@@ -316,8 +353,9 @@ class DirectionalMixin:
         if until:
             from natural_pdf.elements.element_collection import ElementCollection
 
-            # Get constraint region (from parameter or global options)
-            constraint_region = within or layout_config.directional_within
+            # An explicit argument takes precedence over task-local/contextual
+            # defaults.  ``Region.within()`` is task-local rather than global.
+            constraint_region = within or _get_directional_within(host)
 
             # Check if until uses :closest selector (preserve ordering)
             preserve_order = isinstance(until, str) and ":closest" in until
@@ -492,8 +530,8 @@ class DirectionalMixin:
         final_y1 = max(bbox[1], bbox[3])
         final_bbox = (final_x0, final_y0, final_x1, final_y1)
 
-        # 4.5. Apply within constraint if provided (or from global options)
-        constraint_region = within or layout_config.directional_within
+        # 4.5. Apply an explicit or resolved within constraint.
+        constraint_region = within or _get_directional_within(host)
         if constraint_region:
             # Ensure constraint is on same page
             if hasattr(constraint_region, "page") and constraint_region.page != host.page:
@@ -513,9 +551,9 @@ class DirectionalMixin:
             final_bbox = (final_x0, final_y0, final_x1, final_y1)
 
         # 5. Check if multipage is needed
-        # Use global default if not explicitly set
+        # Use the PDFContext default if available, otherwise global options.
         if multipage is None:
-            use_multipage = layout_config.auto_multipage
+            use_multipage = _get_directional_option(host, "auto_multipage")
         else:
             use_multipage = multipage
 
@@ -769,10 +807,9 @@ class DirectionalMixin:
             signature.above(until='text:contains("Date")')  # Region from date to signature
             ```
         """
-        layout_config = _get_layout_config()
-        # Use global default if offset not provided
+        # Use PDFContext defaults, then legacy global options.
         if offset is None:
-            offset = layout_config.directional_offset
+            offset = _get_directional_option(self, "directional_offset")
 
         return self._direction(
             direction="above",
@@ -835,10 +872,9 @@ class DirectionalMixin:
             header.below(height=200)  # Gets 200pt tall region below header
             ```
         """
-        layout_config = _get_layout_config()
-        # Use global default if offset not provided
+        # Use PDFContext defaults, then legacy global options.
         if offset is None:
-            offset = layout_config.directional_offset
+            offset = _get_directional_option(self, "directional_offset")
 
         return self._direction(
             direction="below",
@@ -901,10 +937,9 @@ class DirectionalMixin:
             table.left(height=100)  # Gets 100pt tall region to the left
             ```
         """
-        layout_config = _get_layout_config()
-        # Use global default if offset not provided
+        # Use PDFContext defaults, then legacy global options.
         if offset is None:
-            offset = layout_config.directional_offset
+            offset = _get_directional_option(self, "directional_offset")
 
         return self._direction(
             direction="left",
@@ -967,10 +1002,9 @@ class DirectionalMixin:
             label.right(height=50)  # Gets 50pt tall region to the right
             ```
         """
-        layout_config = _get_layout_config()
-        # Use global default if offset not provided
+        # Use PDFContext defaults, then legacy global options.
         if offset is None:
-            offset = layout_config.directional_offset
+            offset = _get_directional_option(self, "directional_offset")
 
         return self._direction(
             direction="right",
