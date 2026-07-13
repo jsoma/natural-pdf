@@ -22,6 +22,10 @@ from natural_pdf.services.registry import register_delegate
 
 DEFAULT_STRUCTURED_KEY = "structured"
 
+_PROVENANCE_INCOMPATIBLE_TEXT_OPTIONS = frozenset(
+    {"newlines", "whitespace", "strip", "bidi", "content_filter"}
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -128,6 +132,19 @@ class ExtractionService:
     # ------------------------------------------------------------------ #
     # Helpers
     # ------------------------------------------------------------------ #
+    @staticmethod
+    def _validate_provenance_text_options(kwargs: Dict[str, Any]) -> None:
+        """Reject text transforms that would invalidate raw provenance offsets."""
+
+        incompatible = sorted(_PROVENANCE_INCOMPATIBLE_TEXT_OPTIONS.intersection(kwargs))
+        if incompatible:
+            names = ", ".join(incompatible)
+            raise TypeError(
+                "Citation provenance requires raw text, so text transform options "
+                f"cannot be used with citations=True: {names}. "
+                "Remove these options or set citations=False."
+            )
+
     @staticmethod
     def _ensure_analyses(host):
         if not hasattr(host, "analyses") or getattr(host, "analyses") is None:
@@ -416,32 +433,50 @@ class ExtractionService:
             )
             use_citations = False
 
-        # Citations require textmap provenance (text mode only)
+        # Citations require structured text provenance (text mode only).
         need_textmap = use_citations and using == "text"
         need_meta = use_citations or use_confidence
+
+        if need_textmap:
+            # ``extract_text_result`` is deliberately acquisition-only. Applying
+            # transforms to its text without rebuilding its segments would make
+            # citation character offsets incorrect.
+            self._validate_provenance_text_options(kwargs)
 
         # ---- Get content ---- #
         if need_textmap:
             content_getter = getattr(host, "_get_extraction_content", None)
             if callable(content_getter):
-                content_result = content_getter(using=using, _return_textmap=True, **kwargs)
+                content_result = content_getter(using=using, _return_text_result=True, **kwargs)
             else:
                 content_result = self._default_extraction_content(
-                    host, using=using, _return_textmap=True, **kwargs
+                    host, using=using, _return_text_result=True, **kwargs
                 )
 
-            if isinstance(content_result, tuple) and len(content_result) == 3:
-                text, textmap_info, word_elements = content_result
-            elif isinstance(content_result, tuple) and len(content_result) == 2:
-                text, textmap_info = content_result
-                word_elements = []
-                if isinstance(textmap_info, list):
-                    for pinfo in textmap_info:
-                        word_elements.extend(pinfo.word_elements)
-            else:
+            from natural_pdf.text.contracts import ExtractedText
+
+            if isinstance(content_result, ExtractedText):
+                text = content_result.text
+                textmap_info = content_result
+                word_elements = [
+                    word for segment in content_result.segments for word in segment.words
+                ]
+            elif isinstance(content_result, str) or content_result is None:
                 text = content_result
                 textmap_info = None
                 word_elements = []
+                if callable(content_getter) and isinstance(content_result, str):
+                    warnings.warn(
+                        f"{type(host).__name__} returned plain text instead of ExtractedText; "
+                        "element citations are unavailable.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+            else:
+                raise TypeError(
+                    "Citation text content must be ExtractedText, plain str, or None; "
+                    f"received {type(content_result).__name__}"
+                )
             content = text
         else:
             content_getter = getattr(host, "_get_extraction_content", None)
@@ -941,16 +976,66 @@ class ExtractionService:
         return result
 
     def _default_extraction_content(self, host, using: str = "text", **kwargs) -> Any:
-        # Pop citation-related kwarg before passing to extractors
-        kwargs.pop("_return_textmap", False)
+        return_text_result = bool(kwargs.pop("_return_text_result", False))
+        if using == "text" and return_text_result:
+            # Keep this fallback safe when called directly as well as through
+            # the structured-extraction provenance path.
+            self._validate_provenance_text_options(kwargs)
         try:
             if using == "text":
+                from natural_pdf.text.facades import (
+                    AggregateTextMixin,
+                    ScalarTextMixin,
+                    SelectedTextMixin,
+                    SpatialTextMixin,
+                )
+
+                layout = kwargs.pop("layout", True)
+                if return_text_result:
+                    result_extractor = getattr(host, "extract_text_result", None)
+                    if callable(result_extractor):
+                        from natural_pdf.text.contracts import ExtractedText
+
+                        if isinstance(host, (SpatialTextMixin, AggregateTextMixin)):
+                            result = result_extractor(layout=layout, **kwargs)
+                        elif isinstance(host, SelectedTextMixin):
+                            result = result_extractor(**kwargs)
+                        elif isinstance(host, ScalarTextMixin):
+                            result = result_extractor()
+                        else:
+                            # Optional third-party result protocols are intentionally
+                            # invoked without Natural PDF-specific options.
+                            result = result_extractor()
+
+                        # A host that opts into the provenance hook must return
+                        # the one public result contract. Silently treating an
+                        # arbitrary object as LLM text loses citations and makes
+                        # provider bugs data-dependent.
+                        if isinstance(result, ExtractedText):
+                            return result
+                        raise TypeError("extract_text_result() must return ExtractedText")
+
+                    warnings.warn(
+                        f"{type(host).__name__} has no extract_text_result() provenance hook; "
+                        "falling back to extract_text(), so element citations are unavailable.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+
                 extractor = getattr(host, "extract_text", None)
                 if not callable(extractor):
                     logger.error(f"Extraction requires 'extract_text' on {host!r}")
                     return None
-                layout = kwargs.pop("layout", True)
-                return extractor(layout=layout, **kwargs)
+                if isinstance(host, (SpatialTextMixin, AggregateTextMixin)):
+                    return extractor(layout=layout, **kwargs)
+                if isinstance(host, SelectedTextMixin):
+                    return extractor(**kwargs)
+                if isinstance(host, ScalarTextMixin):
+                    return extractor(**kwargs)
+                # A structural third-party host only promises
+                # ``extract_text() -> str``. Never inject ``layout`` or other
+                # Natural PDF options into that contract.
+                return extractor()
             if using == "vision":
                 renderer = getattr(host, "render", None)
                 if not callable(renderer):

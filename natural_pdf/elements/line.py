@@ -86,37 +86,6 @@ class LineElement(Element):
         else:
             return "diagonal"
 
-    def extract_text(
-        self,
-        preserve_whitespace: bool = True,
-        apply_exclusions: bool = True,
-        **kwargs,
-    ) -> str:
-        """
-        Lines don't have text, so this returns an empty string.
-
-        Args:
-            preserve_whitespace: Unused, kept for API compatibility with Element.
-            apply_exclusions: Unused, kept for API compatibility with Element.
-            **kwargs: Additional extraction parameters (ignored).
-
-        Returns:
-            Empty string
-        """
-        # Backward compatibility: honour legacy keyword names if provided.
-        if "keep_blank_chars" in kwargs:
-            preserve_whitespace = kwargs.pop("keep_blank_chars")  # noqa: F841
-        if "use_exclusions" in kwargs:
-            import warnings
-
-            warnings.warn(
-                "use_exclusions is deprecated, use apply_exclusions instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            apply_exclusions = kwargs.pop("use_exclusions")  # noqa: F841
-        return ""
-
     def __repr__(self) -> str:
         """String representation of the line element."""
         return f"<LineElement type={self.orientation} width={self.width:.1f} bbox={self.bbox}>"

@@ -5,20 +5,17 @@ import unicodedata
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
     Iterable,
     List,
-    Literal,
     Optional,
     Tuple,
-    Union,
-    overload,
 )
 
 from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes
-from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 
+from natural_pdf.text.contracts import ContentFilter
+from natural_pdf.text.pipeline import filter_text
 from natural_pdf.utils.bidi_mirror import mirror_brackets
 
 if TYPE_CHECKING:
@@ -40,60 +37,6 @@ def normalize_whitespace(text: str) -> str:
     text = _MULTI_SPACE.sub(" ", text)
     text = _MULTI_NEWLINE.sub("\n\n", text)
     return text.strip()
-
-
-def _get_layout_kwargs(
-    layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
-    user_kwargs: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
-    """
-    Prepares the keyword arguments for pdfplumber's chars_to_textmap based
-    on defaults, context bbox, and allowed user overrides.
-    """
-    # 1. Start with an empty dict for layout kwargs
-    layout_kwargs = {}
-
-    # Build allowed keys set without trying to copy the constants
-    allowed_keys = set(TEXTMAP_KWARGS) | set(WORD_EXTRACTOR_KWARGS)
-
-    # Add common, well-known default values
-    layout_kwargs.update(
-        {
-            "x_tolerance": 5,
-            "y_tolerance": 5,
-            "x_density": 7.25,
-            "y_density": 13,
-            "mode": "box",
-            "min_words_vertical": 1,
-            "min_words_horizontal": 1,
-        }
-    )
-
-    # 2. Apply context if provided
-    if layout_context_bbox:
-        ctx_x0, ctx_top, ctx_x1, ctx_bottom = layout_context_bbox
-        layout_kwargs["layout_width"] = ctx_x1 - ctx_x0
-        layout_kwargs["layout_height"] = ctx_bottom - ctx_top
-        layout_kwargs["x_shift"] = ctx_x0
-        layout_kwargs["y_shift"] = ctx_top
-        # Add layout_bbox itself
-        layout_kwargs["layout_bbox"] = layout_context_bbox
-
-    # 3. Apply user overrides (only for allowed keys)
-    if user_kwargs:
-        for key, value in user_kwargs.items():
-            if key in allowed_keys:
-                layout_kwargs[key] = value
-            elif key == "layout":  # Always allow layout flag
-                layout_kwargs[key] = value
-            else:
-                logger.warning(f"Ignoring unsupported layout keyword argument: '{key}'")
-
-    # 4. Ensure layout flag is present, defaulting to False (caller can override)
-    if "layout" not in layout_kwargs:
-        layout_kwargs["layout"] = False
-
-    return layout_kwargs
 
 
 def filter_chars_spatially(
@@ -205,122 +148,9 @@ def filter_chars_spatially(
     return filtered_chars
 
 
-def apply_content_filter(
-    char_dicts: List[Dict[str, Any]], content_filter: Union[str, Callable[[str], bool], List[str]]
-) -> List[Dict[str, Any]]:
-    """
-    Applies content filtering to character dictionaries based on their text content.
-
-    Args:
-        char_dicts: List of character dictionaries to filter.
-        content_filter: Can be:
-            - A regex pattern string (characters matching the pattern are EXCLUDED)
-            - A callable that takes text and returns True to KEEP the character
-            - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
-
-    Returns:
-        Filtered list of character dictionaries.
-    """
-    validate_content_filter(content_filter)
-    if not char_dicts or content_filter is None:
-        return char_dicts
-
-    initial_count = len(char_dicts)
-    filtered_chars = []
-
-    # Handle different filter types
-    if isinstance(content_filter, str):
-        # Single regex pattern - remove matching text from each positioned
-        # character record. Native records normally contain one character,
-        # while synthetic/alt-text records may contain a longer string.
-        try:
-            pattern = re.compile(content_filter)
-        except re.error as e:
-            from natural_pdf.exceptions import ContentFilterError
-
-            raise ContentFilterError(
-                f"Invalid content_filter regular expression {content_filter!r}: {e}"
-            ) from e
-        for char_dict in char_dicts:
-            text = char_dict.get("text", "")
-            filtered_text = pattern.sub("", text)
-            if filtered_text == text:
-                filtered_chars.append(char_dict)
-            elif filtered_text:
-                filtered = dict(char_dict)
-                filtered["text"] = filtered_text
-                filtered_chars.append(filtered)
-
-    elif isinstance(content_filter, list):
-        # List of regex patterns - exclude characters matching ANY pattern
-        patterns = []
-        for index, pattern_text in enumerate(content_filter):
-            if not isinstance(pattern_text, str):
-                raise TypeError(
-                    "content_filter list entries must be regular expression strings; "
-                    f"entry {index} is {type(pattern_text).__name__}"
-                )
-            try:
-                patterns.append(re.compile(pattern_text))
-            except re.error as e:
-                from natural_pdf.exceptions import ContentFilterError
-
-                raise ContentFilterError(
-                    "Invalid content_filter regular expression at "
-                    f"index {index} ({pattern_text!r}): {e}"
-                ) from e
-        for char_dict in char_dicts:
-            text = char_dict.get("text", "")
-            filtered_text = text
-            for pattern in patterns:
-                filtered_text = pattern.sub("", filtered_text)
-            if filtered_text == text:
-                filtered_chars.append(char_dict)
-            elif filtered_text:
-                filtered = dict(char_dict)
-                filtered["text"] = filtered_text
-                filtered_chars.append(filtered)
-
-    elif callable(content_filter):
-        # Callable filter - keep characters where function returns True. Some
-        # synthetic records contain multiple characters, so evaluate each
-        # codepoint rather than passing an unexpected multi-character value.
-        for char_dict in char_dicts:
-            text = char_dict.get("text", "")
-            kept: List[str] = []
-            for character in text:
-                try:
-                    if content_filter(character):
-                        kept.append(character)
-                except Exception as e:
-                    from natural_pdf.exceptions import ContentFilterError
-
-                    raise ContentFilterError(
-                        f"content_filter callable failed while evaluating {character!r}: {e}"
-                    ) from e
-            filtered_text = "".join(kept)
-            if filtered_text == text:
-                filtered_chars.append(char_dict)
-            elif filtered_text:
-                filtered = dict(char_dict)
-                filtered["text"] = filtered_text
-                filtered_chars.append(filtered)
-    else:
-        raise TypeError(
-            "content_filter must be a regular expression string, a list of regular "
-            f"expression strings, or a callable; received {type(content_filter).__name__}"
-        )
-
-    filtered_count = initial_count - len(filtered_chars)
-    if filtered_count > 0:
-        logger.debug(f"Content filter removed {filtered_count} characters.")
-
-    return filtered_chars
-
-
 def apply_content_filter_to_text(
     text: str,
-    content_filter: Union[str, Callable[[str], bool], List[str], None],
+    content_filter: Optional[ContentFilter],
 ) -> str:
     """Apply the public content-filter contract to a string.
 
@@ -329,108 +159,14 @@ def apply_content_filter_to_text(
     Invalid filters raise instead of returning potentially sensitive,
     unfiltered text.
     """
-    validate_content_filter(content_filter)
-    if not text or content_filter is None:
-        return text
-
-    from natural_pdf.exceptions import ContentFilterError
-
-    if isinstance(content_filter, str):
-        try:
-            return re.sub(content_filter, "", text)
-        except re.error as e:
-            raise ContentFilterError(
-                f"Invalid content_filter regular expression {content_filter!r}: {e}"
-            ) from e
-
-    if isinstance(content_filter, list):
-        result = text
-        for index, pattern_text in enumerate(content_filter):
-            if not isinstance(pattern_text, str):
-                raise TypeError(
-                    "content_filter list entries must be regular expression strings; "
-                    f"entry {index} is {type(pattern_text).__name__}"
-                )
-            try:
-                result = re.sub(pattern_text, "", result)
-            except re.error as e:
-                raise ContentFilterError(
-                    "Invalid content_filter regular expression at "
-                    f"index {index} ({pattern_text!r}): {e}"
-                ) from e
-        return result
-
-    if callable(content_filter):
-        filtered_chars = []
-        for char in text:
-            try:
-                keep = content_filter(char)
-            except Exception as e:
-                raise ContentFilterError(
-                    f"content_filter callable failed while evaluating {char!r}: {e}"
-                ) from e
-            if keep:
-                filtered_chars.append(char)
-        return "".join(filtered_chars)
-
-    raise TypeError(
-        "content_filter must be a regular expression string, a list of regular "
-        f"expression strings, or a callable; received {type(content_filter).__name__}"
-    )
-
-
-def validate_content_filter(
-    content_filter: Union[str, Callable[[str], bool], List[str], None],
-) -> None:
-    """Validate a content filter even when the extraction host has no text.
-
-    Empty pages/regions must not make invalid filter configuration appear valid;
-    otherwise behavior changes with document content. Callable failures can only
-    be observed when a character is evaluated, but their type is still checked.
-    """
-
-    if content_filter is None or callable(content_filter):
-        return
-
-    from natural_pdf.exceptions import ContentFilterError
-
-    if isinstance(content_filter, str):
-        try:
-            re.compile(content_filter)
-        except re.error as exc:
-            raise ContentFilterError(
-                f"Invalid content_filter regular expression {content_filter!r}: {exc}"
-            ) from exc
-        return
-
-    if isinstance(content_filter, list):
-        for index, pattern_text in enumerate(content_filter):
-            if not isinstance(pattern_text, str):
-                raise TypeError(
-                    "content_filter list entries must be regular expression strings; "
-                    f"entry {index} is {type(pattern_text).__name__}"
-                )
-            try:
-                re.compile(pattern_text)
-            except re.error as exc:
-                raise ContentFilterError(
-                    "Invalid content_filter regular expression at "
-                    f"index {index} ({pattern_text!r}): {exc}"
-                ) from exc
-        return
-
-    raise TypeError(
-        "content_filter must be a regular expression string, a list of regular "
-        f"expression strings, or a callable; received {type(content_filter).__name__}"
-    )
+    return filter_text(text, content_filter)
 
 
 def _create_alt_text_char_dict(region, source_label: str = "alt_text") -> Dict[str, Any]:
     """Create a char_dict from a region's alt_text and bbox.
 
-    Produces a single character dictionary suitable for inclusion in the
-    char_dicts list passed to ``generate_text_layout``.  The format mirrors
-    what ``Region.to_text_element`` builds internally.
+    Produces a single character dictionary suitable for the canonical spatial
+    text pipeline. The format mirrors what ``Region.to_text_element`` builds.
     """
     page = region.page
     initial_doctop = getattr(getattr(page, "_page", None), "initial_doctop", 0)
@@ -451,6 +187,11 @@ def _create_alt_text_char_dict(region, source_label: str = "alt_text") -> Dict[s
         "direction": 1,
         "adv": region.x1 - region.x0,
         "source": source_label,
+        # Keep the object that introduced synthetic text available to the
+        # provenance resolver.  ``source`` above is intentionally a stable
+        # public label; this private marker retains the concrete Region for
+        # citations without changing the public char schema.
+        "_natural_pdf_text_source": region,
         "confidence": 1.0,
         "stroking_color": (0, 0, 0),
         "non_stroking_color": (0, 0, 0),
@@ -553,129 +294,6 @@ def word_elements_to_textmap_char_dicts(word_elements: Iterable[Any]) -> List[Di
     return all_char_dicts
 
 
-@overload
-def generate_text_layout(
-    char_dicts: List[Dict[str, Any]],
-    layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
-    user_kwargs: Optional[Dict[str, Any]] = None,
-    *,
-    return_textmap: Literal[False] = False,
-) -> str: ...
-
-
-@overload
-def generate_text_layout(
-    char_dicts: List[Dict[str, Any]],
-    layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
-    user_kwargs: Optional[Dict[str, Any]] = None,
-    *,
-    return_textmap: Literal[True],
-) -> Tuple[str, Any]: ...
-
-
-@overload
-def generate_text_layout(
-    char_dicts: List[Dict[str, Any]],
-    layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
-    user_kwargs: Optional[Dict[str, Any]] = None,
-    *,
-    return_textmap: bool = False,
-) -> Union[str, Tuple[str, Any]]: ...
-
-
-def generate_text_layout(
-    char_dicts: List[Dict[str, Any]],
-    layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
-    user_kwargs: Optional[Dict[str, Any]] = None,
-    return_textmap: bool = False,
-) -> Union[str, Tuple[str, Any]]:
-    """
-    Generates a string representation of text from character dictionaries,
-    attempting to reconstruct layout using pdfplumber's utilities.
-
-    Args:
-        char_dicts: List of character dictionary objects.
-        layout_context_bbox: Optional bounding box for layout context.
-        user_kwargs: User-provided kwargs, potentially overriding defaults.
-        return_textmap: When True, return (text, textmap) tuple instead of just text.
-
-    Returns:
-        String representation of the text, or (text, textmap) tuple when return_textmap=True.
-    """
-    # Make a working copy before any empty-text short circuit so invalid
-    # content-filter configuration fails consistently on empty hosts.
-    incoming_kwargs = user_kwargs.copy() if user_kwargs else {}
-    content_filter = incoming_kwargs.pop("content_filter", None)
-    validate_content_filter(content_filter)
-
-    # --- Filter out invalid char dicts early ---
-    initial_count = len(char_dicts)
-    valid_char_dicts = [c for c in char_dicts if isinstance(c.get("text"), str)]
-    filtered_count = initial_count - len(valid_char_dicts)
-    if filtered_count > 0:
-        logger.debug(
-            f"generate_text_layout: Filtered out {filtered_count} char dicts with non-string/None text."
-        )
-
-    if not valid_char_dicts:  # Return empty if no valid chars remain
-        logger.debug("generate_text_layout: No valid character dicts found after filtering.")
-        return ("", None) if return_textmap else ""
-
-    # --- Apply content filtering if specified ---
-    if content_filter is not None:
-        valid_char_dicts = apply_content_filter(valid_char_dicts, content_filter)
-
-    # --- Handle custom 'strip' option ------------------------------------
-    # * strip=True  – post-process the final string to remove leading/trailing
-    #                 whitespace (typically used when layout=False)
-    # * strip=False – preserve whitespace exactly as produced.
-    # Default behaviour depends on the layout flag (see below).
-    explicit_strip_flag = incoming_kwargs.pop("strip", None)  # May be None
-
-    # Prepare layout arguments now that we've removed the non-pdfplumber key
-    layout_kwargs = _get_layout_kwargs(layout_context_bbox, incoming_kwargs)
-    use_layout = layout_kwargs.get("layout", False)
-
-    # Determine final strip behaviour: if caller specified override, honour it;
-    # otherwise default to !use_layout (True when layout=False, False when
-    # layout=True) per user request.
-    strip_result = explicit_strip_flag if explicit_strip_flag is not None else (not use_layout)
-
-    textmap_obj = None
-    try:
-        # Sort chars primarily by top, then x0 before layout analysis – required by
-        # pdfplumber so that grouping into lines works deterministically.
-        valid_char_dicts.sort(key=lambda c: (c.get("top", 0), c.get("x0", 0)))
-
-        # Build the text map. `layout_kwargs` still contains the caller-specified or
-        # default "layout" flag, which chars_to_textmap will respect.
-        textmap_obj = chars_to_textmap(valid_char_dicts, **layout_kwargs)
-        result = textmap_obj.as_string
-
-        # ----------------------------------------------------------------
-        # Optional post-processing strip
-        # ----------------------------------------------------------------
-        if strip_result and isinstance(result, str):
-            # Remove trailing spaces on each line then trim leading/trailing
-            # blank lines for a cleaner output while keeping internal newlines.
-            result = "\n".join(line.rstrip() for line in result.splitlines()).strip()
-    except Exception as e:
-        # Fallback to simple join on error
-        logger.error(f"generate_text_layout: Error calling chars_to_textmap: {e}", exc_info=False)
-        logger.warning(
-            "generate_text_layout: Falling back to simple character join due to layout error."
-        )
-        # Fallback already has sorted characters if layout was attempted
-        # Need to use the valid_char_dicts here too
-        result = "".join(c.get("text", "") for c in valid_char_dicts)
-        if strip_result:
-            result = result.strip()
-
-    if return_textmap:
-        return result, textmap_obj
-    return result
-
-
 def apply_bidi_processing(text: str) -> str:
     """Convert visual-order RTL text into logical order when needed."""
 
@@ -706,10 +324,7 @@ def apply_bidi_processing(text: str) -> str:
 
 __all__ = [
     "filter_chars_spatially",
-    "generate_text_layout",
     "word_elements_to_textmap_char_dicts",
-    "apply_content_filter",
     "apply_content_filter_to_text",
-    "validate_content_filter",
     "apply_bidi_processing",
 ]

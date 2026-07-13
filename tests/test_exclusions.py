@@ -27,7 +27,7 @@ def test_page_add_exclusion_with_selector():
     assert bold_texts, "Expected at least one bold text element on the page"
 
     # Verify bold texts appear in the raw extraction before exclusions
-    original_text = page.extract_text(use_exclusions=False)
+    original_text = page.extract_text(apply_exclusions=False)
     for txt in bold_texts:
         assert txt in original_text, f"'{txt}' should be present before exclusions"
 
@@ -161,8 +161,8 @@ class TestExclusionMethods:
         with pytest.raises(ValueError, match="Exclusion method must be 'region' or 'element'"):
             page.add_exclusion('text:contains("test")', method="invalid")
 
-    def test_debug_output(self):
-        """Test debug output for exclusions."""
+    def test_exclusion_extraction_still_returns_text(self):
+        """Mixed exclusions still produce ordinary text output."""
         pdf = npdf.PDF("pdfs/confidential.pdf")
         page = pdf.pages[0]
 
@@ -171,8 +171,5 @@ class TestExclusionMethods:
         page.add_exclusion('text:contains("CONFIDENTIAL")', method="element", label="conf_elem")
         page.add_exclusion('text:contains("free")', method="region", label="free_region")
 
-        # Extract with debug enabled - should print diagnostic info
-        text = page.extract_text(debug_exclusions=True)
-
-        # Just verify it runs without error
+        text = page.extract_text()
         assert isinstance(text, str)

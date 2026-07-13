@@ -4,6 +4,18 @@
 
 ### Breaking changes
 
+- Text extraction now has four explicit, shared signature families: spatial,
+  scalar, ordered aggregate, and selected aggregate. Common options have one
+  spelling and meaning on every host that advertises them.
+- `extract_text()` always returns `str`. Use `extract_text_result()` for raw
+  text plus source spans, text maps, and word provenance.
+- Spatial extraction defaults to `layout=False`; advanced layout controls now
+  live in `TextLayoutOptions`. Layout failures raise `TextExtractionError`
+  instead of silently returning a different representation.
+- Removed text-extraction aliases and overloaded modes, including
+  `use_exclusions=`, `page_separator=`, `preserve_line_breaks=`, selector/word
+  modes, and `return_textmap=` on host methods. `PDFCollection` now exposes
+  `extract_each_text()` rather than flattening document boundaries.
 - OCR now has three explicit modes: recognition (the default), detection via
   `detect_only=True`, and custom function mode via `function=`. The old
   `ocr_function=` spelling is removed and rejected. `engine` is the only
@@ -24,6 +36,12 @@
 
 ### Fixes
 
+- Text filtering, newline handling, whitespace normalization, stripping, bidi,
+  exclusions, and separators now follow one validated order. Aggregate filters
+  run per leaf, so they cannot consume structural separators or cross source
+  boundaries.
+- Citation provenance now uses exact result spans, including arbitrary
+  separators and repeated identical lines.
 - Kept edited words, characters, selectors, extraction, and Flow views coherent;
   removed stale Flow text/element caches.
 - Applied exclusions to the image actually sent to OCR and made pure OCR

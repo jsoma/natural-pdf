@@ -36,7 +36,7 @@ def test_text_extraction_with_page_separator(practice_pdf):
     """Tests text extraction with custom page separator."""
     # Extract text with a custom separator
     separator = "\n---PAGE BREAK---\n"
-    full_text = practice_pdf.extract_text(page_separator=separator)
+    full_text = practice_pdf.extract_text(separator=separator)
 
     # Check if the separator is in the text (if PDF has multiple pages)
     if len(practice_pdf.pages) > 1:
@@ -64,10 +64,10 @@ def test_text_extraction_with_line_breaks(practice_pdf):
     page = practice_pdf.pages[0]
 
     # Extract text with explicit line breaks
-    text_with_breaks = page.extract_text(preserve_line_breaks=True)
+    text_with_breaks = page.extract_text(newlines=True)
 
     # Extract text without preserving line breaks
-    text_without_breaks = page.extract_text(preserve_line_breaks=False)
+    text_without_breaks = page.extract_text(newlines=False)
 
     # Assertions
     assert isinstance(text_with_breaks, str)

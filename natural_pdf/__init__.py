@@ -200,6 +200,7 @@ from natural_pdf.exceptions import (
     SelectorError,
     SelectorMatchError,
     SelectorParseError,
+    TextExtractionError,
 )
 from natural_pdf.exporters import export_training_data
 from natural_pdf.flows.flow import Flow
@@ -207,6 +208,13 @@ from natural_pdf.flows.region import FlowRegion
 
 # Judge for visual classification
 from natural_pdf.judge import Decision, Judge, JudgeError, PickResult
+from natural_pdf.text.contracts import (
+    ContentFilter,
+    ExtractedText,
+    SourceTextSegment,
+    TextLayoutOptions,
+    WhitespaceMode,
+)
 
 # Explicitly define what gets imported with 'from natural_pdf import *'
 __all__ = [
@@ -239,6 +247,7 @@ __all__ = [
     "SelectorParseError",
     "SelectorMatchError",
     "ContentFilterError",
+    "TextExtractionError",
     "ExclusionError",
     "ConfigurationError",
     "InvalidOptionError",
@@ -246,6 +255,12 @@ __all__ = [
     "SearchError",
     "ClassificationError",
     "QAError",
+    # Text extraction contracts
+    "ContentFilter",
+    "ExtractedText",
+    "SourceTextSegment",
+    "TextLayoutOptions",
+    "WhitespaceMode",
     # Exporters
     "export_training_data",
 ]

@@ -38,6 +38,8 @@ from natural_pdf.selectors.host_mixin import SelectorHostMixin
 # Service modules are loaded lazily via the registry in natural_pdf.services.registry
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.tables import TableResult
+from natural_pdf.text.contracts import AggregatePolicy
+from natural_pdf.text.facades import AggregateTextMixin
 
 # For runtime image manipulation
 
@@ -58,6 +60,7 @@ logger = logging.getLogger(__name__)
 
 
 class FlowRegion(
+    AggregateTextMixin,
     OCRScopeMixin,
     SelectorHostMixin,
     ServiceHostMixin,
@@ -578,22 +581,13 @@ class FlowRegion(
         create_region_pdf(regions, path, method=method)
         return self
 
-    def extract_text(self, apply_exclusions: bool = True, **kwargs) -> str:
-        """Concatenate text from constituent regions while preserving flow order."""
-        if not self.constituent_regions:
-            return ""
+    def _iter_text_members(self) -> Iterable[object]:
+        """Yield physical regions in logical flow order, including empties."""
 
-        # Delegate to each constituent Region.extract_text() directly.
-        # This avoids mixing char-level and word-level elements in a single
-        # ElementCollection, which would cause doubled/interleaved text.
-        parts = []
-        for region in self.constituent_regions:
-            text = region.extract_text(apply_exclusions=apply_exclusions, **kwargs)
-            if text:
-                parts.append(text)
+        return iter(self.constituent_regions)
 
-        extracted = "\n\n".join(parts)
-        return extracted
+    def _text_aggregate_policy(self) -> AggregatePolicy:
+        return AggregatePolicy(natural_separator="\n\n", preserve_empty=True)
 
     def elements(self, apply_exclusions: bool = True) -> "ElementCollection":  # Stringized return
         """

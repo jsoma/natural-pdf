@@ -75,6 +75,11 @@ class FlowElement:
         """Returns the physical page of the underlying element."""
         return getattr(self.physical_object, "page", None)
 
+    def extract_text(self) -> str:
+        """Return the underlying element text through an IDE-visible proxy."""
+
+        return self.physical_object.extract_text()
+
     def __getattr__(self, name: str) -> Any:
         """
         Delegate unknown attribute access to the physical_object.

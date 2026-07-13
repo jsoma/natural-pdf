@@ -21,7 +21,6 @@ from typing import (
     TypeAlias,
     Union,
     cast,
-    overload,
 )
 
 from pdfplumber.utils import crop_to_bbox
@@ -57,6 +56,8 @@ from natural_pdf.selectors.parser import (
 # Service modules are loaded lazily via the registry in natural_pdf.services.registry
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.tables.result import TableResult
+from natural_pdf.text.contracts import ExtractedText, SpatialTextInput, TextLayoutOptions
+from natural_pdf.text.facades import SpatialTextMixin
 
 # Import new utils
 from natural_pdf.text.operations import (
@@ -64,10 +65,9 @@ from natural_pdf.text.operations import (
     apply_bidi_processing,
     apply_content_filter_to_text,
     filter_chars_spatially,
-    generate_text_layout,
-    validate_content_filter,
     word_elements_to_textmap_char_dicts,
 )
+from natural_pdf.text.pipeline import extract_spatial_text
 
 # Viewer widget support is lazy-loaded to avoid importing ipywidgets/IPython at startup
 
@@ -146,6 +146,7 @@ class RegionContext:
 class Region(
     ClassificationResultAccessorMixin,
     OCRDirectTargetMixin,
+    SpatialTextMixin,
     SelectorHostMixin,
     DirectionalMixin,
     ServiceHostMixin,
@@ -1733,297 +1734,92 @@ class Region(
         """Get text content of this region (delegates to extract_text())."""
         return self.extract_text() or ""
 
-    @overload
-    def extract_text(
-        self,
-        granularity: str = ...,
-        apply_exclusions: bool = ...,
-        debug: bool = ...,
-        *,
-        overlap: str = ...,
-        newlines: Union[bool, str] = ...,
-        content_filter: Any = ...,
-        return_textmap: Literal[False] = ...,
-        **kwargs: Any,
-    ) -> str: ...
+    def _spatial_text_input(self, *, apply_exclusions: bool, source: object) -> SpatialTextInput:
+        """Collect positioned text without applying public string transforms."""
 
-    @overload
-    def extract_text(
-        self,
-        granularity: str = ...,
-        apply_exclusions: bool = ...,
-        debug: bool = ...,
-        *,
-        overlap: str = ...,
-        newlines: Union[bool, str] = ...,
-        content_filter: Any = ...,
-        return_textmap: Literal[True],
-        **kwargs: Any,
-    ) -> Tuple[str, Any]: ...
-
-    def extract_text(
-        self,
-        granularity: str = "chars",
-        apply_exclusions: bool = True,
-        debug: bool = False,
-        *,
-        overlap: str = "center",
-        newlines: Union[bool, str] = True,
-        content_filter=None,
-        return_textmap: bool = False,
-        **kwargs,
-    ) -> Union[str, Tuple[str, Any]]:
-        """
-        Extract text from this region, respecting page exclusions and using pdfplumber's
-        layout engine (chars_to_textmap).
-
-        Args:
-            granularity: Level of text extraction - 'chars' (default) or 'words'.
-                - 'chars': Character-by-character extraction (current behavior)
-                - 'words': Word-level extraction with configurable overlap
-            apply_exclusions: Whether to apply exclusion regions defined on the parent page.
-            debug: Enable verbose debugging output for filtering steps.
-            overlap: How to determine if words overlap with the region (only used when granularity='words'):
-                - 'center': Word center point must be inside (default)
-                - 'full': Word must be fully inside the region
-                - 'partial': Any overlap includes the word
-            newlines: Whether to strip newline characters from the extracted text.
-            content_filter: Optional content filter to exclude specific text patterns. Can be:
-                - A regex pattern string (characters matching the pattern are EXCLUDED)
-                - A callable that takes text and returns True to KEEP the character
-                - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
-            **kwargs: Additional layout parameters passed directly to pdfplumber's
-                      `chars_to_textmap` function (e.g., layout, x_density, y_density).
-                      See Page.extract_text docstring for more.
-
-        Returns:
-            Extracted text as string, potentially with layout-based spacing.
-        """
-        # Validate granularity parameter
-        if granularity not in ("chars", "words"):
-            raise ValueError(f"granularity must be 'chars' or 'words', got '{granularity}'")
-        validate_content_filter(content_filter)
-
-        # Handle legacy keyword arguments that Element.extract_text accepted for
-        # compatibility with earlier APIs.
-        preserve_whitespace_flag = kwargs.pop("preserve_whitespace", None)
-        keep_blank_chars_flag = kwargs.pop("keep_blank_chars", None)
-        if preserve_whitespace_flag is None and keep_blank_chars_flag is not None:
-            preserve_whitespace_flag = keep_blank_chars_flag
-
-        use_exclusions_override = kwargs.pop("use_exclusions", None)
-
-        debug_kwarg = kwargs.pop("debug", None)
-        debug_exclusions_kwarg = kwargs.pop("debug_exclusions", None)
-        if debug_kwarg is not None:
-            debug = bool(debug_kwarg)
-        else:
-            debug = bool(debug or (debug_exclusions_kwarg or False))
-
-        logger.debug(
-            f"Region {self.bbox}: extract_text called with granularity='{granularity}', overlap='{overlap}', kwargs: {kwargs}"
-        )
-
-        # Self short-circuit: if this region carries alt_text, return it directly
         if self.alt_text is not None:
-            result = apply_content_filter_to_text(self.alt_text, content_filter)
-            if return_textmap:
-                return result, None
-            return result
+            chars = [_create_alt_text_char_dict(self)]
+            words: List[TextElement] = []
+        else:
+            alt_text_regions = []
+            for region in self.page.iter_regions():
+                region_alt = getattr(region, "alt_text", None)
+                if region is self or region_alt is None:
+                    continue
+                center_x = (region.x0 + region.x1) / 2
+                center_y = (region.top + region.bottom) / 2
+                if self.x0 <= center_x <= self.x1 and self.top <= center_y <= self.bottom:
+                    alt_text_regions.append(region)
 
-        # Handle word-level extraction
-        if granularity == "words":
-            # Use find_all to get words with proper overlap and exclusion handling
-            word_elements = self.find_all(
-                "text", overlap=overlap, apply_exclusions=apply_exclusions
-            )
-
-            # Join the text from all matching words
-            text_parts = []
-            for word in word_elements:
-                word_text = word.extract_text()
-                if word_text:  # Skip empty strings
-                    text_parts.append(word_text)
-
-            result = " ".join(text_parts)
-
-            if content_filter is not None:
-                result = apply_content_filter_to_text(result, content_filter)
-
-            # Apply newlines processing if requested
-            if newlines is False:
-                result = result.replace("\n", " ").replace("\r", " ")
-            elif isinstance(newlines, str):
-                result = result.replace("\n", newlines).replace("\r", newlines)
-
-            return result
-
-        # Original character-level extraction logic follows...
-        # 1. Get Word Elements potentially within this region (initial broad phase)
-        # Optimization: Could use spatial query if page elements were indexed
-        page_words = self.page.words  # Get all words from the page
-
-        # 2a. Identify alt_text regions overlapping this region (before word
-        #     collection so we can suppress underlying characters).
-        alt_text_regions = []
-        for region in self.page.iter_regions():
-            region_alt = getattr(region, "alt_text", None)
-            if region is self or region_alt is None:
-                continue
-            # Check if the region's center point falls inside our bbox
-            cx = (region.x0 + region.x1) / 2
-            cy = (region.top + region.bottom) / 2
-            if self.x0 <= cx <= self.x1 and self.top <= cy <= self.bottom:
-                alt_text_regions.append(region)
-
-        # 2b. Gather word elements, suppressing words covered by alt_text regions
-        candidate_words = []
-        for word in page_words:
-            # Quick bbox check to avoid processing words clearly outside
-            if get_bbox_overlap(self.bbox, word.bbox) is not None:
-                # Skip words whose center falls inside an alt_text region
+            words = []
+            for word in self.page.words:
+                if get_bbox_overlap(self.bbox, word.bbox) is None:
+                    continue
                 if alt_text_regions:
-                    wcx = (word.x0 + word.x1) / 2
-                    wcy = (word.top + word.bottom) / 2
+                    center_x = (word.x0 + word.x1) / 2
+                    center_y = (word.top + word.bottom) / 2
                     if any(
-                        r.x0 <= wcx <= r.x1 and r.top <= wcy <= r.bottom for r in alt_text_regions
+                        region.x0 <= center_x <= region.x1
+                        and region.top <= center_y <= region.bottom
+                        for region in alt_text_regions
                     ):
                         continue
-                candidate_words.append(word)
+                words.append(word)
 
-        # Preserve spaces inferred by the word engine while still using
-        # character-level geometry for region clipping and layout.
-        all_char_dicts = word_elements_to_textmap_char_dicts(candidate_words)
+            if apply_exclusions:
+                words = self.page._filter_elements_by_exclusions(words)
 
-        # 2c. Inject alt_text from those regions
-        for region in alt_text_regions:
-            all_char_dicts.append(_create_alt_text_char_dict(region))
+            chars = word_elements_to_textmap_char_dicts(words)
+            chars.extend(_create_alt_text_char_dict(region) for region in alt_text_regions)
 
-        if not all_char_dicts:
-            logger.debug(f"Region {self.bbox}: No character dicts found overlapping region bbox.")
-            if return_textmap:
-                return "", None
-            return ""
+        exclusion_regions: List[Any] = []
+        if apply_exclusions:
+            exclusion_regions.extend(self._get_exclusion_regions(include_callable=True))
 
-        # 3. Get Relevant Exclusions (overlapping this region)
-        apply_exclusions_flag = apply_exclusions
-        if use_exclusions_override is not None:
-            apply_exclusions_flag = bool(use_exclusions_override)
-        exclusion_regions = []
-        if apply_exclusions_flag:
-            all_page_exclusions = self._get_exclusion_regions(include_callable=True, debug=debug)
-            overlapping_exclusions = []
-            for excl in all_page_exclusions:
-                if get_bbox_overlap(self.bbox, excl.bbox) is not None:
-                    overlapping_exclusions.append(excl)
-            exclusion_regions = overlapping_exclusions
-            if debug:
-                logger.debug(
-                    f"Region {self.bbox}: Found {len(all_page_exclusions)} total exclusions, "
-                    f"{len(exclusion_regions)} overlapping this region."
-                )
-        elif debug:
-            logger.debug(f"Region {self.bbox}: Not applying exclusions (apply_exclusions=False).")
-
-        # Add boundary element exclusions if this is a section with boundary settings
-        if hasattr(self, "_boundary_exclusions") and self._boundary_exclusions != "both":
-            boundary_exclusions = []
-
+        if getattr(self, "_boundary_exclusions", "both") != "both":
             if self._boundary_exclusions == "none":
-                # Exclude both start and end elements
-                if hasattr(self, "start_element") and self.start_element:
-                    boundary_exclusions.append(self.start_element)
-                if hasattr(self, "end_element") and self.end_element:
-                    boundary_exclusions.append(self.end_element)
+                boundary_elements = (
+                    getattr(self, "start_element", None),
+                    getattr(self, "end_element", None),
+                )
             elif self._boundary_exclusions == "start":
-                # Exclude only end element
-                if hasattr(self, "end_element") and self.end_element:
-                    boundary_exclusions.append(self.end_element)
-            elif self._boundary_exclusions == "end":
-                # Exclude only start element
-                if hasattr(self, "start_element") and self.start_element:
-                    boundary_exclusions.append(self.start_element)
-
-            # Add boundary elements as exclusion regions
-            for elem in boundary_exclusions:
-                if hasattr(elem, "bbox"):
-                    exclusion_regions.append(elem)
-                    if debug:
-                        logger.debug(
-                            f"Adding boundary exclusion: {elem.extract_text().strip()} at {elem.bbox}"
-                        )
-
-        # 4. Spatially Filter Characters using Utility
-        # Pass self as the target_region for precise polygon checks etc.
-        filtered_chars = filter_chars_spatially(
-            char_dicts=all_char_dicts,
-            exclusion_regions=exclusion_regions,
-            target_region=self,  # Pass self!
-            debug=debug,
-        )
-
-        # 5. Generate Text Layout using Utility
-        # Add content_filter to kwargs if provided
-        final_kwargs = kwargs.copy()
-        if content_filter is not None:
-            final_kwargs["content_filter"] = content_filter
-
-        if preserve_whitespace_flag is not None and "strip" not in final_kwargs:
-            final_kwargs["strip"] = not bool(preserve_whitespace_flag)
-
-        # Region extraction should inherit the same auto-computed tolerances as
-        # page extraction unless the caller explicitly overrides them.
-        tolerance_keys = (
-            "x_tolerance",
-            "x_tolerance_ratio",
-            "y_tolerance",
-            "y_tolerance_ratio",
-            "keep_blank_chars",
-        )
-        page_config = getattr(self.page, "_config", {})
-        pdf_config = getattr(getattr(self.page, "_parent", None), "_config", {})
-        for key in tolerance_keys:
-            if key in final_kwargs:
-                continue
-            if key in page_config:
-                final_kwargs[key] = page_config[key]
-            elif key in pdf_config:
-                final_kwargs[key] = pdf_config[key]
-
-        textmap_obj = None
-        if return_textmap:
-            result, textmap_obj = generate_text_layout(
-                char_dicts=filtered_chars,
-                layout_context_bbox=self.bbox,
-                user_kwargs=final_kwargs,
-                return_textmap=True,
-            )
-        else:
-            result = generate_text_layout(
-                char_dicts=filtered_chars,
-                layout_context_bbox=self.bbox,  # Use region's bbox for context
-                user_kwargs=final_kwargs,  # Pass kwargs including content_filter
+                boundary_elements = (getattr(self, "end_element", None),)
+            else:  # ``end`` excludes the start boundary.
+                boundary_elements = (getattr(self, "start_element", None),)
+            exclusion_regions.extend(
+                element for element in boundary_elements if element is not None
             )
 
-        # Flexible newline handling (same logic as TextElement)
-        if isinstance(newlines, bool):
-            if newlines is False:
-                replacement = " "
-            else:
-                replacement = None
-        else:
-            replacement = str(newlines)
+        chars = filter_chars_spatially(
+            char_dicts=chars,
+            exclusion_regions=[
+                exclusion
+                for exclusion in exclusion_regions
+                if get_bbox_overlap(self.bbox, exclusion.bbox) is not None
+            ],
+            target_region=self,
+        )
+        return SpatialTextInput(
+            chars=tuple(chars),
+            source=source,
+            bbox=self.bbox,
+            page_number=self.page.number,
+            words=tuple(words),
+            layout_defaults=self.page._text_layout_defaults(),
+        )
 
-        if replacement is not None:
-            result = result.replace("\n", replacement).replace("\r", replacement)
+    def _extract_spatial_text_result(
+        self,
+        *,
+        layout: bool | TextLayoutOptions,
+        apply_exclusions: bool,
+    ) -> ExtractedText:
+        """Acquire and render this region's untransformed spatial text."""
 
-        if preserve_whitespace_flag is False:
-            result = result.strip()
-
-        logger.debug(f"Region {self.bbox}: extract_text finished, result length: {len(result)}.")
-        if return_textmap:
-            return result, textmap_obj
-        return result
+        return extract_spatial_text(
+            self._spatial_text_input(apply_exclusions=apply_exclusions, source=self),
+            layout=layout,
+        )
 
     def extract_table(self, *args, **kwargs) -> TableResult:
         return self.services.table.extract_table(self, *args, **kwargs)
@@ -2033,19 +1829,12 @@ class Region(
 
     def _get_extraction_content(self, using: str = "text", **kwargs) -> Any:
         """Internal helper for ExtractionService to gather region content."""
-        _return_textmap = kwargs.pop("_return_textmap", False)
+        return_text_result = bool(kwargs.pop("_return_text_result", False))
 
         if using == "text":
             layout = kwargs.pop("layout", True)
-            if _return_textmap:
-                text, textmap = self.extract_text(layout=layout, return_textmap=True, **kwargs)
-                # Get words within this region from the parent page
-                from pdfplumber.utils.geometry import get_bbox_overlap
-
-                word_elements = [
-                    w for w in self.page.words if get_bbox_overlap(self.bbox, w.bbox) is not None
-                ]
-                return (text, textmap, word_elements)
+            if return_text_result:
+                return self.extract_text_result(layout=layout, **kwargs)
             return self.extract_text(layout=layout, **kwargs)
 
         if using == "vision":

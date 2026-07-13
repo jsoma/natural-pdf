@@ -28,13 +28,14 @@ def test_region_alt_text_self_shortcircuit(page):
     assert region.extract_text() == "[CHECKED]"
 
 
-def test_region_alt_text_self_shortcircuit_return_textmap(page):
-    """Self short-circuit also works when return_textmap=True."""
+def test_region_alt_text_self_result_has_source_segment(page):
+    """Alt text follows the same structured spatial result path."""
     region = page.create_region(50, 50, 100, 100)
     region.alt_text = "[UNCHECKED]"
-    text, textmap = region.extract_text(return_textmap=True)
-    assert text == "[UNCHECKED]"
-    assert textmap is None
+    result = region.extract_text_result()
+    assert result.text == "[UNCHECKED]"
+    assert len(result.segments) == 1
+    assert result.segments[0].source is region
 
 
 # ---- 2. Parent region picks up child alt_text ----

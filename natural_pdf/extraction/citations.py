@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Any, Dict, List, Literal, Optional, Tuple, Type, Union
 
@@ -110,17 +110,6 @@ def normalize_confidence_config(
         f"Unsupported confidence type: {type(confidence).__name__}. "
         "Expected bool, 'range', list, or dict."
     )
-
-
-@dataclass
-class PageTextMapInfo:
-    """Tracks per-page TextMap and line range for multi-page citation resolution."""
-
-    page_number: int  # 1-indexed
-    textmap: Any  # pdfplumber TextMap (or None)
-    word_elements: list  # TextElement words for this page
-    line_start: int  # first line in unified text (0-based)
-    line_end: int  # last line (exclusive)
 
 
 # ------------------------------------------------------------------ #
@@ -733,6 +722,122 @@ def _find_best_match_in_textmap(
     return []
 
 
+def _line_output_span(text: str, line_number: int) -> Optional[Tuple[int, int]]:
+    """Return the codepoint span for one zero-based line in *text*."""
+
+    if line_number < 0:
+        return None
+    start = 0
+    for index, line in enumerate(text.split("\n")):
+        end = start + len(line)
+        if index == line_number:
+            return start, end
+        start = end + 1
+    return None
+
+
+def _segments_for_line(result: Any, line_number: int) -> List[Any]:
+    """Return provenance segments whose output spans overlap a source line."""
+
+    line_span = _line_output_span(result.text, line_number)
+    if line_span is None:
+        return []
+    line_start, line_end = line_span
+    if line_start == line_end:
+        return []
+
+    matches = []
+    for segment in result.segments:
+        segment_start = int(segment.output_start)
+        segment_end = int(segment.output_end)
+        if segment_end > line_start and segment_start < line_end:
+            matches.append(segment)
+    return matches
+
+
+def _append_unique_source(
+    source: Any,
+    seen: set[int],
+    ordered: List[Any],
+) -> None:
+    """Append an element-like provenance source once, preserving order."""
+
+    if source is None or not hasattr(source, "bbox") or not hasattr(source, "page"):
+        return
+    # Returning an entire Page for a failed text-map lookup is too broad to be
+    # useful. Region/scalar sources remain valuable for alt and synthetic text.
+    if type(source).__name__ == "Page":
+        return
+    marker = id(source)
+    if marker not in seen:
+        seen.add(marker)
+        ordered.append(source)
+
+
+def _resolve_result_line(
+    result: Any,
+    line_number: int,
+    line_text: str,
+    line_map: Dict[int, str],
+    char_to_element_map: Dict[int, Any],
+    seen: set[int],
+    ordered: List[Any],
+) -> None:
+    """Resolve one cited line through an :class:`ExtractedText` result."""
+
+    line_span = _line_output_span(result.text, line_number)
+    if line_span is None:
+        return
+    line_start, line_end = line_span
+
+    for segment in _segments_for_line(result, line_number):
+        overlap_start = max(line_start, int(segment.output_start))
+        overlap_end = min(line_end, int(segment.output_end))
+        segment_text = result.text[overlap_start:overlap_end].strip()
+        textmap = getattr(segment, "textmap", None)
+        chars: List[Dict[str, Any]] = []
+
+        # pdfplumber TextMap tuples align one-for-one with ``as_string``
+        # codepoints, including layout whitespace represented by ``None``.
+        # Slice by the result's exact provenance offsets so repeated identical
+        # lines resolve to the cited occurrence rather than the first match.
+        tuples = getattr(textmap, "tuples", None)
+        local_start = overlap_start - int(segment.output_start)
+        local_end = overlap_end - int(segment.output_start)
+        if isinstance(tuples, list) and 0 <= local_start <= local_end <= len(tuples):
+            chars = [
+                char_dict
+                for _, char_dict in tuples[local_start:local_end]
+                if isinstance(char_dict, dict)
+            ]
+
+        # Optional result providers may expose a searchable TextMap without
+        # aligned tuples. Retain a best-effort fallback for that protocol.
+        if not chars:
+            chars = _find_best_match_in_textmap(
+                segment_text or line_text,
+                textmap,
+                line_map,
+                None,
+            )
+        matched = False
+        for char_dict in chars:
+            element = char_to_element_map.get(id(char_dict))
+            if element is None:
+                # Synthetic alt/OCR chars are not native word characters, so
+                # they deliberately have no entry in ``char_to_element_map``.
+                # The text pipeline stores their owning Region privately on
+                # the generated char dict for this exact provenance handoff.
+                element = char_dict.get("_natural_pdf_text_source")
+            if element is not None:
+                matched = True
+                if id(element) not in seen:
+                    seen.add(id(element))
+                    ordered.append(element)
+        if not matched:
+            _append_unique_source(getattr(segment, "source", None), seen, ordered)
+
+
 def resolve_citations(
     shadow_data: Any,
     user_schema: Type[BaseModel],
@@ -747,7 +852,7 @@ def resolve_citations(
             containing lists of line numbers (integers).
         user_schema: The original user schema (to identify field names).
         line_map: Mapping from line index to original line content.
-        textmap_info: Either a single TextMap or list[PageTextMapInfo].
+        textmap_info: An ExtractedText result, a single TextMap, or None.
         char_to_element_map: Mapping from id(char_dict) to TextElement.
 
     Returns:
@@ -769,8 +874,9 @@ def resolve_citations(
     else:
         user_fields = set(user_schema.__fields__.keys())
 
-    # Determine if multi-page
-    is_multi_page = isinstance(textmap_info, list)
+    from natural_pdf.text.contracts import ExtractedText
+
+    is_extracted_result = isinstance(textmap_info, ExtractedText)
 
     citations: Dict[str, Any] = {}
 
@@ -796,25 +902,17 @@ def resolve_citations(
                 )
                 continue
 
-            if is_multi_page:
-                # Find the right page's TextMap by line number
-                textmap = None
-                if line_num is not None:
-                    for pinfo in textmap_info:
-                        if pinfo.line_start <= line_num < pinfo.line_end:
-                            textmap = pinfo.textmap
-                            break
-                if textmap is None and textmap_info:
-                    # Fallback: try all pages
-                    for pinfo in textmap_info:
-                        textmap = pinfo.textmap
-                        chars = _find_best_match_in_textmap(line_text, textmap, line_map, line_num)
-                        if chars:
-                            break
-                    else:
-                        continue
-                else:
-                    chars = _find_best_match_in_textmap(line_text, textmap, line_map, line_num)
+            if is_extracted_result:
+                _resolve_result_line(
+                    textmap_info,
+                    line_num,
+                    line_text,
+                    line_map,
+                    char_to_element_map,
+                    matched_elements,
+                    matched_elements_list,
+                )
+                continue
             else:
                 # Single TextMap (Page or Region)
                 chars = _find_best_match_in_textmap(line_text, textmap_info, line_map, line_num)

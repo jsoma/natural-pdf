@@ -90,9 +90,17 @@ result.show()
 result.all_citations  # {"vendor": ElementCollection, "date": ElementCollection, ...}
 ```
 
-Citations work by sending line-numbered text to the LLM and asking it to return verbatim quotes. These quotes are then aligned back to PDF elements using pdfplumber's TextMap provenance data.
+Citations work by sending line-numbered text to the LLM and asking it to identify
+source excerpts. Those excerpts are aligned back to PDF elements through the
+`ExtractedText.segments` provenance returned by text extraction; spatial
+segments retain the underlying pdfplumber `TextMap` tuples for character-level
+matching.
 
-**Note:** Citations require `using='text'` (the default). They are not supported with `using='vision'`.
+**Note:** Citations require `using='text'` (the default). They are not supported
+with `using='vision'`. Citation offsets refer to raw acquired text, so
+`citations=True` cannot be combined with `newlines`, `whitespace`, `strip`,
+`bidi`, or `content_filter`; Natural PDF raises before sending text if one of
+those transforms is supplied.
 
 ## Confidence Scoring
 

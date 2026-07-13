@@ -26,6 +26,8 @@ from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.tables import TableResult
+from natural_pdf.text.contracts import AggregatePolicy
+from natural_pdf.text.facades import AggregateTextMixin, SelectedTextMixin
 
 if TYPE_CHECKING:
     # from PIL.Image import Image as PIL_Image # No longer needed with Image.Image type hint
@@ -42,7 +44,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class FlowElementCollection(MutableSequence["FlowElement"]):
+class FlowElementCollection(SelectedTextMixin, MutableSequence["FlowElement"]):
     """
     A collection of FlowElement objects, typically the result of Flow.find_all().
     Provides directional methods that operate on its contained FlowElements and
@@ -112,6 +114,11 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
     @property
     def flow_elements(self) -> List["FlowElement"]:
         return self._flow_elements
+
+    def _iter_selected_text_members(self) -> Iterable[object]:
+        """Yield selected physical members exactly as selected, retaining duplicates."""
+
+        return (element.physical_object for element in self._flow_elements)
 
     @property
     def first(self) -> Optional["FlowElement"]:
@@ -365,6 +372,7 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
 
 
 class FlowRegionCollection(
+    AggregateTextMixin,
     ServiceHostMixin,
     Visualizable,
     SectionsCollectionMixin,
@@ -731,6 +739,14 @@ class FlowRegionCollection(
 
     def _iter_sections(self) -> Iterable["_SectionHost"]:
         return cast(Iterable["_SectionHost"], iter(self._flow_regions))
+
+    def _iter_text_members(self) -> Iterable[object]:
+        """Yield flow regions in stored collection order, retaining empties."""
+
+        return iter(self._flow_regions)
+
+    def _text_aggregate_policy(self) -> AggregatePolicy:
+        return AggregatePolicy(natural_separator="\n\n", preserve_empty=True)
 
     def highlight(
         self,

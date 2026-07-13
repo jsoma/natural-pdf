@@ -310,6 +310,144 @@ def test_extraction_service_default_content_helpers():
     assert service._default_extraction_content(host, using="vision") is None
 
 
+def test_extraction_service_structural_host_falls_back_without_result_protocol():
+    """A third-party no-argument text host remains usable with citations enabled."""
+
+    class ThirdPartyHost:
+        def __init__(self):
+            self.calls = 0
+
+        def extract_text(self):
+            self.calls += 1
+            return "third-party text"
+
+    host = ThirdPartyHost()
+    service = ExtractionService(PDFContext.with_defaults())
+
+    with pytest.warns(RuntimeWarning, match="element citations are unavailable"):
+        assert (
+            service._default_extraction_content(
+                host,
+                using="text",
+                _return_text_result=True,
+            )
+            == "third-party text"
+        )
+    assert host.calls == 1
+
+
+@pytest.mark.parametrize("invalid_result", [{"not": "a text result"}, ("text", None)])
+def test_extraction_service_rejects_invalid_third_party_result_protocol(invalid_result):
+    """Citations reject a host that advertises an invalid result protocol."""
+
+    class BadResultHost:
+        def __init__(self):
+            self.analyses = {}
+
+        def extract_text_result(self):
+            return invalid_result
+
+        def extract_text(self):
+            raise AssertionError("invalid result providers must not silently fall back")
+
+    service = ExtractionService(PDFContext.with_defaults())
+
+    with pytest.warns(RuntimeWarning, match="extract_text_result"):
+        with pytest.raises(TypeError, match="extract_text_result\\(\\) must return ExtractedText"):
+            service.extract(
+                BadResultHost(),
+                schema=["value"],
+                client=Mock(),
+                citations=True,
+            )
+
+
+@pytest.mark.parametrize(
+    ("option", "value"),
+    [
+        ("newlines", False),
+        ("whitespace", "normalize"),
+        ("strip", False),
+        ("bidi", False),
+        ("content_filter", "secret"),
+    ],
+)
+def test_page_citation_provenance_rejects_text_transforms_before_acquisition(
+    practice_pdf, monkeypatch, option, value
+):
+    """Citation offsets must always be acquired against untransformed page text."""
+
+    page = practice_pdf.pages[0]
+    result_extractor = Mock(side_effect=AssertionError("raw acquisition must not run"))
+    monkeypatch.setattr(page, "extract_text_result", result_extractor)
+
+    with pytest.raises(TypeError, match="Citation provenance requires raw text"):
+        page.extract(
+            ["value"],
+            client=Mock(),
+            citations=True,
+            **{option: value},
+        )
+
+    result_extractor.assert_not_called()
+
+
+def test_generic_provenance_fallback_rejects_text_transforms_before_acquisition():
+    """Direct users of the generic provenance fallback receive the same contract error."""
+
+    class ResultHost:
+        def __init__(self):
+            self.extract_text_result = Mock()
+
+    host = ResultHost()
+    service = ExtractionService(PDFContext.with_defaults())
+
+    with pytest.raises(TypeError, match="cannot be used with citations=True: strip"):
+        service._default_extraction_content(
+            host,
+            using="text",
+            _return_text_result=True,
+            strip=False,
+        )
+
+    host.extract_text_result.assert_not_called()
+
+
+def test_page_text_transforms_remain_available_without_citations(practice_pdf, monkeypatch):
+    """The provenance guard must not change ordinary structured text extraction."""
+
+    page = practice_pdf.pages[0]
+    text_extractor = Mock(return_value="transformed text")
+    monkeypatch.setattr(page, "extract_text", text_extractor)
+    extracted = StructuredDataResult(
+        data=InspectionData(site="ok"),
+        success=True,
+        error_message=None,
+        model_used="test-model",
+    )
+    monkeypatch.setattr(extraction_service, "extract_structured_data", Mock(return_value=extracted))
+
+    page.extract(
+        InspectionData,
+        client=Mock(),
+        citations=False,
+        newlines=False,
+        whitespace="normalize",
+        strip=False,
+        bidi=False,
+        content_filter="secret",
+    )
+
+    text_extractor.assert_called_once_with(
+        layout=True,
+        newlines=False,
+        whitespace="normalize",
+        strip=False,
+        bidi=False,
+        content_filter="secret",
+    )
+
+
 def test_extraction_service_with_mock_client(monkeypatch):
     """Ensure ExtractionService integrates with structured data managers."""
 

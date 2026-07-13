@@ -117,10 +117,13 @@ def extract_cell_value(
             return ocr_text or None
 
     if cell_extract == "words":
-        text = cell_region.extract_text(
-            "words",
+        words = cell_region.find_all(
+            "text",
             overlap=cell_overlap,
             apply_exclusions=apply_exclusions,
+        )
+        text = words.extract_text(
+            separator=" ",
             newlines=cell_newlines,
         ).strip()
     else:

@@ -44,6 +44,8 @@ from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.text.contracts import ContentFilter, TextLayoutOptions, WhitespaceMode
+from natural_pdf.text.pipeline import prepare_text_transform, validate_layout_request
 
 
 class PDFCollection(
@@ -259,6 +261,47 @@ class PDFCollection(
     def pdfs(self) -> List["PDF"]:
         """Returns the list of PDF objects held by the collection."""
         return self._pdfs
+
+    def extract_each_text(
+        self,
+        *,
+        layout: bool | TextLayoutOptions = False,
+        apply_exclusions: bool = True,
+        newlines: bool | str = True,
+        whitespace: WhitespaceMode = "preserve",
+        strip: bool = True,
+        bidi: bool = True,
+        content_filter: ContentFilter | None = None,
+    ) -> List[str]:
+        """Extract one text string per PDF without imposing a collection join.
+
+        A collection of documents has no universally meaningful document-boundary
+        separator.  Callers that want a flattened representation must choose and
+        apply that boundary themselves.
+        """
+
+        validate_layout_request(layout)
+        if not isinstance(apply_exclusions, bool):
+            raise TypeError("apply_exclusions must be a bool")
+        prepare_text_transform(
+            newlines=newlines,
+            whitespace=whitespace,
+            strip=strip,
+            bidi=bidi,
+            content_filter=content_filter,
+        )
+        return [
+            pdf.extract_text(
+                layout=layout,
+                apply_exclusions=apply_exclusions,
+                newlines=newlines,
+                whitespace=whitespace,
+                strip=strip,
+                bidi=bidi,
+                content_filter=content_filter,
+            )
+            for pdf in self._pdfs
+        ]
 
     def show(self, limit: Optional[int] = 30, per_pdf_limit: Optional[int] = 10, **kwargs):
         """

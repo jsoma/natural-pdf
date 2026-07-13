@@ -18,10 +18,7 @@ from typing import (
     overload,
 )
 
-from pdfplumber.utils.geometry import get_bbox_overlap, objects_to_bbox
-
-# New Imports
-from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
+from pdfplumber.utils.geometry import get_bbox_overlap
 from PIL import Image
 
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
@@ -39,7 +36,9 @@ from natural_pdf.elements.region import Region
 from natural_pdf.elements.text import TextElement
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
-from natural_pdf.text.operations import apply_content_filter, validate_content_filter
+from natural_pdf.text.contracts import ContentFilter, WhitespaceMode
+from natural_pdf.text.facades import SelectedTextMixin
+from natural_pdf.text.pipeline import prepare_text_transform
 from natural_pdf.utils.color_utils import format_color_value
 
 try:
@@ -73,6 +72,7 @@ P = TypeVar("P", bound="Page")
 
 
 class ElementCollection(
+    SelectedTextMixin,
     OCRScopeMixin,
     Generic[T],
     ServiceHostMixin,
@@ -734,182 +734,10 @@ class ElementCollection(
 
         return self._spawn(filtered)
 
-    def extract_text(
-        self,
-        separator: str = " ",
-        preserve_whitespace: bool = True,
-        use_exclusions: bool = True,
-        strip: Optional[bool] = None,
-        content_filter=None,
-        **kwargs,
-    ) -> str:
-        """
-        Extract text from all TextElements in the collection, optionally using
-        pdfplumber's layout engine if layout=True is specified.
+    def _iter_selected_text_members(self):
+        """Yield members in stored order without sorting or deduplication."""
 
-        Args:
-            separator: String to join text from elements. Default is a single space.
-            preserve_whitespace: Deprecated. Use layout=False for simple joining.
-            use_exclusions: Deprecated. Exclusions should be applied *before* creating
-                          the collection or by filtering the collection itself.
-            content_filter: Optional content filter to exclude specific text patterns. Can be:
-                - A regex pattern string (characters matching the pattern are EXCLUDED)
-                - A callable that takes text and returns True to KEEP the character
-                - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
-            **kwargs: Additional layout parameters passed directly to pdfplumber's
-                      `chars_to_textmap` function ONLY if `layout=True` is passed.
-                      See Page.extract_text docstring for common parameters.
-                      If `layout=False` or omitted, performs a simple join.
-            strip: Whether to strip whitespace from the extracted text.
-
-        Returns:
-            Combined text from elements, potentially with layout-based spacing.
-        """
-        validate_content_filter(content_filter)
-
-        # Check if we have any elements at all
-        if not self._elements:
-            return ""
-
-        typed_elements = self._supports_list()
-
-        # Check if all elements are TextElements with character data
-        text_elements_with_chars = [
-            el
-            for el in typed_elements
-            if isinstance(el, TextElement) and hasattr(el, "_char_dicts") and el._char_dicts
-        ]
-
-        # If we have a mixed collection (Regions, TextElements without chars, etc),
-        # use a simpler approach: call extract_text on each element
-        if len(text_elements_with_chars) < len(typed_elements):
-            # Mixed collection - extract text from each element
-            element_texts = []
-
-            # Sort elements by position first
-            sorted_elements = sorted(
-                typed_elements,
-                key=lambda el: (
-                    el.page.index,
-                    el.top,
-                    el.x0,
-                ),
-            )
-
-            for el in sorted_elements:
-                if hasattr(el, "extract_text"):
-                    # Call extract_text on the element (works for TextElement, Region, etc)
-                    element_kwargs = dict(kwargs)
-                    element_kwargs.pop("preserve_whitespace", None)
-                    element_kwargs.pop("use_exclusions", None)
-                    text = el.extract_text(**element_kwargs)
-                    if text:
-                        element_texts.append(text)
-                elif hasattr(el, "text"):
-                    # Fallback to text property if available
-                    text = getattr(el, "text", "")
-                    if text:
-                        element_texts.append(text)
-
-            return separator.join(element_texts)
-
-        # All elements are TextElements with char data - use the original approach
-        text_elements = text_elements_with_chars
-
-        # Collect all character dictionaries
-        all_char_dicts = []
-        for el in text_elements:
-            all_char_dicts.extend(getattr(el, "_char_dicts", []))
-
-        if not all_char_dicts:
-            # Handle case where elements exist but have no char dicts
-            logger.debug(
-                "ElementCollection.extract_text: No character dictionaries found in TextElements."
-            )
-            # Sort elements by position before joining
-            sorted_text_elements = sorted(
-                text_elements,
-                key=lambda el: (el.page.index, el.top, el.x0),
-            )
-            return separator.join(
-                getattr(el, "text", "") for el in sorted_text_elements
-            )  # Fallback to simple join of word text
-
-        # Apply content filtering if provided
-        if content_filter is not None:
-            all_char_dicts = apply_content_filter(all_char_dicts, content_filter)
-
-        # Check if layout is requested
-        use_layout = kwargs.get("layout", False)
-
-        if use_layout:
-            logger.debug("ElementCollection.extract_text: Using layout=True path.")
-            # Layout requested: Use chars_to_textmap
-
-            # Prepare layout kwargs
-            layout_kwargs = {}
-            allowed_keys = set(WORD_EXTRACTOR_KWARGS) | set(TEXTMAP_KWARGS)
-            for key, value in kwargs.items():
-                if key in allowed_keys:
-                    layout_kwargs[key] = value
-            layout_kwargs["layout"] = True  # Ensure layout is True
-
-            # Calculate overall bbox for the elements used
-            collection_bbox = objects_to_bbox(all_char_dicts)
-            coll_x0, coll_top, coll_x1, coll_bottom = collection_bbox
-            coll_width = coll_x1 - coll_x0
-            coll_height = coll_bottom - coll_top
-
-            # Set layout parameters based on collection bounds
-            # Warn if collection is sparse? TBD.
-            if "layout_bbox" not in layout_kwargs:
-                layout_kwargs["layout_bbox"] = collection_bbox
-            if "layout_width" not in layout_kwargs:
-                layout_kwargs["layout_width"] = coll_width
-            if "layout_height" not in layout_kwargs:
-                layout_kwargs["layout_height"] = coll_height
-            # Set shifts relative to the collection's top-left
-            if "x_shift" not in layout_kwargs:
-                layout_kwargs["x_shift"] = coll_x0
-            if "y_shift" not in layout_kwargs:
-                layout_kwargs["y_shift"] = coll_top
-
-            try:
-                # chars_to_textmap constructs a layout-aware text map from the supplied
-                # character dictionaries, letting pdfplumber cluster characters into
-                # rows/columns using the provided tolerances.
-                # Sort chars by document order (page, top, x0)
-                # Need page info on char dicts for multi-page collections
-                # Assuming char dicts have 'page_number' from element creation
-                all_char_dicts.sort(
-                    key=lambda c: (c.get("page_number", 0), c.get("top", 0), c.get("x0", 0))
-                )
-                textmap = chars_to_textmap(all_char_dicts, **layout_kwargs)
-                result = textmap.as_string
-            except Exception as e:
-                raise RuntimeError(
-                    "ElementCollection.extract_text failed to build layout textmap"
-                ) from e
-
-        else:
-            # Default: Simple join without layout
-            logger.debug("ElementCollection.extract_text: Using simple join (layout=False).")
-            result = separator.join(el.extract_text() for el in text_elements)
-
-            # # Sort chars by document order (page, top, x0)
-            # all_char_dicts.sort(
-            #     key=lambda c: (c.get("page_number", 0), c.get("top", 0), c.get("x0", 0))
-            # )
-            # # Simple join of character text
-            # result = "".join(c.get("text", "") for c in all_char_dicts)
-
-        # Determine final strip flag – same rule as global helper unless caller overrides
-        strip_text = strip if strip is not None else (not use_layout)
-
-        if strip_text and isinstance(result, str):
-            result = "\n".join(line.rstrip() for line in result.splitlines()).strip()
-
-        return result
+        return iter(self._elements)
 
     def merge(self) -> Union["Region", "FlowRegion"]:
         """
@@ -1989,9 +1817,11 @@ class ElementCollection(
         self,
         order: Optional[Union[str, Callable[[T], Any]]] = None,
         *,
-        newlines: bool = True,
+        newlines: Union[bool, str] = True,
+        whitespace: WhitespaceMode = "preserve",
+        strip: bool = True,
+        content_filter: Optional[ContentFilter] = None,
         default: Optional[str] = None,
-        **kwargs,
     ) -> List[Optional[str]]:
         """Return a list with the extracted text for every element.
 
@@ -2011,9 +1841,37 @@ class ElementCollection(
             when the collection was built with ``find(..., default=None)`` and you
             want to preserve the list length with placeholder values (e.g., ``""``).
 
-        Remaining keyword arguments are forwarded to each element's
-        :py:meth:`extract_text` method.
+        Text options use the same literal-selection semantics as
+        :meth:`extract_text`; unsupported host-family options are rejected by
+        this explicit signature.
         """
+
+        prepare_text_transform(
+            newlines=newlines,
+            whitespace=whitespace,
+            strip=strip,
+            bidi=False,
+            content_filter=content_filter,
+        )
+        if default is not None and not isinstance(default, str):
+            raise TypeError("default must be a str or None")
+        if order is not None and not callable(order) and not isinstance(order, str):
+            raise TypeError("order must be a supported preset, callable, or None")
+
+        preset: str | None = None
+        if isinstance(order, str):
+            preset = order.lower()
+            valid_presets = {
+                "ltr",
+                "left-to-right",
+                "rtl",
+                "right-to-left",
+                "natural",
+                "tdlr",
+                "top-down",
+            }
+            if preset not in valid_presets:
+                raise ValueError(f"unsupported text order preset: {order!r}")
 
         def _page_index(elem: SupportsElement) -> int:
             page_obj = getattr(elem, "page", None)
@@ -2023,41 +1881,32 @@ class ElementCollection(
         elements: List[T] = list(self._elements)  # make a shallow copy we can sort
 
         if order is not None and len(elements) > 1:
-            try:
-                if callable(order):
-                    elements.sort(key=order)
-                elif isinstance(order, str):
-                    preset = order.lower()
-                    if preset in {"ltr", "left-to-right"}:
-                        elements.sort(
-                            key=lambda el: (
-                                _page_index(cast(SupportsElement, el)),
-                                getattr(el, "x0", 0),
-                                getattr(el, "top", 0),
-                            )
-                        )
-                    elif preset in {"rtl", "right-to-left"}:
-                        elements.sort(
-                            key=lambda el: (
-                                _page_index(cast(SupportsElement, el)),
-                                -getattr(el, "x0", 0),
-                                getattr(el, "top", 0),
-                            )
-                        )
-                    elif preset in {"natural", "tdlr", "top-down"}:
-                        elements.sort(
-                            key=lambda el: (
-                                _page_index(cast(SupportsElement, el)),
-                                getattr(el, "top", 0),
-                                getattr(el, "x0", 0),
-                            )
-                        )
-                    else:
-                        # Unknown preset – silently ignore to keep original order
-                        pass
-            except Exception:
-                # If anything goes wrong, fall back to original order
-                pass
+            if callable(order):
+                elements.sort(key=order)
+            elif preset in {"ltr", "left-to-right"}:
+                elements.sort(
+                    key=lambda el: (
+                        _page_index(cast(SupportsElement, el)),
+                        getattr(el, "x0", 0),
+                        getattr(el, "top", 0),
+                    )
+                )
+            elif preset in {"rtl", "right-to-left"}:
+                elements.sort(
+                    key=lambda el: (
+                        _page_index(cast(SupportsElement, el)),
+                        -getattr(el, "x0", 0),
+                        getattr(el, "top", 0),
+                    )
+                )
+            else:
+                elements.sort(
+                    key=lambda el: (
+                        _page_index(cast(SupportsElement, el)),
+                        getattr(el, "top", 0),
+                        getattr(el, "x0", 0),
+                    )
+                )
 
         # -- Extract ----------------------------------------------------------------
         results = []
@@ -2065,8 +1914,14 @@ class ElementCollection(
             if el is None:
                 results.append(default)
             else:
-                text = el.extract_text(newlines=newlines, **kwargs)  # type: ignore[arg-type]
-                results.append(text if text is not None else default)
+                text = self._spawn([el]).extract_text(
+                    separator="",
+                    newlines=newlines,
+                    whitespace=whitespace,
+                    strip=strip,
+                    content_filter=content_filter,
+                )
+                results.append(text if text else default)
         return results
 
     def correct_ocr(
@@ -2203,7 +2058,7 @@ class ElementCollection(
             if include_content and hasattr(element, "extract_text"):
                 try:
                     extractor = cast(Any, element)
-                    element_data["content"] = extractor.extract_text(preserve_whitespace=True)
+                    element_data["content"] = extractor.extract_text()
                 except Exception as e:
                     logger.error(f"Error extracting text from element {i}: {e}")
                     element_data["content"] = ""

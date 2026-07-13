@@ -450,7 +450,7 @@ print(f"Applied OCR to {len(pdf.pages)} pages.")
 # print(f"Applied Layout Analysis to {len(pdf.pages)} pages.")
 
 # Extract text from all pages (uses OCR results if available)
-all_text_content = pdf.extract_text(page_separator="\\n\\n---\\n\\n")
+all_text_content = pdf.extract_text(separator="\\n\\n---\\n\\n")
 
 print(f"\nCombined text from all pages:\n{all_text_content[:500]}...")
 ```

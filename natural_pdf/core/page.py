@@ -21,7 +21,6 @@ from typing import (
     Type,
     Union,
     cast,
-    overload,
 )
 
 import pdfplumber
@@ -73,19 +72,13 @@ from natural_pdf.ocr.replacement import OCRReplaceMode, normalize_ocr_replace_mo
 
 # Service modules are loaded lazily via the registry in natural_pdf.services.registry
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.text.contracts import ExtractedText, TextLayoutOptions
+from natural_pdf.text.facades import SpatialTextMixin
 
 # # Import new utils
-from natural_pdf.text.operations import (
-    _create_alt_text_char_dict,
-    apply_bidi_processing,
-    filter_chars_spatially,
-    generate_text_layout,
-)
+from natural_pdf.text.operations import apply_bidi_processing
 from natural_pdf.text.operations import normalize_whitespace as _normalize_whitespace
-from natural_pdf.text.operations import (
-    validate_content_filter,
-    word_elements_to_textmap_char_dicts,
-)
+from natural_pdf.text.pipeline import extract_spatial_text
 
 # Viewer widget support is lazy-loaded to avoid importing ipywidgets/IPython at startup
 
@@ -135,6 +128,7 @@ class _RegionRegistryView(Mapping[str, Any]):
 class Page(
     ClassificationResultAccessorMixin,
     OCRDirectTargetMixin,
+    SpatialTextMixin,
     ServiceHostMixin,
     SelectorHostMixin,
     SinglePageContextMixin,
@@ -1657,254 +1651,42 @@ class Page(
             prompt=prompt,
         )
 
-    @overload
-    def extract_text(
+    def _extract_spatial_text_result(
         self,
-        preserve_whitespace: bool = ...,
-        preserve_line_breaks: bool = ...,
-        use_exclusions: bool = ...,
-        debug_exclusions: bool = ...,
-        content_filter: Any = ...,
         *,
-        layout: bool = ...,
-        x_density: Optional[float] = ...,
-        y_density: Optional[float] = ...,
-        x_tolerance: Optional[float] = ...,
-        y_tolerance: Optional[float] = ...,
-        line_dir: Optional[str] = ...,
-        char_dir: Optional[str] = ...,
-        strip_final: bool = ...,
-        strip_empty: bool = ...,
-        bidi: bool = ...,
-        return_textmap: Literal[False] = ...,
-    ) -> str: ...
+        layout: bool | TextLayoutOptions,
+        apply_exclusions: bool,
+    ) -> ExtractedText:
+        """Acquire and render this page's untransformed spatial text."""
 
-    @overload
-    def extract_text(
-        self,
-        preserve_whitespace: bool = ...,
-        preserve_line_breaks: bool = ...,
-        use_exclusions: bool = ...,
-        debug_exclusions: bool = ...,
-        content_filter: Any = ...,
-        *,
-        layout: bool = ...,
-        x_density: Optional[float] = ...,
-        y_density: Optional[float] = ...,
-        x_tolerance: Optional[float] = ...,
-        y_tolerance: Optional[float] = ...,
-        line_dir: Optional[str] = ...,
-        char_dir: Optional[str] = ...,
-        strip_final: bool = ...,
-        strip_empty: bool = ...,
-        bidi: bool = ...,
-        return_textmap: Literal[True],
-    ) -> Tuple[str, Any]: ...
-
-    def extract_text(
-        self,
-        preserve_whitespace: bool = True,
-        preserve_line_breaks: bool = True,
-        use_exclusions: bool = True,
-        debug_exclusions: bool = False,
-        content_filter=None,
-        *,
-        layout: bool = False,
-        x_density: Optional[float] = None,
-        y_density: Optional[float] = None,
-        x_tolerance: Optional[float] = None,
-        y_tolerance: Optional[float] = None,
-        line_dir: Optional[str] = None,
-        char_dir: Optional[str] = None,
-        strip_final: bool = False,
-        strip_empty: bool = False,
-        bidi: bool = True,
-        return_textmap: bool = False,
-    ) -> Union[str, Tuple[str, Any]]:
-        """
-        Extract text from this page, respecting exclusions and using pdfplumber's
-        layout engine (chars_to_textmap) if layout arguments are provided or default.
-
-        Args:
-            preserve_line_breaks: When False, collapse newlines into spaces for a flattened string.
-            use_exclusions: Whether to apply exclusion regions (default: True).
-                            Note: Filtering logic is now always applied if exclusions exist.
-            debug_exclusions: Whether to output detailed exclusion debugging info (default: False).
-            content_filter: Optional content filter to exclude specific text patterns. Can be:
-                - A regex pattern string (characters matching the pattern are EXCLUDED)
-                - A callable that takes text and returns True to KEEP the character
-                - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
-            layout: Whether to enable layout-aware spacing (default: False).
-            x_density: Horizontal character density override.
-            y_density: Vertical line density override.
-            x_tolerance: Horizontal clustering tolerance.
-            y_tolerance: Vertical clustering tolerance.
-            line_dir: Line reading direction override.
-            char_dir: Character reading direction override.
-            strip_final: When True, strip trailing whitespace from the combined text.
-            strip_empty: When True, drop entirely blank lines from the output.
-            bidi: Whether to apply bidi reordering when RTL text is detected (default: True).
-
-        Returns:
-            Extracted text as string, potentially with layout-based spacing.
-        """
-        logger.debug(
-            "Page %s: extract_text called with layout=%s, x_density=%s, y_density=%s",
-            self.number,
-            layout,
-            x_density,
-            y_density,
+        full_page = Region(
+            self,
+            (0.0, 0.0, self.width, self.height),
         )
-        debug = debug_exclusions
-        validate_content_filter(content_filter)
-
-        # 1. Get Word Elements (triggers load_elements if needed)
-        word_elements = self.words
-        if not word_elements:
-            # Even with no native words, alt_text regions may contribute text
-            alt_char_dicts = []
-            for region in self.iter_regions():
-                if getattr(region, "alt_text", None) is not None:
-                    alt_char_dicts.append(_create_alt_text_char_dict(region))
-            if not alt_char_dicts:
-                logger.debug(f"Page {self.number}: No word elements found.")
-                if return_textmap:
-                    return "", None
-                return ""
-            # Generate text from alt_text regions only
-            page_bbox = (0, 0, self.width, self.height)
-            alt_text_kwargs = {"layout": layout}
-            if content_filter is not None:
-                alt_text_kwargs["content_filter"] = content_filter
-            result = generate_text_layout(
-                char_dicts=alt_char_dicts,
-                layout_context_bbox=page_bbox,
-                user_kwargs=alt_text_kwargs,
-            )
-            if return_textmap:
-                return result, None
-            return result
-
-        # 2. Apply element-based exclusions if enabled
-        # Check both page-level and PDF-level exclusions
-        has_exclusions = bool(self._exclusions) or (
-            hasattr(self, "_parent")
-            and self._parent
-            and hasattr(self._parent, "_exclusions")
-            and self._parent._exclusions
+        spatial_input = full_page._spatial_text_input(
+            apply_exclusions=apply_exclusions,
+            source=self,
         )
-        if use_exclusions and has_exclusions:
-            # Filter word elements through _filter_elements_by_exclusions
-            # This handles both element-based and region-based exclusions
-            word_elements = self._filter_elements_by_exclusions(
-                word_elements, debug_exclusions=debug
-            )
-            if debug:
-                logger.debug(
-                    f"Page {self.number}: {len(word_elements)} words remaining after exclusion filtering."
-                )
-
-        # 3. Get region-based exclusions for spatial filtering
-        exclusion_regions = []
-        apply_exclusions_flag = use_exclusions
-        if apply_exclusions_flag and has_exclusions:
-            exclusion_regions = self._get_exclusion_regions(include_callable=True, debug=debug)
-            if debug:
-                logger.debug(
-                    f"Page {self.number}: Found {len(exclusion_regions)} region exclusions for spatial filtering."
-                )
-        elif debug:
-            logger.debug(f"Page {self.number}: Not applying exclusions.")
-
-        # 4. Collect all character dictionaries from remaining word elements.
-        # Preserve spaces inferred by the word engine so char-based extraction
-        # does not collapse words back together on PDFs without literal spaces.
-        all_char_dicts = word_elements_to_textmap_char_dicts(word_elements)
-
-        # 4b. Inject alt_text from regions on this page
-        for region in self.iter_regions():
-            if region.alt_text is not None:
-                all_char_dicts.append(_create_alt_text_char_dict(region))
-
-        # 5. Spatially Filter Characters (only by regions, elements already filtered above)
-        filtered_chars = filter_chars_spatially(
-            char_dicts=all_char_dicts,
-            exclusion_regions=exclusion_regions,
-            target_region=None,  # No target region for full page extraction
-            debug=debug,
+        return extract_spatial_text(
+            spatial_input,
+            layout=layout,
         )
 
-        # 5. Generate Text Layout using Utility
-        # Pass page bbox as layout context
-        page_bbox = (0, 0, self.width, self.height)
-        # Merge PDF-level default tolerances if caller did not override
-        merged_kwargs = {
-            "layout": layout,
-            "x_density": x_density,
-            "y_density": y_density,
-            "x_tolerance": x_tolerance,
-            "y_tolerance": y_tolerance,
-            "line_dir": line_dir,
-            "char_dir": char_dir,
-        }
-        merged_kwargs = {
-            key: value
-            for key, value in merged_kwargs.items()
-            if value is not None or key == "layout"
-        }
-        tol_keys = [
+    def _text_layout_defaults(self) -> Dict[str, Any]:
+        """Return typed page-owned defaults for the spatial text pipeline."""
+
+        configured: Dict[str, Any] = {}
+        for key in (
             "x_tolerance",
             "x_tolerance_ratio",
             "y_tolerance",
             "y_tolerance_ratio",
             "keep_blank_chars",
-        ]
-        for k in tol_keys:
-            if k not in merged_kwargs:
-                if k in self._config:
-                    merged_kwargs[k] = self._config[k]
-                elif hasattr(self._parent, "_config") and k in self._parent._config:
-                    merged_kwargs[k] = self._parent._config[k]
-
-        # Add content_filter to kwargs if provided
-        if content_filter is not None:
-            merged_kwargs["content_filter"] = content_filter
-
-        textmap_obj = None
-        if return_textmap:
-            result, textmap_obj = generate_text_layout(
-                char_dicts=filtered_chars,
-                layout_context_bbox=page_bbox,
-                user_kwargs=merged_kwargs,
-                return_textmap=True,
-            )
-        else:
-            result = generate_text_layout(
-                char_dicts=filtered_chars,
-                layout_context_bbox=page_bbox,
-                user_kwargs=merged_kwargs,
-            )
-
-        if bidi and result:
-            result = apply_bidi_processing(result)
-
-        if strip_empty and result:
-            result = "\n".join(line for line in result.splitlines() if line.strip())
-
-        if strip_final and result:
-            result = "\n".join(line.rstrip() for line in result.splitlines()).strip()
-
-        if result and not preserve_line_breaks:
-            normalized = result.replace("\r\n", "\n").replace("\r", "\n")
-            if preserve_whitespace:
-                result = re.sub(r"\s*\n\s*", " ", normalized)
-            else:
-                result = " ".join(normalized.split())
-
-        logger.debug(f"Page {self.number}: extract_text finished, result length: {len(result)}.")
-        if return_textmap:
-            return result, textmap_obj
-        return result
+        ):
+            value = self._config.get(key)
+            if value is not None:
+                configured[key] = value
+        return configured
 
     def extract_anchored_rows(
         self,
@@ -2661,7 +2443,7 @@ class Page(
     def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, Image.Image]:
         if model_type == "text":
             text_content = self.extract_text(
-                layout=False, use_exclusions=False
+                layout=False, apply_exclusions=False
             )  # Simple join, ignore exclusions for classification
             if not text_content or text_content.isspace():
                 raise ValueError("Cannot classify page with 'text' model: No text content found.")
@@ -2955,14 +2737,12 @@ class Page(
 
     def _get_extraction_content(self, using: str = "text", **kwargs) -> Any:
         """Internal helper for ExtractionService to gather page content."""
-        _return_textmap = kwargs.pop("_return_textmap", False)
+        return_text_result = bool(kwargs.pop("_return_text_result", False))
 
         if using == "text":
             layout = kwargs.pop("layout", True)
-            if _return_textmap:
-                text, textmap = self.extract_text(layout=layout, return_textmap=True, **kwargs)
-                word_elements = list(self.words)
-                return (text, textmap, word_elements)
+            if return_text_result:
+                return self.extract_text_result(layout=layout, **kwargs)
             return self.extract_text(layout=layout, **kwargs)
 
         if using == "vision":

@@ -5,12 +5,15 @@ Rectangle element class for natural-pdf.
 from typing import TYPE_CHECKING, Any, Dict, Tuple
 
 from natural_pdf.elements.base import Element
+from natural_pdf.text.contracts import ExtractedText, TextLayoutOptions
+from natural_pdf.text.facades import SpatialTextMixin
+from natural_pdf.text.pipeline import extract_spatial_text
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
 
 
-class RectangleElement(Element):
+class RectangleElement(SpatialTextMixin, Element):
     """
     Represents a rectangle element in a PDF.
 
@@ -92,41 +95,20 @@ class RectangleElement(Element):
         """Get text content inside this rectangle (delegates to extract_text())."""
         return self.extract_text() or ""
 
-    def extract_text(
+    def _extract_spatial_text_result(
         self,
-        preserve_whitespace: bool = True,
-        apply_exclusions: bool = True,
-        **kwargs: Any,
-    ) -> str:
-        """
-        Extract text from inside this rectangle.
+        *,
+        layout: bool | TextLayoutOptions,
+        apply_exclusions: bool,
+    ) -> ExtractedText:
+        """Acquire rectangle text through Region geometry with this source identity."""
 
-        Args:
-            preserve_whitespace: Whether to keep blank characters (default: True)
-            apply_exclusions: Whether to apply exclusion regions (default: True)
-            **kwargs: Additional extraction parameters
-
-        Returns:
-            Extracted text as string
-        """
-        # Backward compatibility alias
-        if "use_exclusions" in kwargs:
-            import warnings
-
-            warnings.warn(
-                "use_exclusions is deprecated, use apply_exclusions instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            apply_exclusions = kwargs.pop("use_exclusions")
-        # Use the region to extract text
         from natural_pdf.elements.region import Region
 
         region = Region(self.page, self.bbox)
-        return region.extract_text(
-            preserve_whitespace=preserve_whitespace,
-            apply_exclusions=apply_exclusions,
-            **kwargs,
+        return extract_spatial_text(
+            region._spatial_text_input(apply_exclusions=apply_exclusions, source=self),
+            layout=layout,
         )
 
     def __repr__(self) -> str:

@@ -116,6 +116,16 @@ class ContentFilterError(NaturalPDFError):
     pass
 
 
+class TextExtractionError(NaturalPDFError):
+    """Raised when text acquisition or layout reconstruction fails.
+
+    The original backend exception is retained as ``__cause__`` so callers can
+    distinguish an invalid extraction result from an empty one.
+    """
+
+    pass
+
+
 # --- Exclusion Errors ---
 
 

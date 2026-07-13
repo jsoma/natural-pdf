@@ -56,13 +56,12 @@ def test_public_content_filters_raise_for_failing_callable(practice_pdf):
         assert isinstance(caught.value.__cause__, LookupError)
 
 
-@pytest.mark.parametrize("granularity", ["chars", "words"])
-def test_region_content_filter_errors_are_not_bypassed_by_granularity(practice_pdf, granularity):
+def test_region_content_filter_errors_are_not_data_dependent(practice_pdf):
     page = practice_pdf.pages[0]
     region = Region(page, (0, 0, page.width, page.height))
 
     with pytest.raises(ContentFilterError, match="Invalid content_filter"):
-        region.extract_text(granularity=granularity, content_filter="[")
+        region.extract_text(content_filter="[")
 
 
 def test_region_alt_text_applies_content_filter(practice_pdf):
@@ -70,7 +69,7 @@ def test_region_alt_text_applies_content_filter(practice_pdf):
     region = Region(page, (0, 0, 10, 10))
     region.alt_text = "account 1234"
 
-    assert region.extract_text(content_filter=r"\d") == "account "
+    assert region.extract_text(content_filter=r"\d") == "account"
 
     with pytest.raises(ContentFilterError, match="Invalid content_filter"):
         region.extract_text(content_filter="[")

@@ -8,7 +8,6 @@ import pytest
 from pydantic import BaseModel, Field
 
 from natural_pdf.extraction.citations import (
-    PageTextMapInfo,
     add_line_numbers,
     build_char_to_element_map,
     build_citation_prompt,
@@ -17,6 +16,7 @@ from natural_pdf.extraction.citations import (
     split_shadow_result,
 )
 from natural_pdf.extraction.result import FieldResult, StructuredDataResult
+from natural_pdf.text.contracts import ExtractedText, SourceTextSegment
 
 
 # ------------------------------------------------------------------ #
@@ -315,6 +315,58 @@ class TestResolveCitations:
         assert len(citations["name"]) == 0
         assert len(citations["age"]) == 0
 
+    def test_result_offsets_disambiguate_repeated_identical_lines(self):
+        from pdfplumber.utils.text import chars_to_textmap
+
+        chars = []
+        words = []
+        for top in (10, 30):
+            line_chars = []
+            for index, character in enumerate("same"):
+                char = {
+                    "text": character,
+                    "x0": 10 + index * 7,
+                    "x1": 17 + index * 7,
+                    "top": top,
+                    "bottom": top + 10,
+                    "doctop": top,
+                    "upright": True,
+                    "fontname": "Arial",
+                    "size": 12,
+                    "object_type": "char",
+                }
+                chars.append(char)
+                line_chars.append(char)
+            word = MagicMock()
+            word._char_dicts = line_chars
+            word.bbox = (10, top, 38, top + 10)
+            words.append(word)
+
+        textmap = chars_to_textmap(chars, layout=False, x_tolerance=5, y_tolerance=5)
+        result = ExtractedText(
+            text=textmap.as_string,
+            segments=(
+                SourceTextSegment(
+                    output_start=0,
+                    output_end=len(textmap.as_string),
+                    source=object(),
+                    textmap=textmap,
+                    words=tuple(words),
+                ),
+            ),
+        )
+        _, line_map = add_line_numbers(result.text)
+
+        citations = resolve_citations(
+            shadow_data={"name_source_lines": [1, 1], "age_source_lines": None},
+            user_schema=SimpleSchema,
+            line_map=line_map,
+            textmap_info=result,
+            char_to_element_map=build_char_to_element_map(words),
+        )
+
+        assert list(citations["name"]) == [words[1]]
+
 
 # ------------------------------------------------------------------ #
 # FieldResult
@@ -435,16 +487,18 @@ class TestStructuredDataResult:
 
 
 # ------------------------------------------------------------------ #
-# Integration: return_textmap
+# Integration: extract_text_result
 # ------------------------------------------------------------------ #
-class TestReturnTextmap:
-    def test_page_return_textmap(self):
+class TestExtractTextResult:
+    def test_page_result_contains_textmap_provenance(self):
         from natural_pdf import PDF
 
         pdf = PDF("pdfs/01-practice.pdf")
-        text, tm = pdf.pages[0].extract_text(layout=True, return_textmap=True)
-        assert isinstance(text, str) and len(text) > 0
-        assert tm is not None and hasattr(tm, "search")
+        result = pdf.pages[0].extract_text_result(layout=True)
+        assert isinstance(result, ExtractedText) and len(result.text) > 0
+        assert len(result.segments) == 1
+        assert result.segments[0].textmap is not None
+        assert hasattr(result.segments[0].textmap, "search")
         pdf.close()
 
     def test_page_extract_text_unchanged(self):
@@ -455,24 +509,25 @@ class TestReturnTextmap:
         assert isinstance(text, str) and len(text) > 0
         pdf.close()
 
-    def test_region_return_textmap(self):
+    def test_region_result_contains_provenance(self):
         from natural_pdf import PDF
 
         pdf = PDF("pdfs/01-practice.pdf")
         region = pdf.pages[0].find("text:contains('Jungle')").below()
-        text, tm = region.extract_text(layout=True, return_textmap=True)
-        assert isinstance(text, str) and len(text) > 0
+        result = region.extract_text_result(layout=True)
+        assert isinstance(result, ExtractedText) and len(result.text) > 0
+        assert result.segments[0].source is region
+        assert result.segments[0].textmap is not None
         pdf.close()
 
-    def test_pdf_return_textmap(self):
+    def test_pdf_result_contains_one_source_segment_per_page(self):
         from natural_pdf import PDF
 
         pdf = PDF("pdfs/01-practice.pdf")
-        text, infos = pdf.extract_text(layout=True, return_textmap=True)
-        assert isinstance(text, str)
-        assert isinstance(infos, list) and len(infos) == len(pdf.pages)
-        for info in infos:
-            assert isinstance(info, PageTextMapInfo)
+        result = pdf.extract_text_result(layout=True)
+        assert isinstance(result.text, str)
+        assert len(result.segments) == len(pdf.pages)
+        assert [segment.source for segment in result.segments] == list(pdf.pages)
         pdf.close()
 
 
@@ -480,13 +535,15 @@ class TestReturnTextmap:
 # Integration: _get_extraction_content
 # ------------------------------------------------------------------ #
 class TestGetExtractionContent:
-    def test_page_with_textmap(self):
+    def test_page_with_text_result(self):
         from natural_pdf import PDF
 
         pdf = PDF("pdfs/01-practice.pdf")
-        result = pdf.pages[0]._get_extraction_content(using="text", _return_textmap=True)
-        text, textmap, word_elements = result
-        assert len(text) > 0 and textmap is not None and len(word_elements) > 0
+        result = pdf.pages[0]._get_extraction_content(using="text", _return_text_result=True)
+        assert isinstance(result, ExtractedText)
+        assert len(result.text) > 0
+        assert result.segments[0].textmap is not None
+        assert len(result.segments[0].words) > 0
         pdf.close()
 
     def test_page_without_textmap(self):
@@ -497,13 +554,14 @@ class TestGetExtractionContent:
         assert isinstance(result, str) and len(result) > 0
         pdf.close()
 
-    def test_region_with_textmap(self):
+    def test_region_with_text_result(self):
         from natural_pdf import PDF
 
         pdf = PDF("pdfs/01-practice.pdf")
         region = pdf.pages[0].find("text:contains('Jungle')").below()
-        text, textmap, words = region._get_extraction_content(using="text", _return_textmap=True)
-        assert len(text) > 0 and len(words) > 0
+        result = region._get_extraction_content(using="text", _return_text_result=True)
+        assert isinstance(result, ExtractedText)
+        assert len(result.text) > 0 and len(result.segments[0].words) > 0
         pdf.close()
 
 
@@ -530,7 +588,7 @@ class TestExtractWithCitationsMock:
         page = pdf.pages[0]
 
         # Find a line number that has actual content for reliable textmap resolution
-        text = page.extract_text(layout=True)
+        text = page.extract_text_result(layout=True).text
         _, line_map = add_line_numbers(text)
         # Pick a non-empty line
         content_line = next((i for i, t in line_map.items() if "Jungle" in t), 0)
@@ -555,6 +613,36 @@ class TestExtractWithCitationsMock:
         assert len(result["name"].citations) > 0
         # Single pass: only 1 LLM call
         assert mock_client.beta.chat.completions.parse.call_count == 1
+        pdf.close()
+
+    def test_page_alt_text_citation_resolves_to_owning_region(self):
+        """Synthetic text remains grounded when a page has no native layer."""
+        from natural_pdf import PDF
+        from natural_pdf.extraction.citations import add_line_numbers
+
+        pdf = PDF("pdfs/01-practice.pdf", text_layer=False)
+        page = pdf.pages[0]
+        region = page.create_region(10, 10, 100, 40)
+        region.alt_text = "ONLY ALT SOURCE"
+        page.add_region(region, source="test")
+
+        raw_result = page.extract_text_result(layout=True)
+        _, line_map = add_line_numbers(raw_result.text)
+        source_line = next(index for index, text in line_map.items() if "ONLY ALT SOURCE" in text)
+
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.return_value = self._mock_completion(
+            {
+                "name_source_lines": [source_line],
+                "name": "ONLY ALT SOURCE",
+                "age_source_lines": None,
+                "age": "",
+            }
+        )
+
+        result = page.extract(SimpleSchema, client=mock_client, citations=True)
+
+        assert list(result["name"].citations) == [region]
         pdf.close()
 
     def test_extract_without_citations(self):

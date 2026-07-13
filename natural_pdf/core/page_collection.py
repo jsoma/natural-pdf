@@ -36,6 +36,8 @@ from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.text.contracts import AggregatePolicy
+from natural_pdf.text.facades import AggregateTextMixin
 from natural_pdf.utils.sections import sanitize_sections
 
 try:
@@ -51,7 +53,6 @@ except ImportError:
 # <--- END ADDED
 
 logger = logging.getLogger(__name__)
-_UNSET = object()
 
 if TYPE_CHECKING:
     from natural_pdf.core.highlighting_service import HighlightContext, HighlightingService
@@ -75,6 +76,7 @@ BoundarySource = Union[str, ElementsProvider, Iterable[SupportsGeometry], Iterab
 
 
 class PageCollection(
+    AggregateTextMixin,
     OCRScopeMixin,
     ServiceHostMixin,
     SelectorHostMixin,
@@ -205,80 +207,13 @@ class PageCollection(
         """
         return separator.join(p.to_markdown(**kwargs) for p in self.pages)
 
-    def extract_text(
-        self,
-        separator: str = "\n",
-        apply_exclusions: Any = _UNSET,
-        **kwargs,
-    ) -> str:
-        """
-        Extract text from all pages in the collection.
+    def _iter_text_members(self) -> Iterable[object]:
+        """Yield pages in declared collection order without filtering empties."""
 
-        Args:
-            keep_blank_chars: Whether to keep blank characters (default: True)
-            apply_exclusions: Whether to apply exclusion regions (default: True)
-            strip: Whether to strip whitespace from the extracted text.
-            **kwargs: Additional extraction parameters
+        return iter(self.pages)
 
-        Returns:
-            Combined text from all pages
-        """
-        keep_blank_chars = kwargs.pop("keep_blank_chars", _UNSET)
-        preserve_whitespace = kwargs.pop("preserve_whitespace", _UNSET)
-        if (
-            keep_blank_chars is not _UNSET
-            and preserve_whitespace is not _UNSET
-            and keep_blank_chars is not None
-            and preserve_whitespace is not None
-            and bool(keep_blank_chars) != bool(preserve_whitespace)
-        ):
-            raise ValueError(
-                "Conflicting text extraction options: 'keep_blank_chars' and "
-                "'preserve_whitespace' must have the same value."
-            )
-        if preserve_whitespace is _UNSET or preserve_whitespace is None:
-            preserve_whitespace = keep_blank_chars
-        if preserve_whitespace is _UNSET or preserve_whitespace is None:
-            preserve_whitespace = True
-
-        use_exclusions = kwargs.pop("use_exclusions", _UNSET)
-        if (
-            apply_exclusions is not _UNSET
-            and use_exclusions is not _UNSET
-            and apply_exclusions is not None
-            and use_exclusions is not None
-            and bool(apply_exclusions) != bool(use_exclusions)
-        ):
-            raise ValueError(
-                "Conflicting text extraction options: 'apply_exclusions' and "
-                "'use_exclusions' must have the same value."
-            )
-        if use_exclusions is _UNSET or use_exclusions is None:
-            use_exclusions = apply_exclusions
-        if use_exclusions is _UNSET or use_exclusions is None:
-            use_exclusions = True
-
-        strip = kwargs.pop("strip", None)
-        explicit_strip_final = kwargs.pop("strip_final", None)
-        explicit_strip_empty = kwargs.pop("strip_empty", None)
-
-        texts: List[str] = []
-
-        for page in self.pages:
-            text = page.extract_text(
-                preserve_whitespace=bool(preserve_whitespace),
-                use_exclusions=bool(use_exclusions),
-                strip_final=(
-                    explicit_strip_final
-                    if explicit_strip_final is not None
-                    else (strip if strip is not None else False)
-                ),
-                strip_empty=explicit_strip_empty if explicit_strip_empty is not None else False,
-                **kwargs,
-            )
-            texts.append(text)
-
-        return separator.join(texts)
+    def _text_aggregate_policy(self) -> AggregatePolicy:
+        return AggregatePolicy(natural_separator="\n", preserve_empty=True)
 
     def extract_anchored_rows(
         self,
@@ -638,7 +573,7 @@ class PageCollection(
             # Include extracted text if requested
             if include_content:
                 try:
-                    page_data["content"] = page.extract_text(preserve_whitespace=True)
+                    page_data["content"] = page.extract_text()
                 except Exception as e:
                     logger.error(f"Error extracting text from page {page.number}: {e}")
                     page_data["content"] = ""

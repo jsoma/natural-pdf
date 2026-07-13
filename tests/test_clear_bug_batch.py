@@ -58,55 +58,45 @@ def test_pdf_collection_slice_preserves_protocol_context_services_and_options():
     assert sliced.services._context is context
 
 
-def test_page_collection_extract_text_accepts_page_native_options():
+def test_page_collection_extract_text_forwards_the_aggregate_contract():
     page = MagicMock()
     page.extract_text.return_value = "text"
     pages = PageCollection([page], context=PDFContext.with_defaults())
 
-    assert pages.extract_text(preserve_whitespace=False, use_exclusions=False) == "text"
+    assert (
+        pages.extract_text(
+            apply_exclusions=False,
+            newlines=False,
+            whitespace="normalize",
+            strip=False,
+        )
+        == "text"
+    )
     page.extract_text.assert_called_once_with(
-        preserve_whitespace=False,
-        use_exclusions=False,
-        strip_final=False,
-        strip_empty=False,
-    )
-
-
-def test_page_collection_extract_text_legacy_aliases_match_native_options():
-    native_page = MagicMock()
-    native_page.extract_text.return_value = "text"
-    legacy_page = MagicMock()
-    legacy_page.extract_text.return_value = "text"
-
-    PageCollection([native_page], context=PDFContext.with_defaults()).extract_text(
-        preserve_whitespace=False,
-        use_exclusions=False,
-    )
-    PageCollection([legacy_page], context=PDFContext.with_defaults()).extract_text(
-        keep_blank_chars=False,
+        layout=False,
         apply_exclusions=False,
+        newlines=False,
+        whitespace="normalize",
+        strip=False,
+        bidi=True,
+        content_filter=None,
     )
-
-    assert native_page.extract_text.call_args == legacy_page.extract_text.call_args
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "names"),
+    "kwargs",
     [
-        (
-            {"keep_blank_chars": True, "preserve_whitespace": False},
-            "keep_blank_chars.*preserve_whitespace",
-        ),
-        (
-            {"apply_exclusions": True, "use_exclusions": False},
-            "apply_exclusions.*use_exclusions",
-        ),
+        {"preserve_whitespace": False},
+        {"keep_blank_chars": False},
+        {"use_exclusions": False},
+        {"strip_final": False},
+        {"strip_empty": False},
     ],
 )
-def test_page_collection_extract_text_rejects_conflicting_aliases(kwargs, names):
-    pages = PageCollection([MagicMock()], context=PDFContext.with_defaults())
+def test_page_collection_extract_text_rejects_removed_aliases(kwargs):
+    pages = PageCollection([], context=PDFContext.with_defaults())
 
-    with pytest.raises(ValueError, match=names):
+    with pytest.raises(TypeError):
         pages.extract_text(**kwargs)
 
 

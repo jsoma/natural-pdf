@@ -1902,29 +1902,9 @@ class Element(
         """
         return getattr(self, name, None)
 
-    def extract_text(self, preserve_whitespace=True, apply_exclusions=True, **kwargs) -> str:
-        """
-        Extract text from this element.
+    def extract_text(self) -> Literal[""]:
+        """Return an empty string because this element has no textual content."""
 
-        Args:
-            preserve_whitespace: Whether to keep blank characters (default: True)
-            apply_exclusions: Whether to apply exclusion regions (default: True)
-            **kwargs: Additional extraction parameters
-
-        Returns:
-            Extracted text as string
-        """
-        # Backward compatibility alias
-        if "use_exclusions" in kwargs:
-            import warnings
-
-            warnings.warn(
-                "use_exclusions is deprecated, use apply_exclusions instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            apply_exclusions = kwargs.pop("use_exclusions")
-        # Default implementation - override in subclasses
         return ""
 
     # Note: extract_text_compat method removed
@@ -2160,7 +2140,7 @@ class Element(
     def _get_classification_content(self, model_type: str, **kwargs):  # type: ignore[override]
         """Return either text or an image, depending on model_type (text|vision)."""
         if model_type == "text":
-            text_content = self.extract_text(layout=False)  # type: ignore[arg-type]
+            text_content = self.extract_text()
             if not text_content or text_content.isspace():
                 raise ValueError(
                     "Cannot classify element with 'text' model: No text content found."

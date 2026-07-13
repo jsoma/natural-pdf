@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from pdfplumber.utils.text import chars_to_textmap
 
 from natural_pdf.elements.base import Element
+from natural_pdf.text.facades import ScalarTextMixin
 from natural_pdf.text.font_style import detect_bold_style, detect_italic_style, resolve_fontname
-from natural_pdf.text.operations import apply_content_filter_to_text, validate_content_filter
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -37,7 +37,7 @@ def disable_text_sync():
         _TEXT_SYNC_SUPPRESSION_DEPTH.reset(token)
 
 
-class TextElement(Element):
+class TextElement(ScalarTextMixin, Element):
     """
     Represents a text element in a PDF.
 
@@ -301,73 +301,10 @@ class TextElement(Element):
 
         return normalize_pdf_color(self._obj.get("non_stroking_color"))
 
-    def extract_text(
-        self,
-        preserve_whitespace: bool = True,
-        apply_exclusions: bool = True,
-        *,
-        strip: Optional[bool] = True,
-        newlines: Union[bool, str] = True,
-        content_filter=None,
-        keep_blank_chars: Optional[bool] = None,
-        **kwargs,
-    ) -> str:
-        """
-        Extract text from this element.
+    def _extract_scalar_text(self) -> str:
+        """Return the element's current logical-order text without transforms."""
 
-        Args:
-            preserve_whitespace: Whether to retain whitespace characters (default: True).
-            apply_exclusions: Present for API compatibility; exclusions are not applied within text elements.
-            strip: If True (default) remove leading/trailing whitespace unless ``preserve_whitespace`` is True.
-            content_filter: Optional content filter to exclude specific text patterns. Can be:
-                - A regex pattern string (characters matching the pattern are EXCLUDED)
-                - A callable that takes text and returns True to KEEP the character
-                - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
-            keep_blank_chars: Deprecated alias for ``preserve_whitespace``.
-            **kwargs: Accepted for forward-compatibility and ignored here.
-
-        Returns:
-            The text content, optionally stripped and filtered.
-        """
-        # Backward compatibility alias
-        if "use_exclusions" in kwargs:
-            import warnings
-
-            warnings.warn(
-                "use_exclusions is deprecated, use apply_exclusions instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            apply_exclusions = kwargs.pop("use_exclusions")
-        if keep_blank_chars is not None:
-            preserve_whitespace = keep_blank_chars
-        validate_content_filter(content_filter)
-
-        # Basic retrieval
-        result = self.text or ""
-
-        # Apply content filtering if provided
-        if content_filter is not None:
-            result = apply_content_filter_to_text(result, content_filter)
-
-        # Apply optional stripping – align with global convention where simple
-        # element extraction is stripped by default.
-        if strip is not False and not preserve_whitespace:
-            result = result.strip()
-
-        # Flexible newline handling
-        if isinstance(newlines, bool):
-            if newlines is False:
-                replacement = " "  # single space when False
-            else:
-                replacement = None  # keep as-is when True
-        else:
-            replacement = str(newlines)
-
-        if replacement is not None:
-            result = result.replace("\n", replacement).replace("\r", replacement)
-
-        return result
+        return self.text or ""
 
     def contains(self, substring: str, case_sensitive: bool = True) -> bool:
         """

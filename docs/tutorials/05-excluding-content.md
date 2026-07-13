@@ -53,7 +53,7 @@ page.show()
 ```
 
 ```python
-filtered_text = page.extract_text() # use_exclusions=True is default
+filtered_text = page.extract_text() # apply_exclusions=True is default
 
 # Show the last 200 chars with footer area excluded
 filtered_text[-200:]
@@ -188,10 +188,10 @@ You can disable exclusions for specific operations:
 
 ```python
 # Extract with exclusions (default)
-filtered_text = page.extract_text()  # use_exclusions=True by default
+filtered_text = page.extract_text()  # apply_exclusions=True by default
 
 # Extract without exclusions
-full_text = page.extract_text(use_exclusions=False)
+full_text = page.extract_text(apply_exclusions=False)
 
 print(f"With exclusions: {len(filtered_text)} chars")
 print(f"Without exclusions: {len(full_text)} chars")
@@ -207,6 +207,6 @@ print(f"Without exclusions: {len(full_text)} chars")
         - A single `Element` to exclude just that element
         - An `ElementCollection` or list/iterable of elements
         - `None` to exclude nothing on that page
-    *   `extract_text(use_exclusions=False)` temporarily disables exclusions
+    *   `extract_text(apply_exclusions=False)` temporarily disables exclusions
     *   Smart exclusion: text elements exclude only themselves, regions exclude everything inside
 </div>

@@ -19,6 +19,9 @@ from typing import (
 
 from tqdm.auto import tqdm
 
+from natural_pdf.text.contracts import ContentFilter, TextLayoutOptions, WhitespaceMode
+from natural_pdf.text.pipeline import prepare_text_transform, validate_layout_request
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
@@ -72,9 +75,14 @@ class _SectionHost(Protocol):
 
     def extract_text(
         self,
-        separator: str = "\n",
+        *,
+        layout: bool | TextLayoutOptions = False,
         apply_exclusions: bool = True,
-        **kwargs: Any,
+        newlines: Union[bool, str] = True,
+        whitespace: WhitespaceMode = "preserve",
+        strip: bool = True,
+        bidi: bool = True,
+        content_filter: ContentFilter | None = None,
     ) -> str: ...
 
 
@@ -191,21 +199,39 @@ class SectionsCollectionMixin:
             deduped.append(element)
         return ElementCollection(deduped)
 
-    def extract_text(  # type: ignore[override]
+    def extract_each_text(
         self,
-        separator: str = "\n",
+        *,
+        layout: bool | TextLayoutOptions = False,
         apply_exclusions: bool = True,
-        **kwargs: Any,
-    ) -> str:
-        texts = [
-            section.extract_text(apply_exclusions=apply_exclusions, **kwargs)
-            for section in self._iter_sections()
-        ]
-        return separator.join(t for t in texts if t)
+        newlines: bool | str = True,
+        whitespace: WhitespaceMode = "preserve",
+        strip: bool = True,
+        bidi: bool = True,
+        content_filter: ContentFilter | None = None,
+    ) -> List[str]:
+        """Extract each section through the common spatial/aggregate leaf contract."""
 
-    def extract_each_text(self, apply_exclusions: bool = True, **kwargs: Any) -> List[str]:
+        validate_layout_request(layout)
+        if not isinstance(apply_exclusions, bool):
+            raise TypeError("apply_exclusions must be a bool")
+        prepare_text_transform(
+            newlines=newlines,
+            whitespace=whitespace,
+            strip=strip,
+            bidi=bidi,
+            content_filter=content_filter,
+        )
         return [
-            section.extract_text(apply_exclusions=apply_exclusions, **kwargs)
+            section.extract_text(
+                layout=layout,
+                apply_exclusions=apply_exclusions,
+                newlines=newlines,
+                whitespace=whitespace,
+                strip=strip,
+                bidi=bidi,
+                content_filter=content_filter,
+            )
             for section in self._iter_sections()
         ]
 

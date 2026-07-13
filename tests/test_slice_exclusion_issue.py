@@ -58,12 +58,8 @@ def test_slice_exclusion_issue():
     print(f"Are they the same page object? {pdf.pages[-1] is pages[-1]}")
     print(f"Page index match? {pdf.pages[-1].index == pages[-1].index}")
 
-    # Test 4: Check what happens with debug
-    print("\n\nTest 4: Debug exclusion evaluation")
-    text3 = pages[-1].extract_text(debug_exclusions=True)
-
-    # Test 5: Check exclusion regions
-    print("\n\nTest 5: Get exclusion regions")
+    # Test 4: Check exclusion regions
+    print("\n\nTest 4: Get exclusion regions")
     regions = pages[-1]._get_exclusion_regions(debug=True)
     print(f"Number of exclusion regions: {len(regions)}")
 

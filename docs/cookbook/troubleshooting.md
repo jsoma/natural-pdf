@@ -399,8 +399,8 @@ page.add_exclusion(page.create_region(0, 0, page.width, 50))
 page.show(exclusions='red')
 
 # Compare with and without exclusions
-full_text = page.extract_text(use_exclusions=False)
-clean_text = page.extract_text(use_exclusions=True)
+full_text = page.extract_text(apply_exclusions=False)
+clean_text = page.extract_text(apply_exclusions=True)
 
 print(f"Full: {len(full_text)} chars")
 print(f"Clean: {len(clean_text)} chars")

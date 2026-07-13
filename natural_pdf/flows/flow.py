@@ -41,6 +41,8 @@ from natural_pdf.flows.region import FlowRegion
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.tables import TableResult
+from natural_pdf.text.contracts import AggregatePolicy
+from natural_pdf.text.facades import AggregateTextMixin
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +54,7 @@ else:  # pragma: no cover - runtime aliases for flow-specific selectors
     SelectorCollection = FlowElementCollection  # type: ignore[assignment]
 
 
-class Flow(OCRScopeMixin, ServiceHostMixin, Visualizable, SelectorHostMixin):
+class Flow(AggregateTextMixin, OCRScopeMixin, ServiceHostMixin, Visualizable, SelectorHostMixin):
     """Defines a logical flow or sequence of physical Page or Region objects.
 
     A Flow represents a continuous logical document structure that spans across
@@ -416,11 +418,15 @@ class Flow(OCRScopeMixin, ServiceHostMixin, Visualizable, SelectorHostMixin):
             offset_y=offset_y,
         )
 
-    def extract_text(self, **kwargs) -> str:
-        """Extract text from the flow, concatenating text from all segments."""
-        if not self.segments:
-            return ""
-        return self._analysis_region().extract_text(**kwargs)
+    def _iter_text_members(self) -> Iterable[object]:
+        """Yield logical flow segments in their declared order."""
+
+        return iter(self.segments)
+
+    def _text_aggregate_policy(self) -> AggregatePolicy:
+        # A flow boundary is a logical paragraph boundary irrespective of its
+        # visual arrangement; horizontal flows must not collapse it to a space.
+        return AggregatePolicy(natural_separator="\n\n", preserve_empty=True)
 
     def ask(self, *args, **kwargs):
         return self.services.qa.ask(self, *args, **kwargs)

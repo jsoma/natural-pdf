@@ -97,7 +97,9 @@ class SupportsGeometry(SupportsBBox, Protocol):
 class SupportsElement(SupportsGeometry, Protocol):
     """Objects that behave like natural-pdf elements or regions."""
 
-    def extract_text(self, *args: Any, **kwargs: Any) -> str: ...
+    def extract_text(self) -> str:
+        """Return text using the host's safe, no-argument contract."""
+        ...
 
     def find(
         self,

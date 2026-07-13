@@ -67,6 +67,8 @@ from natural_pdf.ocr.ocr_manager import (
 )
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.text.contracts import AggregatePolicy
+from natural_pdf.text.facades import AggregateTextMixin
 from natural_pdf.text.operations import normalize_whitespace as _normalize_whitespace
 
 if TYPE_CHECKING:
@@ -447,6 +449,7 @@ class _LazyPageList(Sequence["Page"]):
 
 
 class PDF(
+    AggregateTextMixin,
     ClassificationResultAccessorMixin,
     PDFOCRMixin,
     ServiceHostMixin,
@@ -1128,141 +1131,13 @@ class PDF(
             target_pages = list(self.pages)
         return separator.join(p.to_markdown(**kwargs) for p in target_pages)
 
-    def extract_text(
-        self,
-        selector: Optional[str] = None,
-        preserve_whitespace: bool = True,
-        preserve_line_breaks: bool = True,
-        page_separator: Optional[str] = "\n",
-        use_exclusions: bool = True,
-        debug_exclusions: bool = False,
-        *,
-        layout: bool = True,
-        x_density: Optional[float] = None,
-        y_density: Optional[float] = None,
-        x_tolerance: Optional[float] = None,
-        y_tolerance: Optional[float] = None,
-        line_dir: Optional[str] = None,
-        char_dir: Optional[str] = None,
-        strip_final: bool = False,
-        strip_empty: bool = False,
-        return_textmap: bool = False,
-    ) -> str:
-        """
-        Extract text from the entire document or matching elements.
+    def _iter_text_members(self) -> Iterable[object]:
+        """Yield document pages in natural page order."""
 
-        Args:
-            selector: Optional selector to filter elements
-            preserve_whitespace: Whether to keep blank characters
-            preserve_line_breaks: When False, collapse newlines in each page's text.
-            page_separator: String inserted between page texts when combining results.
-            use_exclusions: Whether to apply exclusion regions
-            debug_exclusions: Whether to output detailed debugging for exclusions
-            layout: Whether to enable layout-aware spacing (default: True).
-            x_density: Horizontal character density override.
-            y_density: Vertical line density override.
-            x_tolerance: Horizontal clustering tolerance.
-            y_tolerance: Vertical clustering tolerance.
-            line_dir: Line reading direction override.
-            char_dir: Character reading direction override.
-            strip_final: When True, strip trailing whitespace from the combined text.
-            strip_empty: When True, drop empty lines from the output.
+        return iter(self.pages)
 
-        Returns:
-            Extracted text as string
-        """
-        if not hasattr(self, "_pages"):
-            raise AttributeError("PDF pages not yet initialized.")
-
-        if selector:
-            elements = self.find_all(
-                selector,
-                apply_exclusions=use_exclusions,
-            )
-            return elements.extract_text(
-                preserve_whitespace=preserve_whitespace,
-                preserve_line_breaks=preserve_line_breaks,
-                layout=layout,
-                x_density=x_density,
-                y_density=y_density,
-                x_tolerance=x_tolerance,
-                y_tolerance=y_tolerance,
-                line_dir=line_dir,
-                char_dir=char_dir,
-                strip_final=strip_final,
-                strip_empty=strip_empty,
-            )
-
-        if debug_exclusions:
-            print(f"PDF: Extracting text with exclusions from {len(self.pages)} pages")
-            print(f"PDF: Found {len(self._exclusions)} document-level exclusions")
-
-        if return_textmap:
-            from natural_pdf.extraction.citations import PageTextMapInfo
-
-            texts = []
-            page_textmap_infos = []
-            current_line = 0
-
-            for page in self.pages:
-                page_text, page_tm = page.extract_text(
-                    preserve_whitespace=preserve_whitespace,
-                    preserve_line_breaks=preserve_line_breaks,
-                    use_exclusions=use_exclusions,
-                    debug_exclusions=debug_exclusions,
-                    layout=layout,
-                    x_density=x_density,
-                    y_density=y_density,
-                    x_tolerance=x_tolerance,
-                    y_tolerance=y_tolerance,
-                    line_dir=line_dir,
-                    char_dir=char_dir,
-                    strip_final=strip_final,
-                    strip_empty=strip_empty,
-                    return_textmap=True,
-                )
-                line_count = page_text.count("\n") + 1 if page_text else 0
-                page_textmap_infos.append(
-                    PageTextMapInfo(
-                        page_number=page.number,
-                        textmap=page_tm,
-                        word_elements=list(page.words),
-                        line_start=current_line,
-                        line_end=current_line + line_count,
-                    )
-                )
-                texts.append(page_text)
-                current_line += line_count
-
-            separator = "" if page_separator is None else page_separator
-            joined = separator.join(texts)
-            return joined, page_textmap_infos
-
-        texts = []
-        for page in self.pages:
-            texts.append(
-                page.extract_text(
-                    preserve_whitespace=preserve_whitespace,
-                    preserve_line_breaks=preserve_line_breaks,
-                    use_exclusions=use_exclusions,
-                    debug_exclusions=debug_exclusions,
-                    layout=layout,
-                    x_density=x_density,
-                    y_density=y_density,
-                    x_tolerance=x_tolerance,
-                    y_tolerance=y_tolerance,
-                    line_dir=line_dir,
-                    char_dir=char_dir,
-                    strip_final=strip_final,
-                    strip_empty=strip_empty,
-                )
-            )
-
-        if debug_exclusions:
-            print(f"PDF: Combined {len(texts)} pages of text")
-
-        separator = "" if page_separator is None else page_separator
-        return separator.join(texts)
+    def _text_aggregate_policy(self) -> AggregatePolicy:
+        return AggregatePolicy(natural_separator="\n", preserve_empty=True)
 
     def extract_tables(
         self,
@@ -1693,6 +1568,11 @@ class PDF(
         **kwargs: Any,
     ):
         """Delegate classification to the classification service and return the result."""
+
+        if "use_exclusions" in kwargs:
+            raise TypeError(
+                "use_exclusions was removed from text extraction; use apply_exclusions instead"
+            )
 
         return self.services.classification.classify(
             self,
@@ -2251,19 +2131,17 @@ class PDF(
         Returns:
             str: Extracted text if using='text'
             List[PIL.Image.Image]: List of page images if using='vision'
-            None: If content cannot be retrieved
+        Raises:
+            Text extraction errors from the public text contract unchanged.
         """
-        _return_textmap = kwargs.pop("_return_textmap", False)
-
         if using == "text":
-            try:
-                layout = kwargs.pop("layout", True)
-                if _return_textmap:
-                    return self.extract_text(layout=layout, return_textmap=True, **kwargs)
-                return self.extract_text(layout=layout, **kwargs)
-            except Exception as e:
-                logger.error(f"Error extracting text from PDF: {e}")
-                return None
+            # Structured extraction historically requested layout-aware text.
+            # Keep that private-path default while the public text contract
+            # deliberately defaults to ``layout=False``.
+            layout = kwargs.pop("layout", True)
+            if kwargs.pop("_return_text_result", False):
+                return self.extract_text_result(layout=layout, **kwargs)
+            return self.extract_text(layout=layout, **kwargs)
         elif using == "vision":
             page_images = []
             logger.info(f"Rendering {len(self.pages)} pages to images...")
@@ -2463,7 +2341,7 @@ class PDF(
             # Include extracted text if requested
             if include_content:
                 try:
-                    page_data["content"] = page.extract_text(preserve_whitespace=True)
+                    page_data["content"] = page.extract_text()
                 except Exception as e:
                     logger.error(f"Error extracting text from page {page.number}: {e}")
                     page_data["content"] = ""
@@ -2580,12 +2458,17 @@ class PDF(
                       or if model_type is unsupported, or if content cannot be generated.
         """
         if model_type == "text":
+            if "use_exclusions" in kwargs:
+                raise TypeError(
+                    "use_exclusions was removed from text extraction; "
+                    "use apply_exclusions instead"
+                )
             try:
                 # Extract text without layout spacing for cleaner NLI input
                 extract_kwargs = {
-                    k: v for k, v in kwargs.items() if k not in ("layout", "use_exclusions")
+                    k: v for k, v in kwargs.items() if k not in ("layout", "apply_exclusions")
                 }
-                text = self.extract_text(layout=False, use_exclusions=False, **extract_kwargs)
+                text = self.extract_text(layout=False, apply_exclusions=False, **extract_kwargs)
                 if not text or text.isspace():
                     raise ValueError("PDF contains no extractable text for classification.")
                 return _normalize_whitespace(text)

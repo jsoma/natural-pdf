@@ -82,6 +82,7 @@ nav:
   - Reference:
     - Quick Reference: quick-reference/index.ipynb
     - API: api/index.md
+    - Text Extraction: api/text-extraction.md
     - Patterns & Pitfalls: for-llms/common-patterns.md
     - Troubleshooting: cookbook/troubleshooting.md
 

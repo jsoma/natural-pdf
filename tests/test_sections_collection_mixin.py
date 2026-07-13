@@ -71,11 +71,11 @@ def test_find_all_deduplicates_elements() -> None:
     assert [elem.text for elem in result.elements] == ["shared", "one", "two"]
 
 
-def test_extract_text_concatenates_each_section() -> None:
+def test_sections_collection_mixin_does_not_define_text_extraction() -> None:
     sections = [
         FakeSection("a", [FakeElement("alpha")]),
         FakeSection("b", [FakeElement("beta")]),
     ]
     collection = FakeCollection(sections)
 
-    assert collection.extract_text(separator="|") == "alpha|beta"
+    assert not hasattr(collection, "extract_text")

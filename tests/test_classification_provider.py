@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 
+import pytest
+
 import natural_pdf as npdf
 import natural_pdf.engine_provider as provider_module
 from natural_pdf.classification.pipelines import (
@@ -52,6 +54,21 @@ def test_page_classify_uses_provider(monkeypatch):
     result = page.analyses["classification"]
     assert result.category == "stub"
     pdf.close()
+
+
+def test_pdf_text_classification_rejects_removed_use_exclusions():
+    pdf = npdf.PDF("pdfs/01-practice.pdf")
+    try:
+        with pytest.raises(TypeError, match="use_exclusions was removed.*apply_exclusions"):
+            pdf.classify(labels=["stub"], using="text", use_exclusions=False)
+
+        with pytest.raises(TypeError, match="use_exclusions was removed.*apply_exclusions"):
+            pdf._get_classification_content(
+                model_type="text",
+                use_exclusions=False,
+            )
+    finally:
+        pdf.close()
 
 
 # ---------- _parse_raw_scores ----------
