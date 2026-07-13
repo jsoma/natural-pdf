@@ -377,7 +377,7 @@ class TestApplyOCRVLMPath:
                 model="test-model",
                 client=mock_client,
                 resolution=72,
-                replace=False,
+                replace="none",
             )
 
             words = [
@@ -922,9 +922,7 @@ class TestRunVLMOCRInstructions:
 
 @pytest.mark.optional_deps
 class TestElementCollectionVLMCorrection:
-    """When apply_ocr(engine='vlm') is called on a collection of existing OCR
-    elements, it should correct text in-place rather than deleting elements
-    and running grounded VLM OCR on tiny regions."""
+    """Recognition and correction remain explicit, disjoint operations."""
 
     def _make_mock_client(self, response_text):
         client = MagicMock()
@@ -933,70 +931,41 @@ class TestElementCollectionVLMCorrection:
         )
         return client
 
-    def test_vlm_correction_updates_text_in_place(self):
-        """OCR elements should have their text updated, not be deleted."""
+    def test_apply_ocr_on_ocr_elements_stays_in_recognition_mode(self):
+        """Element content must not silently switch apply_ocr into correction."""
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        requests = []
+        element = SimpleNamespace(
+            source="ocr",
+            text="Existing",
+            _execute_ocr_request=lambda request: requests.append(request),
+        )
+        client = MagicMock()
+
+        collection = ElementCollection([element])
+        assert collection.apply_ocr(engine="vlm", model="model", client=client) is collection
+
+        assert len(requests) == 1
+        assert requests[0].mode == "recognition"
+        assert requests[0].engine == "vlm"
+        assert client.mock_calls == []
+
+    def test_correct_ocr_updates_selected_text_in_place(self):
+        """The explicit correction operation mutates existing OCR text."""
         import natural_pdf
 
         pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        page.apply_ocr(engine="rapidocr")
-        ocr_elements = page.find_all("text[source=ocr]")
-        if not ocr_elements:
-            pdf.close()
-            pytest.skip("No OCR elements created — cannot test correction")
-
-        original_count = len(ocr_elements)
-
-        mock_client = self._make_mock_client("Corrected Text")
-
-        ocr_elements.apply_ocr(
-            engine="vlm",
-            model="gemini-2.5-flash",
-            client=mock_client,
-            instructions="Return corrected text.",
+        page.create_text_elements_from_ocr(
+            [{"bbox": [10, 10, 50, 30], "text": "Origina1", "confidence": 0.8}],
+            engine_name="test",
         )
-
-        # Elements should still exist (not deleted)
-        remaining = page.find_all("text[source=ocr]")
-        assert len(remaining) >= original_count
-
-        # One API call per OCR element
-        assert mock_client.chat.completions.create.call_count == original_count
-
-        # First element's text should be updated
-        assert ocr_elements[0].text == "Corrected Text"
+        ocr_elements = page.find_all("text[source=ocr]")
+        assert ocr_elements.correct_ocr(lambda _element: "Original") is ocr_elements
+        assert ocr_elements[0].text == "Original"
         assert ocr_elements[0].source == "ocr"
-
-        pdf.close()
-
-    def test_vlm_correction_uses_instructions_as_prompt(self):
-        """User instructions should be used as the prompt, not the grounding prompt."""
-        import natural_pdf
-
-        pdf = natural_pdf.PDF("pdfs/01-practice.pdf")
-        page = pdf.pages[0]
-
-        page.apply_ocr(engine="rapidocr")
-        ocr_elements = page.find_all("text[source=ocr]")
-        if not ocr_elements:
-            pdf.close()
-            pytest.skip("No OCR elements created")
-
-        mock_client = self._make_mock_client("Fixed")
-
-        ocr_elements.apply_ocr(
-            engine="vlm",
-            model="gemini-2.5-flash",
-            client=mock_client,
-            instructions="Return only the exact text.",
-        )
-
-        call_args = mock_client.chat.completions.create.call_args
-        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
-        assert prompt_text == "Return only the exact text."
-        assert "bbox" not in prompt_text
-        assert "JSON" not in prompt_text
 
         pdf.close()
 
@@ -1244,10 +1213,13 @@ class TestLayoutStringRouting:
             "<tr><td>4.12.7</td><td>Critical</td></tr></table>"
         )
 
-        with patch(
-            "natural_pdf.ocr.vlm_ocr._detect_layout_regions",
-            return_value=[{"label": "table", "bbox": [0, 0, 100, 100], "confidence": 0.9}],
-        ), patch("natural_pdf.core.vlm_client.generate", return_value=html):
+        with (
+            patch(
+                "natural_pdf.ocr.vlm_ocr._detect_layout_regions",
+                return_value=[{"label": "table", "bbox": [0, 0, 100, 100], "confidence": 0.9}],
+            ),
+            patch("natural_pdf.core.vlm_client.generate", return_value=html),
+        ):
             results, size = _run_layout_ocr_on_image(
                 dummy_image,
                 model="mlx-community/GLM-OCR-4bit",
@@ -1271,10 +1243,13 @@ class TestLayoutStringRouting:
         dummy_image = Image.new("RGB", (100, 100))
         html = "<table><tr><td>A</td><td>B</td></tr></table>"
 
-        with patch(
-            "natural_pdf.ocr.vlm_ocr._detect_layout_regions",
-            return_value=[{"label": "table", "bbox": [0, 0, 100, 100], "confidence": 0.9}],
-        ), patch("natural_pdf.core.vlm_client.generate", return_value=html):
+        with (
+            patch(
+                "natural_pdf.ocr.vlm_ocr._detect_layout_regions",
+                return_value=[{"label": "table", "bbox": [0, 0, 100, 100], "confidence": 0.9}],
+            ),
+            patch("natural_pdf.core.vlm_client.generate", return_value=html),
+        ):
             results, _ = _run_layout_ocr_on_image(
                 dummy_image,
                 model="mlx-community/GLM-OCR-4bit",
@@ -1335,8 +1310,9 @@ class TestLayoutStringRouting:
 
         dummy_image = Image.new("RGB", (100, 100))
 
-        with patch("natural_pdf.ocr.vlm_ocr._run_layout_ocr_on_image") as mock_layout, patch(
-            "natural_pdf.core.vlm_client.generate", return_value="[]"
+        with (
+            patch("natural_pdf.ocr.vlm_ocr._run_layout_ocr_on_image") as mock_layout,
+            patch("natural_pdf.core.vlm_client.generate", return_value="[]"),
         ):
             from natural_pdf.ocr.vlm_ocr import run_vlm_ocr_on_image
 

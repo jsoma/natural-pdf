@@ -27,6 +27,7 @@ from .ocr_options import (
     RapidOCROptions,
     SuryaOCROptions,
 )
+from .replacement import OCRReplaceMode, normalize_ocr_replace_mode
 from .unified_dispatch import list_engines as _list_engine_entries
 
 __all__ = [
@@ -48,6 +49,8 @@ __all__ = [
     "resolve_ocr_languages",
     "resolve_ocr_min_confidence",
     "resolve_ocr_device",
+    "OCRReplaceMode",
+    "normalize_ocr_replace_mode",
     "list_registered_engines",
 ]
 

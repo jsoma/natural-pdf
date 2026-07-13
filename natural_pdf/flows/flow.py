@@ -32,6 +32,8 @@ if TYPE_CHECKING:
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsSections
+from natural_pdf.core.ocr_contracts import OCRRequest
+from natural_pdf.core.ocr_mixin import OCRScopeMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 from natural_pdf.flows.collections import FlowElementCollection
 from natural_pdf.flows.element import FlowElement
@@ -50,7 +52,7 @@ else:  # pragma: no cover - runtime aliases for flow-specific selectors
     SelectorCollection = FlowElementCollection  # type: ignore[assignment]
 
 
-class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
+class Flow(OCRScopeMixin, ServiceHostMixin, Visualizable, SelectorHostMixin):
     """Defines a logical flow or sequence of physical Page or Region objects.
 
     A Flow represents a continuous logical document structure that spans across
@@ -369,60 +371,8 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
     # Analysis helpers (delegated to a FlowRegion spanning all segments)
     # ------------------------------------------------------------------
 
-    def apply_ocr(
-        self,
-        engine: Optional[str] = None,
-        *,
-        options: Optional[Any] = None,
-        languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
-        device: Optional[str] = None,
-        resolution: Optional[int] = None,
-        detect_only: bool = False,
-        apply_exclusions: bool = True,
-        replace: bool = True,
-        model: Optional[str] = None,
-        client: Optional[Any] = None,
-        instructions: Optional[str] = None,
-        **kwargs: Any,
-    ) -> "Flow":
-        """Apply OCR across every segment in the flow.
-
-        Args:
-            engine: OCR engine — ``"rapidocr"`` (default), ``"paddle"``,
-                ``"paddlevl"``, ``"doctr"``, or ``"vlm"``.
-            options: Engine-specific option object.
-            languages: Language codes, e.g. ``["en", "fr"]``.
-            min_confidence: Discard results below this confidence (0–1).
-            device: Compute device, e.g. ``"cpu"`` or ``"cuda"``.
-            resolution: DPI for the image sent to the engine.
-            detect_only: Detect text regions without recognizing characters.
-            apply_exclusions: Mask exclusion zones before OCR.
-            replace: Remove existing OCR elements first.
-            model: VLM model name — switches to VLM OCR pipeline.
-            client: OpenAI-compatible client — switches to VLM OCR pipeline.
-            instructions: Additional instructions appended to the VLM prompt.
-            **kwargs: Extra engine-specific parameters.
-
-        Returns:
-            Self for chaining.
-        """
-        self._analysis_region().apply_ocr(
-            engine=engine,
-            replace=replace,
-            options=options,
-            languages=languages,
-            min_confidence=min_confidence,
-            device=device,
-            resolution=resolution,
-            detect_only=detect_only,
-            apply_exclusions=apply_exclusions,
-            model=model,
-            client=client,
-            instructions=instructions,
-            **kwargs,
-        )
-        return self
+    def _iter_ocr_hosts(self, request: OCRRequest) -> Iterable[Any]:
+        yield self._analysis_region()
 
     def extract_ocr_elements(self, *args: Any, **kwargs: Any) -> List[Any]:
         """

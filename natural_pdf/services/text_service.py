@@ -4,7 +4,6 @@ import concurrent.futures
 import logging
 from typing import Any, Callable, List, Optional, Protocol, Sequence
 
-from natural_pdf.services._text_state import bump_text_state
 from natural_pdf.services.base import resolve_service
 from natural_pdf.services.registry import register_delegate
 
@@ -191,9 +190,6 @@ class TextService:
 
         if element_pbar:
             element_pbar.close()
-
-        if updated_count:
-            bump_text_state(host, elements=elements)
 
         logger.info(
             "%s.update_text – processed %d/%d element(s); updated %d; errors %d.",

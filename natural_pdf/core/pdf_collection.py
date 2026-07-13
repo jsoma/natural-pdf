@@ -37,6 +37,8 @@ logger = logging.getLogger(__name__)
 from natural_pdf.collections.mixins import ApplyMixin
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighting_service import HighlightingService
+from natural_pdf.core.ocr_contracts import OCRRequest
+from natural_pdf.core.ocr_mixin import PDFCollectionOCRMixin
 from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.export.mixin import ExportMixin
@@ -44,7 +46,9 @@ from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 
 
-class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin):
+class PDFCollection(
+    PDFCollectionOCRMixin, ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
+):
     def __init__(
         self,
         source: Union[str, Iterable[Union[str, "PDF"]]],
@@ -66,15 +70,14 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
         self._pdfs: List["PDF"] = []
         self._pdf_options = pdf_options  # Store options for potential slicing later
         self._recursive = recursive  # Store setting for potential slicing
+        self._iter_index = 0
 
         # Dynamically import PDF class within methods to avoid circular import at module load time
         PDF = self._get_pdf_class()
 
         if hasattr(source, "__iter__") and not isinstance(source, str):
             source_list = list(source)
-            if not source_list:
-                return  # Empty list source
-            if isinstance(source_list[0], PDF):
+            if source_list and isinstance(source_list[0], PDF):
                 if all(isinstance(item, PDF) for item in source_list):
                     self._pdfs = [cast("PDF", item) for item in source_list]
                     self._bind_service_context()
@@ -82,14 +85,13 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
                 else:
                     raise TypeError("Iterable source has mixed PDF/non-PDF objects.")
             # If it's an iterable but not PDFs, fall through to resolve sources
+            source = source_list
 
         # Resolve string, iterable of strings, or single string source to paths/URLs
         resolved_paths_or_urls = self._resolve_sources_to_paths(
             cast(Union[str, Iterable[str]], source)
         )
         self._initialize_pdfs(resolved_paths_or_urls, PDF)  # Pass PDF class
-
-        self._iter_index = 0
 
         self._bind_service_context()
 
@@ -209,6 +211,9 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
             context = getattr(pdf, "_context", None)
             if context is not None:
                 return context
+        context = self._pdf_options.get("context")
+        if isinstance(context, PDFContext):
+            return context
         return PDFContext.with_defaults()
 
     @classmethod
@@ -232,7 +237,8 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
             new_collection._pdfs = self._pdfs[key]
             new_collection._pdf_options = self._pdf_options
             new_collection._recursive = self._recursive
-            # Search context is not copied/inherited anymore
+            new_collection._iter_index = 0
+            new_collection._init_service_host(self._context)
             return new_collection
         elif isinstance(key, int):
             # Check bounds
@@ -425,105 +431,79 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
     def detect_checkboxes(self, *args, **kwargs):
         return self.services.checkbox.detect_checkboxes(self, *args, **kwargs)
 
-    def apply_ocr(
+    def _apply_pdf_collection_ocr_request(
         self,
-        engine: Optional[str] = None,
-        languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
-        device: Optional[str] = None,
-        resolution: Optional[int] = None,
-        apply_exclusions: bool = True,
-        detect_only: bool = False,
-        replace: bool = True,
-        options: Optional[Any] = None,
-        pages: Optional[Union[slice, List[int]]] = None,
-        max_workers: Optional[int] = None,
-    ) -> "PDFCollection":
-        """
-        Apply OCR to all PDFs in the collection, potentially in parallel.
+        request: OCRRequest,
+        *,
+        pages: Optional[int | Iterable[int] | range | slice],
+        max_workers: Optional[int],
+        show_progress: bool,
+    ) -> None:
+        """Prepare every PDF before optionally dispatching workers."""
 
-        Args:
-            engine: OCR engine to use (e.g., 'rapidocr', 'paddle', 'doctr')
-            languages: List of language codes for OCR
-            min_confidence: Minimum confidence threshold for text detection
-            device: Device to use for OCR (e.g., 'cpu', 'cuda')
-            resolution: DPI resolution for page rendering
-            apply_exclusions: Whether to apply exclusion regions
-            detect_only: If True, only detect text regions without extracting text
-            replace: If True, replace existing OCR elements
-            options: Engine-specific options
-            pages: Specific pages to process (None for all pages)
-            max_workers: Maximum number of threads to process PDFs concurrently.
-                         If None or 1, processing is sequential. (default: None)
-
-        Returns:
-            Self for method chaining
-        """
-        PDF = self._get_pdf_class()
         logger.info(
-            f"Applying OCR to {len(self._pdfs)} PDFs in collection (max_workers={max_workers})..."
+            "Applying OCR to %d PDFs in collection (max_workers=%s)...",
+            len(self._pdfs),
+            max_workers,
         )
+        # A caller may provide a one-shot iterable. Materialize it once so every
+        # PDF receives the same page selection during the validation pass.
+        page_selection = (
+            pages if pages is None or isinstance(pages, (int, range, slice)) else tuple(pages)
+        )
+        prepared = [
+            (pdf, *pdf._prepare_pdf_ocr_request(request, pages=page_selection))
+            for pdf in self._pdfs
+        ]
 
-        # Worker function takes PDF object again
-        def _process_pdf(pdf: "PDF"):
-            """Helper function to apply OCR to a single PDF, handling errors."""
-            thread_id = threading.current_thread().name  # Get thread name for logging
-            pdf_path = pdf.path  # Get path for logging
-            logger.debug(f"[{thread_id}] Starting OCR process for: {pdf_path}")
+        def _process_pdf(item: tuple["PDF", OCRRequest, Iterable[Any]]) -> str:
+            pdf, effective_request, target_pages = item
+            thread_id = threading.current_thread().name
+            pdf_path = getattr(pdf, "path", "<unknown>")
+            logger.debug("[%s] Starting OCR process for: %s", thread_id, pdf_path)
             start_time = time.monotonic()
-            pdf.apply_ocr(  # Call apply_ocr on the original PDF object
-                pages=pages,
-                engine=engine,
-                languages=languages,
-                min_confidence=min_confidence,
-                device=device,
-                resolution=resolution,
-                apply_exclusions=apply_exclusions,
-                detect_only=detect_only,
-                replace=replace,
-                options=options,
-                # Note: We might want a max_workers here too for page rendering?
-                # For now, PDF.apply_ocr doesn't have it.
+            pdf._execute_prepared_pdf_ocr_request(
+                effective_request,
+                target_pages,
+                show_progress=False,
             )
-            end_time = time.monotonic()
             logger.debug(
-                f"[{thread_id}] Finished OCR process for: {pdf_path} (Duration: {end_time - start_time:.2f}s)"
+                "[%s] Finished OCR process for: %s (Duration: %.2fs)",
+                thread_id,
+                pdf_path,
+                time.monotonic() - start_time,
             )
-            return pdf_path, None
+            return pdf_path
 
-        # Use ThreadPoolExecutor for parallel processing if max_workers > 1
         if max_workers is not None and max_workers > 1:
-            futures = []
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=max_workers, thread_name_prefix="OCRWorker"
             ) as executor:
-                for pdf in self._pdfs:
-                    # Submit the PDF object to the worker function
-                    futures.append(executor.submit(_process_pdf, pdf))
-
-            # Use the selected tqdm class with as_completed for progress tracking
-            progress_bar = tqdm(
-                concurrent.futures.as_completed(futures),
-                total=len(self._pdfs),
-                desc="Applying OCR (Parallel)",
-                unit="pdf",
-            )
-
-            for future in progress_bar:
-                pdf_path, error = future.result()  # Get result (or exception)
-                if error:
-                    progress_bar.set_postfix_str(f"Error: {pdf_path}", refresh=True)
-                # Progress is updated automatically by tqdm
-
-        else:  # Sequential processing (max_workers is None or 1)
+                futures = [executor.submit(_process_pdf, item) for item in prepared]
+                completed = concurrent.futures.as_completed(futures)
+                progress_iter = (
+                    tqdm(
+                        completed,
+                        total=len(futures),
+                        desc="Applying OCR (Parallel)",
+                        unit="pdf",
+                    )
+                    if show_progress
+                    else completed
+                )
+                for future in progress_iter:
+                    future.result()
+        else:
             logger.info("Applying OCR sequentially...")
-            # Use the selected tqdm class for sequential too for consistency
-            # Iterate over PDF objects directly for sequential
-            for pdf in tqdm(self._pdfs, desc="Applying OCR (Sequential)", unit="pdf"):
-                _process_pdf(pdf)  # Call helper directly with PDF object
+            progress_iter = (
+                tqdm(prepared, desc="Applying OCR (Sequential)", unit="pdf")
+                if show_progress
+                else prepared
+            )
+            for item in progress_iter:
+                _process_pdf(item)
 
         logger.info("Finished applying OCR across the collection.")
-        return self
 
     def correct_ocr(
         self,

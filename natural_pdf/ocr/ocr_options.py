@@ -1,5 +1,6 @@
 # ocr_options.py
 import json
+import math
 from dataclasses import asdict, dataclass, field, is_dataclass
 from typing import Any, Dict, Optional, Tuple, Union
 
@@ -17,16 +18,16 @@ class BaseOCROptions:
 
     extra_args: Dict[str, Any] = field(default_factory=dict)
 
-    def _init_key(self) -> str:
+    def _init_key(self) -> Optional[str]:
         """Return a hashable string of init-time fields for engine caching.
 
         The cache key determines when a cached engine instance can be reused.
         Override in subclasses to include fields that affect model initialization
         (not runtime inference params like thresholds or batch sizes).
         """
-        return ""
+        return _canonical_option_key({"extra_args": self.extra_args})
 
-    def _cache_key(self) -> str:
+    def _cache_key(self) -> Optional[str]:
         """Return a stable string of fields that can affect OCR output.
 
         This is intentionally broader than ``_init_key()``. Engine instances
@@ -34,28 +35,66 @@ class BaseOCROptions:
         must be invalidated when thresholds, batching, generation settings, or
         provider-specific extra args can change the emitted text or boxes.
         """
-        data = asdict(self) if is_dataclass(self) else dict(getattr(self, "__dict__", {}))
+        try:
+            data = asdict(self) if is_dataclass(self) else dict(getattr(self, "__dict__", {}))
+        except Exception:
+            # Dataclasses.asdict deep-copies nested values. An option object
+            # that cannot be copied cannot prove a stable cache identity.
+            return None
+        normalized = _json_safe(data)
+        if normalized is _UNCACHEABLE:
+            return None
         payload = {
             "class": self.__class__.__qualname__,
-            "options": _json_safe(data),
+            "options": normalized,
         }
         return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
+_UNCACHEABLE = object()
+
+
 def _json_safe(value: Any) -> Any:
-    """Normalize arbitrary option values into stable JSON-compatible data."""
+    """Normalize canonical option values, or return an uncacheable sentinel.
+
+    Option values can be forwarded to model constructors and inference calls.
+    ``repr()`` is not an identity: custom mutable objects can keep a stable
+    representation while changing OCR output.  Callers must therefore bypass
+    result and engine caches when a value cannot be represented canonically.
+    """
+
     if isinstance(value, dict):
-        return {
-            str(key): _json_safe(item)
-            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
-        }
+        if not all(isinstance(key, str) for key in value):
+            return _UNCACHEABLE
+        normalized: Dict[str, Any] = {}
+        for key in sorted(value):
+            item = _json_safe(value[key])
+            if item is _UNCACHEABLE:
+                return _UNCACHEABLE
+            normalized[key] = item
+        return normalized
     if isinstance(value, (list, tuple)):
-        return [_json_safe(item) for item in value]
-    if isinstance(value, (set, frozenset)):
-        return [_json_safe(item) for item in sorted(value, key=repr)]
-    if isinstance(value, (str, int, float, bool)) or value is None:
+        normalized_items = []
+        for item in value:
+            normalized = _json_safe(item)
+            if normalized is _UNCACHEABLE:
+                return _UNCACHEABLE
+            normalized_items.append(normalized)
+        return normalized_items
+    if value is None or isinstance(value, (str, bool, int)):
         return value
-    return repr(value)
+    if isinstance(value, float):
+        return value if math.isfinite(value) else _UNCACHEABLE
+    return _UNCACHEABLE
+
+
+def _canonical_option_key(value: Any) -> Optional[str]:
+    """Return a canonical JSON identity for option fields, if one exists."""
+
+    normalized = _json_safe(value)
+    if normalized is _UNCACHEABLE:
+        return None
+    return json.dumps(normalized, sort_keys=True, separators=(",", ":"))
 
 
 # --- EasyOCR Specific Options ---
@@ -117,12 +156,19 @@ class EasyOCROptions(BaseOCROptions):
             self.canvas_size, "canvas_size", "EasyOCROptions", default=2560
         )
 
-    def _init_key(self) -> str:
-        return (
-            f"{self.recog_network}|{self.detect_network}|{self.quantize}|"
-            f"{self.cudnn_benchmark}|{self.model_storage_directory}|"
-            f"{self.user_network_directory}|{self.download_enabled}|"
-            f"{self.detector}|{self.recognizer}"
+    def _init_key(self) -> Optional[str]:
+        return _canonical_option_key(
+            {
+                "recog_network": self.recog_network,
+                "detect_network": self.detect_network,
+                "quantize": self.quantize,
+                "cudnn_benchmark": self.cudnn_benchmark,
+                "model_storage_directory": self.model_storage_directory,
+                "user_network_directory": self.user_network_directory,
+                "download_enabled": self.download_enabled,
+                "detector": self.detector,
+                "recognizer": self.recognizer,
+            }
         )
 
 
@@ -210,17 +256,50 @@ class PaddleOCROptions(BaseOCROptions):
                 self.text_rec_score_thresh, "text_rec_score_thresh", "PaddleOCROptions"
             )
 
-    def _init_key(self) -> str:
-        return (
-            f"{self.text_detection_model_name}|{self.text_detection_model_dir}|"
-            f"{self.text_recognition_model_name}|{self.text_recognition_model_dir}|"
-            f"{self.doc_orientation_classify_model_name}|{self.doc_unwarping_model_name}|"
-            f"{self.textline_orientation_model_name}|{self.ocr_version}|"
-            f"{self.enable_hpi}|{self.use_tensorrt}|{self.precision}|"
-            f"{self.enable_mkldnn}|{self.cpu_threads}|{self.paddlex_config}|"
-            f"{self.text_det_limit_side_len}|{self.text_det_limit_type}|"
-            f"{self.textline_orientation_batch_size}|{self.text_recognition_batch_size}"
-        )
+    def _init_key(self) -> Optional[str]:
+        # PaddleOCR's pipeline accepts every declared field below at
+        # construction time (including ``lang`` and ``device``).  Keep this
+        # identity in lockstep with the constructor rather than maintaining a
+        # fragile hand-picked string: reusing a pipeline built for a different
+        # language/device/model setting produces incorrect results.
+        constructor_fields = {
+            name: getattr(self, name)
+            for name in (
+                "doc_orientation_classify_model_name",
+                "doc_orientation_classify_model_dir",
+                "doc_unwarping_model_name",
+                "doc_unwarping_model_dir",
+                "text_detection_model_name",
+                "text_detection_model_dir",
+                "textline_orientation_model_name",
+                "textline_orientation_model_dir",
+                "text_recognition_model_name",
+                "text_recognition_model_dir",
+                "use_doc_orientation_classify",
+                "use_doc_unwarping",
+                "use_textline_orientation",
+                "textline_orientation_batch_size",
+                "text_recognition_batch_size",
+                "text_det_limit_side_len",
+                "text_det_limit_type",
+                "text_det_thresh",
+                "text_det_box_thresh",
+                "text_det_unclip_ratio",
+                "text_det_input_shape",
+                "text_rec_score_thresh",
+                "text_rec_input_shape",
+                "lang",
+                "ocr_version",
+                "device",
+                "enable_hpi",
+                "use_tensorrt",
+                "precision",
+                "enable_mkldnn",
+                "cpu_threads",
+                "paddlex_config",
+            )
+        }
+        return _canonical_option_key(constructor_fields)
 
 
 # --- PaddleOCR-VL Specific Options ---
@@ -245,13 +324,20 @@ class PaddleOCRVLOptions(BaseOCROptions):
     top_p: Optional[float] = None
     repetition_penalty: Optional[float] = None
 
-    def _init_key(self) -> str:
-        return (
-            f"{self.pipeline_version}|{self.use_layout_detection}|"
-            f"{self.use_chart_recognition}|{self.use_seal_recognition}|"
-            f"{self.use_doc_orientation_classify}|{self.use_doc_unwarping}|"
-            f"{self.format_block_content}"
-        )
+    def _init_key(self) -> Optional[str]:
+        # ``extra_args`` is forwarded to PaddleOCRVL's constructor, so it is
+        # part of the model identity rather than merely an inference setting.
+        constructor_fields = {
+            "pipeline_version": self.pipeline_version,
+            "use_layout_detection": self.use_layout_detection,
+            "use_chart_recognition": self.use_chart_recognition,
+            "use_seal_recognition": self.use_seal_recognition,
+            "use_doc_orientation_classify": self.use_doc_orientation_classify,
+            "use_doc_unwarping": self.use_doc_unwarping,
+            "format_block_content": self.format_block_content,
+            "extra_args": self.extra_args,
+        }
+        return _canonical_option_key(constructor_fields)
 
 
 # --- Surya Specific Options ---
@@ -281,8 +367,8 @@ class ChandraOCROptions(BaseOCROptions):
     max_output_tokens: int = 12384
     """Maximum number of tokens to generate per page."""
 
-    def _init_key(self) -> str:
-        return f"{self.method}|{self.vllm_url}"
+    def _init_key(self) -> Optional[str]:
+        return _canonical_option_key({"method": self.method, "vllm_url": self.vllm_url})
 
 
 # --- Doctr Specific Options ---
@@ -318,12 +404,21 @@ class DoctrOCROptions(BaseOCROptions):
         if self.box_thresh is not None:
             self.box_thresh = validate_confidence(self.box_thresh, "box_thresh", "DoctrOCROptions")
 
-    def _init_key(self) -> str:
-        return (
-            f"{self.det_arch}|{self.reco_arch}|{self.pretrained}|"
-            f"{self.assume_straight_pages}|{self.export_as_straight_boxes}|"
-            f"{self.symmetric_pad}|{self.preserve_aspect_ratio}|{self.batch_size}|"
-            f"{self.bin_thresh}|{self.box_thresh}|{self.use_orientation_predictor}"
+    def _init_key(self) -> Optional[str]:
+        return _canonical_option_key(
+            {
+                "det_arch": self.det_arch,
+                "reco_arch": self.reco_arch,
+                "pretrained": self.pretrained,
+                "assume_straight_pages": self.assume_straight_pages,
+                "export_as_straight_boxes": self.export_as_straight_boxes,
+                "symmetric_pad": self.symmetric_pad,
+                "preserve_aspect_ratio": self.preserve_aspect_ratio,
+                "batch_size": self.batch_size,
+                "bin_thresh": self.bin_thresh,
+                "box_thresh": self.box_thresh,
+                "use_orientation_predictor": self.use_orientation_predictor,
+            }
         )
 
 
@@ -359,8 +454,14 @@ class RapidOCROptions(BaseOCROptions):
         if self.box_thresh is not None:
             self.box_thresh = validate_confidence(self.box_thresh, "box_thresh", "RapidOCROptions")
 
-    def _init_key(self) -> str:
-        return f"{self.det_model_type}|{self.rec_model_type}|{self.config_path}"
+    def _init_key(self) -> Optional[str]:
+        return _canonical_option_key(
+            {
+                "det_model_type": self.det_model_type,
+                "rec_model_type": self.rec_model_type,
+                "config_path": self.config_path,
+            }
+        )
 
 
 # --- Union type for type hinting ---

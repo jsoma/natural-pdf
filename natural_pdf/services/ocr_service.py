@@ -2,25 +2,38 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Tuple, Union, cast
+from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Tuple, cast
 
+from natural_pdf.core.ocr_execution import protected_ocr_artifact_ids, register_ocr_artifacts
 from natural_pdf.ocr.ocr_manager import (
     normalize_ocr_options,
     resolve_ocr_device,
     resolve_ocr_languages,
     resolve_ocr_min_confidence,
 )
+from natural_pdf.ocr.replacement import OCRReplaceMode, normalize_ocr_replace_mode
 from natural_pdf.ocr.unified_dispatch import get_registry, run_ocr
-from natural_pdf.services._text_state import bump_text_state
 from natural_pdf.services.registry import register_delegate
 
 logger = logging.getLogger(__name__)
 
 
 class _OCRElementManager(Protocol):
-    def remove_ocr_elements(self) -> int: ...
+    def remove_ocr_elements(
+        self, bbox: Optional[Tuple[float, float, float, float]] = None
+    ) -> int: ...
 
-    def clear_text_layer(self) -> Tuple[int, int]: ...
+    def clear_text_layer(
+        self, bbox: Optional[Tuple[float, float, float, float]] = None
+    ) -> Tuple[int, int]: ...
+
+    def remove_text_elements_in_bbox(
+        self,
+        bbox: Optional[Tuple[float, float, float, float]],
+        *,
+        sources: Optional[Iterable[str]] = None,
+        predicate: Optional[Callable[[Any], bool]] = None,
+    ) -> Tuple[int, int]: ...
 
     def create_text_elements_from_ocr(
         self,
@@ -53,8 +66,7 @@ class OCRService:
                 return scope
         return "page"
 
-    @staticmethod
-    def _render_kwargs(host, *, apply_exclusions: bool) -> Dict[str, Any]:
+    def _render_kwargs(self, host, *, apply_exclusions: bool) -> Dict[str, Any]:
         hook = getattr(host, "_ocr_render_kwargs", None)
         if callable(hook):
             try:
@@ -62,8 +74,26 @@ class OCRService:
             except TypeError:
                 kwargs = hook()
             if isinstance(kwargs, dict):
-                return kwargs
-        return {"apply_exclusions": apply_exclusions}
+                resolved = dict(kwargs)
+            else:
+                resolved = {}
+        else:
+            resolved = {}
+
+        resolved["apply_exclusions"] = apply_exclusions
+        crop_bbox = self._resolve_crop_bbox(host, resolved)
+        if crop_bbox is not None:
+            if crop_bbox[2] <= crop_bbox[0] or crop_bbox[3] <= crop_bbox[1]:
+                raise ValueError(
+                    "OCR crop has no area within the page bounds: "
+                    f"requested {resolved.get('crop_bbox')!r}, resolved {crop_bbox!r}."
+                )
+            resolved["crop_bbox"] = crop_bbox
+        if apply_exclusions:
+            resolved["_ocr_exclusion_bboxes"] = self._resolve_exclusion_bboxes(
+                host, crop_bbox=crop_bbox
+            )
+        return resolved
 
     @staticmethod
     def _resolve_crop_bbox(
@@ -78,7 +108,20 @@ class OCRService:
             and len(crop_bbox) == 4
             and all(isinstance(coord, (int, float)) for coord in crop_bbox)
         ):
-            return tuple(float(coord) for coord in crop_bbox)
+            resolved = tuple(float(coord) for coord in crop_bbox)
+
+            page = getattr(host, "page", host)
+            page_width = getattr(page, "width", None)
+            page_height = getattr(page, "height", None)
+            if isinstance(page_width, (int, float)) and isinstance(page_height, (int, float)):
+                x0, y0, x1, y1 = resolved
+                return (
+                    max(0.0, min(float(page_width), x0)),
+                    max(0.0, min(float(page_height), y0)),
+                    max(0.0, min(float(page_width), x1)),
+                    max(0.0, min(float(page_height), y1)),
+                )
+            return resolved
 
         if render_kwargs.get("crop"):
             bbox = getattr(host, "bbox", None)
@@ -87,9 +130,125 @@ class OCRService:
                 and len(bbox) == 4
                 and all(isinstance(coord, (int, float)) for coord in bbox)
             ):
-                return tuple(float(coord) for coord in bbox)
+                return OCRService._resolve_crop_bbox(host, {"crop_bbox": bbox})
 
         return None
+
+    @classmethod
+    def _resolve_exclusion_bboxes(
+        cls,
+        host,
+        *,
+        crop_bbox: Optional[Tuple[float, float, float, float]],
+    ) -> Tuple[Tuple[float, float, float, float], ...]:
+        """Evaluate, clip, normalize, and deterministically order OCR masks."""
+        getter = getattr(host, "_get_exclusion_regions", None)
+        if not callable(getter):
+            return ()
+
+        try:
+            regions = getter(include_callable=True)
+        except TypeError:
+            regions = getter()
+
+        exclusion_items: List[Any] = list(regions or ())
+        exclusion_items.extend(cls._resolve_element_exclusion_items(host))
+
+        page = getattr(host, "page", host)
+        page_width = float(getattr(page, "width", 0.0) or 0.0)
+        page_height = float(getattr(page, "height", 0.0) or 0.0)
+        clip = crop_bbox or (0.0, 0.0, page_width, page_height)
+        clip_x0, clip_y0, clip_x1, clip_y1 = clip
+
+        normalized = set()
+        for item in exclusion_items:
+            bbox = cls._element_bbox(item)
+            if bbox is None:
+                continue
+            x0 = max(clip_x0, bbox[0])
+            y0 = max(clip_y0, bbox[1])
+            x1 = min(clip_x1, bbox[2])
+            y1 = min(clip_y1, bbox[3])
+            if x1 <= x0 or y1 <= y0:
+                continue
+            normalized.add(tuple(round(value, 6) for value in (x0, y0, x1, y1)))
+
+        return tuple(sorted(normalized))
+
+    @classmethod
+    def _resolve_element_exclusion_items(cls, host) -> List[Any]:
+        """Resolve exact ``method='element'`` exclusions for OCR masking only.
+
+        Ordinary exclusion-region evaluation deliberately leaves these entries
+        to the selector filtering stage. OCR rasterization has no such later
+        stage, so it must collect their exact boxes without re-evaluating any
+        callable exclusions.
+        """
+
+        def normalize(specs):
+            return [
+                (spec[0], spec[1], spec[2] if len(spec) == 3 else "region") for spec in specs or ()
+            ]
+
+        page = getattr(host, "page", host)
+        contextual_entries: List[Tuple[Any, Tuple[Any, Any, str]]] = []
+
+        # Region-local exclusions are additive; they do not shadow page entries.
+        if page is not host:
+            contextual_entries.extend(
+                (host, entry) for entry in normalize(getattr(host, "_exclusions", ()))
+            )
+
+        page_entries = normalize(getattr(page, "_exclusions", ()))
+        contextual_entries.extend((page, entry) for entry in page_entries)
+
+        # Match Page._get_exclusion_regions label-shadowing rules for PDF-level
+        # entries so the geometry here is the geometry effective for the page.
+        parent = getattr(page, "_parent", None)
+        parent_entries = normalize(getattr(parent, "_exclusions", ()))
+        page_labels = {label for _, label, _ in page_entries if label}
+        contextual_entries.extend(
+            (page, entry) for entry in parent_entries if not (entry[1] and entry[1] in page_labels)
+        )
+
+        resolved: List[Any] = []
+        for context, (item, _label, method) in contextual_entries:
+            if method != "element" or callable(item):
+                continue
+            if isinstance(item, str):
+                finder = getattr(context, "find_all", None)
+                if not callable(finder):
+                    continue
+                matches = finder(item, apply_exclusions=False)
+                resolved.extend(getattr(matches, "elements", matches) or ())
+                continue
+            elements = getattr(item, "elements", None)
+            if elements is not None:
+                resolved.extend(elements)
+            else:
+                resolved.append(item)
+
+        return resolved
+
+    @staticmethod
+    def _exclusion_fingerprint(
+        render_kwargs: Optional[Dict[str, Any]],
+    ) -> str:
+        bboxes = (render_kwargs or {}).get("_ocr_exclusion_bboxes") or ()
+        return ";".join(",".join(f"{float(coord):.6f}" for coord in bbox) for bbox in bboxes)
+
+    @staticmethod
+    def _target_dimensions(
+        host,
+        crop_bbox: Optional[Tuple[float, float, float, float]],
+    ) -> Tuple[float, float]:
+        if crop_bbox is not None:
+            return crop_bbox[2] - crop_bbox[0], crop_bbox[3] - crop_bbox[1]
+        page = getattr(host, "page", host)
+        return (
+            float(getattr(host, "width", None) or getattr(page, "width", 0.0) or 0.0),
+            float(getattr(host, "height", None) or getattr(page, "height", 0.0) or 0.0),
+        )
 
     @classmethod
     def _resolve_offsets(cls, host, render_kwargs: Optional[Dict[str, Any]]) -> Tuple[float, float]:
@@ -116,20 +275,56 @@ class OCRService:
 
         return 150
 
+    @staticmethod
+    def _host_bbox(host) -> Optional[Tuple[float, float, float, float]]:
+        """Return a single-page host's replacement geometry, if it has one."""
+
+        bbox = getattr(host, "bbox", None)
+        if (
+            isinstance(bbox, (list, tuple))
+            and len(bbox) == 4
+            and all(isinstance(coord, (int, float)) for coord in bbox)
+        ):
+            return cast(Tuple[float, float, float, float], tuple(float(coord) for coord in bbox))
+        return None
+
+    @staticmethod
+    def _center_in_bbox(element: Any, bbox: Optional[Tuple[float, float, float, float]]) -> bool:
+        if bbox is None:
+            return True
+        element_bbox = OCRService._element_bbox(element)
+        if element_bbox is None:
+            return False
+        x0, top, x1, bottom = element_bbox
+        bx0, btop, bx1, bbottom = bbox
+        return bx0 <= (x0 + x1) / 2.0 <= bx1 and btop <= (top + bottom) / 2.0 <= bbottom
+
     @register_delegate("ocr", "remove_ocr_elements")
     def remove_ocr_elements(self, host: SupportsOCRElementManager) -> int:
         mgr = host._ocr_element_manager()
-        removed = int(mgr.remove_ocr_elements())
-        if removed:
-            bump_text_state(host)
+        bbox = self._host_bbox(host)
+        if bbox is not None:
+            removed = int(mgr.remove_ocr_elements(bbox))
+        else:
+            # Compatibility for third-party page-like managers. Real Region
+            # managers provide the geometry-aware method above.
+            try:
+                removed = int(mgr.remove_ocr_elements(None))
+            except TypeError:
+                removed = int(mgr.remove_ocr_elements())
         return removed
 
     @register_delegate("ocr", "clear_text_layer")
     def clear_text_layer(self, host: SupportsOCRElementManager):
         mgr = host._ocr_element_manager()
-        removed = mgr.clear_text_layer()
-        if removed and any(removed):
-            bump_text_state(host)
+        bbox = self._host_bbox(host)
+        if bbox is not None:
+            removed = mgr.clear_text_layer(bbox)
+        else:
+            try:
+                removed = mgr.clear_text_layer(None)
+            except TypeError:
+                removed = mgr.clear_text_layer()
         return removed
 
     @register_delegate("ocr", "create_text_elements_from_ocr")
@@ -152,8 +347,6 @@ class OCRService:
             offset_y=offset_y,
             engine_name=engine_name,
         )
-        if created:
-            bump_text_state(host, elements=created)
         return created
 
     def _resolve_engine_name(
@@ -177,8 +370,67 @@ class OCRService:
             context=host, requested=requested, options=options, scope=scope
         )
 
+    @staticmethod
+    def _as_detection_results(results: Iterable[Any]) -> List[Dict[str, Any]]:
+        return [
+            {
+                **result,
+                "text": "",
+                "source_category": "detection",
+                "_ocr_detection_only": True,
+            }
+            for result in results
+            if isinstance(result, dict)
+        ]
+
+    @staticmethod
+    def _mark_detection_elements(elements: Iterable[Any]) -> None:
+        for element in elements:
+            metadata = getattr(element, "metadata", None)
+            if isinstance(metadata, dict):
+                metadata["ocr_detection_only"] = True
+            element.is_ocr_detection = True
+
+    @staticmethod
+    def _is_detection_element(element: Any) -> bool:
+        """Return whether an element is a persistent detection-only artifact."""
+
+        if bool(getattr(element, "is_ocr_detection", False)):
+            return True
+        metadata = getattr(element, "metadata", None)
+        if isinstance(metadata, dict) and bool(metadata.get("ocr_detection_only", False)):
+            return True
+        obj = getattr(element, "_obj", None)
+        return isinstance(obj, dict) and bool(obj.get("ocr_detection_only", False))
+
+    def _refresh_detection_artifacts(
+        self,
+        host: Any,
+        bbox: Optional[Tuple[float, float, float, float]],
+        created: Iterable[Any],
+    ) -> Tuple[int, int]:
+        """Remove superseded detections in scope while preserving new results."""
+
+        created_ids = {id(element) for element in created}
+        protected_ids = protected_ocr_artifact_ids() | created_ids
+        manager = host._ocr_element_manager()
+        return manager.remove_text_elements_in_bbox(
+            bbox,
+            sources={"ocr"},
+            predicate=lambda element: id(element) not in protected_ids
+            and self._is_detection_element(element),
+        )
+
     def _process_ocr_payload(
-        self, host, ocr_payload, engine_name, min_confidence, offset_x, offset_y
+        self,
+        host,
+        ocr_payload,
+        engine_name,
+        min_confidence,
+        offset_x,
+        offset_y,
+        crop_bbox=None,
+        detect_only: bool = False,
     ):
         """Scale OCR results and create text elements.
 
@@ -190,14 +442,7 @@ class OCRService:
             logger.error("OCR payload missing image dimensions.")
             return None
 
-        width = (
-            getattr(host, "width", None) or getattr(getattr(host, "page", None), "width", None) or 0
-        )
-        height = (
-            getattr(host, "height", None)
-            or getattr(getattr(host, "page", None), "height", None)
-            or 0
-        )
+        width, height = self._target_dimensions(host, crop_bbox)
         scale_x = width / image_width if width else 1.0
         scale_y = height / image_height if height else 1.0
 
@@ -216,6 +461,19 @@ class OCRService:
             if min_confidence is not None:
                 scaled = [r for r in scaled if r.get("confidence", 1.0) >= min_confidence]
 
+            if detect_only:
+                created = self.create_text_elements_from_ocr(
+                    host,
+                    self._as_detection_results(scaled),
+                    scale_x=1.0,
+                    scale_y=1.0,
+                    offset_x=0.0,
+                    offset_y=0.0,
+                    engine_name=engine_name,
+                )
+                self._mark_detection_elements(created)
+                return created
+
             page_obj = getattr(host, "page", host)
             text_results, table_regions = create_table_regions_from_ocr(
                 page_obj,
@@ -223,7 +481,13 @@ class OCRService:
                 source_label=engine_name,
             )
             if table_regions:
-                bump_text_state(host, elements=table_regions)
+                for region in table_regions:
+                    metadata = getattr(region, "metadata", None)
+                    if isinstance(metadata, dict):
+                        metadata["_natural_pdf_ocr_generated"] = True
+                        metadata["ocr_engine"] = engine_name
+                    region._natural_pdf_ocr_generated = True
+                register_ocr_artifacts(*table_regions)
 
             return self.create_text_elements_from_ocr(
                 host,
@@ -235,15 +499,242 @@ class OCRService:
                 engine_name=engine_name,
             )
         else:
-            return self.create_text_elements_from_ocr(
+            results = ocr_payload.results
+            if detect_only:
+                # Detection-only output remains selector-visible geometry, but
+                # is explicitly labelled and never replaces recognized text.
+                results = self._as_detection_results(results)
+            created = self.create_text_elements_from_ocr(
                 host,
-                ocr_payload.results,
+                results,
                 scale_x=scale_x,
                 scale_y=scale_y,
                 offset_x=offset_x,
                 offset_y=offset_y,
                 engine_name=engine_name,
             )
+            if detect_only:
+                self._mark_detection_elements(created)
+            return created
+
+    def _payload_can_refresh_detection(
+        self,
+        host: Any,
+        ocr_payload: Any,
+        engine_name: str,
+        min_confidence: Optional[float],
+        offset_x: float,
+        offset_y: float,
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+    ) -> bool:
+        """Validate detection geometry before replacing prior detections.
+
+        A genuinely empty result is a successful refresh. A non-empty payload
+        whose entries cannot create any bounded detection element is malformed
+        and must leave the previous detection state untouched.
+        """
+
+        try:
+            image_width, image_height = ocr_payload.image_size
+        except (AttributeError, TypeError, ValueError):
+            return False
+        if not image_width or not image_height:
+            return False
+
+        raw_results = getattr(ocr_payload, "results", None)
+        if raw_results is None:
+            return False
+        try:
+            results = list(raw_results)
+        except TypeError:
+            return False
+        if not results:
+            return True
+
+        width, height = self._target_dimensions(host, crop_bbox)
+        scale_x = width / image_width if width else 1.0
+        scale_y = height / image_height if height else 1.0
+        staged_results = results
+        staged_offset_x = offset_x
+        staged_offset_y = offset_y
+
+        if ocr_payload.engine_type == "vlm":
+            from natural_pdf.ocr.vlm_ocr import scale_ocr_results, validate_table_ocr_results
+
+            if not validate_table_ocr_results(results):
+                return False
+            try:
+                staged_results = scale_ocr_results(
+                    results,
+                    image_width=image_width,
+                    image_height=image_height,
+                    page_width=width,
+                    page_height=height,
+                    offset_x=offset_x,
+                    offset_y=offset_y,
+                )
+            except (KeyError, TypeError, ValueError, IndexError):
+                return False
+            if min_confidence is not None:
+                staged_results = [
+                    result
+                    for result in staged_results
+                    if result.get("confidence") is None
+                    or result.get("confidence", 1.0) >= min_confidence
+                ]
+            if not staged_results:
+                return True
+            scale_x = scale_y = 1.0
+            staged_offset_x = staged_offset_y = 0.0
+
+        detection_results = self._as_detection_results(staged_results)
+        if not detection_results:
+            return False
+
+        manager = host._ocr_element_manager()
+        converter = getattr(manager, "_ocr_converter", None)
+        if converter is None:
+            from natural_pdf.core.ocr_converter import OCRConverter
+
+            converter = OCRConverter(getattr(host, "page", host))
+        try:
+            words, _chars = converter.convert(
+                detection_results,
+                scale_x=scale_x,
+                scale_y=scale_y,
+                offset_x=staged_offset_x,
+                offset_y=staged_offset_y,
+                engine_name=engine_name,
+            )
+        except Exception:
+            logger.debug("Failed to validate detection payload.", exc_info=True)
+            return False
+        return bool(words)
+
+    def _remove_generated_table_regions(
+        self,
+        host,
+        bbox: Optional[Tuple[float, float, float, float]],
+    ) -> int:
+        """Remove only VLM table Regions created by an earlier OCR apply."""
+
+        page = getattr(host, "page", host)
+        remover = getattr(page, "remove_regions", None)
+        if not callable(remover):
+            return 0
+
+        def is_generated_table(region: Any) -> bool:
+            metadata = getattr(region, "metadata", None)
+            generated = bool(getattr(region, "_natural_pdf_ocr_generated", False)) or (
+                isinstance(metadata, dict)
+                and bool(metadata.get("_natural_pdf_ocr_generated", False))
+            )
+            return (
+                generated
+                and id(region) not in protected_ocr_artifact_ids()
+                and getattr(region, "region_type", None) == "table"
+                and self._center_in_bbox(region, bbox)
+            )
+
+        return int(remover(predicate=is_generated_table))
+
+    def _remove_for_replace(
+        self,
+        host,
+        replace: OCRReplaceMode,
+        bbox: Optional[Tuple[float, float, float, float]],
+    ) -> Tuple[int, int, int]:
+        """Apply a validated replacement mode inside one page geometry."""
+
+        if replace == "none":
+            return 0, 0, 0
+
+        mgr = host._ocr_element_manager()
+        sources = None if replace == "all" else {"ocr"}
+        protected_ids = protected_ocr_artifact_ids()
+        remove_scoped = getattr(mgr, "remove_text_elements_in_bbox", None)
+        if callable(remove_scoped):
+            words, chars = remove_scoped(
+                bbox,
+                sources=sources,
+                predicate=lambda element: id(element) not in protected_ids,
+            )
+        elif bbox is None:
+            if replace == "all":
+                words, chars = mgr.clear_text_layer()
+            else:
+                removed = int(mgr.remove_ocr_elements())
+                words, chars = removed, 0
+        else:  # pragma: no cover - only third-party incomplete managers
+            raise TypeError("Region OCR replacement requires a geometry-aware element manager")
+
+        tables = self._remove_generated_table_regions(host, bbox)
+        return int(words), int(chars), tables
+
+    def _convert_ocr_payload(
+        self,
+        host,
+        ocr_payload,
+        engine_name,
+        min_confidence,
+        offset_x,
+        offset_y,
+        crop_bbox=None,
+    ):
+        """Convert an OCR payload to detached text elements without registration."""
+        image_width, image_height = ocr_payload.image_size
+        if not image_width or not image_height:
+            logger.error("OCR payload missing image dimensions.")
+            return []
+
+        width, height = self._target_dimensions(host, crop_bbox)
+        scale_x = width / image_width if width else 1.0
+        scale_y = height / image_height if height else 1.0
+        results = ocr_payload.results
+
+        if ocr_payload.engine_type == "vlm":
+            from natural_pdf.ocr.vlm_ocr import scale_ocr_results
+
+            results = scale_ocr_results(
+                results,
+                image_width=image_width,
+                image_height=image_height,
+                page_width=width,
+                page_height=height,
+                offset_x=offset_x,
+                offset_y=offset_y,
+            )
+            if min_confidence is not None:
+                results = [
+                    result for result in results if result.get("confidence", 1.0) >= min_confidence
+                ]
+            # Table payloads are represented as registered Regions only in the
+            # mutating apply path. Extraction must not leak selector-visible
+            # artifacts into the page.
+            results = [
+                result
+                for result in results
+                if str(result.get("source_category", "")).lower() != "table"
+            ]
+            scale_x = scale_y = 1.0
+            offset_x = offset_y = 0.0
+
+        manager = host._ocr_element_manager()
+        converter = getattr(manager, "_ocr_converter", None)
+        if converter is None:
+            from natural_pdf.core.ocr_converter import OCRConverter
+
+            converter = OCRConverter(getattr(host, "page", host))
+
+        words, _chars = converter.convert(
+            results,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            offset_x=offset_x,
+            offset_y=offset_y,
+            engine_name=engine_name,
+        )
+        return list(words)
 
     def _payload_can_replace_text(
         self,
@@ -253,19 +744,13 @@ class OCRService:
         min_confidence,
         offset_x,
         offset_y,
+        crop_bbox=None,
     ) -> bool:
         image_width, image_height = ocr_payload.image_size
         if not image_width or not image_height:
             return False
 
-        width = (
-            getattr(host, "width", None) or getattr(getattr(host, "page", None), "width", None) or 0
-        )
-        height = (
-            getattr(host, "height", None)
-            or getattr(getattr(host, "page", None), "height", None)
-            or 0
-        )
+        width, height = self._target_dimensions(host, crop_bbox)
         scale_x = width / image_width if width else 1.0
         scale_y = height / image_height if height else 1.0
 
@@ -276,19 +761,27 @@ class OCRService:
         staged_offset_y = offset_y
 
         if ocr_payload.engine_type == "vlm":
-            from natural_pdf.ocr.vlm_ocr import scale_ocr_results
+            from natural_pdf.ocr.vlm_ocr import scale_ocr_results, validate_table_ocr_results
 
-            scaled = scale_ocr_results(
-                ocr_payload.results,
-                image_width=image_width,
-                image_height=image_height,
-                page_width=width,
-                page_height=height,
-                offset_x=offset_x,
-                offset_y=offset_y,
-            )
+            if not validate_table_ocr_results(ocr_payload.results):
+                return False
+            try:
+                scaled = scale_ocr_results(
+                    ocr_payload.results,
+                    image_width=image_width,
+                    image_height=image_height,
+                    page_width=width,
+                    page_height=height,
+                    offset_x=offset_x,
+                    offset_y=offset_y,
+                )
+            except (KeyError, TypeError, ValueError, IndexError):
+                logger.debug("Failed to scale OCR payload before replacement.", exc_info=True)
+                return False
             if min_confidence is not None:
                 scaled = [r for r in scaled if r.get("confidence", 1.0) >= min_confidence]
+            if not validate_table_ocr_results(scaled):
+                return False
 
             staged_results = [
                 result
@@ -338,7 +831,7 @@ class OCRService:
         min_confidence,
         offset_x,
         offset_y,
-        replace,
+        crop_bbox=None,
     ) -> bool:
         """Return whether an OCR payload is safe to persist in the disk cache."""
         if getattr(ocr_payload, "engine_type", None) != "vlm":
@@ -347,17 +840,15 @@ class OCRService:
         if not getattr(ocr_payload, "results", None):
             return False
 
-        if replace is True or replace == "all":
-            return self._payload_can_replace_text(
-                host,
-                ocr_payload,
-                engine_name,
-                min_confidence,
-                offset_x,
-                offset_y,
-            )
-
-        return True
+        return self._payload_can_replace_text(
+            host,
+            ocr_payload,
+            engine_name,
+            min_confidence,
+            offset_x,
+            offset_y,
+            crop_bbox,
+        )
 
     @register_delegate("ocr", "apply_ocr")
     def apply_ocr(
@@ -372,7 +863,7 @@ class OCRService:
         resolution: Optional[int] = None,
         detect_only: bool = False,
         apply_exclusions: bool = True,
-        replace: Union[bool, str] = True,
+        replace: OCRReplaceMode = "ocr",
         use_cache: bool = True,
         # VLM params:
         model: Optional[str] = None,
@@ -384,6 +875,12 @@ class OCRService:
         preserve_markup: bool = False,
         **kwargs,
     ):
+        replace_mode = normalize_ocr_replace_mode(replace)
+        if detect_only and replace_mode != "ocr":
+            raise ValueError(
+                "detect_only=True refreshes detection artifacts and cannot use "
+                f"recognition replace={replace_mode!r}"
+            )
         normalized_options = normalize_ocr_options(options)
         scope = self._scope(host)
 
@@ -392,6 +889,13 @@ class OCRService:
             engine = "vlm"
 
         engine_name = self._resolve_engine_name(host, engine, normalized_options, scope)
+        # Resolve deferred mapping options against the selected engine before
+        # rendering, cache lookup, or mutation. Invalid options must be a
+        # side-effect-free public-boundary failure.
+        normalized_options = normalize_ocr_options(
+            normalized_options,
+            engine_name=engine_name,
+        )
         resolved_languages = resolve_ocr_languages(host, languages, scope=scope)
         resolved_min_conf = resolve_ocr_min_confidence(host, min_confidence, scope=scope)
         resolved_device = resolve_ocr_device(host, device, scope=scope)
@@ -402,7 +906,12 @@ class OCRService:
         offset_x, offset_y = self._resolve_offsets(host, render_kwargs)
 
         # --- OCR result cache ---
-        from natural_pdf.ocr.ocr_cache import compute_cache_key, get_default_cache
+        from natural_pdf.ocr.ocr_cache import (
+            compute_cache_key,
+            compute_render_kwargs_cache_key,
+            get_default_cache,
+            resolve_ocr_cache_identity,
+        )
 
         cache = get_default_cache() if use_cache else None
         cache_key = None
@@ -411,7 +920,34 @@ class OCRService:
         pdf_obj = getattr(page_obj, "pdf", getattr(page_obj, "_parent", None))
         pdf_path = getattr(pdf_obj, "_resolved_path", None)
 
+        execution_identity = None
+        render_kwargs_cache_key = None
         if cache is not None and pdf_path and pdf_path != "<stream>":
+            execution_identity = resolve_ocr_cache_identity(
+                engine_name=engine_name,
+                device=resolved_device,
+                model=model,
+                client=client,
+            )
+            render_kwargs_cache_key = compute_render_kwargs_cache_key(render_kwargs)
+            if execution_identity is None:
+                logger.debug(
+                    "Skipping persistent OCR result cache for %s: backend identity is not "
+                    "explicitly cacheable.",
+                    engine_name,
+                )
+                cache = None
+            elif render_kwargs_cache_key is None:
+                logger.debug(
+                    "Skipping persistent OCR result cache for %s: render kwargs do not have "
+                    "a stable JSON identity.",
+                    engine_name,
+                )
+                cache = None
+
+        if cache is not None and pdf_path and pdf_path != "<stream>":
+            assert execution_identity is not None
+            assert render_kwargs_cache_key is not None
             try:
                 file_stat = os.stat(pdf_path)
                 page_index = getattr(page_obj, "index", 0)
@@ -420,29 +956,40 @@ class OCRService:
                     if hasattr(normalized_options, "_cache_key")
                     else ""
                 )
-                cache_key = compute_cache_key(
-                    pdf_path=pdf_path,
-                    file_mtime_ns=file_stat.st_mtime_ns,
-                    file_size=file_stat.st_size,
-                    page_index=page_index,
-                    engine_name=engine_name,
-                    languages=tuple(sorted(resolved_languages or ["en"])),
-                    resolution=final_resolution,
-                    detect_only=detect_only,
-                    device=resolved_device or "cpu",
-                    options_cache_key=options_key,
-                    apply_exclusions=apply_exclusions,
-                    min_confidence=resolved_min_conf,
-                    model=model,
-                    prompt=prompt,
-                    instructions=instructions,
-                    max_new_tokens=max_new_tokens,
-                    layout=layout,
-                    preserve_markup=preserve_markup,
-                    crop_bbox=crop_bbox,
-                )
+                if options_key is None:
+                    logger.debug(
+                        "Skipping persistent OCR result cache for %s: options do not have "
+                        "a canonical cache identity.",
+                        engine_name,
+                    )
+                else:
+                    exclusion_key = self._exclusion_fingerprint(render_kwargs)
+                    cache_key = compute_cache_key(
+                        pdf_path=pdf_path,
+                        file_mtime_ns=file_stat.st_mtime_ns,
+                        file_size=file_stat.st_size,
+                        page_index=page_index,
+                        engine_name=engine_name,
+                        languages=tuple(resolved_languages or ["en"]),
+                        resolution=final_resolution,
+                        detect_only=detect_only,
+                        device=execution_identity["device"],
+                        options_cache_key=options_key,
+                        apply_exclusions=apply_exclusions,
+                        min_confidence=resolved_min_conf,
+                        model=model,
+                        prompt=prompt,
+                        instructions=instructions,
+                        max_new_tokens=max_new_tokens,
+                        layout=layout,
+                        preserve_markup=preserve_markup,
+                        crop_bbox=crop_bbox,
+                        exclusion_geometry_key=exclusion_key,
+                        render_kwargs_cache_key=render_kwargs_cache_key,
+                        execution_identity=execution_identity,
+                    )
 
-                cached = cache.get(cache_key)
+                cached = cache.get(cache_key) if cache_key is not None else None
                 if cached is not None:
                     logger.info("OCR cache hit for page %d (%s)", page_index, engine_name)
                     if not self._payload_should_cache(
@@ -452,7 +999,7 @@ class OCRService:
                         resolved_min_conf,
                         offset_x,
                         offset_y,
-                        replace,
+                        crop_bbox,
                     ):
                         cache.delete(cache_key)
                         logger.warning(
@@ -461,23 +1008,69 @@ class OCRService:
                             engine_name,
                         )
                         cached = None
+                    if (
+                        cached is not None
+                        and detect_only
+                        and not self._payload_can_refresh_detection(
+                            host,
+                            cached,
+                            engine_name,
+                            resolved_min_conf,
+                            offset_x,
+                            offset_y,
+                            crop_bbox,
+                        )
+                    ):
+                        cache.delete(cache_key)
+                        logger.warning("Ignoring malformed cached detection payload; retrying OCR.")
+                        cached = None
+                    destructive = not detect_only and replace_mode != "none"
+                    if (
+                        cached is not None
+                        and destructive
+                        and not self._payload_can_replace_text(
+                            host,
+                            cached,
+                            engine_name,
+                            resolved_min_conf,
+                            offset_x,
+                            offset_y,
+                            crop_bbox,
+                        )
+                    ):
+                        cache.delete(cache_key)
+                        logger.warning(
+                            "Ignoring cached OCR payload that cannot safely replace text; "
+                            "retrying OCR."
+                        )
+                        cached = None
                     if cached is not None:
-                        if replace is True or replace == "all":
-                            words, chars = self.clear_text_layer(host)
-                            if words or chars:
+                        if destructive:
+                            words, chars, tables = self._remove_for_replace(
+                                host, replace_mode, crop_bbox
+                            )
+                            if words or chars or tables:
                                 logger.info(
-                                    "Cleared text layer (%d words, %d chars) before OCR.",
+                                    "Removed %d words, %d chars, and %d OCR table regions "
+                                    "before cached OCR.",
                                     words,
                                     chars,
+                                    tables,
                                 )
-                        elif replace == "ocr":
-                            removed = self.remove_ocr_elements(host)
-                            if removed:
-                                logger.info("Removed %d OCR elements before new OCR run.", removed)
                         created = self._process_ocr_payload(
-                            host, cached, engine_name, resolved_min_conf, offset_x, offset_y
+                            host,
+                            cached,
+                            engine_name,
+                            resolved_min_conf,
+                            offset_x,
+                            offset_y,
+                            crop_bbox,
+                            detect_only=detect_only,
                         )
                         if created is not None:
+                            register_ocr_artifacts(*created)
+                            if detect_only:
+                                self._refresh_detection_artifacts(host, crop_bbox, created)
                             logger.info(
                                 "Added %d OCR elements from cache using '%s'.",
                                 len(created),
@@ -507,6 +1100,21 @@ class OCRService:
             preserve_markup=preserve_markup,
         )
 
+        detection_valid = not detect_only or self._payload_can_refresh_detection(
+            host,
+            ocr_payload,
+            engine_name,
+            resolved_min_conf,
+            offset_x,
+            offset_y,
+            crop_bbox,
+        )
+        if not detection_valid:
+            logger.warning(
+                "Skipping detection refresh because the OCR payload contained no valid geometry."
+            )
+            return host
+
         # Cache only valid VLM payloads; malformed/empty VLM responses should
         # not poison later retries. Classic engines may legitimately return
         # empty pages, so keep their existing cache behavior.
@@ -517,12 +1125,13 @@ class OCRService:
             resolved_min_conf,
             offset_x,
             offset_y,
-            replace,
+            crop_bbox,
         ):
             page_index = getattr(page_obj, "index", 0)
             cache.put(cache_key, ocr_payload, engine_name, page_index)
 
-        if replace is True or replace == "all":
+        destructive = not detect_only and replace_mode != "none"
+        if destructive:
             if not self._payload_can_replace_text(
                 host,
                 ocr_payload,
@@ -530,24 +1139,36 @@ class OCRService:
                 resolved_min_conf,
                 offset_x,
                 offset_y,
+                crop_bbox,
             ):
                 logger.warning(
                     "Skipping replacement OCR because the OCR payload could not be validated."
                 )
                 return host
-            words, chars = self.clear_text_layer(host)
-            if words or chars:
-                logger.info("Cleared text layer (%d words, %d chars) before OCR.", words, chars)
-        elif replace == "ocr":
-            removed = self.remove_ocr_elements(host)
-            if removed:
-                logger.info("Removed %d OCR elements before new OCR run.", removed)
-
+            words, chars, tables = self._remove_for_replace(host, replace_mode, crop_bbox)
+            if words or chars or tables:
+                logger.info(
+                    "Removed %d words, %d chars, and %d OCR table regions before OCR.",
+                    words,
+                    chars,
+                    tables,
+                )
         created_elements = self._process_ocr_payload(
-            host, ocr_payload, engine_name, resolved_min_conf, offset_x, offset_y
+            host,
+            ocr_payload,
+            engine_name,
+            resolved_min_conf,
+            offset_x,
+            offset_y,
+            crop_bbox,
+            detect_only=detect_only,
         )
         if created_elements is None:
             return host
+
+        register_ocr_artifacts(*created_elements)
+        if detect_only:
+            self._refresh_detection_artifacts(host, crop_bbox, created_elements)
 
         logger.info("Added %d OCR elements using '%s'.", len(created_elements), engine_name)
         return host
@@ -559,15 +1180,13 @@ class OCRService:
         *,
         ocr_function: Callable[[Any], Optional[str]],
         source_label: str = "custom-ocr",
-        replace: bool = True,
+        replace: OCRReplaceMode = "ocr",
         confidence: Optional[float] = None,
         add_to_page: bool = True,
     ):
+        replace_mode = normalize_ocr_replace_mode(replace)
         if not callable(ocr_function):
             raise TypeError("ocr_function must be callable.")
-
-        if replace:
-            self._remove_custom_ocr_elements(host, source_label=source_label)
 
         logger.debug("Running custom OCR function for %s", host)
         ocr_text = ocr_function(host)
@@ -576,8 +1195,8 @@ class OCRService:
                 f"Custom OCR function returned {type(ocr_text).__name__}; expected str or None."
             )
 
-        if ocr_text is None:
-            logger.debug("Custom OCR function returned None; no elements created.")
+        if ocr_text is None or not ocr_text.strip():
+            logger.debug("Custom OCR function returned no recognized text; no elements created.")
             return host
 
         to_text_element = getattr(host, "to_text_element", None)
@@ -586,12 +1205,30 @@ class OCRService:
                 f"{host.__class__.__name__} must implement to_text_element() for custom OCR."
             )
 
-        to_text_element(
+        if add_to_page and replace_mode != "none":
+            self._remove_for_replace(
+                host,
+                replace_mode,
+                self._host_bbox(host),
+            )
+
+        created = to_text_element(
             text_content=ocr_text,
-            source_label=source_label,
+            # Keep the public source category stable so selectors, correction,
+            # removal, export, and subsequent engine OCR all see function OCR.
+            source_label="ocr",
             confidence=confidence,
             add_to_page=add_to_page,
         )
+        if created is not None:
+            obj = getattr(created, "_obj", None)
+            if isinstance(obj, dict):
+                obj["ocr_engine"] = source_label
+                obj["ocr_source_label"] = source_label
+                obj["_natural_pdf_ocr_generated"] = True
+            created._natural_pdf_ocr_generated = True
+            if add_to_page:
+                register_ocr_artifacts(created)
         logger.info(
             "Created custom OCR text element (%d chars) via %s.",
             len(ocr_text),
@@ -617,64 +1254,6 @@ class OCRService:
             except (ValueError, TypeError):
                 return None
         return None
-
-    def _remove_custom_ocr_elements(self, host, *, source_label: str) -> None:
-        page = getattr(host, "page", None)
-        if page is None:
-            return
-        get_elements = getattr(page, "get_elements_by_type", None)
-        remove_element = getattr(page, "remove_element", None)
-        if not callable(get_elements) or not callable(remove_element):
-            return
-
-        intersects = getattr(host, "intersects", None)
-        bbox = getattr(host, "bbox", None)
-
-        def _overlaps(candidate: Any) -> bool:
-            if callable(intersects):
-                try:
-                    return bool(intersects(candidate))
-                except Exception:
-                    return False
-            if bbox is None:
-                return True
-            candidate_bbox = self._element_bbox(candidate)
-            if candidate_bbox is None:
-                return False
-            x0, top, x1, bottom = candidate_bbox
-            hx0, htop, hx1, hbottom = bbox
-            return not (x1 < hx0 or x0 > hx1 or bottom < htop or top > hbottom)
-
-        def _safe_remove(element: Any):
-            etype = getattr(element, "object_type", None)
-            try:
-                remove_element(element, element_type=etype)
-            except Exception:
-                return
-
-        removed = 0
-        word_iter = get_elements("words") or []
-        for word in list(cast(Iterable[Any], word_iter)):
-            source = getattr(word, "source", "")
-            if source not in {"ocr", source_label}:
-                continue
-            if _overlaps(word):
-                _safe_remove(word)
-                removed += 1
-
-        char_iter = get_elements("chars") or []
-        for char in list(cast(Iterable[Any], char_iter)):
-            char_source = (
-                char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
-            )
-            if char_source not in {"ocr", source_label}:
-                continue
-            if _overlaps(char):
-                _safe_remove(char)
-                removed += 1
-
-        if removed:
-            logger.info("Removed %d existing OCR element(s) before custom OCR.", removed)
 
     @staticmethod
     def _element_bbox(element: Any) -> Optional[Tuple[float, float, float, float]]:
@@ -718,6 +1297,14 @@ class OCRService:
         min_confidence: Optional[float] = None,
         device: Optional[str] = None,
         resolution: Optional[int] = None,
+        apply_exclusions: bool = True,
+        model: Optional[str] = None,
+        client: Optional[Any] = None,
+        prompt: Optional[str] = None,
+        instructions: Optional[str] = None,
+        max_new_tokens: Optional[int] = None,
+        layout: Optional[bool | str] = None,
+        preserve_markup: bool = False,
     ):
         normalized_options = normalize_ocr_options(options)
         scope = self._scope(host)
@@ -732,7 +1319,8 @@ class OCRService:
         resolved_device = resolve_ocr_device(host, device, scope=scope)
 
         final_resolution = self._resolve_resolution(host, resolution, scope)
-        render_kwargs = self._render_kwargs(host, apply_exclusions=True)
+        render_kwargs = self._render_kwargs(host, apply_exclusions=apply_exclusions)
+        crop_bbox = self._resolve_crop_bbox(host, render_kwargs)
         offset_x, offset_y = self._resolve_offsets(host, render_kwargs)
 
         ocr_payload = run_ocr(
@@ -746,14 +1334,22 @@ class OCRService:
             options=normalized_options,
             render_kwargs=render_kwargs,
             context=host,
+            model=model,
+            client=client,
+            prompt=prompt,
+            instructions=instructions,
+            max_new_tokens=max_new_tokens,
+            layout=layout,
+            preserve_markup=preserve_markup,
         )
 
-        created = self._process_ocr_payload(
+        created = self._convert_ocr_payload(
             host,
             ocr_payload,
             engine_name,
             resolved_min_conf,
             offset_x,
             offset_y,
+            crop_bbox,
         )
         return created or []

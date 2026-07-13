@@ -44,6 +44,7 @@ class OCRConverter:
             raw_confidence = result.get("confidence")
             confidence_value = float(raw_confidence) if raw_confidence is not None else None
             ocr_text = result.get("text")
+            detection_only = bool(result.get("_ocr_detection_only", False))
 
             word_element_data = {
                 "text": ocr_text,
@@ -69,6 +70,8 @@ class OCRConverter:
                 "highlight": False,
                 "highlight_color": None,
             }
+            if detection_only:
+                word_element_data["ocr_detection_only"] = True
 
             # Pass through extra metadata from OCR engines (e.g. source_category)
             source_category = result.get("source_category")
@@ -81,12 +84,12 @@ class OCRConverter:
             ocr_char_dict.setdefault("highlight", False)
             ocr_char_dict.setdefault("highlight_color", None)
 
-            word_element_data["_char_dicts"] = [ocr_char_dict.copy()]
+            word_element_data["_char_dicts"] = [] if detection_only else [ocr_char_dict.copy()]
 
             word_elem = TextElement(word_element_data, self._page)
             words.append(word_elem)
 
-            if ocr_text is not None:
+            if ocr_text is not None and not detection_only:
                 char_dict = ocr_char_dict.copy()
                 char_dict["object_type"] = "char"
                 char_dict.setdefault("adv", char_dict.get("width", 0))

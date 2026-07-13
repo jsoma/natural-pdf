@@ -3,9 +3,10 @@ Centralized service for managing and rendering highlights in a PDF document.
 """
 
 import logging  # Added
+import math
 from dataclasses import dataclass, field
 from numbers import Real
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Sequence, Tuple, Union, cast
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -926,6 +927,15 @@ class HighlightingService:
             if spec.crop_bbox:
                 page_image = self._crop_image(page_image, spec.crop_bbox, page, scale_factor)
 
+        ocr_exclusion_bboxes = kwargs.pop("ocr_exclusion_bboxes", None)
+        if ocr_exclusion_bboxes:
+            page_image = self._apply_ocr_exclusion_masks(
+                page_image,
+                ocr_exclusion_bboxes,
+                scale_factor=scale_factor,
+                crop_offset=spec.crop_bbox[:2] if spec.crop_bbox else None,
+            )
+
         # Apply highlights if any
         if spec.highlights:
             page_image = self._apply_spec_highlights(
@@ -1018,6 +1028,31 @@ class HighlightingService:
                         )
 
         return page_image
+
+    @staticmethod
+    def _apply_ocr_exclusion_masks(
+        image: Image.Image,
+        bboxes: Sequence[Tuple[float, float, float, float]],
+        *,
+        scale_factor: float,
+        crop_offset: Optional[Tuple[float, float]] = None,
+    ) -> Image.Image:
+        """White out page-space OCR exclusions without creating highlights."""
+        masked = image.copy()
+        draw = ImageDraw.Draw(masked)
+        offset_x, offset_y = crop_offset or (0.0, 0.0)
+
+        for x0, y0, x1, y1 in bboxes:
+            left = max(0, math.floor((x0 - offset_x) * scale_factor))
+            top = max(0, math.floor((y0 - offset_y) * scale_factor))
+            right = min(masked.width, math.ceil((x1 - offset_x) * scale_factor))
+            bottom = min(masked.height, math.ceil((y1 - offset_y) * scale_factor))
+            if right <= left or bottom <= top:
+                continue
+            fill = 255 if masked.mode in {"1", "L", "I", "F"} else (255,) * len(masked.getbands())
+            draw.rectangle((left, top, right - 1, bottom - 1), fill=fill)
+
+        return masked
 
     def _crop_image(
         self,

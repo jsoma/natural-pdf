@@ -59,6 +59,31 @@ guides.horizontal.from_lines(threshold=0.3)
 
 If `from_lines()` finds too few guides, try lowering `threshold` (e.g., `0.3` or `0.2`). If it finds nothing at all, the PDF may not have drawn lines — use `from_content()` or `from_whitespace()` instead.
 
+### OCR Within Guide Regions
+
+Once both axes define a grid, OCR can target its logical regions directly. The
+resulting text is added to the underlying page just like ordinary region OCR:
+
+```python
+guides.vertical.from_lines()
+guides.horizontal.from_lines()
+
+# OCR every logical cell. Rows and columns expose the same contract.
+guides.cells.apply_ocr()
+# guides.rows[1:].apply_ocr()
+# guides.columns[:2].apply_ocr()
+```
+
+Cell OCR chooses safe internal batches automatically; there is no public
+`window=` tuning parameter. To inspect the exact geometry and resolution before
+execution, build a plan and apply that snapshot later:
+
+```python
+plan = guides.cells[1:, :].plan_ocr(engine="rapidocr")
+print(plan.summary())
+result = plan.apply()
+```
+
 ### From Content
 
 Place guides aligned to text elements. Pass a list of strings to search for, a selector, an `ElementCollection`, or a callable:
@@ -436,7 +461,7 @@ from natural_pdf import PDF
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf")
 page = pdf.pages[0]
 
-# OCR first (this is a scanned PDF)
+# OCR first so the scanned headings can define the table area.
 page.apply_ocr()
 
 # Find the table area

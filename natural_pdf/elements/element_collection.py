@@ -30,6 +30,8 @@ from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixi
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsBBox, SupportsElement, SupportsGeometry
+from natural_pdf.core.ocr_contracts import OCRRequest
+from natural_pdf.core.ocr_mixin import OCRScopeMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 from natural_pdf.elements.base import Element
 from natural_pdf.elements.mixins.classification_batch_mixin import ClassificationBatchMixin
@@ -71,6 +73,7 @@ P = TypeVar("P", bound="Page")
 
 
 class ElementCollection(
+    OCRScopeMixin,
     Generic[T],
     ServiceHostMixin,
     ApplyMixin,
@@ -3196,111 +3199,29 @@ class ElementCollection(
                 else:
                     setattr(region, attr, value)
 
-    # ------------------------------------------------------------------
-    # NEW METHOD: apply_ocr for collections (supports custom function)
-    # ------------------------------------------------------------------
-    def apply_ocr(
-        self,
-        function: Optional[Callable[["Region"], Optional[str]]] = None,
-        *,
-        show_progress: bool = True,
-        **kwargs,
-    ) -> "ElementCollection":
-        """Apply OCR to every element in the collection.
+    def _iter_ocr_hosts(self, request: OCRRequest) -> Iterable[Any]:
+        """Yield OCR-capable spatial targets in collection order.
 
-        This is a convenience wrapper that simply iterates over the collection
-        and calls ``el.apply_ocr(...)`` on each item.
-
-        When ``engine="vlm"`` (or ``model=``/``client=`` is provided) and
-        **all** elements are existing OCR text elements, the collection
-        switches to **correction mode**: each element is rendered, sent to
-        the VLM for plain-text correction, and updated in-place — preserving
-        original bounding boxes.  This avoids the destructive
-        delete-and-recreate cycle that grounded VLM OCR uses on regions.
-
-        Parameters
-        ----------
-        function : callable, optional
-            Custom OCR function to use instead of the built-in engines.
-        show_progress : bool, default True
-            Display a tqdm progress bar while processing.
-        **kwargs
-            Additional parameters forwarded to each element's ``apply_ocr``.
-
-        Returns
-        -------
-        ElementCollection
-            *Self* for fluent chaining.
+        Bare elements are converted to their physical Region. OCR correction is
+        intentionally not inferred from engine arguments; callers use
+        :meth:`correct_ocr` when they want in-place text correction.
         """
-        # Alias for backward-compatibility
-        if function is None and "ocr_function" in kwargs:
-            function = kwargs.pop("ocr_function")
 
-        # VLM correction path: when VLM params are present and ALL elements
-        # are existing OCR text, correct in-place via correct_ocr() instead
-        # of converting each to a tiny region and running grounded VLM OCR.
-        engine = kwargs.get("engine")
-        is_vlm = (
-            (engine is not None and str(engine).lower() == "vlm")
-            or kwargs.get("model") is not None
-            or kwargs.get("client") is not None
-        )
-        if is_vlm and function is None and self._elements:
-            all_ocr = all(
-                isinstance(getattr(el, "source", None), str)
-                and getattr(el, "source", "").startswith("ocr")
-                and hasattr(el, "text")
-                for el in self._elements
+        for element in self._elements:
+            if callable(getattr(element, "_execute_ocr_request", None)):
+                yield element
+                continue
+
+            to_region = getattr(element, "to_region", None)
+            if callable(to_region):
+                target = to_region()
+                if callable(getattr(target, "_execute_ocr_request", None)):
+                    yield target
+                    continue
+
+            raise TypeError(
+                f"Element of type {type(element).__name__} does not support spatial OCR"
             )
-            if all_ocr:
-                return self._apply_vlm_ocr_correction(**kwargs)
-
-        def _process(el):
-            target = el
-            if not hasattr(el, "apply_ocr"):
-                # Convert bare elements (e.g. detect-only text) to regions
-                if hasattr(el, "to_region"):
-                    target = el.to_region()
-                else:
-                    raise TypeError(
-                        f"Element of type {type(el).__name__} does not support apply_ocr"
-                    )
-            if function is not None:
-                return target.apply_ocr(function=function, **kwargs)
-            return target.apply_ocr(**kwargs)
-
-        # Use collection's apply helper for optional progress bar
-        self.apply(_process, show_progress=show_progress)
-        return self
-
-    def _apply_vlm_ocr_correction(self, **kwargs) -> "ElementCollection":
-        """Build a VLM correction callback and delegate to correct_ocr()."""
-        from natural_pdf.core.vlm_client import generate
-        from natural_pdf.core.vlm_prompts import build_ocr_prompt
-        from natural_pdf.utils.locks import pdf_render_lock
-
-        model = kwargs.get("model")
-        client = kwargs.get("client")
-        instructions = kwargs.get("instructions")
-        resolution = kwargs.get("resolution", 150)
-
-        prompt = instructions if instructions else build_ocr_prompt(grounding=False)
-
-        def _vlm_correct(element):
-            region = element.expand(2) if hasattr(element, "expand") else element.to_region()
-            with pdf_render_lock:
-                image = region.render(resolution=resolution, crop=True)
-            if image is None:
-                return None
-            try:
-                result = generate(image, prompt, model=model, client=client)
-            except Exception as exc:
-                logger.warning("VLM correction failed: %s", exc)
-                return None
-            new_text = result.strip() if result else None
-            return new_text if new_text and new_text != element.text else None
-
-        return self.correct_ocr(_vlm_correct)
 
     def detect_checkboxes(
         self, *args, show_progress: bool = False, **kwargs

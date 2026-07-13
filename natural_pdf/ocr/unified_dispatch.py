@@ -48,6 +48,10 @@ class EngineEntry:
     # Install hint for error messages:
     install_hint: Optional[str] = None
 
+    # Explicit stable namespace for disk-cached results from custom engines.
+    # Built-ins use their known engine identity; plugin callables must opt in.
+    cache_namespace: Optional[str] = None
+
 
 def _is_apple_silicon() -> bool:
     """Check if running on Apple Silicon."""
@@ -94,7 +98,7 @@ def _build_registry() -> Dict[str, EngineEntry]:
         resolve_glm_ocr_model,
     )
 
-    return {
+    registry = {
         # Classic engines
         "easyocr": EngineEntry(
             engine_type="classic",
@@ -161,6 +165,9 @@ def _build_registry() -> Dict[str, EngineEntry]:
             engine_type="vlm_generic",
         ),
     }
+    for name, entry in registry.items():
+        entry.cache_namespace = f"builtin:{name}"
+    return registry
 
 
 _registry: Optional[Dict[str, EngineEntry]] = None
@@ -190,6 +197,7 @@ def register_engine(name: str, entry: EngineEntry) -> None:
     registry = get_registry()
     with _registry_lock:
         registry[name.strip().lower()] = entry
+    _engine_cache.invalidate(name)
 
 
 def _instantiate_provider(provider: Any, *, context: Any = None, options: Any = None) -> Any:
@@ -247,9 +255,10 @@ class EngineCache:
         device: str,
         init_key: str,
         factory: Callable[[], Any],
+        provider_identity: Optional[int] = None,
     ) -> Any:
         """Get a cached engine or create a new one."""
-        key = (engine_name, languages, device, init_key)
+        key = (engine_name, languages, device, init_key, provider_identity)
         with self._lock:
             if key in self._cache:
                 self._cache.move_to_end(key)
@@ -284,6 +293,15 @@ class EngineCache:
                 _, engine = self._cache.popitem()
                 self._cleanup_engine(engine)
             return count
+
+    def invalidate(self, engine_name: str) -> int:
+        """Evict cached instances for a re-registered engine name."""
+        normalized = engine_name.strip().lower()
+        with self._lock:
+            keys = [key for key in self._cache if key[0] == normalized]
+            for key in keys:
+                self._cleanup_engine(self._cache.pop(key))
+            return len(keys)
 
     def _evict_to_capacity(self) -> None:
         """Evict oldest entries until at or below maxsize. Must hold lock."""
@@ -461,6 +479,9 @@ def run_ocr(
             )
         else:
             # Fold VLM generation params into PaddleOCRVLOptions for the classic path
+            from natural_pdf.ocr.ocr_provider import normalize_ocr_options
+
+            options = normalize_ocr_options(options, engine_name=engine_key)
             if max_new_tokens is not None:
                 from natural_pdf.ocr.ocr_options import PaddleOCRVLOptions
 
@@ -533,9 +554,14 @@ def _run_classic(
     context: Any = None,
 ) -> OCRRunResult:
     """Dispatch to a classic OCR engine via EngineCache or EngineProvider."""
+    # Mapping options may have been accepted before engine resolution. Reify
+    # them now that the effective backend is known; this prevents adapters from
+    # silently replacing requested settings with their defaults.
+    from natural_pdf.ocr.ocr_provider import normalize_ocr_options
     from natural_pdf.utils.option_validation import resolve_auto_device
 
-    effective_languages = tuple(sorted(languages or ["en"]))
+    options = normalize_ocr_options(options, engine_name=engine_name)
+    effective_languages = tuple(languages or ["en"])
     effective_device = device or "auto"
     if effective_device == "auto":
         effective_device = resolve_auto_device()
@@ -570,13 +596,23 @@ def _run_classic(
                 instance._initialized = True
         return instance
 
-    engine = _engine_cache.get_or_create(
-        engine_name=engine_name,
-        languages=effective_languages,
-        device=effective_device,
-        init_key=init_key,
-        factory=factory,
-    )
+    uncacheable_engine = init_key is None
+    if uncacheable_engine:
+        logger.debug(
+            "Bypassing OCR engine cache for %s: options do not have a canonical "
+            "constructor identity.",
+            engine_name,
+        )
+        engine = factory()
+    else:
+        engine = _engine_cache.get_or_create(
+            engine_name=engine_name,
+            languages=effective_languages,
+            device=effective_device,
+            init_key=init_key,
+            factory=factory,
+            provider_identity=id(entry.provider),
+        )
 
     def process():
         return engine.process_image(
@@ -588,12 +624,16 @@ def _run_classic(
             options=options,
         )
 
-    if entry.needs_gpu_lock:
-        lock = _get_inference_lock(engine_name)
-        with lock:
+    try:
+        if entry.needs_gpu_lock:
+            lock = _get_inference_lock(engine_name)
+            with lock:
+                raw_output = process()
+        else:
             raw_output = process()
-    else:
-        raw_output = process()
+    finally:
+        if uncacheable_engine:
+            EngineCache._cleanup_engine(engine)
 
     # Normalize: process_image may return List[Dict] (single) or List[List[Dict]] (batch)
     results = _normalize_engine_output(raw_output)

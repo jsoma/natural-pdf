@@ -67,7 +67,20 @@ Natural PDF combines traditional PDF parsing with modern AI capabilities. It pro
 - `page.to_markdown()` -> str (VLM-powered)
 - `pdf.search(query, top_k=5)` -> PageCollection (semantic search)
 - `element.below()` / `.above()` / `.left()` / `.right()` -> Region
-- `page.apply_ocr(engine='rapidocr')` -> ElementCollection
+- `page.apply_ocr(engine='rapidocr')` -> Page
+- OCR modes are recognition (default), detection (`detect_only=True`), and
+  custom recognition (`function=`); `ocr_function=` is removed and rejected.
+- OCR replacement modes are strict strings: `replace='ocr'` (default),
+  `replace='all'`, or `replace='none'`. Booleans are rejected. Region and Flow
+  replacement is limited to the processed geometry. `detect_only=True`
+  refreshes prior detection-only artifacts in scope while preserving native and
+  recognized text; non-default `replace` values are rejected.
+- `pdf.apply_ocr(pages=..., show_progress=...)` -> PDF; collection OCR also
+  accepts `max_workers=...`.
+- Guide OCR is scoped through `guides.cells`, `guides.rows`, and
+  `guides.columns`; use `guides.cells.plan_ocr(...)` then
+  `guides.cells.apply_ocr(...)`. There is no top-level `Guides.apply_ocr`.
+- Use `elements.correct_ocr(...)` for explicit OCR correction.
 - `page.analyze_layout(engine='yolo')` -> ElementCollection
 
 ### Table Recovery Patterns

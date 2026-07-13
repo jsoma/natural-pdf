@@ -46,6 +46,7 @@ def _union_coverage(
     covered += cur_hi - cur_lo
     return covered / width
 
+
 STRIKE_DEFAULTS = {
     "thickness_tol": 1.5,
     "horiz_tol": 1.0,

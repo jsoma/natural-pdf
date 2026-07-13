@@ -1,169 +1,233 @@
 from __future__ import annotations
 
-import tqdm.auto
+from dataclasses import FrozenInstanceError
 
-from natural_pdf.analyzers.guides import Guides, GuidesOcrResult
+import pytest
 
-
-class FakeOcrRegion:
-    def __init__(self, bbox, context):
-        self.bbox = bbox
-        self.context = context
-        self.calls = []
-
-    def apply_ocr(self, **kwargs):
-        self.calls.append(kwargs)
-        self.context.ocr_count += 2
-        return self
-
-
-class FakeOcrText:
-    def __init__(self, bbox, text=""):
-        self.bbox = bbox
-        self.text = text
-        self.confidence = 0.9
+import natural_pdf.analyzers.guides.ocr as guides_ocr
+from natural_pdf.analyzers.guides import (
+    GuideCells,
+    GuideColumns,
+    GuideOCRPlan,
+    GuideOCRPlanningOptions,
+    GuideOCRResult,
+    GuideRows,
+    Guides,
+)
+from natural_pdf.core.ocr_contracts import OCRFunctionRequest, OCRRecognitionRequest
+from natural_pdf.core.ocr_mixin import OCRScopeMixin
+from natural_pdf.elements.region import Region
+from natural_pdf.flows.region import FlowRegion
 
 
-class FakeOcrContext:
-    def __init__(self):
-        self.bbox = (0, 0, 30, 20)
-        self.created = []
-        self.removed_ocr = 0
-        self.ocr_count = 0
-        self.ocr_elements = []
-        self.show_calls = []
-
-    def create_region(self, x0, top, x1, bottom):
-        region = FakeOcrRegion((x0, top, x1, bottom), self)
-        self.created.append(region)
-        return region
-
-    def remove_ocr_elements(self):
-        self.removed_ocr += 1
-        self.ocr_count = 0
-        return 0
-
-    def find_all(self, selector, **kwargs):
-        assert selector == "text[source=ocr]"
-        if self.ocr_elements:
-            return self.ocr_elements
-        return [object()] * self.ocr_count
-
-    def show(self, **kwargs):
-        self.show_calls.append(kwargs)
-        return "preview"
+def _guides(page) -> Guides:
+    return Guides(verticals=[0, 10, 20], horizontals=[0, 10, 20], context=page)
 
 
-def test_guides_apply_ocr_uses_cell_windows_and_clears_once():
-    context = FakeOcrContext()
-    guides = Guides(verticals=[0, 10, 30], horizontals=[0, 10, 20], context=context)
+def test_guides_has_no_top_level_apply_ocr(practice_pdf):
+    assert not hasattr(_guides(practice_pdf.pages[0]), "apply_ocr")
+    assert GuideCells.apply_ocr is OCRScopeMixin.apply_ocr
+    assert GuideRows.apply_ocr is OCRScopeMixin.apply_ocr
+    assert GuideColumns.apply_ocr is OCRScopeMixin.apply_ocr
 
-    result = guides.apply_ocr(
-        resolution=72,
-        window=(1, 1),
-        engine="rapidocr",
-        show_progress=False,
+
+def test_public_slices_remain_guide_views(practice_pdf):
+    guides = _guides(practice_pdf.pages[0])
+
+    assert isinstance(guides.columns[:], GuideColumns)
+    assert isinstance(guides.rows[:], GuideRows)
+    assert isinstance(guides.cells[:, :], GuideCells)
+    assert isinstance(guides.cells[0][:], GuideCells)
+    assert guides.cells[-1, -1].bbox == guides.cells[1][1].bbox
+
+
+def test_builtin_cells_group_while_custom_ocr_visits_every_cell(practice_pdf, monkeypatch):
+    guides = _guides(practice_pdf.pages[0])
+    calls = []
+
+    monkeypatch.setattr(
+        Region,
+        "_execute_ocr_request",
+        lambda region, request: calls.append((region.bbox, request)),
+        raising=False,
     )
 
-    assert isinstance(result, GuidesOcrResult)
-    assert result.guides is guides
-    assert result.ran is True
-    assert result.summary()["window_count"] == 4
-    assert result.summary()["min_confidence"] == 0.5
-    assert result.windows[0]["image_size"] == (10, 10)
-    assert result.counts == [2, 2, 2, 2]
-    assert result.total_created == 8
-    assert context.removed_ocr == 1
-    assert [region.bbox for region in context.created] == [
-        (0.0, 0.0, 10.0, 10.0),
-        (10.0, 0.0, 30.0, 10.0),
-        (0.0, 10.0, 10.0, 20.0),
-        (10.0, 10.0, 30.0, 20.0),
-    ]
-    assert all(region.calls[0]["replace"] is False for region in context.created)
-    assert all(region.calls[0]["resolution"] == 72 for region in context.created)
-    assert all(region.calls[0]["min_confidence"] == 0.5 for region in context.created)
-    assert guides._ocr_prefer_words is True
+    view = guides.cells
+    assert view.apply_ocr(engine="rapidocr", resolution=72) is view
+    assert len(calls) < len(view)
+    assert all(isinstance(request, OCRRecognitionRequest) for _, request in calls)
+    assert isinstance(view.last_ocr_result, GuideOCRResult)
+    assert guides.last_ocr_result is view.last_ocr_result
+
+    calls.clear()
+    assert view.apply_ocr(function=lambda region: "text") is view
+    assert len(calls) == len(view)
+    assert all(isinstance(request, OCRFunctionRequest) for _, request in calls)
+
+
+def test_disjoint_cell_selection_never_covers_unselected_cells(practice_pdf, monkeypatch):
+    guides = Guides(
+        verticals=[0, 10, 20, 30],
+        horizontals=[0, 10, 20],
+        context=practice_pdf.pages[0],
+    )
+    selected = guides.cells[:, ::2]
+    calls = []
+    monkeypatch.setattr(
+        Region,
+        "_execute_ocr_request",
+        lambda region, request: calls.append(region.bbox),
+        raising=False,
+    )
+
+    selected.apply_ocr(engine="rapidocr", resolution=72)
+
+    assert calls == [region.bbox for region in selected]
+
+
+def test_detection_groups_cells_but_rows_and_columns_are_literal(practice_pdf, monkeypatch):
+    guides = _guides(practice_pdf.pages[0])
+    calls = []
+    monkeypatch.setattr(
+        Region,
+        "_execute_ocr_request",
+        lambda region, request: calls.append(region.bbox),
+        raising=False,
+    )
+
+    guides.cells.apply_ocr(engine="rapidocr", resolution=72, detect_only=True)
+    assert len(calls) < len(guides.cells)
+
+    calls.clear()
+    selected_rows = guides.rows[:1]
+    selected_rows.apply_ocr(engine="rapidocr", resolution=72)
+    assert calls == [region.bbox for region in selected_rows]
+
+    calls.clear()
+    selected_columns = guides.columns[-1:]
+    selected_columns.apply_ocr(engine="rapidocr", resolution=72)
+    assert calls == [region.bbox for region in selected_columns]
+
+
+def test_rows_freeze_configured_effective_request_defaults(practice_pdf, monkeypatch):
+    page = practice_pdf.pages[0]
+    guides = _guides(page)
+    requests = []
+    monkeypatch.setitem(
+        page._context._options,
+        "ocr",
+        {
+            "ocr_engine": "rapidocr",
+            "ocr_languages": ["fr"],
+            "ocr_min_confidence": 0.2,
+            "ocr_device": "cpu",
+            "resolution": 333,
+        },
+    )
+    monkeypatch.setattr(
+        Region,
+        "_execute_ocr_request",
+        lambda region, request: requests.append(request),
+        raising=False,
+    )
+
+    guides.rows[:1].apply_ocr()
+
+    request = requests[0]
+    assert request.engine == "rapidocr"
+    assert request.languages == ("fr",)
+    assert request.min_confidence == 0.2
+    assert request.device == "cpu"
+    assert request.resolution == 333
+    assert guides.last_ocr_result.resolution == 333
+
+
+def test_detection_result_counts_refreshed_artifacts(practice_pdf, monkeypatch):
+    guides = _guides(practice_pdf.pages[0])
+    selected = guides.cells[0][:1]
+    old_detection = object()
+    new_detection = object()
+    snapshots = iter([[old_detection], [new_detection]])
+    monkeypatch.setattr(guides_ocr, "_scoped_text_elements", lambda region: next(snapshots))
+    monkeypatch.setattr(Region, "_execute_ocr_request", lambda *args: None, raising=False)
+
+    selected.apply_ocr(engine="rapidocr", resolution=72, detect_only=True)
+
+    assert selected.last_ocr_result.counts == [1]
+    assert selected.last_ocr_result.total_created == 1
+
+
+def test_view_ocr_does_not_grow_page_or_parent_region_trees(practice_pdf, monkeypatch):
+    page = practice_pdf.pages[0]
+    parent = Region(page, (0, 0, 20, 20))
+    guides = Guides(verticals=[0, 10, 20], horizontals=[0, 10, 20], context=parent)
+    detected_before = len(page._regions["detected"])
+    children_before = len(parent.child_regions)
+    monkeypatch.setattr(Region, "_execute_ocr_request", lambda *args: None, raising=False)
+
+    guides.cells.apply_ocr(engine="rapidocr", resolution=72)
+    list(guides.rows)
+    list(guides.columns)
+
+    assert len(page._regions["detected"]) == detected_before
+    assert len(parent.child_regions) == children_before
+
+
+def test_flow_region_guide_views_raise_an_explicit_error(practice_pdf):
+    constituent = Region(practice_pdf.pages[0], (0, 0, 10, 10))
+    guides = Guides(
+        verticals=[0, 10],
+        horizontals=[0, 10],
+        context=FlowRegion(None, [constituent]),
+    )
+
+    with pytest.raises(ValueError, match="FlowRegion"):
+        guides.cells.apply_ocr(engine="rapidocr")
+
+
+def test_plan_snapshots_geometry_and_apply_returns_result(practice_pdf, monkeypatch):
+    guides = _guides(practice_pdf.pages[0])
+    plan = guides.cells.plan_ocr(
+        engine="rapidocr",
+        resolution=72,
+        planning_options=GuideOCRPlanningOptions(window="table"),
+    )
+    assert isinstance(plan, GuideOCRPlan)
+    assert plan.summary()["window_count"] == 1
+    bbox = plan.windows[0]["bbox"]
+    with pytest.raises(FrozenInstanceError):
+        plan.resolution = 300
+    with pytest.raises(TypeError):
+        plan.windows[0]["bbox"] = (1, 1, 2, 2)
+    exported = plan.to_dict()
+    exported["windows"][0]["bbox"] = (1, 1, 2, 2)
+    assert plan.windows[0]["bbox"] == bbox
+    guides.vertical[1] = 15
+    calls = []
+    monkeypatch.setattr(
+        Region,
+        "_execute_ocr_request",
+        lambda region, request: calls.append(region.bbox),
+        raising=False,
+    )
+
+    result = plan.apply()
+
+    assert isinstance(result, GuideOCRResult)
+    assert result.plan is plan
+    assert calls == [bbox]
     assert guides.last_ocr_result is result
 
 
-def test_guides_apply_ocr_uses_tqdm_for_multiple_windows_by_default(monkeypatch):
-    context = FakeOcrContext()
-    guides = Guides(verticals=[0, 10, 30], horizontals=[0, 10, 20], context=context)
-    calls = []
+def test_custom_function_result_counts_and_exposes_custom_text(practice_pdf_fresh):
+    guides = _guides(practice_pdf_fresh.pages[0])
+    selected = guides.cells[0][:1]
 
-    def fake_tqdm(iterable, **kwargs):
-        calls.append(kwargs)
-        return iterable
+    selected.apply_ocr(function=lambda region: "custom cell")
 
-    monkeypatch.setattr(tqdm.auto, "tqdm", fake_tqdm)
-
-    result = guides.apply_ocr(resolution=72, window=(1, 1), engine="rapidocr")
-
-    assert len(result.windows) == 4
-    assert calls == [{"desc": "Applying guide-window OCR", "unit": "window"}]
-
-
-def test_guides_apply_ocr_dry_run_returns_windows_without_running_ocr():
-    context = FakeOcrContext()
-    guides = Guides(verticals=[0, 10, 30], horizontals=[0, 10, 20], context=context)
-
-    result = guides.apply_ocr(resolution=72, window=(1, 2), dry_run=True)
-
-    assert result.ran is False
-    assert len(result) == 2
-    assert context.removed_ocr == 0
-    assert context.created == []
-    assert guides._ocr_prefer_words is False
-
-
-def test_guides_ocr_result_extract_table_delegates_to_guides():
-    context = FakeOcrContext()
-    guides = Guides(verticals=[0, 10], horizontals=[0, 10], context=context)
-    guides.extract_table = lambda *args, **kwargs: ("table", args, kwargs)
-
-    result = guides.apply_ocr(resolution=72, window="table", dry_run=True)
-
-    assert result.extract_table(header=None) == ("table", (), {"header": None})
-
-
-def test_guides_ocr_result_show_highlights_windows_and_assigned_text():
-    context = FakeOcrContext()
-    context.ocr_elements = [
-        FakeOcrText((1, 1, 2, 2), "left"),
-        FakeOcrText((15, 1, 20, 2), "right"),
-        FakeOcrText((100, 100, 110, 110), "outside"),
-    ]
-    guides = Guides(verticals=[0, 10, 30], horizontals=[0, 10], context=context)
-
-    result = guides.apply_ocr(resolution=72, window=(1, 1), dry_run=True)
-    preview = result.show(labels=False)
-
-    assert preview == "preview"
-    assert result.target is context
-    assert len(context.show_calls) == 1
-    call = context.show_calls[0]
-    assert call["labels"] is False
-    highlights = call["highlights"]
-    window_highlights = [
-        item
-        for item in highlights
-        if item.get("label", "").startswith("window ") and "bbox" in item
-    ]
-    text_highlights = [item for item in highlights if "element" in item]
-    assert [item["bbox"] for item in window_highlights] == [
-        (0.0, 0.0, 10.0, 10.0),
-        (10.0, 0.0, 30.0, 10.0),
-    ]
-    assert [item["color"] for item in window_highlights] == [
-        (37, 99, 235, 34),
-        (22, 163, 74, 34),
-    ]
-    assert all(item["fill"] is True for item in window_highlights)
-    assert all(item["line_width"] == 2.0 for item in window_highlights)
-    assert all(item["vertices"] is False for item in window_highlights)
-    assert [item["element"].text for item in text_highlights] == ["left", "right"]
-    assert all(item["color"] == "red" for item in text_highlights)
+    assert selected.last_ocr_result.counts == [1]
+    assert selected.last_ocr_result.total_created == 1
+    assert [element.text for element in selected.last_ocr_result.ocr_elements()] == ["custom cell"]
 
 
 def test_guides_auto_ocr_resolution_uses_trimmed_cell_box_percentile():

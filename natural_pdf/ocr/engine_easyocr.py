@@ -114,8 +114,17 @@ class EasyOCREngine(OCREngine):
         # Prepare readtext arguments (only needed if not detect_only)
         readtext_args: Dict[str, Any] = {}
         if not detect_only:
+            # Keep this list aligned with EasyOCROptions. EasyOCR uses a few
+            # non-PEP-8 spellings (notably ``beamWidth``), which must be
+            # forwarded unchanged to Reader.readtext().
             for param in [
                 "detail",
+                "decoder",
+                "beamWidth",
+                "batch_size",
+                "workers",
+                "allowlist",
+                "blocklist",
                 "paragraph",
                 "min_size",
                 "contrast_ths",

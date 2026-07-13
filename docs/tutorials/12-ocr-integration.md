@@ -259,8 +259,9 @@ client = OpenAI(
 # Step 1: detect text bounding boxes (no recognition)
 page.apply_ocr(detect_only=True)
 
-# Step 2: correct each detected element with a VLM
-page.find_all('text').apply_ocr(
+# Step 2: recognize each detected box with a VLM
+detections = page.find_all('text[source=ocr]')
+detections.apply_ocr(
     engine="vlm",
     model="gemini-2.5-flash-lite",
     client=client,
@@ -268,7 +269,10 @@ page.find_all('text').apply_ocr(
 )
 ```
 
-When called on an `ElementCollection` of OCR elements with a VLM, each element is rendered individually and sent to the model for correction. The original bounding boxes are preserved — only the text is updated.
+`ElementCollection.apply_ocr()` always performs spatial recognition over each
+element's Region; its meaning does not change based on the current element
+sources. To update already-recognized text in place while preserving its boxes,
+use the explicit `ElementCollection.correct_ocr()` callback API shown below.
 
 The `detect_only=True` parameter runs detection without recognition. This is useful when you want a fast local engine to find where text is, then a separate step to read it.
 
@@ -606,7 +610,8 @@ def correct_text(region):
     return response.choices[0].message.content
 
 # Apply correction to all OCR'd text on the page
-page.correct_ocr(correct_text)
+ocr_elements = page.find_all("text[source=ocr]")
+ocr_elements.correct_ocr(correct_text)
 ```
 
 For difficult documents, use a vision model to re-OCR specific regions instead of correcting text:
@@ -623,7 +628,8 @@ def correct_with_vision(region):
         model="gpt-4o"
     )
 
-page.correct_ocr(correct_with_vision)
+ocr_elements = page.find_all("text[source=ocr]")
+ocr_elements.correct_ocr(correct_with_vision)
 ```
 
 ## Deskewing Scanned Pages

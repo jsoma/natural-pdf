@@ -28,6 +28,8 @@ from natural_pdf.core.exclusion_mixin import ExclusionSpec
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsSections
 from natural_pdf.core.mixins import ContextResolverMixin
+from natural_pdf.core.ocr_contracts import OCRRequest
+from natural_pdf.core.ocr_mixin import OCRScopeMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
@@ -56,6 +58,7 @@ logger = logging.getLogger(__name__)
 
 
 class FlowRegion(
+    OCRScopeMixin,
     SelectorHostMixin,
     ServiceHostMixin,
     SupportsSections,
@@ -108,9 +111,7 @@ class FlowRegion(
         self.region_type: Optional[str] = None
         self.metadata: Dict[str, Any] = {}
 
-        # Cache for expensive operations
-        self._cached_text: Optional[str] = None
-        self._cached_elements: Optional["ElementCollection"] = None  # Stringized
+        # Structural geometry is immutable for this FlowRegion.
         self._cached_bbox: Optional[Tuple[float, float, float, float]] = None
         self._exclusions: List[ExclusionSpec] = []
         self._multi_page_page_warned: bool = False
@@ -167,21 +168,16 @@ class FlowRegion(
         raise RuntimeError("FlowRegion has no pages with OCR element managers")
 
     def clear_text_layer(self) -> Tuple[int, int]:
-        total_chars = 0
         total_words = 0
-        seen_pages: Set[int] = set()
+        total_chars = 0
         for region in self.constituent_regions:
-            page = getattr(region, "page", None)
-            if page is None:
+            clear = getattr(region, "clear_text_layer", None)
+            if not callable(clear):
                 continue
-            marker = id(page)
-            if marker in seen_pages:
-                continue
-            seen_pages.add(marker)
-            cleared_chars, cleared_words = page.clear_text_layer()
-            total_chars += cleared_chars
+            cleared_words, cleared_chars = clear()
             total_words += cleared_words
-        return total_chars, total_words
+            total_chars += cleared_chars
+        return total_words, total_chars
 
     def create_text_elements_from_ocr(
         self,
@@ -216,66 +212,8 @@ class FlowRegion(
                 return [created]
         return []
 
-    def _iter_ocr_regions(self) -> Iterable[Any]:
+    def _iter_ocr_hosts(self, request: OCRRequest) -> Iterable[Any]:
         return tuple(self.constituent_regions)
-
-    def apply_ocr(
-        self,
-        engine: Optional[str] = None,
-        *,
-        options: Optional[Any] = None,
-        languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
-        device: Optional[str] = None,
-        resolution: Optional[int] = None,
-        detect_only: bool = False,
-        apply_exclusions: bool = True,
-        replace: bool = True,
-        model: Optional[str] = None,
-        client: Optional[Any] = None,
-        instructions: Optional[str] = None,
-        **kwargs: Any,
-    ) -> "FlowRegion":
-        """Apply OCR across all constituent regions.
-
-        Args:
-            engine: OCR engine — ``"rapidocr"`` (default), ``"paddle"``,
-                ``"paddlevl"``, ``"doctr"``, or ``"vlm"``.
-            options: Engine-specific option object.
-            languages: Language codes, e.g. ``["en", "fr"]``.
-            min_confidence: Discard results below this confidence (0–1).
-            device: Compute device, e.g. ``"cpu"`` or ``"cuda"``.
-            resolution: DPI for the image sent to the engine.
-            detect_only: Detect text regions without recognizing characters.
-            apply_exclusions: Mask exclusion zones before OCR.
-            replace: Remove existing OCR elements first.
-            model: VLM model name — switches to VLM OCR pipeline.
-            client: OpenAI-compatible client — switches to VLM OCR pipeline.
-            instructions: Additional instructions appended to the VLM prompt.
-            **kwargs: Extra engine-specific parameters.
-
-        Returns:
-            Self for chaining.
-        """
-        for region in self.constituent_regions:
-            apply_fn = getattr(region, "apply_ocr", None)
-            if callable(apply_fn):
-                apply_fn(
-                    engine=engine,
-                    replace=replace,
-                    options=options,
-                    languages=languages,
-                    min_confidence=min_confidence,
-                    device=device,
-                    resolution=resolution,
-                    detect_only=detect_only,
-                    apply_exclusions=apply_exclusions,
-                    model=model,
-                    client=client,
-                    instructions=instructions,
-                    **kwargs,
-                )
-        return self
 
     def extract_ocr_elements(self, *args: Any, **kwargs: Any) -> List[Any]:
         """
@@ -375,8 +313,8 @@ class FlowRegion(
         return PhysicalRegion(page, clamp_bbox, label=label)
 
     def _invalidate_exclusion_cache(self) -> None:
-        self._cached_text = None
-        self._cached_elements = None
+        # Text/elements are recomputed from Page stores on every access.
+        return None
 
     def _iter_exclusion_regions(self) -> Iterable[Any]:
         return tuple(self.constituent_regions)
@@ -642,9 +580,6 @@ class FlowRegion(
 
     def extract_text(self, apply_exclusions: bool = True, **kwargs) -> str:
         """Concatenate text from constituent regions while preserving flow order."""
-        if self._cached_text is not None and apply_exclusions:
-            return self._cached_text
-
         if not self.constituent_regions:
             return ""
 
@@ -658,12 +593,6 @@ class FlowRegion(
                 parts.append(text)
 
         extracted = "\n\n".join(parts)
-
-        if not extracted:
-            return ""
-
-        if apply_exclusions:
-            self._cached_text = extracted
         return extracted
 
     def elements(self, apply_exclusions: bool = True) -> "ElementCollection":  # Stringized return
@@ -678,9 +607,6 @@ class FlowRegion(
             An ElementCollection containing all unique elements.
         """
         from natural_pdf.elements.element_collection import ElementCollection
-
-        if self._cached_elements is not None and apply_exclusions:  # Simple cache check
-            return self._cached_elements
 
         if not self.constituent_regions:
             return ElementCollection([])
@@ -715,8 +641,6 @@ class FlowRegion(
             ) from exc
 
         result_collection = ElementCollection(sorted_physical_elements)
-        if apply_exclusions:
-            self._cached_elements = result_collection
         return result_collection
 
     def highlight(
@@ -914,8 +838,6 @@ class FlowRegion(
             new_flow_region.metadata = self.metadata.copy()
         else:
             new_flow_region.metadata = self.metadata
-        new_flow_region._cached_text = None
-        new_flow_region._cached_elements = None
         new_flow_region._cached_bbox = None
         return new_flow_region
 

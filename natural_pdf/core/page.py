@@ -61,11 +61,14 @@ from natural_pdf.core.crop_utils import resolve_crop_bbox
 from natural_pdf.core.element_manager import ElementManager
 from natural_pdf.core.interfaces import Bounds, SupportsGeometry, SupportsSections
 from natural_pdf.core.mixins import SinglePageContextMixin
+from natural_pdf.core.ocr_contracts import OCRRequest
+from natural_pdf.core.ocr_mixin import OCRDirectTargetMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 from natural_pdf.core.selector_utils import _jaro_winkler_similarity, execute_parsed_selector
 from natural_pdf.deskew import run_deskew_apply, run_deskew_detect
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
+from natural_pdf.ocr.replacement import OCRReplaceMode, normalize_ocr_replace_mode
 
 # Service modules are loaded lazily via the registry in natural_pdf.services.registry
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
@@ -91,6 +94,7 @@ logger = logging.getLogger(__name__)
 
 class Page(
     ClassificationResultAccessorMixin,
+    OCRDirectTargetMixin,
     ServiceHostMixin,
     SelectorHostMixin,
     SinglePageContextMixin,
@@ -251,6 +255,13 @@ class Page(
 
     def _bump_text_state_version(self) -> None:
         self._text_state_version += 1
+        # Style analysis summarizes the current text layer. Treat it as a
+        # derived cache so edits, OCR, and removals cannot expose stale labels.
+        self._text_styles_summary = {}
+        self._text_styles = None
+        metadata = getattr(self, "metadata", None)
+        if isinstance(metadata, dict):
+            metadata.pop("text_styles_summary", None)
 
     def _get_render_specs(
         self,
@@ -584,7 +595,7 @@ class Page(
 
     def _infer_element_type(self, element: Any, default: str = "words") -> str:
         """Best-effort inference of element collection name for an object."""
-        element_type = getattr(element, "object_type", None)
+        element_type = getattr(element, "object_type", None) or getattr(element, "type", None)
         if element_type is None and isinstance(element, dict):
             element_type = element.get("object_type")
 
@@ -622,105 +633,11 @@ class Page(
     def _ocr_render_kwargs(self, *, apply_exclusions: bool = True) -> Dict[str, Any]:
         return {"apply_exclusions": apply_exclusions}
 
-    def apply_ocr(
-        self,
-        engine: Optional[str] = None,
-        *,
-        options: Optional[Any] = None,
-        languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
-        device: Optional[str] = None,
-        resolution: Optional[int] = None,
-        detect_only: bool = False,
-        apply_exclusions: bool = True,
-        replace: bool = True,
-        model: Optional[str] = None,
-        client: Optional[Any] = None,
-        instructions: Optional[str] = None,
-        function: Optional[Callable] = None,
-        **kwargs,
-    ) -> "Page":
-        """Apply OCR to the entire page.
-
-        Args:
-            engine: OCR engine — ``"rapidocr"`` (default), ``"paddle"``,
-                ``"paddlevl"``, ``"doctr"``, ``"vlm"``,
-                ``"dots"`` (dots.mocr), ``"glm_ocr"``, or ``"chandra"``.
-                ``"dots"``, ``"glm_ocr"``, and ``"chandra"`` auto-select MLX on Apple
-                Silicon, HF transformers elsewhere.
-                Use ``engine="vlm"`` with ``model=`` and/or ``client=``
-                for VLM-based OCR.
-            options: Engine-specific option object.
-            languages: Language codes, e.g. ``["en", "fr"]``.
-            min_confidence: Discard results below this confidence (0–1).
-            device: Compute device, e.g. ``"cpu"`` or ``"cuda"``.
-            resolution: DPI for the page image sent to the engine.
-            detect_only: Detect text regions without recognizing characters.
-            apply_exclusions: Mask exclusion zones before OCR.
-            replace: Remove existing OCR elements first.
-            model: VLM model name — switches to VLM OCR pipeline.
-            client: OpenAI-compatible client — switches to VLM OCR pipeline.
-            instructions: Additional instructions appended to the VLM prompt.
-                Ignored when ``prompt`` is passed directly via ``**kwargs``.
-            function: Custom OCR callable that receives a Region and returns text.
-            **kwargs: Extra engine-specific parameters.  Notable kwargs:
-
-                - ``layout`` (bool | str): Controls layout detection for VLM
-                  engines.  ``True`` uses PP-DocLayout-V3 (block-level).
-                  A string like ``"rapidocr"`` or ``"paddle"`` uses that
-                  classic engine in detect-only mode for line-level boxes.
-                  ``False`` disables layout (full-page prompt).  ``None``
-                  (default) auto-detects based on model family.
-                - ``prompt`` (str): Custom VLM prompt.
-                - ``max_new_tokens`` (int): Max generation tokens for VLM.
-                - ``preserve_markup`` (bool): Keep raw VLM markup in OCR
-                  text. Defaults to ``False``, which normalizes HTML tables
-                  to plain text while retaining raw HTML in table metadata.
-
-        Returns:
-            Self for chaining.
-        """
+    def _before_apply_ocr(self, request: OCRRequest) -> None:
         self._require_live_pdf("apply OCR")
 
-        # Custom OCR function path
-        custom_func = function or kwargs.pop("ocr_function", None)
-        if callable(custom_func):
-            region = self._full_page_region()
-            region.apply_ocr(
-                replace=replace,
-                function=custom_func,
-                engine=engine,
-                options=options,
-                languages=languages,
-                min_confidence=min_confidence,
-                device=device,
-                resolution=resolution,
-                detect_only=detect_only,
-                apply_exclusions=apply_exclusions,
-            )
-            return self
-
-        # Unified dispatch — handles all engines (classic + VLM)
-        self.services.ocr.apply_ocr(
-            self,
-            engine=engine,
-            options=options,
-            languages=languages,
-            min_confidence=min_confidence,
-            device=device,
-            resolution=resolution,
-            detect_only=detect_only,
-            apply_exclusions=apply_exclusions,
-            replace=replace,
-            model=model,
-            client=client,
-            instructions=instructions,
-            prompt=kwargs.get("prompt"),
-            max_new_tokens=kwargs.get("max_new_tokens"),
-            layout=kwargs.get("layout"),
-            preserve_markup=bool(kwargs.get("preserve_markup", False)),
-        )
-        return self
+    def _ocr_function_target(self) -> "Region":
+        return self._full_page_region()
 
     def compare_ocr(
         self,
@@ -733,6 +650,7 @@ class Page(
         min_confidence: Optional[float] = None,
         device: Optional[str] = None,
         engine_options: Optional[Dict[str, Any]] = None,
+        apply_exclusions: bool = True,
         **kwargs,
     ):
         """Compare multiple OCR engines on this page.
@@ -753,6 +671,7 @@ class Page(
             min_confidence: Minimum confidence filter.
             device: ``"cpu"``, ``"cuda"``, or ``"mps"``.
             engine_options: Per-engine overrides (deprecated — use dict specs).
+            apply_exclusions: Mask configured exclusion zones for every run.
 
         Returns:
             :class:`~natural_pdf.ocr.comparison.OcrComparison` with
@@ -769,13 +688,47 @@ class Page(
             min_confidence=min_confidence,
             device=device,
             engine_options=engine_options,
+            apply_exclusions=apply_exclusions,
             **kwargs,
         )
 
-    def extract_ocr_elements(self, *args, **kwargs):
-        """Extract OCR results without mutating the page."""
+    def extract_ocr_elements(
+        self,
+        *,
+        engine: Optional[str] = None,
+        options: Optional[Any] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        resolution: Optional[int] = None,
+        apply_exclusions: bool = True,
+        model: Optional[str] = None,
+        client: Optional[Any] = None,
+        prompt: Optional[str] = None,
+        instructions: Optional[str] = None,
+        max_new_tokens: Optional[int] = None,
+        layout: Optional[bool | str] = None,
+        preserve_markup: bool = False,
+    ) -> List[Any]:
+        """Extract classic or VLM OCR elements without mutating the page."""
 
-        return self.services.ocr.extract_ocr_elements(self, *args, **kwargs)
+        return self.services.ocr.extract_ocr_elements(
+            self,
+            engine=engine,
+            options=options,
+            languages=languages,
+            min_confidence=min_confidence,
+            device=device,
+            resolution=resolution,
+            apply_exclusions=apply_exclusions,
+            model=model,
+            client=client,
+            prompt=prompt,
+            instructions=instructions,
+            max_new_tokens=max_new_tokens,
+            layout=layout,
+            preserve_markup=preserve_markup,
+        )
 
     def remove_ocr_elements(self, *args, **kwargs) -> int:
         """Remove OCR-derived elements from the backing element manager."""
@@ -797,17 +750,18 @@ class Page(
         *,
         ocr_function,
         source_label: str = "custom-ocr",
-        replace: bool = True,
+        replace: OCRReplaceMode = "ocr",
         confidence: Optional[float] = None,
         add_to_page: bool = True,
     ) -> "Page":
         """Apply a custom OCR function via the shared OCR service."""
 
-        self.services.ocr.apply_custom_ocr(
-            self,
+        replace_mode = normalize_ocr_replace_mode(replace)
+        self._require_live_pdf("apply custom OCR")
+        self._full_page_region().apply_custom_ocr(
             ocr_function=ocr_function,
             source_label=source_label,
-            replace=replace,
+            replace=replace_mode,
             confidence=confidence,
             add_to_page=add_to_page,
         )
@@ -862,6 +816,7 @@ class Page(
                 removed_regions = [r for r in current if _matches(r)]
                 if removed_regions:
                     self._element_mgr._store.set("regions", filtered)
+                    self._element_mgr._mark_content_mutated()
                     removed_ids.update(id(region) for region in removed_regions)
 
         # Remove from detected collection
@@ -1140,21 +1095,19 @@ class Page(
                 self._element_mgr.invalidate_cache()
             yield cache_invalidated
         finally:
-            if not cache_invalidated:
-                return
-
-            restore_invalidated = False
-            for key, prior in previous_values.items():
-                if prior is sentinel:
-                    if key in page_config:
-                        del page_config[key]
+            if cache_invalidated:
+                restore_invalidated = False
+                for key, prior in previous_values.items():
+                    if prior is sentinel:
+                        if key in page_config:
+                            del page_config[key]
+                            restore_invalidated = True
+                    elif page_config.get(key) != prior:
+                        page_config[key] = prior
                         restore_invalidated = True
-                elif page_config.get(key) != prior:
-                    page_config[key] = prior
-                    restore_invalidated = True
 
-            if restore_invalidated:
-                self._element_mgr.invalidate_cache()
+                if restore_invalidated:
+                    self._element_mgr.invalidate_cache()
 
     def _get_element_pool(self, element_type: str) -> List[Any]:
         """Return the element pool for a given selector type."""
@@ -3028,8 +2981,6 @@ class Page(
         logger.info(f"Page {self.number}: Removing all text elements...")
 
         removed_words, removed_chars = self._element_mgr.clear_text_layer()
-        if removed_words or removed_chars:
-            self._bump_text_state_version()
 
         logger.info(
             f"Page {self.number}: Removed {removed_words} words and {removed_chars} characters"

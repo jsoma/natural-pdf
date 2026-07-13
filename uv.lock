@@ -2918,6 +2918,7 @@ dependencies = [
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.16.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "tqdm" },
+    { name = "typing-extensions" },
     { name = "urllib3" },
 ]
 
@@ -3113,6 +3114,7 @@ requires-dist = [
     { name = "torchvision", marker = "extra == 'ai'" },
     { name = "tqdm" },
     { name = "transformers", extras = ["sentencepiece"], marker = "extra == 'ai'", specifier = ">=5.1.0,<6" },
+    { name = "typing-extensions", specifier = ">=4.0" },
     { name = "urllib3" },
     { name = "uv", marker = "extra == 'dev'" },
 ]

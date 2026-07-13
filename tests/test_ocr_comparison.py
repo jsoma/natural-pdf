@@ -1,6 +1,7 @@
 """Tests for OCR comparison tool."""
 
-from unittest.mock import MagicMock
+from types import SimpleNamespace
+from unittest.mock import ANY, MagicMock
 
 import pytest
 
@@ -23,6 +24,7 @@ from natural_pdf.ocr.comparison import (
     normalize_text,
     render_char_diff_html,
 )
+from natural_pdf.services.ocr_comparison_service import OcrComparisonService
 
 # ---------------------------------------------------------------------------
 # Text normalization
@@ -506,3 +508,145 @@ class TestOcrComparison:
     def test_strategy_used(self):
         comp = self._make_comparison()
         assert comp.strategy_used == "rows"
+
+    def test_apply_uses_shared_strict_ocr_replacement_boundary_by_default(self):
+        comparison = self._make_comparison()
+        element = MagicMock(x0=1, top=2, x1=3, bottom=4, text="chosen", confidence=0.9)
+        comparison._engine_elements["easyocr"] = [element]
+
+        comparison.apply("easyocr")
+
+        comparison.page.services.ocr._remove_for_replace.assert_called_once_with(
+            comparison.page, "ocr", None
+        )
+        comparison.page.services.ocr.remove_ocr_elements.assert_not_called()
+        comparison.page.services.ocr.clear_text_layer.assert_not_called()
+        comparison.page.services.ocr.create_text_elements_from_ocr.assert_called_once()
+
+    def test_apply_rejects_legacy_boolean_replacement(self):
+        comparison = self._make_comparison()
+        with pytest.raises(TypeError, match="boolean replacement"):
+            comparison.apply("missing-engine", replace=True)
+
+
+def test_compare_ocr_reuses_pure_extraction_semantics_for_each_engine():
+    calls = []
+
+    def make_element(text):
+        return MagicMock(x0=10, top=10, x1=60, bottom=25, text=text, confidence=0.9)
+
+    class RecordingOCRService:
+        def extract_ocr_elements(self, host, **kwargs):
+            calls.append((host, kwargs))
+            return [make_element(kwargs["engine"])]
+
+    ocr_service = RecordingOCRService()
+    context = SimpleNamespace(get_service=lambda name: ocr_service)
+    host = SimpleNamespace(x0=0, top=0, width=612, height=792)
+
+    comparison = OcrComparisonService(context).compare_ocr(
+        host,
+        engines=[
+            {
+                "engine": "vlm",
+                "model": "model-a",
+                "client": object(),
+                "prompt": "read exactly",
+                "instructions": "keep columns",
+                "max_new_tokens": 123,
+                "layout": "rapidocr",
+                "preserve_markup": True,
+            }
+        ],
+        resolution=144,
+        languages=["fr"],
+        min_confidence=0.4,
+        device="cpu",
+        apply_exclusions=False,
+    )
+
+    assert comparison.engines == ["vlm(model=model-a)"]
+    assert len(calls) == 1
+    _, kwargs = calls[0]
+    assert kwargs == {
+        "engine": "vlm",
+        "resolution": 144,
+        "languages": ["fr"],
+        "min_confidence": 0.4,
+        "device": "cpu",
+        "options": None,
+        "apply_exclusions": False,
+        "model": "model-a",
+        "client": ANY,
+        "prompt": "read exactly",
+        "instructions": "keep columns",
+        "max_new_tokens": 123,
+        "layout": "rapidocr",
+        "preserve_markup": True,
+    }
+
+
+def test_compare_ocr_rejects_unknown_per_engine_options_before_running():
+    ocr_service = MagicMock()
+    context = SimpleNamespace(get_service=lambda name: ocr_service)
+    host = SimpleNamespace(x0=0, top=0, width=612, height=792)
+
+    with pytest.raises(TypeError, match=r"Unsupported OCR engine spec option.*modle"):
+        OcrComparisonService(context).compare_ocr(
+            host,
+            engines=[{"engine": "vlm", "modle": "typo"}],
+        )
+
+    ocr_service.extract_ocr_elements.assert_not_called()
+
+
+def test_compare_ocr_forwards_page_style_vlm_defaults_and_spec_wins():
+    calls = []
+
+    class RecordingOCRService:
+        def extract_ocr_elements(self, host, **kwargs):
+            calls.append(kwargs)
+            return [
+                MagicMock(
+                    x0=10,
+                    top=10,
+                    x1=60,
+                    bottom=25,
+                    text=kwargs["model"],
+                    confidence=0.9,
+                )
+            ]
+
+    default_client = object()
+    override_client = object()
+    context = SimpleNamespace(get_service=lambda name: RecordingOCRService())
+    host = SimpleNamespace(x0=0, top=0, width=612, height=792)
+
+    OcrComparisonService(context).compare_ocr(
+        host,
+        engines=["vlm", {"engine": "vlm", "model": "override", "client": override_client}],
+        model="default-model",
+        client=default_client,
+        prompt="read exactly",
+        layout="rapidocr",
+        preserve_markup=True,
+    )
+
+    assert calls[0]["model"] == "default-model"
+    assert calls[0]["client"] is default_client
+    assert calls[0]["prompt"] == "read exactly"
+    assert calls[0]["layout"] == "rapidocr"
+    assert calls[0]["preserve_markup"] is True
+    assert calls[1]["model"] == "override"
+    assert calls[1]["client"] is override_client
+    assert calls[1]["prompt"] == "read exactly"
+
+
+def test_compare_ocr_rejects_unknown_top_level_kwargs():
+    context = SimpleNamespace(get_service=lambda name: MagicMock())
+    with pytest.raises(TypeError, match="Unsupported compare_ocr option.*mystery"):
+        OcrComparisonService(context).compare_ocr(
+            SimpleNamespace(),
+            engines=["rapidocr"],
+            mystery=True,
+        )

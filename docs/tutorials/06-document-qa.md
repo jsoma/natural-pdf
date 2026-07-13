@@ -113,7 +113,8 @@ def correct_text_region(region):
     return updated
 
 # Apply correction to all OCR'd text
-page.correct_ocr(correct_text_region)
+ocr_elements = page.find_all("text[source=ocr]")
+ocr_elements.correct_ocr(correct_text_region)
 ```
 
 ## Vision-Based OCR Correction
@@ -133,7 +134,8 @@ def correct_with_vision(region):
     )
 
 # Apply vision-based correction
-page.correct_ocr(correct_with_vision)
+ocr_elements = page.find_all("text[source=ocr]")
+ocr_elements.correct_ocr(correct_with_vision)
 ```
 
 ## Semantic Search

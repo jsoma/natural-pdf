@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'docs/**'
+      - 'natural_pdf/**'
       - 'mkdocs.yml'
       - '.github/workflows/docs.yml'
     tags:

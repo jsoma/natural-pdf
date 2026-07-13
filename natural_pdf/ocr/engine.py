@@ -273,7 +273,7 @@ class OCREngine(ABC):
         Returns:
             A string cache key.
         """
-        lang_key = "-".join(sorted(getattr(options, "languages", self.DEFAULT_LANGUAGES)))
+        lang_key = "-".join(getattr(options, "languages", self.DEFAULT_LANGUAGES))
         device_key = str(getattr(options, "device", self.DEFAULT_DEVICE)).lower()
         return f"{self.__class__.__name__}_{lang_key}_{device_key}"
 

@@ -28,6 +28,8 @@ from natural_pdf.collections.mixins import (
 )
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
+from natural_pdf.core.ocr_contracts import OCRRequest
+from natural_pdf.core.ocr_mixin import OCRScopeMixin
 from natural_pdf.core.pdf import PDF
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.element_collection import ElementCollection
@@ -49,6 +51,7 @@ except ImportError:
 # <--- END ADDED
 
 logger = logging.getLogger(__name__)
+_UNSET = object()
 
 if TYPE_CHECKING:
     from natural_pdf.core.highlighting_service import HighlightContext, HighlightingService
@@ -72,6 +75,7 @@ BoundarySource = Union[str, ElementsProvider, Iterable[SupportsGeometry], Iterab
 
 
 class PageCollection(
+    OCRScopeMixin,
     ServiceHostMixin,
     SelectorHostMixin,
     ApplyMixin,
@@ -204,7 +208,7 @@ class PageCollection(
     def extract_text(
         self,
         separator: str = "\n",
-        apply_exclusions: bool = True,
+        apply_exclusions: Any = _UNSET,
         **kwargs,
     ) -> str:
         """
@@ -219,9 +223,41 @@ class PageCollection(
         Returns:
             Combined text from all pages
         """
-        keep_blank_chars = kwargs.pop("keep_blank_chars", True)
-        if keep_blank_chars is None:
-            keep_blank_chars = True
+        keep_blank_chars = kwargs.pop("keep_blank_chars", _UNSET)
+        preserve_whitespace = kwargs.pop("preserve_whitespace", _UNSET)
+        if (
+            keep_blank_chars is not _UNSET
+            and preserve_whitespace is not _UNSET
+            and keep_blank_chars is not None
+            and preserve_whitespace is not None
+            and bool(keep_blank_chars) != bool(preserve_whitespace)
+        ):
+            raise ValueError(
+                "Conflicting text extraction options: 'keep_blank_chars' and "
+                "'preserve_whitespace' must have the same value."
+            )
+        if preserve_whitespace is _UNSET or preserve_whitespace is None:
+            preserve_whitespace = keep_blank_chars
+        if preserve_whitespace is _UNSET or preserve_whitespace is None:
+            preserve_whitespace = True
+
+        use_exclusions = kwargs.pop("use_exclusions", _UNSET)
+        if (
+            apply_exclusions is not _UNSET
+            and use_exclusions is not _UNSET
+            and apply_exclusions is not None
+            and use_exclusions is not None
+            and bool(apply_exclusions) != bool(use_exclusions)
+        ):
+            raise ValueError(
+                "Conflicting text extraction options: 'apply_exclusions' and "
+                "'use_exclusions' must have the same value."
+            )
+        if use_exclusions is _UNSET or use_exclusions is None:
+            use_exclusions = apply_exclusions
+        if use_exclusions is _UNSET or use_exclusions is None:
+            use_exclusions = True
+
         strip = kwargs.pop("strip", None)
         explicit_strip_final = kwargs.pop("strip_final", None)
         explicit_strip_empty = kwargs.pop("strip_empty", None)
@@ -230,8 +266,8 @@ class PageCollection(
 
         for page in self.pages:
             text = page.extract_text(
-                preserve_whitespace=keep_blank_chars,
-                use_exclusions=apply_exclusions,
+                preserve_whitespace=bool(preserve_whitespace),
+                use_exclusions=bool(use_exclusions),
                 strip_final=(
                     explicit_strip_final
                     if explicit_strip_final is not None
@@ -364,65 +400,10 @@ class PageCollection(
             **kwargs,
         )
 
-    def apply_ocr(
-        self,
-        engine: Optional[str] = None,
-        *,
-        options: Optional[Any] = None,
-        languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
-        device: Optional[str] = None,
-        resolution: Optional[int] = None,
-        detect_only: bool = False,
-        apply_exclusions: bool = True,
-        replace: bool = True,
-        model: Optional[str] = None,
-        client: Optional[Any] = None,
-        instructions: Optional[str] = None,
-        **kwargs,
-    ):
-        """Apply OCR uniformly across all pages in the collection.
+    def _iter_ocr_hosts(self, request: OCRRequest) -> Iterable["Page"]:
+        """Yield pages in collection order for the shared OCR contract."""
 
-        Args:
-            engine: OCR engine — ``"rapidocr"`` (default), ``"paddle"``,
-                ``"paddlevl"``, ``"doctr"``, or ``"vlm"``.
-            options: Engine-specific option object.
-            languages: Language codes, e.g. ``["en", "fr"]``.
-            min_confidence: Discard results below this confidence (0–1).
-            device: Compute device, e.g. ``"cpu"`` or ``"cuda"``.
-            resolution: DPI for the image sent to the engine.
-            detect_only: Detect text regions without recognizing characters.
-            apply_exclusions: Mask exclusion zones before OCR.
-            model: VLM model name — switches to VLM OCR pipeline.
-            client: OpenAI-compatible client — switches to VLM OCR pipeline.
-            instructions: Additional instructions appended to the VLM prompt.
-            **kwargs: Extra engine-specific parameters.
-
-        Returns:
-            Self for chaining.
-        """
-        if not self.pages:
-            logger.warning("Cannot apply OCR to an empty PageCollection.")
-            return self
-
-        logger.info("Applying OCR to %d page(s) directly from PageCollection.", len(self.pages))
-        for page in self.pages:
-            page.apply_ocr(
-                engine=engine,
-                replace=replace,
-                options=options,
-                languages=languages,
-                min_confidence=min_confidence,
-                device=device,
-                resolution=resolution,
-                detect_only=detect_only,
-                apply_exclusions=apply_exclusions,
-                model=model,
-                client=client,
-                instructions=instructions,
-                **kwargs,
-            )
-        return self
+        return iter(self.pages)
 
     def _iter_sections(self) -> Iterable["_SectionHost"]:
         return cast(Iterable["_SectionHost"], iter(self.pages))

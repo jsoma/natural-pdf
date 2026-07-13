@@ -310,11 +310,24 @@ from natural_pdf import PDF
 
 pdf = PDF("scanned.pdf")
 page = pdf.pages[0]
-ocr_elements = page.apply_ocr(engine='rapidocr', languages=['en'])
+page.apply_ocr(engine='rapidocr', languages=['en'])
 text = page.extract_text()
 ```
 
-**Returns**: `ElementCollection` - The newly created OCR text elements.
+OCR uses `replace="ocr"` by default, replacing prior OCR artifacts while
+preserving native PDF text. Use `replace="all"` to replace every text source or
+`replace="none"` to append. Boolean replacement values are not supported.
+`detect_only=True` refreshes only prior detection artifacts in scope while
+preserving native and recognized text; non-default `replace` values are rejected.
+Region and Flow replacement is limited to the processed geometry.
+
+The contract has three modes: recognition (default), detection refresh, and
+custom function recognition via the canonical `function=` keyword. The legacy
+`ocr_function=` keyword is rejected, and `engine` is the only positional
+argument. OCR methods return the receiving object for fluent chaining.
+
+**Returns**: `Page` - The mutated page, for method chaining. Select newly
+created OCR text with `page.find_all("text[source=ocr]")` when needed.
 
 ---
 
@@ -580,10 +593,10 @@ image = elements.show(color="red", label="Bold Text")
 | Extract all tables | `page.extract_tables()` | `List[TableResult]` |
 | Page to markdown | `page.to_markdown()` | `str` |
 | Semantic search | `pdf.search(query)` | `PageCollection` |
-| Apply OCR | `page.apply_ocr()` | `ElementCollection` |
+| Apply OCR | `page.apply_ocr()` | `Page` |
 | Analyze layout | `page.analyze_layout()` | `ElementCollection` |
 | Create region | `page.create_region(...)` | `Region` |
-| Add exclusion | `page.add_exclusion(...)` | `None` |
+| Add exclusion | `page.add_exclusion(...)` | `Page` |
 | Show elements | `elements.show()` | `PIL.Image.Image` |
 | Table to DataFrame | `table.to_df()` | `pandas.DataFrame` |
 

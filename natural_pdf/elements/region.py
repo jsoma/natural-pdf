@@ -37,9 +37,11 @@ from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
 from natural_pdf.core.geometry_mixin import RegionGeometryMixin
 from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
 from natural_pdf.core.mixins import SinglePageContextMixin
+from natural_pdf.core.ocr_mixin import OCRDirectTargetMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
 from natural_pdf.elements.base import DirectionalMixin, extract_bbox
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
+from natural_pdf.ocr.replacement import OCRReplaceMode, normalize_ocr_replace_mode
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.selectors.parser import (
     build_text_contains_selector,
@@ -131,6 +133,7 @@ class RegionContext:
 
 class Region(
     ClassificationResultAccessorMixin,
+    OCRDirectTargetMixin,
     SelectorHostMixin,
     DirectionalMixin,
     ServiceHostMixin,
@@ -322,7 +325,11 @@ class Region(
         return "region"
 
     def _ocr_render_kwargs(self, *, apply_exclusions: bool = True) -> Dict[str, Any]:
-        return {"crop": True, "crop_bbox": self.bbox}
+        return {
+            "crop": True,
+            "crop_bbox": self.bbox,
+            "apply_exclusions": apply_exclusions,
+        }
 
     def _qa_context_page_number(self) -> int:
         return self.page.number
@@ -2048,116 +2055,6 @@ class Region(
         # overlap_mode == "center"
         return [el for el in elements if self.is_element_center_inside(el)]
 
-    def apply_ocr(
-        self,
-        engine: Optional[str] = None,
-        *,
-        options: Optional[Any] = None,
-        languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
-        device: Optional[str] = None,
-        resolution: Optional[int] = None,
-        detect_only: bool = False,
-        apply_exclusions: bool = True,
-        replace: bool = True,
-        model: Optional[str] = None,
-        client: Optional[Any] = None,
-        instructions: Optional[str] = None,
-        function: Optional[Callable] = None,
-        **kwargs,
-    ) -> "Region":
-        """Apply OCR to this region.
-
-        Args:
-            engine: OCR engine — ``"rapidocr"`` (default), ``"paddle"``,
-                ``"paddlevl"``, ``"doctr"``, ``"vlm"``,
-                ``"dots"`` (dots.mocr), ``"glm_ocr"``, or ``"chandra"``.
-                ``"dots"``, ``"glm_ocr"``, and ``"chandra"`` auto-select MLX on Apple
-                Silicon, HF transformers elsewhere.
-                Use ``engine="vlm"`` with ``model=`` and/or ``client=``
-                for VLM-based OCR.
-            options: Engine-specific option object.
-            languages: Language codes, e.g. ``["en", "fr"]``.
-            min_confidence: Discard results below this confidence (0–1).
-            device: Compute device, e.g. ``"cpu"`` or ``"cuda"``.
-            resolution: DPI for the region image sent to the engine.
-            detect_only: Detect text regions without recognizing characters.
-            apply_exclusions: Mask exclusion zones before OCR.
-            replace: Remove existing OCR elements first.
-            model: VLM model name — switches to VLM OCR pipeline.
-            client: OpenAI-compatible client — switches to VLM OCR pipeline.
-            instructions: Additional instructions appended to the VLM prompt.
-                Ignored when ``prompt`` is passed directly via ``**kwargs``.
-            function: Custom OCR callable that receives this Region and returns text.
-            **kwargs: Extra engine-specific parameters.  Notable kwargs:
-
-                - ``layout`` (bool | str): Controls layout detection for VLM
-                  engines.  ``True`` uses PP-DocLayout-V3 (block-level).
-                  A string like ``"rapidocr"`` or ``"paddle"`` uses that
-                  classic engine in detect-only mode for line-level boxes.
-                  ``False`` disables layout (full-page prompt).  ``None``
-                  (default) auto-detects based on model family.
-                - ``prompt`` (str): Custom VLM prompt.
-                - ``max_new_tokens`` (int): Max generation tokens for VLM.
-                - ``preserve_markup`` (bool): Keep raw VLM markup in OCR
-                  text. Defaults to ``False``, which normalizes HTML tables
-                  to plain text while retaining raw HTML in table metadata.
-
-        Returns:
-            Self for chaining.
-        """
-
-        params: dict = dict(kwargs)
-        if engine is not None:
-            params["engine"] = engine
-        if options is not None:
-            params["options"] = options
-        if languages is not None:
-            params["languages"] = languages
-        if min_confidence is not None:
-            params["min_confidence"] = min_confidence
-        if device is not None:
-            params["device"] = device
-        if resolution is not None:
-            params["resolution"] = resolution
-        if detect_only:
-            params["detect_only"] = detect_only
-        if not apply_exclusions:
-            params["apply_exclusions"] = apply_exclusions
-
-        custom_func_candidate = function or params.pop("ocr_function", None)
-        if callable(custom_func_candidate):
-            custom_func = cast(CustomOCRCallable, custom_func_candidate)
-            return self.apply_custom_ocr(
-                ocr_function=custom_func,
-                source_label=params.pop("source_label", "custom-ocr"),
-                replace=replace,
-                confidence=params.pop("confidence", None),
-                add_to_page=params.pop("add_to_page", True),
-            )
-
-        # Unified dispatch — handles all engines (classic + VLM)
-        self.services.ocr.apply_ocr(
-            self,
-            engine=engine,
-            options=options,
-            languages=languages,
-            min_confidence=min_confidence,
-            device=device,
-            resolution=resolution,
-            detect_only=detect_only,
-            apply_exclusions=apply_exclusions,
-            replace=replace,
-            model=model,
-            client=client,
-            instructions=instructions,
-            prompt=kwargs.get("prompt"),
-            max_new_tokens=kwargs.get("max_new_tokens"),
-            layout=kwargs.get("layout"),
-            preserve_markup=bool(kwargs.get("preserve_markup", False)),
-        )
-        return self
-
     def extract_ocr_elements(
         self,
         *,
@@ -2167,6 +2064,14 @@ class Region(
         min_confidence: Optional[float] = None,
         device: Optional[str] = None,
         resolution: Optional[int] = None,
+        apply_exclusions: bool = True,
+        model: Optional[str] = None,
+        client: Optional[Any] = None,
+        prompt: Optional[str] = None,
+        instructions: Optional[str] = None,
+        max_new_tokens: Optional[int] = None,
+        layout: Optional[bool | str] = None,
+        preserve_markup: bool = False,
     ) -> List[Any]:
         """
         Run OCR and return the resulting text elements without mutating this region.
@@ -2178,6 +2083,14 @@ class Region(
             min_confidence: Optional minimum confidence threshold.
             device: Preferred execution device.
             resolution: Explicit render DPI; falls back to config/context when omitted.
+            apply_exclusions: Mask configured exclusion zones in the crop.
+            model: Optional VLM model name.
+            client: Optional OpenAI-compatible VLM client.
+            prompt: Optional complete VLM prompt.
+            instructions: Optional instructions appended to the VLM prompt.
+            max_new_tokens: Optional VLM generation limit.
+            layout: Optional VLM layout mode.
+            preserve_markup: Keep raw VLM markup in extracted text metadata.
 
         Returns:
             List of text elements created from OCR (not added to the page).
@@ -2191,22 +2104,31 @@ class Region(
             min_confidence=min_confidence,
             device=device,
             resolution=resolution,
+            apply_exclusions=apply_exclusions,
+            model=model,
+            client=client,
+            prompt=prompt,
+            instructions=instructions,
+            max_new_tokens=max_new_tokens,
+            layout=layout,
+            preserve_markup=preserve_markup,
         )
 
     def apply_custom_ocr(
         self,
         ocr_function: CustomOCRCallable,
         source_label: str = "custom-ocr",
-        replace: bool = True,
+        replace: OCRReplaceMode = "ocr",
         confidence: Optional[float] = None,
         add_to_page: bool = True,
     ) -> "Region":
+        replace_mode = normalize_ocr_replace_mode(replace)
         service = resolve_service(self, "ocr")
         service.apply_custom_ocr(
             self,
             ocr_function=ocr_function,
             source_label=source_label,
-            replace=replace,
+            replace=replace_mode,
             confidence=confidence,
             add_to_page=add_to_page,
         )

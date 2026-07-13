@@ -114,7 +114,7 @@ register_selector_engine("debug", lambda **_: DebugSelectorEngine())
 
 ## Best friends
 
-Natural PDF sits on top of a *lot* of fantastic tools and mdoels, some of which are:
+Natural PDF sits on top of a *lot* of fantastic tools and models, some of which are:
 
 - [pdfplumber](https://github.com/jsvine/pdfplumber)
 - [PaddleOCR](https://paddlepaddle.github.io/PaddleOCR/latest/en/index.html)

@@ -6,6 +6,7 @@ import urllib.request
 import warnings
 import weakref
 from collections.abc import Iterator, Sequence
+from dataclasses import replace as replace_request
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -49,6 +50,9 @@ from natural_pdf.classification.classification_provider import (
 from natural_pdf.classification.pipelines import ClassificationError
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighting_service import HighlightingService
+from natural_pdf.core.ocr_contracts import OCRFunctionRequest, OCRRequest
+from natural_pdf.core.ocr_execution import ocr_execution_session
+from natural_pdf.core.ocr_mixin import PDFOCRMixin
 from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.region import Region
@@ -313,6 +317,7 @@ class _LazyPageList(Sequence["Page"]):
 
 class PDF(
     ClassificationResultAccessorMixin,
+    PDFOCRMixin,
     ServiceHostMixin,
     SelectorHostMixin,
     ExportMixin,
@@ -807,6 +812,9 @@ class PDF(
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
 
+        if method not in {"region", "element"}:
+            raise ValueError("Exclusion method must be 'region' or 'element'.")
+
         # Store as 3-tuple (exclusion, label, method) for consistent handling
         self._exclusions.append((exclusion_func, label, method))
 
@@ -815,128 +823,101 @@ class PDF(
 
         return self
 
-    def apply_ocr(
+    def _prepare_pdf_ocr_request(
         self,
-        engine: Optional[str] = None,
-        languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
-        device: Optional[str] = None,
-        resolution: Optional[int] = None,
-        apply_exclusions: bool = True,
-        detect_only: bool = False,
-        replace: bool = True,
-        options: Optional[Any] = None,
-        pages: Optional[Union[Iterable[int], range, slice]] = None,
-    ) -> "PDF":
-        """Apply OCR to specified pages of the PDF using batch processing.
+        request: OCRRequest,
+        *,
+        pages: Optional[int | Iterable[int] | range | slice],
+    ) -> tuple[OCRRequest, List["Page"]]:
+        """Resolve PDF defaults and validate the selected page scope."""
 
-        Performs optical character recognition on the specified pages, converting
-        image-based text into searchable and extractable text elements. This method
-        supports multiple OCR engines and provides batch processing for efficiency.
+        if getattr(self, "_closed", False) or getattr(self, "_pdf", None) is None:
+            raise RuntimeError("Cannot apply OCR: PDF has been closed.")
+        target_pages = self._get_target_pages(pages)
+        if isinstance(request, OCRFunctionRequest):
+            return request, target_pages
 
-        Args:
-            engine: OCR engine — ``"rapidocr"`` (default), ``"paddle"``,
-                ``"paddlevl"``, ``"doctr"``,
-                or ``"vlm"`` (requires ``model=``/``client=`` or a default
-                client via ``natural_pdf.set_default_client()``).
-                If None, uses the global default from natural_pdf.options.ocr.engine.
-            languages: List of language codes for OCR recognition (e.g., ['en', 'es']).
-                If None, uses the global default from natural_pdf.options.ocr.languages.
-            min_confidence: Minimum confidence threshold (0.0-1.0) for accepting
-                OCR results. Text with lower confidence will be filtered out.
-                If None, uses the global default.
-            device: Device to run OCR on ('cpu', 'cuda', 'mps'). Engine-specific
-                availability varies. If None, uses engine defaults.
-            resolution: DPI resolution for rendering pages to images before OCR.
-                Higher values improve accuracy but increase processing time and memory.
-                Typical values: 150 (fast), 300 (balanced), 600 (high quality).
-            apply_exclusions: If True, mask excluded regions before OCR to prevent
-                processing of headers, footers, or other unwanted content.
-            detect_only: If True, only detect text bounding boxes without performing
-                character recognition. Useful for layout analysis workflows.
-            replace: If True, replace any existing OCR elements on the pages.
-                If False, append new OCR results to existing elements.
-            options: Engine-specific options object (e.g., RapidOCROptions, PaddleOCROptions).
-                Allows fine-tuning of engine behavior beyond common parameters.
-            pages: Page indices to process. Can be:
-                - None: Process all pages
-                - slice: Process a range of pages (e.g., slice(0, 10))
-                - Iterable[int]: Process specific page indices (e.g., [0, 2, 5])
-
-        Returns:
-            Self for method chaining.
-
-        Raises:
-            ValueError: If invalid page index is provided.
-            TypeError: If pages parameter has invalid type.
-            RuntimeError: If OCR engine is not available or fails.
-
-        Example:
-            ```python
-            pdf = npdf.PDF("scanned_document.pdf")
-
-            # Basic OCR on all pages
-            pdf.apply_ocr()
-
-            # High-quality OCR with specific settings
-            pdf.apply_ocr(
-                engine='rapidocr',
-                languages=['en', 'es'],
-                resolution=300,
-                min_confidence=0.8
-            )
-
-            # OCR specific pages only
-            pdf.apply_ocr(pages=[0, 1, 2])  # First 3 pages
-            pdf.apply_ocr(pages=slice(5, 10))  # Pages 5-9
-
-            # Detection-only workflow for layout analysis
-            pdf.apply_ocr(detect_only=True, resolution=150)
-            ```
-
-        Note:
-            OCR processing can be time and memory intensive, especially at high
-            resolutions. Consider using exclusions to mask unwanted regions and
-            processing pages in batches for large documents.
-        """
-        normalized_options = normalize_ocr_options(options)
+        normalized_options = normalize_ocr_options(request.options)
+        requested_engine = request.engine
+        if requested_engine is None and (request.model is not None or request.client is not None):
+            requested_engine = "vlm"
         engine_name = resolve_ocr_engine_name(
             context=self,
-            requested=engine,
+            requested=requested_engine,
             options=normalized_options,
             scope="pdf",
         )
-        resolved_languages = resolve_ocr_languages(self, languages, scope="pdf")
-        resolved_min_confidence = resolve_ocr_min_confidence(self, min_confidence, scope="pdf")
-        resolved_device = resolve_ocr_device(self, device, scope="pdf")
-
-        target_pages = self._get_target_pages(pages)
-        if not target_pages:
-            logger.warning("No pages selected for OCR processing.")
-            return self
-
-        final_resolution = resolution or self._config.get("resolution", 150)
-        logger.info(
-            "Applying OCR to %d page(s) with engine '%s' at %s DPI.",
-            len(target_pages),
-            engine_name,
-            final_resolution,
+        # A mapping cannot be validated until the effective engine is known.
+        # Reify it here so PDFCollection preflight fails before any worker or
+        # page mutation starts.
+        normalized_options = normalize_ocr_options(
+            normalized_options,
+            engine_name=engine_name,
         )
+        resolved_languages = resolve_ocr_languages(self, request.languages, scope="pdf")
+        resolved_min_confidence = resolve_ocr_min_confidence(
+            self, request.min_confidence, scope="pdf"
+        )
+        resolved_device = resolve_ocr_device(self, request.device, scope="pdf")
+        final_resolution = request.resolution or self._config.get("resolution", 150)
 
-        for page in tqdm(target_pages, desc="Applying OCR", leave=False):
-            page.apply_ocr(
+        return (
+            replace_request(
+                request,
                 engine=engine_name,
                 options=normalized_options,
-                languages=resolved_languages,
+                languages=tuple(resolved_languages) if resolved_languages is not None else None,
                 min_confidence=resolved_min_confidence,
                 device=resolved_device,
                 resolution=final_resolution,
-                detect_only=detect_only,
-                apply_exclusions=apply_exclusions,
-                replace=replace,
+            ),
+            target_pages,
+        )
+
+    def _execute_prepared_pdf_ocr_request(
+        self,
+        request: OCRRequest,
+        target_pages: Iterable["Page"],
+        *,
+        show_progress: bool,
+    ) -> None:
+        """Execute an already-resolved request against selected pages."""
+
+        selected_pages = list(target_pages)
+        if not selected_pages:
+            logger.warning("No pages selected for OCR processing.")
+            return
+
+        if not isinstance(request, OCRFunctionRequest):
+            logger.info(
+                "Applying OCR to %d page(s) with engine '%s' at %s DPI.",
+                len(selected_pages),
+                request.engine,
+                request.resolution,
             )
 
-        return self
+        page_iter = (
+            tqdm(selected_pages, desc="Applying OCR", leave=False)
+            if show_progress
+            else selected_pages
+        )
+        with ocr_execution_session():
+            for page in page_iter:
+                page._execute_ocr_request(request)
+
+    def _apply_pdf_ocr_request(
+        self,
+        request: OCRRequest,
+        *,
+        pages: Optional[int | Iterable[int] | range | slice],
+        show_progress: bool,
+    ) -> None:
+        effective_request, target_pages = self._prepare_pdf_ocr_request(request, pages=pages)
+        self._execute_prepared_pdf_ocr_request(
+            effective_request,
+            target_pages,
+            show_progress=show_progress,
+        )
 
     def detect_lines(self, *args, **kwargs):
         return self.services.shapes.detect_lines(self, *args, **kwargs)

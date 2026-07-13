@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from statistics import median
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from natural_pdf.ocr.replacement import OCRReplaceMode, normalize_ocr_replace_mode
+
 logger = logging.getLogger(__name__)
 
 
@@ -840,13 +842,16 @@ class OcrComparison:
 
         return _HtmlDisplay(html)
 
-    def apply(self, engine: str, *, replace: bool = True) -> Any:
+    def apply(self, engine: str, *, replace: OCRReplaceMode = "ocr") -> Any:
         """Persist the chosen engine's OCR elements to the page.
 
         Args:
             engine: Engine name whose results to keep.
-            replace: If True, remove existing OCR elements first.
+            replace: ``"ocr"`` (default) replaces prior OCR artifacts,
+                ``"all"`` replaces all text, and ``"none"`` appends.
         """
+        replace_mode = normalize_ocr_replace_mode(replace)
+
         if engine not in self._engine_elements:
             available = ", ".join(self._engines)
             raise ValueError(f"Engine '{engine}' not found. Available: {available}")
@@ -867,8 +872,11 @@ class OcrComparison:
                 }
             )
 
-        if replace:
-            self._page.services.ocr.remove_ocr_elements(self._page)
+        if replace_mode != "none":
+            # Use the same replacement boundary as Page/Region.apply_ocr so
+            # generated VLM table Regions are cleaned up without touching
+            # user-created Regions.
+            self._page.services.ocr._remove_for_replace(self._page, replace_mode, None)
 
         self._page.services.ocr.create_text_elements_from_ocr(
             self._page,

@@ -109,11 +109,21 @@ Extract text from scanned documents using various OCR engines.
 
 ```python
 # Apply OCR using the default engine
-ocr_elements = page.apply_ocr()
+page.apply_ocr()
+
+# Select the OCR text if you need the created elements
+ocr_elements = page.find_all("text[source=ocr]")
 
 # Extract text (will use OCR results if available)
 text = page.extract_text()
 ```
+
+OCR supports recognition (default), detection refresh (`detect_only=True`),
+and custom recognition (`function=`). Replacement is strict:
+`replace="ocr"`, `"all"`, or `"none"`; booleans and the removed
+`ocr_function=` keyword are rejected. Detection preserves existing native and
+recognized text. `PDF.apply_ocr` also supports `pages=` and `show_progress=`;
+`PDFCollection.apply_ocr` supports `max_workers=`.
 
 ### Analyze Document Layout
 

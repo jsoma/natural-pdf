@@ -6,13 +6,33 @@ import logging
 import time
 from typing import Any, Dict, List, Optional, Union
 
-from natural_pdf.ocr.unified_dispatch import run_ocr
 from natural_pdf.services.registry import register_delegate
 
 logger = logging.getLogger(__name__)
 
 # Type for engine specs: either a string or a dict with at least "engine" key
 EngineSpec = Union[str, Dict[str, Any]]
+_SUPPORTED_ENGINE_DEFAULTS = frozenset(
+    {
+        "options",
+        "model",
+        "client",
+        "prompt",
+        "instructions",
+        "max_new_tokens",
+        "layout",
+        "preserve_markup",
+    }
+)
+_SUPPORTED_SPEC_KEYS = _SUPPORTED_ENGINE_DEFAULTS | {
+    "engine",
+    "name",
+    "label",
+    "resolution",
+    "languages",
+    "device",
+    "min_confidence",
+}
 
 
 def _normalize_spec(
@@ -22,38 +42,42 @@ def _normalize_spec(
     default_languages: Optional[List[str]],
     default_device: Optional[str],
     default_min_confidence: Optional[float],
+    engine_defaults: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Normalize an engine spec into a full dict with defaults applied."""
+    engine_defaults = engine_defaults or {}
     if isinstance(spec, str):
-        return {
-            "engine": spec,
-            "label": spec,
-            "resolution": default_resolution,
-            "languages": default_languages,
-            "device": default_device,
-            "min_confidence": default_min_confidence,
-        }
+        merged = {**engine_defaults, "engine": spec}
+    elif isinstance(spec, dict):
+        unknown = sorted(set(spec) - _SUPPORTED_SPEC_KEYS)
+        if unknown:
+            raise TypeError("Unsupported OCR engine spec option(s): " + ", ".join(unknown))
+        merged = {**engine_defaults, **spec}
+    else:
+        raise TypeError("Each OCR engine spec must be a string or mapping")
 
-    engine = spec.get("engine") or spec.get("name")
+    engine = merged.get("engine") or merged.get("name")
     if not engine:
         raise ValueError(f"Engine spec must have an 'engine' key: {spec!r}")
 
-    label = spec.get("label") or _auto_label(engine, spec)
+    label = merged.get("label") or _auto_label(engine, merged)
     return {
         "engine": engine,
         "label": label,
-        "resolution": spec.get("resolution", default_resolution),
-        "languages": spec.get("languages", default_languages),
-        "device": spec.get("device", default_device),
-        "min_confidence": spec.get("min_confidence", default_min_confidence),
+        "resolution": merged.get("resolution", default_resolution),
+        "languages": merged.get("languages", default_languages),
+        "device": merged.get("device", default_device),
+        "min_confidence": merged.get("min_confidence", default_min_confidence),
         # VLM params:
-        "model": spec.get("model"),
-        "client": spec.get("client"),
-        "prompt": spec.get("prompt"),
-        "instructions": spec.get("instructions"),
-        "max_new_tokens": spec.get("max_new_tokens"),
+        "model": merged.get("model"),
+        "client": merged.get("client"),
+        "prompt": merged.get("prompt"),
+        "instructions": merged.get("instructions"),
+        "max_new_tokens": merged.get("max_new_tokens"),
+        "layout": merged.get("layout"),
+        "preserve_markup": bool(merged.get("preserve_markup", False)),
         # Classic params:
-        "options": spec.get("options"),
+        "options": merged.get("options"),
     }
 
 
@@ -111,9 +135,13 @@ class OcrComparisonService:
         Returns:
             OcrComparison result object.
         """
-        from natural_pdf.core.ocr_converter import OCRConverter
         from natural_pdf.ocr.alignment import align_ocr_outputs
         from natural_pdf.ocr.comparison import OcrComparison
+
+        unknown_kwargs = sorted(set(kwargs) - _SUPPORTED_ENGINE_DEFAULTS)
+        if unknown_kwargs:
+            raise TypeError("Unsupported compare_ocr option(s): " + ", ".join(unknown_kwargs))
+        engine_defaults = {key: kwargs[key] for key in _SUPPORTED_ENGINE_DEFAULTS if key in kwargs}
 
         engine_options = engine_options or {}
         engine_elements: Dict[str, list] = {}
@@ -121,7 +149,7 @@ class OcrComparisonService:
         runtimes: Dict[str, float] = {}
         successful_engines: List[str] = []
 
-        render_kwargs = {"apply_exclusions": apply_exclusions}
+        ocr_service = self._context.get_service("ocr")
 
         for spec in engines:
             normalized = _normalize_spec(
@@ -130,6 +158,7 @@ class OcrComparisonService:
                 default_languages=languages,
                 default_device=device,
                 default_min_confidence=min_confidence,
+                engine_defaults=engine_defaults,
             )
 
             engine_str = normalized["engine"]
@@ -148,43 +177,26 @@ class OcrComparisonService:
                 )
                 t0 = time.time()
 
-                ocr_payload = run_ocr(
-                    target=host,
-                    engine_name=engine_str,
+                word_elements = ocr_service.extract_ocr_elements(
+                    host,
+                    engine=engine_str,
                     resolution=normalized["resolution"],
                     languages=normalized["languages"],
                     min_confidence=normalized["min_confidence"],
                     device=normalized["device"],
-                    render_kwargs=render_kwargs,
-                    context=host,
                     options=normalized.get("options"),
+                    apply_exclusions=apply_exclusions,
                     model=normalized.get("model"),
                     client=normalized.get("client"),
                     prompt=normalized.get("prompt"),
                     instructions=normalized.get("instructions"),
                     max_new_tokens=normalized.get("max_new_tokens"),
+                    layout=normalized.get("layout"),
+                    preserve_markup=normalized.get("preserve_markup", False),
                 )
 
                 elapsed = time.time() - t0
                 runtimes[label] = elapsed
-
-                image_width, image_height = ocr_payload.image_size
-                if not image_width or not image_height:
-                    failed_engines[label] = "OCR returned no image dimensions"
-                    continue
-
-                page_width = getattr(host, "width", None) or 0
-                page_height = getattr(host, "height", None) or 0
-                scale_x = page_width / image_width if page_width else 1.0
-                scale_y = page_height / image_height if page_height else 1.0
-
-                converter = OCRConverter(host)
-                word_elements, _ = converter.convert(
-                    ocr_payload.results,
-                    scale_x=scale_x,
-                    scale_y=scale_y,
-                    engine_name=engine_str,
-                )
 
                 engine_elements[label] = word_elements
                 successful_engines.append(label)

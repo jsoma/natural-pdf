@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 import threading
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypedDict, Union, cast
+from dataclasses import dataclass, fields, is_dataclass
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Type, TypedDict, Union, cast
 
 from PIL import Image
 
@@ -112,16 +112,99 @@ def register_ocr_engines(provider=None) -> None:
             register_builtin(provider, capability, engine_name, factory)
 
 
+def get_ocr_options_class(engine_name: str) -> Optional[Type[BaseOCROptions]]:
+    """Return the registered option class for *engine_name*, if it has one."""
+    normalized_name = _normalize_engine_name(engine_name)
+    if normalized_name is None:
+        return None
+
+    entry = ENGINE_REGISTRY.get(normalized_name)
+    if entry is not None:
+        return entry.get("options_class")
+
+    try:
+        from natural_pdf.ocr.unified_dispatch import get_registry
+
+        unified_entry = get_registry().get(normalized_name)
+        return getattr(unified_entry, "options_class", None)
+    except Exception:
+        return None
+
+
 def normalize_ocr_options(
-    options: Optional[Union[BaseOCROptions, Dict[str, Any]]],
+    options: Optional[Union[BaseOCROptions, Mapping[str, Any]]],
+    *,
+    engine_name: Optional[str] = None,
 ) -> Optional[BaseOCROptions]:
-    if options is None or isinstance(options, BaseOCROptions):
+    """Normalize OCR options, constructing the registered engine's option type.
+
+    A mapping is meaningful only relative to an OCR engine.  Callers that do
+    not yet know the engine may temporarily receive a ``BaseOCROptions``
+    wrapper; dispatch must call this function again with the resolved engine.
+    This preserves legacy resolution order while ensuring mappings never reach
+    an adapter as an incompatible base instance.
+    """
+    if options is None:
+        return None
+
+    if engine_name is None:
+        if isinstance(options, Mapping):
+            return BaseOCROptions(extra_args=dict(options))
+        if isinstance(options, BaseOCROptions):
+            return options
+        raise TypeError(
+            "OCR options must be a BaseOCROptions instance, subclass thereof, or a mapping."
+        )
+
+    options_class = get_ocr_options_class(engine_name)
+    if options_class is None:
+        if isinstance(options, Mapping) or (
+            type(options) is BaseOCROptions and bool(options.extra_args)
+        ):
+            raise TypeError(
+                f"OCR engine '{engine_name}' does not declare an options class; "
+                "it cannot accept mapping options. Register an engine-specific options class."
+            )
+        return cast(Optional[BaseOCROptions], options)
+
+    if isinstance(options, options_class):
         return options
-    if isinstance(options, dict):
-        return BaseOCROptions(extra_args=dict(options))
-    raise TypeError(
-        "OCR options must be a BaseOCROptions instance, subclass thereof, or a mapping."
-    )
+
+    payload: Optional[Dict[str, Any]] = None
+    if isinstance(options, Mapping):
+        payload = dict(options)
+    elif type(options) is BaseOCROptions:
+        # ``normalize_ocr_options(mapping)`` is retained for callers which
+        # resolve an engine afterwards. Reify that deferred mapping now.
+        payload = dict(options.extra_args)
+    elif isinstance(options, BaseOCROptions):
+        raise TypeError(
+            f"OCR engine '{engine_name}' requires {options_class.__name__}; got "
+            f"{type(options).__name__}."
+        )
+    else:
+        raise TypeError(
+            "OCR options must be a BaseOCROptions instance, subclass thereof, or a mapping."
+        )
+
+    if not is_dataclass(options_class):  # pragma: no cover - registry contract
+        raise TypeError(
+            f"OCR engine '{engine_name}' options class {options_class.__name__} must be a dataclass."
+        )
+    allowed = {item.name for item in fields(options_class) if item.init}
+    unknown = sorted(set(payload) - allowed)
+    if unknown:
+        available = ", ".join(sorted(allowed))
+        raise TypeError(
+            f"Unsupported option(s) for OCR engine '{engine_name}': {', '.join(unknown)}. "
+            f"Accepted options: {available}."
+        )
+    try:
+        return options_class(**payload)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(
+            f"Invalid options for OCR engine '{engine_name}' ({options_class.__name__}): {exc}"
+        ) from exc
 
 
 def infer_engine_from_options(options: Optional[BaseOCROptions]) -> Optional[str]:
@@ -403,6 +486,7 @@ def run_ocr_engine(
 ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
     """Backward compatible helper that executes OCR on provided image(s)."""
 
+    options = normalize_ocr_options(options, engine_name=engine_name)
     provider = get_provider()
     try:
         engine = provider.get("ocr.extract", context=context, name=engine_name)
@@ -479,6 +563,7 @@ def _call_engine(
 ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
     provider = get_provider()
     engine = provider.get(capability, context=context, name=engine_name)
+    options = normalize_ocr_options(options, engine_name=engine_name)
 
     lock = _get_engine_inference_lock(engine_name)
     with lock:
@@ -569,6 +654,7 @@ __all__ = [
     "cleanup_engine",
     "list_available_engines",
     "normalize_ocr_options",
+    "get_ocr_options_class",
     "infer_engine_from_options",
     "resolve_ocr_engine_name",
     "resolve_ocr_languages",

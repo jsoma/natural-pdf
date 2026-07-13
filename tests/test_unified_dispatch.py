@@ -177,10 +177,10 @@ class TestEngineCache:
 
 class TestInitKeys:
     def test_base_options_default(self):
-        assert BaseOCROptions()._init_key() == ""
+        assert BaseOCROptions()._init_key() == '{"extra_args":{}}'
 
     def test_surya_options_default(self):
-        assert SuryaOCROptions()._init_key() == ""
+        assert SuryaOCROptions()._init_key() == '{"extra_args":{}}'
 
     def test_easyocr_options(self):
         opts = EasyOCROptions()

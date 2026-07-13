@@ -134,6 +134,11 @@ class RenderingService:
         **kwargs: Any,
     ) -> Optional["PILImage"]:
         columns = self._resolve_columns_alias(columns, kwargs, guard_value=None)
+        # OCR masks are separate from display highlights. The OCR service has
+        # already evaluated callables and supplies the exact page-space boxes
+        # used in its cache identity.
+        ocr_exclusion_bboxes = kwargs.pop("_ocr_exclusion_bboxes", None)
+        kwargs.pop("apply_exclusions", None)
         labels = bool(kwargs.pop("labels", labels))
         label_format = kwargs.pop("label_format", label_format)
         highlights = kwargs.pop("highlights", highlights)
@@ -161,6 +166,7 @@ class RenderingService:
             stack_direction=stack_direction,
             gap=gap,
             columns=columns,
+            ocr_exclusion_bboxes=ocr_exclusion_bboxes,
             **kwargs,
         )
 

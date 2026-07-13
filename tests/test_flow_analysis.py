@@ -11,8 +11,8 @@ class _StubAnalysisRegion:
     def __init__(self):
         self.calls = []
 
-    def apply_ocr(self, *args, **kwargs):
-        self.calls.append(("apply_ocr", args, kwargs))
+    def _execute_ocr_request(self, request):
+        self.calls.append(("apply_ocr", (request,), {}))
 
     def extract_ocr_elements(self, *args, **kwargs):
         self.calls.append(("extract_ocr_elements", args, kwargs))

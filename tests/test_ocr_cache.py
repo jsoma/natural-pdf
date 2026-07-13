@@ -1,11 +1,29 @@
 """Tests for OCR result caching."""
 
 import json
+import os
+import stat
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
-from natural_pdf.ocr.ocr_cache import OCRCache, compute_cache_key, set_default_cache
+import pytest
+
+from natural_pdf.ocr.ocr_cache import (
+    OCRCache,
+    compute_cache_key,
+    compute_render_kwargs_cache_key,
+    resolve_ocr_cache_identity,
+    set_default_cache,
+)
 from natural_pdf.ocr.ocr_options import RapidOCROptions
-from natural_pdf.ocr.unified_dispatch import OCRRunResult
+from natural_pdf.ocr.unified_dispatch import (
+    EngineEntry,
+    OCRRunResult,
+    get_engine_cache,
+    get_registry,
+    register_engine,
+)
 from natural_pdf.services.ocr_service import OCRService
 
 # ---------------------------------------------------------------------------
@@ -65,6 +83,11 @@ class TestCacheKey:
         key2 = compute_cache_key(**{**self.BASE, "languages": ("en", "fr")})
         assert key1 != key2
 
+    def test_changes_with_language_priority(self):
+        preferred_french = compute_cache_key(**{**self.BASE, "languages": ("fr", "en")})
+        preferred_english = compute_cache_key(**{**self.BASE, "languages": ("en", "fr")})
+        assert preferred_french != preferred_english
+
     def test_changes_with_crop_bbox(self):
         key1 = compute_cache_key(**self.BASE)
         key2 = compute_cache_key(**{**self.BASE, "crop_bbox": (10, 20, 110, 120)})
@@ -94,6 +117,199 @@ class TestCacheKey:
         glm_key = compute_cache_key(**{**self.BASE, "engine_name": "glm_ocr", "layout": "rapidocr"})
         rapidocr_key = compute_cache_key(**{**self.BASE, "engine_name": "rapidocr", "layout": None})
         assert glm_key != rapidocr_key
+
+    def test_changes_with_resolved_execution_identity(self):
+        local = compute_cache_key(
+            **self.BASE,
+            execution_identity={"engine": "builtin:vlm", "client": "local"},
+        )
+        remote = compute_cache_key(
+            **self.BASE,
+            execution_identity={"engine": "builtin:vlm", "client": "remote-a"},
+        )
+        assert local != remote
+
+    def test_changes_with_render_kwargs_identity(self):
+        grayscale = compute_cache_key(
+            **self.BASE,
+            render_kwargs_cache_key=compute_render_kwargs_cache_key({"grayscale": True}),
+        )
+        color = compute_cache_key(
+            **self.BASE,
+            render_kwargs_cache_key=compute_render_kwargs_cache_key({"grayscale": False}),
+        )
+        assert grayscale != color
+
+
+def test_render_kwargs_cache_identity_is_canonical_and_strict():
+    first = compute_render_kwargs_cache_key(
+        {"quality": 90, "nested": {"flags": [True, None], "scale": 1.5}}
+    )
+    reordered = compute_render_kwargs_cache_key(
+        {"nested": {"scale": 1.5, "flags": (True, None)}, "quality": 90}
+    )
+    changed = compute_render_kwargs_cache_key(
+        {"quality": 80, "nested": {"flags": [True, None], "scale": 1.5}}
+    )
+
+    assert first == reordered
+    assert first != changed
+    assert compute_render_kwargs_cache_key({"custom": object()}) is None
+    assert compute_render_kwargs_cache_key({"custom": {1: "non-string-key"}}) is None
+
+
+def test_internal_exclusion_payload_is_fingerprinted_separately():
+    first = compute_render_kwargs_cache_key(
+        {"apply_exclusions": True, "_ocr_exclusion_bboxes": ((1, 2, 3, 4),)}
+    )
+    second = compute_render_kwargs_cache_key(
+        {"apply_exclusions": True, "_ocr_exclusion_bboxes": ((5, 6, 7, 8),)}
+    )
+    assert first == second
+
+
+def test_remote_client_requires_explicit_cache_namespace():
+    anonymous_client = SimpleNamespace()
+    assert (
+        resolve_ocr_cache_identity(
+            engine_name="vlm",
+            device="cpu",
+            model="example-model",
+            client=anonymous_client,
+        )
+        is None
+    )
+
+    namespaced_client = SimpleNamespace(natural_pdf_cache_namespace="account-a/deployment-1")
+    identity = resolve_ocr_cache_identity(
+        engine_name="vlm",
+        device="cpu",
+        model="example-model",
+        client=namespaced_client,
+    )
+    assert identity is not None
+    assert identity["client"] == "account-a/deployment-1"
+
+
+def test_custom_engine_requires_an_explicit_cache_namespace():
+    engine_name = "cache-identity-test-engine"
+    registry = get_registry()
+    previous = registry.get(engine_name)
+    try:
+        register_engine(engine_name, EngineEntry(engine_type="classic", provider=object()))
+        assert (
+            resolve_ocr_cache_identity(
+                engine_name=engine_name,
+                device="cpu",
+                model=None,
+                client=None,
+            )
+            is None
+        )
+
+        register_engine(
+            engine_name,
+            EngineEntry(
+                engine_type="classic",
+                provider=object(),
+                cache_namespace="example-plugin/v2",
+            ),
+        )
+        identity = resolve_ocr_cache_identity(
+            engine_name=engine_name,
+            device="cpu",
+            model=None,
+            client=None,
+        )
+        assert identity is not None
+        assert identity["engine"] == "example-plugin/v2"
+    finally:
+        get_engine_cache().invalidate(engine_name)
+        if previous is None:
+            registry.pop(engine_name, None)
+        else:
+            register_engine(engine_name, previous)
+
+
+def test_overriding_a_builtin_name_requires_a_new_cache_namespace():
+    engine_name = "rapidocr"
+    registry = get_registry()
+    builtin = registry[engine_name]
+    try:
+        assert (
+            resolve_ocr_cache_identity(
+                engine_name=engine_name,
+                device="cpu",
+                model=None,
+                client=None,
+            )
+            is not None
+        )
+        register_engine(engine_name, EngineEntry(engine_type="classic", provider=object()))
+        assert (
+            resolve_ocr_cache_identity(
+                engine_name=engine_name,
+                device="cpu",
+                model=None,
+                client=None,
+            )
+            is None
+        )
+    finally:
+        register_engine(engine_name, builtin)
+
+
+def test_apply_ocr_does_not_persistently_cache_anonymous_remote_client(monkeypatch, tmp_path):
+    pdf_path = tmp_path / "source.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+    previous_cache = set_default_cache(OCRCache(cache_dir=tmp_path / "ocr-cache"))
+    try:
+        service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+        page = _FakePage(pdf_path)
+        calls = []
+
+        def fake_run_ocr(**kwargs):
+            calls.append(kwargs)
+            return OCRRunResult(
+                results=[{"bbox": [0, 0, 10, 10], "text": "fresh", "confidence": 0.99}],
+                image_size=(100, 100),
+                engine_type="vlm",
+            )
+
+        monkeypatch.setattr("natural_pdf.services.ocr_service.run_ocr", fake_run_ocr)
+        client = SimpleNamespace()
+        service.apply_ocr(page, engine="vlm", model="example-model", client=client)
+        service.apply_ocr(page, engine="vlm", model="example-model", client=client)
+
+        assert len(calls) == 2
+    finally:
+        set_default_cache(previous_cache)
+
+
+def test_malformed_detection_payload_is_not_persistently_cached(monkeypatch, tmp_path):
+    pdf_path = tmp_path / "source.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+    cache = OCRCache(cache_dir=tmp_path / "ocr-cache")
+    cache.put = MagicMock(wraps=cache.put)
+    previous_cache = set_default_cache(cache)
+    try:
+        service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+        page = _FakePage(pdf_path)
+        monkeypatch.setattr(
+            "natural_pdf.services.ocr_service.run_ocr",
+            lambda **kwargs: OCRRunResult(
+                results=[{"text": "missing bbox", "confidence": 0.99}],
+                image_size=(100, 100),
+                engine_type="classic",
+            ),
+        )
+
+        service.apply_ocr(page, engine="rapidocr", detect_only=True)
+
+        cache.put.assert_not_called()
+        assert page.manager.created == []
+    finally:
+        set_default_cache(previous_cache)
 
 
 # ---------------------------------------------------------------------------
@@ -183,6 +399,50 @@ class TestOCRCache:
         assert cache.get("key") is None
         assert cache.delete("key") is False
 
+    @pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits are unavailable")
+    def test_cache_directories_and_files_are_private_under_permissive_umask(
+        self, monkeypatch, tmp_path
+    ):
+        cache_dir = tmp_path / "ocr-cache"
+        cache_dir.mkdir(mode=0o777)
+        cache_dir.chmod(0o777)
+        cache = OCRCache(cache_dir=cache_dir)
+        observed = {}
+        real_replace = Path.replace
+
+        def recording_replace(source, target):
+            observed["temp_mode"] = stat.S_IMODE(source.stat().st_mode)
+            return real_replace(source, target)
+
+        monkeypatch.setattr(Path, "replace", recording_replace)
+        previous_umask = os.umask(0)
+        try:
+            cache.put("permission-key", self._make_result(), "rapidocr", 0)
+        finally:
+            os.umask(previous_umask)
+
+        final_path = cache._key_path("permission-key")
+        assert observed["temp_mode"] == 0o600
+        assert stat.S_IMODE(cache_dir.stat().st_mode) == 0o700
+        assert stat.S_IMODE(final_path.parent.stat().st_mode) == 0o700
+        assert stat.S_IMODE(final_path.stat().st_mode) == 0o600
+
+    @pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits are unavailable")
+    def test_read_hardens_entries_written_by_older_versions(self, tmp_path):
+        cache_dir = tmp_path / "ocr-cache"
+        cache = OCRCache(cache_dir=cache_dir)
+        cache.put("legacy-key", self._make_result(), "rapidocr", 0)
+        path = cache._key_path("legacy-key")
+
+        cache_dir.chmod(0o777)
+        path.parent.chmod(0o777)
+        path.chmod(0o666)
+
+        assert cache.get("legacy-key") is not None
+        assert stat.S_IMODE(cache_dir.stat().st_mode) == 0o700
+        assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
 
 # ---------------------------------------------------------------------------
 # Service integration regression tests
@@ -197,6 +457,9 @@ class _RecordingOCRManager:
         return 0
 
     def clear_text_layer(self):
+        return (0, 0)
+
+    def remove_text_elements_in_bbox(self, bbox, *, sources=None, predicate=None):
         return (0, 0)
 
     def create_text_elements_from_ocr(
@@ -258,6 +521,72 @@ class _FakeRegion:
         return {"crop": True}
 
 
+class _CustomRenderPage(_FakePage):
+    def __init__(self, pdf_path, render_value):
+        super().__init__(pdf_path)
+        self.render_value = render_value
+
+    def _ocr_render_kwargs(self, *, apply_exclusions=True):
+        return {
+            "apply_exclusions": apply_exclusions,
+            "custom_render_value": self.render_value,
+        }
+
+
+def test_render_hook_kwargs_partition_persistent_results(monkeypatch, tmp_path):
+    pdf_path = tmp_path / "source.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+    previous_cache = set_default_cache(OCRCache(cache_dir=tmp_path / "ocr-cache"))
+    try:
+        service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+        page = _CustomRenderPage(pdf_path, "first")
+        calls = []
+
+        def fake_run_ocr(**kwargs):
+            calls.append(kwargs)
+            return OCRRunResult(
+                results=[{"bbox": [0, 0, 10, 10], "text": "result", "confidence": 0.99}],
+                image_size=(100, 100),
+            )
+
+        monkeypatch.setattr("natural_pdf.services.ocr_service.run_ocr", fake_run_ocr)
+        service.apply_ocr(page, engine="rapidocr", replace="none")
+        page.render_value = "second"
+        service.apply_ocr(page, engine="rapidocr", replace="none")
+        service.apply_ocr(page, engine="rapidocr", replace="none")
+
+        assert len(calls) == 2
+        assert calls[0]["render_kwargs"]["custom_render_value"] == "first"
+        assert calls[1]["render_kwargs"]["custom_render_value"] == "second"
+    finally:
+        set_default_cache(previous_cache)
+
+
+def test_unstable_render_hook_value_disables_persistent_cache(monkeypatch, tmp_path):
+    pdf_path = tmp_path / "source.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+    previous_cache = set_default_cache(OCRCache(cache_dir=tmp_path / "ocr-cache"))
+    try:
+        service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+        page = _CustomRenderPage(pdf_path, object())
+        calls = []
+
+        def fake_run_ocr(**kwargs):
+            calls.append(kwargs)
+            return OCRRunResult(
+                results=[{"bbox": [0, 0, 10, 10], "text": "result", "confidence": 0.99}],
+                image_size=(100, 100),
+            )
+
+        monkeypatch.setattr("natural_pdf.services.ocr_service.run_ocr", fake_run_ocr)
+        service.apply_ocr(page, engine="rapidocr", replace="none")
+        service.apply_ocr(page, engine="rapidocr", replace="none")
+
+        assert len(calls) == 2
+    finally:
+        set_default_cache(previous_cache)
+
+
 def test_region_ocr_cache_isolated_from_full_page_payload(monkeypatch, tmp_path):
     pdf_path = tmp_path / "source.pdf"
     pdf_path.write_bytes(b"%PDF-1.4\n")
@@ -290,7 +619,12 @@ def test_region_ocr_cache_isolated_from_full_page_payload(monkeypatch, tmp_path)
         service.apply_ocr(region, engine="rapidocr", languages=["en"], device="cpu")
 
         assert [call["target"] for call in calls] == [page, region]
-        assert calls[1]["render_kwargs"] == {"crop": True}
+        assert calls[1]["render_kwargs"] == {
+            "crop": True,
+            "crop_bbox": (25.0, 25.0, 75.0, 75.0),
+            "apply_exclusions": True,
+            "_ocr_exclusion_bboxes": (),
+        }
 
         region_create_call = region.manager.created[-1]
         assert region_create_call["ocr_results"][0]["text"] == "inside"
@@ -372,6 +706,63 @@ def test_invalid_cached_vlm_payload_is_evicted_and_retried(monkeypatch, tmp_path
         cache.put(
             key,
             OCRRunResult(results=[], image_size=(100, 100), engine_type="vlm"),
+            "vlm",
+            0,
+        )
+
+        service.apply_ocr(
+            page,
+            engine="vlm",
+            model="gemini-3.1-flash-lite",
+            languages=["en"],
+            device="cpu",
+        )
+
+        assert len(calls) == 1
+        assert page.manager.created[-1]["ocr_results"][0]["text"] == "fresh"
+        cached = cache.get(key)
+        assert cached is not None
+        assert cached.results[0]["text"] == "fresh"
+    finally:
+        set_default_cache(previous_cache)
+
+
+def test_malformed_multi_table_cache_entry_is_evicted_before_replacement(monkeypatch, tmp_path):
+    pdf_path = tmp_path / "source.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+
+    cache = OCRCache(cache_dir=tmp_path / "ocr-cache")
+    previous_cache = set_default_cache(cache)
+    try:
+        service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+        page = _FakePage(pdf_path)
+        calls = []
+
+        def fake_run_ocr(**kwargs):
+            calls.append(kwargs)
+            return OCRRunResult(
+                results=[{"bbox": [0, 0, 10, 10], "text": "fresh", "confidence": 0.99}],
+                image_size=(100, 100),
+                engine_type="vlm",
+            )
+
+        monkeypatch.setattr("natural_pdf.services.ocr_service.run_ocr", fake_run_ocr)
+        key = "malformed-multi-table-key"
+        monkeypatch.setattr("natural_pdf.ocr.ocr_cache.compute_cache_key", lambda **kwargs: key)
+        cache.put(
+            key,
+            OCRRunResult(
+                results=[
+                    {
+                        "bbox": [0, 0, 10, 10],
+                        "text": "valid\ttable",
+                        "source_category": "table",
+                    },
+                    {"text": "missing bbox", "source_category": "table"},
+                ],
+                image_size=(100, 100),
+                engine_type="vlm",
+            ),
             "vlm",
             0,
         )

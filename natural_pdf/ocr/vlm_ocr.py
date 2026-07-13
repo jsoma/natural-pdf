@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -1157,6 +1158,36 @@ def _run_dots_mocr(
     return _run_dots_mocr_on_image(image, model=model, client=client, max_new_tokens=max_new_tokens)
 
 
+def validate_table_ocr_results(results: Any) -> bool:
+    """Return whether every VLM table result has usable text and geometry."""
+
+    if not isinstance(results, list):
+        return False
+    for result in results:
+        if not isinstance(result, dict):
+            return False
+        if str(result.get("source_category", "")).lower() != "table":
+            continue
+        bbox = result.get("bbox")
+        text = result.get("text")
+        if (
+            not isinstance(bbox, (list, tuple))
+            or len(bbox) != 4
+            or not all(
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and math.isfinite(float(value))
+                for value in bbox
+            )
+            or float(bbox[2]) <= float(bbox[0])
+            or float(bbox[3]) <= float(bbox[1])
+            or not isinstance(text, str)
+            or not text.strip()
+        ):
+            return False
+    return True
+
+
 def create_table_regions_from_ocr(
     page: Any,
     results: List[Dict[str, Any]],
@@ -1183,22 +1214,40 @@ def create_table_regions_from_ocr(
     non_table = []
     regions = []
 
+    # Validate and construct every result before registering the first Region.
+    # A malformed later table must not leave earlier tables partially attached
+    # to the page (or fail only after replacement text has been removed).
+    if not validate_table_ocr_results(results):
+        raise ValueError("VLM table OCR requires non-empty text values and valid bboxes")
+
     for r in results:
         cat = str(r.get("source_category", "")).lower()
         if cat == "table":
             bbox = r["bbox"]
+            text = r["text"]
             region = Region(page, (bbox[0], bbox[1], bbox[2], bbox[3]))
             region.region_type = "table"
             region.source = source_label
-            region.alt_text = r["text"]  # TSV content
+            region.alt_text = text  # TSV content
             raw_html = r.get("raw_html")
             if raw_html:
                 region.metadata["raw_html"] = raw_html
-            # Register on the page so extract_text() and selectors can find it
-            page.add_region(region, source=source_label)
             regions.append(region)
         else:
             non_table.append(r)
+
+    registered = []
+    try:
+        for region in regions:
+            # Register on the page so extract_text() and selectors can find it.
+            page.add_region(region, source=source_label)
+            registered.append(region)
+    except Exception:
+        remover = getattr(page, "remove_regions", None)
+        if callable(remover) and registered:
+            registered_ids = {id(region) for region in registered}
+            remover(predicate=lambda candidate: id(candidate) in registered_ids)
+        raise
 
     return non_table, regions
 

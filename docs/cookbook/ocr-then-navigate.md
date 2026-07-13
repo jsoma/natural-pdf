@@ -39,7 +39,39 @@ text = page.extract_text()
 print(text[:200])
 ```
 
+`apply_ocr` has three modes. Recognition is the default; pass
+`detect_only=True` to refresh detection geometry while preserving both native
+PDF text and previously recognized OCR text; or pass `function=` with a custom
+callable that receives each physical region. The callable spelling is
+canonical—`ocr_function=` was removed. The only positional engine argument is
+`engine`; all other options are keyword-only.
+
 **Default engine:** RapidOCR (works well for most documents)
+
+### Choose what OCR replaces
+
+OCR replacement is explicit and geometry-scoped. The default, `replace="ocr"`,
+removes earlier OCR-generated content inside the Page or Region being processed
+while preserving native PDF text and content elsewhere on the page.
+
+```python
+# Replace earlier OCR in this region; preserve native text (default)
+region.apply_ocr(replace="ocr")
+
+# Replace native and OCR text in this region
+region.apply_ocr(replace="all")
+
+# Keep existing text and append another OCR result
+region.apply_ocr(replace="none")
+```
+
+Boolean `replace` values are not accepted. Detection-only OCR has its own
+scoped refresh policy: it preserves native and recognized text, replaces prior
+detection-only artifacts in the same scope, and rejects `replace="all"` or
+`replace="none"`.
+
+OCR methods return their receiving object, so `page.apply_ocr(...).find(...)`
+and equivalent Region/Flow/collection chains are supported.
 
 ## Step 2: Navigate Like Normal
 
@@ -141,7 +173,9 @@ page.find_all('text').show()
 
 ### Try a Different Engine or Resolution
 
-If results don't look right, try increasing resolution or switching engines. Re-applying OCR removes previous results automatically:
+If results don't look right, try increasing resolution or switching engines.
+Re-applying OCR uses `replace="ocr"` by default, so it removes prior OCR results
+without deleting native PDF text:
 
 ```python
 page.apply_ocr(engine="rapidocr")

@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import math
 import os
 import time
 from pathlib import Path
@@ -19,7 +20,143 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-_CACHE_VERSION = 1
+_CACHE_VERSION = 2
+_UNSTABLE = object()
+_DUPLICATED_RENDER_KEYS = frozenset({"_ocr_exclusion_bboxes"})
+
+
+def _stable_json_value(value: Any) -> Any:
+    """Return a canonical JSON-like value, or ``_UNSTABLE`` if unsafe."""
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else _UNSTABLE
+    if isinstance(value, (list, tuple)):
+        items = []
+        for item in value:
+            normalized = _stable_json_value(item)
+            if normalized is _UNSTABLE:
+                return _UNSTABLE
+            items.append(normalized)
+        return items
+    if isinstance(value, dict):
+        if not all(isinstance(key, str) for key in value):
+            return _UNSTABLE
+        normalized_dict: Dict[str, Any] = {}
+        for key in sorted(value):
+            normalized = _stable_json_value(value[key])
+            if normalized is _UNSTABLE:
+                return _UNSTABLE
+            normalized_dict[key] = normalized
+        return normalized_dict
+    return _UNSTABLE
+
+
+def compute_render_kwargs_cache_key(render_kwargs: Dict[str, Any]) -> Optional[str]:
+    """Hash all stably representable render inputs used for OCR rasterization.
+
+    Internal exclusion boxes are keyed separately by their normalized geometry.
+    Any other non-JSON-like custom value disables persistent result caching so
+    cache correctness never depends on an unstable object representation.
+    """
+    filtered = {
+        key: value for key, value in render_kwargs.items() if key not in _DUPLICATED_RENDER_KEYS
+    }
+    normalized = _stable_json_value(filtered)
+    if normalized is _UNSTABLE:
+        return None
+    payload = json.dumps(normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _client_cache_namespace(client: Any) -> Optional[str]:
+    """Return an explicitly supplied, non-secret identity for a VLM client.
+
+    Remote clients can target different deployments even when their Python type
+    and requested model name match.  Never derive an identity from ``repr()``,
+    URLs, or client attributes: those are often unstable and can contain API
+    credentials.  A client that wants persistent OCR-result caching must opt in
+    by exposing a non-empty ``natural_pdf_cache_namespace`` string.
+    """
+    namespace = getattr(client, "natural_pdf_cache_namespace", None)
+    return namespace.strip() if isinstance(namespace, str) and namespace.strip() else None
+
+
+def resolve_ocr_cache_identity(
+    *,
+    engine_name: str,
+    device: Optional[str],
+    model: Optional[str],
+    client: Any,
+) -> Optional[Dict[str, str]]:
+    """Resolve the result-affecting backend identity for persistent OCR cache.
+
+    ``None`` means that a safe persistent result key cannot be constructed. In
+    particular, remote/custom clients need to opt in with
+    ``natural_pdf_cache_namespace``. This deliberately favors rerunning OCR
+    over returning a result produced by another deployment or callable.
+    """
+    from natural_pdf.core.vlm_client import get_default_client
+    from natural_pdf.ocr.unified_dispatch import _is_apple_silicon, get_registry
+    from natural_pdf.utils.option_validation import resolve_auto_device
+
+    engine_key = engine_name.strip().lower()
+    entry = get_registry().get(engine_key)
+    if entry is None:
+        return None
+
+    requested_device = device or "auto"
+    effective_device = (
+        resolve_auto_device() if requested_device == "auto" else str(requested_device)
+    )
+    engine_type = entry.engine_type
+    effective_model = model
+    uses_vlm = engine_type in {"vlm_generic", "vlm_shorthand"}
+
+    if engine_type == "auto_platform":
+        if _is_apple_silicon():
+            uses_vlm = True
+            effective_model = model or (
+                entry.model_resolver() if entry.model_resolver is not None else None
+            )
+        else:
+            engine_type = "classic"
+    elif engine_type == "vlm_shorthand" and effective_model is None:
+        effective_model = entry.model_resolver() if entry.model_resolver is not None else None
+
+    # Every engine, including built-ins, carries an explicit namespace on its
+    # registration. This prevents a custom re-registration under a built-in
+    # name from inheriting the built-in's persistent result cache.
+    namespace = getattr(entry, "cache_namespace", None)
+    if not isinstance(namespace, str) or not namespace.strip():
+        return None
+    engine_identity = namespace.strip()
+
+    identity = {
+        "engine": engine_identity,
+        "engine_type": engine_type,
+        "device": effective_device,
+        "model": effective_model or "",
+    }
+
+    if not uses_vlm:
+        return identity
+
+    default_client, default_model = get_default_client()
+    effective_client = client if client is not None else default_client
+    if effective_model is None:
+        effective_model = default_model
+        identity["model"] = effective_model or ""
+
+    if effective_client is None:
+        identity["client"] = "local"
+        return identity
+
+    client_namespace = _client_cache_namespace(effective_client)
+    if client_namespace is None:
+        return None
+    identity["client"] = client_namespace
+    return identity
 
 
 def _default_cache_dir() -> Path:
@@ -53,6 +190,9 @@ def compute_cache_key(
     layout: Optional[bool | str] = None,
     preserve_markup: bool = False,
     crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+    exclusion_geometry_key: str = "",
+    render_kwargs_cache_key: str = "",
+    execution_identity: Optional[Dict[str, str]] = None,
 ) -> str:
     """Return a SHA-256 hex digest for the given OCR parameters."""
     crop_key = ""
@@ -60,29 +200,33 @@ def compute_cache_key(
         crop_key = ",".join(f"{float(coord):.6f}" for coord in crop_bbox)
     options_key = options_cache_key if options_cache_key is not None else options_init_key
 
-    raw = "|".join(
-        str(v)
-        for v in (
-            pdf_path,
-            file_mtime_ns,
-            file_size,
-            page_index,
-            crop_key,
-            engine_name,
-            ",".join(languages),
-            resolution,
-            detect_only,
-            device,
-            min_confidence if min_confidence is not None else "",
-            options_key,
-            apply_exclusions,
-            model or "",
-            prompt or "",
-            instructions or "",
-            max_new_tokens or "",
-            layout if layout is not None else "",
-            preserve_markup,
-        )
+    raw = json.dumps(
+        {
+            "pdf_path": pdf_path,
+            "file_mtime_ns": file_mtime_ns,
+            "file_size": file_size,
+            "page_index": page_index,
+            "crop": crop_key,
+            "engine": engine_name,
+            "languages": list(languages),
+            "resolution": resolution,
+            "detect_only": detect_only,
+            "device": device,
+            "min_confidence": min_confidence,
+            "options": options_key,
+            "apply_exclusions": apply_exclusions,
+            "model": model,
+            "prompt": prompt,
+            "instructions": instructions,
+            "max_new_tokens": max_new_tokens,
+            "layout": layout,
+            "preserve_markup": preserve_markup,
+            "exclusion_geometry": exclusion_geometry_key,
+            "render_kwargs": render_kwargs_cache_key,
+            "execution_identity": execution_identity or {},
+        },
+        sort_keys=True,
+        separators=(",", ":"),
     )
     return hashlib.sha256(raw.encode()).hexdigest()
 
@@ -120,6 +264,12 @@ class OCRCache:
         if not path.exists():
             return None
         try:
+            # Migrate entries written by older versions before reading them.
+            # Cache data is disposable, so fail closed if its permissions
+            # cannot be tightened.
+            self._ensure_private_directory(self._dir)
+            self._ensure_private_directory(path.parent)
+            path.chmod(0o600)
             data = json.loads(path.read_text(encoding="utf-8"))
             if data.get("version") != _CACHE_VERSION:
                 path.unlink(missing_ok=True)
@@ -157,8 +307,10 @@ class OCRCache:
     ) -> None:
         """Write an ``OCRRunResult`` to the cache."""
         path = self._key_path(cache_key)
+        tmp = path.with_suffix(".tmp")
         try:
-            path.parent.mkdir(parents=True, exist_ok=True)
+            self._ensure_private_directory(self._dir)
+            self._ensure_private_directory(path.parent)
             data = {
                 "version": _CACHE_VERSION,
                 "created_at": time.time(),
@@ -168,11 +320,15 @@ class OCRCache:
                 "engine_type": getattr(result, "engine_type", "classic"),
                 "results": _serializable_results(result.results),
             }
-            tmp = path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(data), encoding="utf-8")
+            self._write_private_json(tmp, data)
             tmp.replace(path)  # atomic on same filesystem
+            path.chmod(0o600)
         except Exception:
             logger.debug("OCR cache write failed for %s", cache_key, exc_info=True)
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
 
         # Lazy cleanup — once per process
         self._maybe_cleanup()
@@ -203,6 +359,27 @@ class OCRCache:
 
     def _key_path(self, cache_key: str) -> Path:
         return self._dir / cache_key[:2] / f"{cache_key}.json"
+
+    @staticmethod
+    def _ensure_private_directory(path: Path) -> None:
+        path.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path.chmod(0o700)
+
+    @staticmethod
+    def _write_private_json(path: Path, data: Dict[str, Any]) -> None:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+        if hasattr(os, "O_CLOEXEC"):
+            flags |= os.O_CLOEXEC
+        fd = os.open(path, flags, 0o600)
+        try:
+            if hasattr(os, "fchmod"):
+                os.fchmod(fd, 0o600)
+            handle = os.fdopen(fd, "w", encoding="utf-8")
+        except Exception:
+            os.close(fd)
+            raise
+        with handle:
+            json.dump(data, handle, separators=(",", ":"))
 
     _cleaned_dirs: set = set()
 

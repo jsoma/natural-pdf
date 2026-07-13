@@ -90,14 +90,10 @@ class WordEngine:
         if not self._load_text or not prepared_char_dicts:
             return []
 
-        char_to_index = {
-            (
-                char_dict.get("x0", 0),
-                char_dict.get("top", 0),
-                char_dict.get("text", ""),
-            ): idx
-            for idx, char_dict in enumerate(prepared_char_dicts)
-        }
+        # ``WordExtractor`` returns the same backing dictionaries it receives.
+        # Geometry/text tuples are not unique: PDFs can contain coincident
+        # duplicate glyphs (for visual weight, overlays, or malformed content).
+        char_to_index = {id(char_dict): idx for idx, char_dict in enumerate(prepared_char_dicts)}
 
         xt = options.x_tolerance
         yt = options.y_tolerance
@@ -181,13 +177,9 @@ class WordEngine:
             for word_dict, char_list in word_tuples:
                 char_indices: List[int] = []
                 for char_dict in char_list:
-                    key = (
-                        char_dict.get("x0", 0),
-                        char_dict.get("top", 0),
-                        char_dict.get("text", ""),
-                    )
-                    if key in char_to_index:
-                        char_indices.append(char_to_index[key])
+                    char_index = char_to_index.get(id(char_dict))
+                    if char_index is not None:
+                        char_indices.append(char_index)
                 word_dict["_char_indices"] = char_indices
                 word_dict["_char_dicts"] = char_list
 

@@ -23,6 +23,7 @@ def register_ocr_engine(
     model_resolver: Optional[Callable[[], str]] = None,
     vlm_family: Optional[str] = None,
     needs_gpu_lock: bool = True,
+    cache_namespace: Optional[str] = None,
     replace: bool = True,
     metadata: Optional[dict[str, Any]] = None,
 ) -> None:
@@ -31,6 +32,13 @@ def register_ocr_engine(
     Classic engines provide a factory that returns an object with
     ``process_image(...)``. VLM engines register a shorthand that resolves to an
     existing VLM OCR family/parser.
+
+    Persistent OCR result caching is disabled for custom engines unless
+    ``cache_namespace`` is a non-empty, stable, non-secret identifier for the
+    implementation and configuration (for example ``"acme-ocr:v2"``). Change
+    the namespace whenever behavior that can affect OCR output changes. The
+    namespace is hashed into cache keys and is never inferred from callable
+    representations or object identities.
     """
 
     normalized_name = name.strip().lower()
@@ -50,6 +58,7 @@ def register_ocr_engine(
             options_class=options_class,
             needs_gpu_lock=needs_gpu_lock,
             install_hint=install_hint,
+            cache_namespace=cache_namespace,
         )
         register_unified_engine(normalized_name, entry)
 
@@ -57,6 +66,8 @@ def register_ocr_engine(
         if install_hint:
             provider_metadata.setdefault("install_hint", install_hint)
         provider_metadata.setdefault("kind", "classic")
+        if cache_namespace:
+            provider_metadata.setdefault("cache_namespace", cache_namespace)
         for capability in ("ocr", "ocr.apply", "ocr.extract"):
             register_engine(
                 capability,
@@ -81,6 +92,7 @@ def register_ocr_engine(
             vlm_family=vlm_family,
             needs_gpu_lock=needs_gpu_lock,
             install_hint=install_hint,
+            cache_namespace=cache_namespace,
         )
         register_unified_engine(normalized_name, entry)
 

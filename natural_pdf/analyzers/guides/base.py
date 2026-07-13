@@ -2,7 +2,6 @@
 
 import logging
 from collections import UserList
-from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -48,7 +47,6 @@ from ._generation import (
 from ._grid_builder import build_single_page_grid
 from ._grid_types import GridBuildCounts
 from ._table_extract import extract_table_from_guides
-from ._targets import resolve_page_for_materialization
 from .flow_adapter import FlowGuideAdapter
 from .grid_helpers import collect_constituent_pages, register_regions_with_pages
 from .helpers import (
@@ -84,6 +82,13 @@ from .text_detect import (
 )
 
 if TYPE_CHECKING:
+    from natural_pdf.analyzers.guides.ocr import (
+        GuideCells,
+        GuideColumns,
+        GuideOCRPlan,
+        GuideOCRResult,
+        GuideRows,
+    )
     from natural_pdf.core.page import Page
     from natural_pdf.core.page_collection import PageCollection
     from natural_pdf.elements.base import Element
@@ -97,436 +102,6 @@ Bounds = Tuple[float, float, float, float]
 OuterBoundaryMode = Union[bool, Literal["first", "last"]]
 BoolArray = NDArray[np.bool_]
 IntArray = NDArray[np.int_]
-
-_OCR_WINDOW_DEBUG_COLORS: Tuple[Tuple[int, int, int, int], ...] = (
-    (37, 99, 235, 34),  # blue
-    (22, 163, 74, 34),  # green
-    (124, 58, 237, 34),  # purple
-    (8, 145, 178, 34),  # cyan
-    (202, 138, 4, 34),  # amber
-    (15, 118, 110, 34),  # teal
-    (79, 70, 229, 34),  # indigo
-    (101, 163, 13, 34),  # lime
-)
-
-
-@dataclass
-class GuidesOcrResult:
-    """Debug/result information for :meth:`Guides.apply_ocr`."""
-
-    guides: Any = field(repr=False)
-    resolution: int
-    window: Union[str, Tuple[int, int], List[int]]
-    windows: List[Dict[str, Any]]
-    max_side_px: int
-    max_area_px: int
-    target_cell_px: int
-    representative_percentile: float
-    min_confidence: Optional[float]
-    ran: bool
-    counts: List[Optional[int]] = field(default_factory=list)
-    target: Any = field(default=None, repr=False)
-
-    def __len__(self) -> int:
-        return len(self.windows)
-
-    @property
-    def total_created(self) -> Optional[int]:
-        known_counts = [count for count in self.counts if count is not None]
-        if not known_counts:
-            return None
-        return int(sum(known_counts))
-
-    def summary(self) -> Dict[str, Any]:
-        """Return a compact summary useful for notebooks/logging."""
-
-        return {
-            "ran": self.ran,
-            "resolution": self.resolution,
-            "window": self.window,
-            "window_count": len(self.windows),
-            "max_side_px": self.max_side_px,
-            "max_area_px": self.max_area_px,
-            "target_cell_px": self.target_cell_px,
-            "representative_percentile": self.representative_percentile,
-            "min_confidence": self.min_confidence,
-            "total_created": self.total_created,
-        }
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Return the full OCR plan/result as plain data."""
-
-        data = self.summary()
-        data["windows"] = list(self.windows)
-        if self.counts:
-            data["counts"] = list(self.counts)
-        return data
-
-    def extract_table(self, *args: Any, **kwargs: Any) -> TableResult:
-        """Extract from the Guides instance that produced this OCR result."""
-
-        return self.guides.extract_table(*args, **kwargs)
-
-    @staticmethod
-    def _as_list(value: Any) -> List[Any]:
-        if value is None:
-            return []
-        if hasattr(value, "elements"):
-            return list(value.elements)
-        if isinstance(value, list):
-            return value
-        try:
-            return list(value)
-        except TypeError:
-            return [value]
-
-    @staticmethod
-    def _bbox_center_in(
-        bbox: Bounds,
-        window_bbox: Bounds,
-        *,
-        tolerance: float = 0.25,
-    ) -> bool:
-        x0, top, x1, bottom = bbox
-        wx0, wtop, wx1, wbottom = window_bbox
-        cx = (x0 + x1) / 2.0
-        cy = (top + bottom) / 2.0
-        return (
-            wx0 - tolerance <= cx <= wx1 + tolerance
-            and wtop - tolerance <= cy <= wbottom + tolerance
-        )
-
-    @staticmethod
-    def _bbox_intersects(
-        bbox: Bounds,
-        window_bbox: Bounds,
-        *,
-        tolerance: float = 0.25,
-    ) -> bool:
-        x0, top, x1, bottom = bbox
-        wx0, wtop, wx1, wbottom = window_bbox
-        return not (
-            x1 < wx0 - tolerance
-            or x0 > wx1 + tolerance
-            or bottom < wtop - tolerance
-            or top > wbottom + tolerance
-        )
-
-    @staticmethod
-    def _padded_bbox(
-        bbox: Bounds,
-        *,
-        padding: float,
-        source: Any,
-    ) -> Bounds:
-        x0, top, x1, bottom = bbox
-        page = getattr(source, "page", None) or source
-        width = getattr(page, "width", None)
-        height = getattr(page, "height", None)
-        padded = (
-            x0 - padding,
-            top - padding,
-            x1 + padding,
-            bottom + padding,
-        )
-        if isinstance(width, (int, float)) and isinstance(height, (int, float)):
-            return (
-                max(0.0, padded[0]),
-                max(0.0, padded[1]),
-                min(float(width), padded[2]),
-                min(float(height), padded[3]),
-            )
-        return padded
-
-    @staticmethod
-    def _combine_images(
-        images: Sequence[Any],
-        *,
-        layout: Literal["grid", "stack"] = "grid",
-        columns: int = 2,
-        gap: int = 8,
-    ) -> Any:
-        valid_images = [image for image in images if image is not None]
-        if not valid_images:
-            return None
-        if len(valid_images) == 1:
-            return valid_images[0]
-
-        columns = max(1, int(columns or 1))
-        if layout == "stack":
-            columns = 1
-
-        rows = (len(valid_images) + columns - 1) // columns
-        cell_width = max(image.width for image in valid_images)
-        cell_height = max(image.height for image in valid_images)
-        out_width = columns * cell_width + gap * (columns - 1)
-        out_height = rows * cell_height + gap * (rows - 1)
-        combined = Image.new("RGB", (out_width, out_height), "white")
-
-        for idx, image in enumerate(valid_images):
-            row, col = divmod(idx, columns)
-            x = col * (cell_width + gap)
-            y = row * (cell_height + gap)
-            if image.mode not in ("RGB", "RGBA"):
-                image = image.convert("RGB")
-            combined.paste(image, (x, y))
-        return combined
-
-    def _show_source(self) -> Any:
-        if self.target is not None and hasattr(self.target, "show"):
-            return self.target
-        if self.target is not None:
-            try:
-                return resolve_page_for_materialization(self.target)
-            except Exception:
-                pass
-        context = getattr(self.guides, "context", None)
-        if context is not None and hasattr(context, "show"):
-            return context
-        if context is not None:
-            try:
-                return resolve_page_for_materialization(context)
-            except Exception:
-                pass
-        raise ValueError("Cannot show GuidesOcrResult without a visualizable OCR target.")
-
-    @staticmethod
-    def _window_color(
-        idx: int,
-        *,
-        window_color: Optional[Any],
-        window_colors: Optional[Sequence[Any]],
-    ) -> Any:
-        if window_color is not None:
-            return window_color
-        palette = window_colors or _OCR_WINDOW_DEBUG_COLORS
-        if isinstance(palette, (str, bytes)):
-            return palette
-        if not palette:
-            return "#2563eb"
-        return palette[idx % len(palette)]
-
-    @staticmethod
-    def _render_source(source: Any, **kwargs: Any) -> Any:
-        renderer = getattr(source, "render", None)
-        if callable(renderer):
-            return renderer(**kwargs)
-        return source.show(**kwargs)
-
-    def ocr_elements(self) -> List[Any]:
-        """Return OCR text elements currently visible to the OCR target."""
-
-        candidates: List[Any] = []
-        if self.target is not None:
-            candidates.append(self.target)
-            page = getattr(self.target, "page", None) or getattr(self.target, "_page", None)
-            if page is not None:
-                candidates.append(page)
-        context = getattr(self.guides, "context", None)
-        if context is not None:
-            candidates.append(context)
-
-        seen: set[int] = set()
-        for candidate in candidates:
-            marker = id(candidate)
-            if marker in seen:
-                continue
-            seen.add(marker)
-
-            finder = getattr(candidate, "find_all", None)
-            if not callable(finder):
-                continue
-            try:
-                return self._as_list(finder("text[source=ocr]", apply_exclusions=False))
-            except Exception:
-                continue
-        return []
-
-    def window_text_elements(
-        self,
-        *,
-        overlap: Literal["center", "partial"] = "center",
-        tolerance: float = 0.25,
-    ) -> List[List[Any]]:
-        """Bucket OCR text elements by the OCR window that contains them."""
-
-        buckets: List[List[Any]] = [[] for _ in self.windows]
-        elements = self.ocr_elements()
-        for element in elements:
-            bbox = _bounds_from_object(element)
-            if bbox is None:
-                continue
-            for idx, planned in enumerate(self.windows):
-                window_bbox = _bounds_from_object(planned.get("bbox"))
-                if window_bbox is None:
-                    continue
-                if overlap == "partial":
-                    matches = self._bbox_intersects(bbox, window_bbox, tolerance=tolerance)
-                else:
-                    matches = self._bbox_center_in(bbox, window_bbox, tolerance=tolerance)
-                if matches:
-                    buckets[idx].append(element)
-                    break
-        return buckets
-
-    @staticmethod
-    def _text_attrs(element: Any) -> Dict[str, Any]:
-        attrs: Dict[str, Any] = {}
-        for name in ("text", "text_content"):
-            value = getattr(element, name, None)
-            if value:
-                attrs["text"] = value
-                break
-        confidence = getattr(element, "confidence", None)
-        if confidence is not None:
-            attrs["confidence"] = confidence
-        return attrs
-
-    def _window_highlights(
-        self,
-        window_indices: Sequence[int],
-        buckets: Sequence[Sequence[Any]],
-        *,
-        include_windows: bool,
-        include_text: bool,
-        window_color: Optional[Any],
-        window_colors: Optional[Sequence[Any]],
-        text_color: Any,
-        empty_window_color: Optional[Any],
-        window_line_width: float,
-        window_fill: bool,
-        annotate_text: bool,
-    ) -> List[Dict[str, Any]]:
-        highlights: List[Dict[str, Any]] = []
-        for idx in window_indices:
-            planned = self.windows[idx]
-            window_bbox = _bounds_from_object(planned.get("bbox"))
-            if window_bbox is None:
-                continue
-            texts = list(buckets[idx])
-            if include_windows:
-                color = self._window_color(
-                    idx,
-                    window_color=window_color,
-                    window_colors=window_colors,
-                )
-                highlights.append(
-                    {
-                        "bbox": window_bbox,
-                        "color": (
-                            color if texts or empty_window_color is None else empty_window_color
-                        ),
-                        "label": f"window {idx + 1}",
-                        "fill": window_fill,
-                        "line_width": window_line_width,
-                        "vertices": False,
-                    }
-                )
-            if include_text:
-                for element in texts:
-                    entry: Dict[str, Any] = {
-                        "element": element,
-                        "color": text_color,
-                        "label": f"window {idx + 1} OCR",
-                    }
-                    if annotate_text:
-                        attrs = self._text_attrs(element)
-                        if attrs:
-                            entry["attributes_to_draw"] = attrs
-                    highlights.append(entry)
-        return highlights
-
-    def show(
-        self,
-        *,
-        window: Optional[Union[int, Sequence[int]]] = None,
-        per_window: bool = False,
-        overlap: Literal["center", "partial"] = "center",
-        include_windows: bool = True,
-        include_text: bool = True,
-        window_color: Optional[Any] = None,
-        window_colors: Optional[Sequence[Any]] = None,
-        window_line_width: float = 2.0,
-        window_fill: bool = True,
-        text_color: Any = "red",
-        empty_window_color: Optional[Any] = None,
-        annotate_text: bool = False,
-        crop_padding: float = 4.0,
-        layout: Literal["grid", "stack"] = "grid",
-        columns: int = 2,
-        gap: int = 8,
-        labels: bool = True,
-        **kwargs: Any,
-    ) -> Any:
-        """Show OCR windows and the OCR text boxes assigned to each window.
-
-        By default this renders all windows and OCR boxes together on the
-        source page/region. Pass ``per_window=True`` to render one cropped
-        panel per OCR window for closer inspection. ``window`` is zero-based
-        and can be an int or a sequence of ints. Window boxes are lightly
-        shaded, thick outlines; OCR text boxes are red.
-        """
-
-        source = self._show_source()
-        if window is None:
-            window_indices = list(range(len(self.windows)))
-        elif isinstance(window, int):
-            window_indices = [window]
-        else:
-            window_indices = list(window)
-
-        for idx in window_indices:
-            if idx < 0 or idx >= len(self.windows):
-                raise IndexError(f"window index {idx} out of range for {len(self.windows)} windows")
-
-        buckets = self.window_text_elements(overlap=overlap)
-
-        if not per_window:
-            highlights = self._window_highlights(
-                window_indices,
-                buckets,
-                include_windows=include_windows,
-                include_text=include_text,
-                window_color=window_color,
-                window_colors=window_colors,
-                text_color=text_color,
-                empty_window_color=empty_window_color,
-                window_line_width=window_line_width,
-                window_fill=window_fill,
-                annotate_text=annotate_text,
-            )
-            return self._render_source(source, highlights=highlights, labels=labels, **kwargs)
-
-        images = []
-        for idx in window_indices:
-            window_bbox = _bounds_from_object(self.windows[idx].get("bbox"))
-            if window_bbox is None:
-                continue
-            highlights = self._window_highlights(
-                [idx],
-                buckets,
-                include_windows=include_windows,
-                include_text=include_text,
-                window_color=window_color,
-                window_colors=window_colors,
-                text_color=text_color,
-                empty_window_color=empty_window_color,
-                window_line_width=window_line_width,
-                window_fill=window_fill,
-                annotate_text=annotate_text,
-            )
-            crop_bbox = self._padded_bbox(window_bbox, padding=crop_padding, source=source)
-            images.append(
-                self._render_source(
-                    source,
-                    highlights=highlights,
-                    labels=labels,
-                    crop_bbox=crop_bbox,
-                    **kwargs,
-                )
-            )
-
-        return self._combine_images(images, layout=layout, columns=columns, gap=gap)
 
 
 class GuidesList(UserList[float]):
@@ -1270,8 +845,8 @@ class Guides:
         self.on_no_snap = snap_behavior
         self._ocr_applied = False
         self._ocr_prefer_words = False
-        self._last_ocr_plan: Optional[Dict[str, Any]] = None
-        self._last_ocr_result: Optional[GuidesOcrResult] = None
+        self._last_ocr_plan: Optional[GuideOCRPlan] = None
+        self._last_ocr_result: Optional[GuideOCRResult] = None
 
         # Check if we're dealing with a FlowRegion
         self.is_flow_region = _is_flow_region(context_obj)
@@ -1576,8 +1151,8 @@ class Guides:
             return [markers]
 
     @property
-    def last_ocr_result(self) -> Optional[GuidesOcrResult]:
-        """Most recent result/plan returned by :meth:`apply_ocr`, if any."""
+    def last_ocr_result(self) -> Optional["GuideOCRResult"]:
+        """Most recent successful OCR result from one of this guide's views."""
 
         return self._last_ocr_result
 
@@ -1897,21 +1472,6 @@ class Guides:
         )
 
     @staticmethod
-    def _create_ocr_window_region(target_obj: GuidesContext, bbox: Bounds) -> "Region":
-        """Create a page-backed Region for an OCR window without registering it."""
-
-        x0, top, x1, bottom = bbox
-        if isinstance(target_obj, Region):
-            return target_obj.create_region(x0, top, x1, bottom, relative=False)
-
-        creator = getattr(target_obj, "create_region", None)
-        if callable(creator):
-            return creator(x0, top, x1, bottom)
-
-        page = resolve_page_for_materialization(target_obj)
-        return page.create_region(x0, top, x1, bottom)
-
-    @staticmethod
     def _annotate_ocr_windows(windows: List[Dict[str, Any]], *, resolution: int) -> None:
         """Add rendered pixel dimensions to planned OCR windows in-place."""
 
@@ -1922,189 +1482,6 @@ class Guides:
             height_px = int(round((float(bottom) - float(top)) * scale))
             planned["image_size"] = (width_px, height_px)
             planned["area_px"] = width_px * height_px
-
-    @staticmethod
-    def _count_ocr_elements(target_obj: GuidesContext) -> Optional[int]:
-        """Count OCR text elements on a target, when selector APIs are available."""
-
-        candidates: List[Any] = [target_obj]
-        page = getattr(target_obj, "page", None) or getattr(target_obj, "_page", None)
-        if page is not None:
-            candidates.append(page)
-
-        for candidate in candidates:
-            finder = getattr(candidate, "find_all", None)
-            if not callable(finder):
-                continue
-            try:
-                return len(finder("text[source=ocr]", apply_exclusions=False))
-            except Exception:
-                continue
-        return None
-
-    def apply_ocr(
-        self,
-        target: Optional[GuidesContext] = None,
-        *,
-        engine: Optional[str] = None,
-        options: Optional[Any] = None,
-        languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
-        device: Optional[str] = None,
-        resolution: Optional[int] = None,
-        window: Union[str, Tuple[int, int], List[int]] = "auto",
-        replace: Union[bool, str] = "ocr",
-        include_outer_boundaries: bool = False,
-        target_cell_px: int = 40,
-        representative_percentile: float = 25.0,
-        min_resolution: int = 150,
-        max_resolution: int = 400,
-        max_side_px: Optional[int] = None,
-        max_area_px: Optional[int] = None,
-        vertical_ratio: float = 2.0,
-        mixed_cell_threshold: float = 0.5,
-        large_cell_ratio: float = 2.0,
-        detect_only: bool = False,
-        apply_exclusions: bool = True,
-        prefer_words: bool = True,
-        show_progress: bool = True,
-        dry_run: bool = False,
-        **kwargs,
-    ) -> GuidesOcrResult:
-        """Apply OCR to cell-aligned guide windows and add text to the page.
-
-        This is a guide-scoped OCR pre-pass for tables whose full-page or
-        full-table OCR is too large/dense for the OCR engine.  The default
-        ``window="auto"`` chooses non-overlapping rectangular groups of whole
-        cells, estimates DPI from the trimmed 25th percentile of
-        ``min(cell_width, cell_height)``, and keeps rendered crops under a
-        conservative engine budget.
-
-        Returns a :class:`GuidesOcrResult` containing the planned windows and
-        OCR settings.  After a non-dry run, ``extract_table()`` on either the
-        result or the same Guides instance will prefer word-based cell
-        assignment unless the caller explicitly passes ``cell_extract`` /
-        ``cell_overlap``.
-        """
-
-        target_obj = target if target is not None else self.context
-        if target_obj is None:
-            raise ValueError(
-                "No target object available. Provide target or initialize Guides with a context."
-            )
-        if _is_flow_region(target_obj):
-            raise ValueError(
-                "guides.apply_ocr() currently supports single-page Page/Region targets only."
-            )
-
-        verticals, horizontals = self._ocr_boundaries(
-            target_obj,
-            include_outer_boundaries=include_outer_boundaries,
-        )
-        resolved_resolution = self._resolve_ocr_resolution_for_guides(
-            verticals,
-            horizontals,
-            resolution=resolution,
-            target_cell_px=target_cell_px,
-            representative_percentile=representative_percentile,
-            min_resolution=min_resolution,
-            max_resolution=max_resolution,
-        )
-        budget_side, budget_area = self._ocr_window_budget(
-            engine,
-            max_side_px=max_side_px,
-            max_area_px=max_area_px,
-        )
-        from natural_pdf.ocr import resolve_ocr_min_confidence
-
-        resolved_min_confidence = resolve_ocr_min_confidence(
-            target_obj,
-            min_confidence,
-            scope="region",
-        )
-        windows = self._plan_ocr_windows(
-            verticals,
-            horizontals,
-            window=window,
-            resolution=resolved_resolution,
-            max_side_px=budget_side,
-            max_area_px=budget_area,
-            vertical_ratio=vertical_ratio,
-            mixed_cell_threshold=mixed_cell_threshold,
-            large_cell_ratio=large_cell_ratio,
-        )
-        self._annotate_ocr_windows(windows, resolution=resolved_resolution)
-
-        result = GuidesOcrResult(
-            guides=self,
-            resolution=resolved_resolution,
-            window=window,
-            windows=windows,
-            max_side_px=budget_side,
-            max_area_px=budget_area,
-            target_cell_px=target_cell_px,
-            representative_percentile=representative_percentile,
-            min_confidence=resolved_min_confidence,
-            ran=not dry_run,
-            target=target_obj,
-        )
-        self._last_ocr_result = result
-
-        if dry_run:
-            self._last_ocr_plan = result.to_dict()
-            return result
-
-        clear_target = (
-            target_obj
-            if hasattr(target_obj, "remove_ocr_elements")
-            else resolve_page_for_materialization(target_obj)
-        )
-        if replace is True or replace == "all":
-            clearer = getattr(clear_target, "clear_text_layer", None)
-            if callable(clearer):
-                clearer()
-        elif replace == "ocr":
-            remover = getattr(clear_target, "remove_ocr_elements", None)
-            if callable(remover):
-                remover()
-        elif replace is False or replace is None:
-            pass
-        else:
-            raise ValueError("replace must be True, False, 'all', or 'ocr'.")
-
-        iterator: Iterable[Dict[str, Any]] = windows
-        if show_progress and len(windows) > 1:
-            from tqdm.auto import tqdm
-
-            iterator = tqdm(windows, desc="Applying guide-window OCR", unit="window")
-
-        for planned in iterator:
-            region = self._create_ocr_window_region(target_obj, planned["bbox"])
-            before_count = self._count_ocr_elements(target_obj)
-            region.apply_ocr(
-                engine=engine,
-                options=options,
-                languages=languages,
-                min_confidence=resolved_min_confidence,
-                device=device,
-                resolution=resolved_resolution,
-                detect_only=detect_only,
-                apply_exclusions=apply_exclusions,
-                replace=False,
-                **kwargs,
-            )
-            after_count = self._count_ocr_elements(target_obj)
-            if before_count is not None and after_count is not None:
-                created_count: Optional[int] = max(0, after_count - before_count)
-            else:
-                created_count = None
-            planned["created"] = created_count
-            result.counts.append(created_count)
-
-        self._ocr_applied = True
-        self._ocr_prefer_words = bool(prefer_words)
-        self._last_ocr_plan = result.to_dict()
-        return result
 
     # -------------------------------------------------------------------------
     # Factory Methods
@@ -2631,19 +2008,25 @@ class Guides:
     # -------------------------------------------------------------------------
 
     @property
-    def columns(self):
+    def columns(self) -> "GuideColumns":
         """Access columns by index like guides.columns[0]."""
-        return _ColumnAccessor(self)
+        from .ocr import GuideColumns
+
+        return GuideColumns(self)
 
     @property
-    def rows(self):
+    def rows(self) -> "GuideRows":
         """Access rows by index like guides.rows[0]."""
-        return _RowAccessor(self)
+        from .ocr import GuideRows
+
+        return GuideRows(self)
 
     @property
-    def cells(self):
-        """Access cells by index like guides.cells[row][col] or guides.cells[row, col]."""
-        return _CellAccessor(self)
+    def cells(self) -> "GuideCells":
+        """Access cells via ``guides.cells[row][col]`` or ``guides.cells[row, col]``."""
+        from .ocr import GuideCells
+
+        return GuideCells(self)
 
     # -------------------------------------------------------------------------
     # Region extraction methods (alternative API)
@@ -4233,183 +3616,3 @@ class Guides:
             return "vertical"
         else:
             return "horizontal"
-
-
-# -------------------------------------------------------------------------
-# Accessor classes for property-based access
-# -------------------------------------------------------------------------
-
-
-class _ColumnAccessor:
-    """Provides indexed access to columns via guides.columns[index]."""
-
-    def __init__(self, guides: "Guides"):
-        self._guides = guides
-
-    def __len__(self):
-        """Return number of columns (vertical guides - 1)."""
-        return max(0, len(self._guides.vertical) - 1)
-
-    def __getitem__(self, index: Union[int, slice]) -> Union["Region", "ElementCollection"]:
-        """Get column at the specified index or slice."""
-
-        if isinstance(index, slice):
-            # Handle slice notation - return multiple columns
-            columns = []
-            num_cols = len(self)
-
-            # Convert slice to range of indices
-            start, stop, step = index.indices(num_cols)
-            for i in range(start, stop, step):
-                columns.append(self._guides.column(i))
-
-            return ElementCollection(columns)
-        else:
-            # Handle negative indexing
-            if index < 0:
-                index = len(self) + index
-            return self._guides.column(index)
-
-
-class _RowAccessor:
-    """Provides indexed access to rows via guides.rows[index]."""
-
-    def __init__(self, guides: "Guides"):
-        self._guides = guides
-
-    def __len__(self):
-        """Return number of rows (horizontal guides - 1)."""
-        return max(0, len(self._guides.horizontal) - 1)
-
-    def __getitem__(self, index: Union[int, slice]) -> Union["Region", "ElementCollection"]:
-        """Get row at the specified index or slice."""
-
-        if isinstance(index, slice):
-            # Handle slice notation - return multiple rows
-            rows = []
-            num_rows = len(self)
-
-            # Convert slice to range of indices
-            start, stop, step = index.indices(num_rows)
-            for i in range(start, stop, step):
-                rows.append(self._guides.row(i))
-
-            return ElementCollection(rows)
-        else:
-            # Handle negative indexing
-            if index < 0:
-                index = len(self) + index
-            return self._guides.row(index)
-
-
-class _CellAccessor:
-    """Provides indexed access to cells via guides.cells[row][col] or guides.cells[row, col]."""
-
-    def __init__(self, guides: "Guides"):
-        self._guides = guides
-
-    def __getitem__(self, key) -> Union["Region", "_CellRowAccessor", "ElementCollection"]:
-        """
-        Get cell(s) at the specified position.
-
-        Supports:
-        - guides.cells[row, col] - single cell
-        - guides.cells[row][col] - single cell (nested)
-        - guides.cells[row, :] - all cells in a row
-        - guides.cells[:, col] - all cells in a column
-        - guides.cells[:, :] - all cells
-        - guides.cells[row][:] - all cells in a row (nested)
-        """
-
-        if isinstance(key, tuple) and len(key) == 2:
-            row, col = key
-
-            # Handle slices for row and/or column
-            if isinstance(row, slice) or isinstance(col, slice):
-                cells = []
-                num_rows = len(self._guides.rows)
-                num_cols = len(self._guides.columns)
-
-                # Convert slices to ranges
-                if isinstance(row, slice):
-                    row_indices = range(*row.indices(num_rows))
-                else:
-                    # Single row index
-                    if row < 0:
-                        row = num_rows + row
-                    row_indices = [row]
-
-                if isinstance(col, slice):
-                    col_indices = range(*col.indices(num_cols))
-                else:
-                    # Single column index
-                    if col < 0:
-                        col = num_cols + col
-                    col_indices = [col]
-
-                # Collect all cells in the specified ranges
-                for r in row_indices:
-                    for c in col_indices:
-                        cells.append(self._guides.cell(r, c))
-
-                return ElementCollection(cells)
-            else:
-                # Both are integers - single cell access
-                # Handle negative indexing for both row and col
-                if row < 0:
-                    row = len(self._guides.rows) + row
-                if col < 0:
-                    col = len(self._guides.columns) + col
-                return self._guides.cell(row, col)
-        elif isinstance(key, slice):
-            # First level slice: guides.cells[:] - return all rows as accessors
-            # For now, let's return all cells flattened
-            cells = []
-            num_rows = len(self._guides.rows)
-            row_indices = range(*key.indices(num_rows))
-
-            for r in row_indices:
-                for c in range(len(self._guides.columns)):
-                    cells.append(self._guides.cell(r, c))
-
-            return ElementCollection(cells)
-        elif isinstance(key, int):
-            # First level of nested access: guides.cells[row]
-            # Handle negative indexing for row
-            if key < 0:
-                key = len(self._guides.rows) + key
-            # Return a row accessor that allows [col] or [:] indexing
-            return _CellRowAccessor(self._guides, key)
-        else:
-            raise TypeError(
-                f"Cell indices must be integers, slices, or tuple of two integers/slices, got {type(key)}"
-            )
-
-
-class _CellRowAccessor:
-    """Provides column access for a specific row in nested cell indexing."""
-
-    def __init__(self, guides: "Guides", row: int):
-        self._guides = guides
-        self._row = row
-
-    def __getitem__(self, col: Union[int, slice]) -> Union["Region", "ElementCollection"]:
-        """Get cell at [row][col] or all cells in row with [row][:]."""
-
-        if isinstance(col, slice):
-            # Handle slice notation - return all cells in this row
-            cells = []
-            num_cols = len(self._guides.columns)
-
-            # Convert slice to range of indices
-            start, stop, step = col.indices(num_cols)
-            for c in range(start, stop, step):
-                cells.append(self._guides.cell(self._row, c))
-
-            return ElementCollection(cells)
-        else:
-            # Handle single column index
-            # Handle negative indexing for column
-            if col < 0:
-                col = len(self._guides.columns) + col
-            return self._guides.cell(self._row, col)

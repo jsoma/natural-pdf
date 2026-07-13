@@ -46,6 +46,7 @@ dependencies = [
     "huggingface_hub",
     "platformdirs",
     "rapidfuzz>=3.14.5",
+    "typing-extensions>=4.0",
 ]
 
 [project.optional-dependencies]
@@ -150,7 +151,7 @@ local_scheme = "no-local-version"
 
 [tool.black]
 line-length = 100
-target-version = ['py37']
+target-version = ['py310']
 extend-exclude = '/(\.testenv|\.nox)/'
 
 [tool.isort]

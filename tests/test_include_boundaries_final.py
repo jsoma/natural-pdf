@@ -4,6 +4,8 @@ Final test to verify include_boundaries is working correctly.
 
 from pathlib import Path
 
+import pytest
+
 import natural_pdf as npdf
 
 
@@ -15,8 +17,7 @@ def test_include_boundaries():
     pdf_files = list(pdfs_dir.glob("*.pdf"))
 
     if not pdf_files:
-        print("No PDF files found")
-        return False
+        pytest.skip("No PDF files found")
 
     pdf = npdf.PDF(str(pdf_files[0]))
     print(f"\nTesting with: {pdf_files[0].name}")
@@ -25,8 +26,8 @@ def test_include_boundaries():
     all_text = pdf.find_all("text")
 
     if len(all_text) < 3:
-        print("Not enough text elements")
-        return False
+        pdf.close()
+        pytest.skip("Not enough text elements")
 
     # Use first few text elements
     first_text = all_text[0].extract_text().strip()[:30]
@@ -42,9 +43,8 @@ def test_include_boundaries():
         )
         sections_end = pdf.get_sections(f"text:contains({first_text})", include_boundaries="end")
 
-        if not sections_both:
-            print("No sections found")
-            return False
+        assert sections_both, "No sections found with include_boundaries='both'"
+        assert sections_none, "No sections found with include_boundaries='none'"
 
         # Get first section from each
         s_both = sections_both[0]
@@ -71,28 +71,13 @@ def test_include_boundaries():
             text_none = s_none.extract_text()
             print(f"  'none':  {first_text in text_none}")
 
-            # Key test: 'none' should NOT include the boundary text
-            if first_text not in text_none:
-                print("\n✅ SUCCESS: 'none' correctly excludes boundary text!")
-                return True
-            else:
-                print("\n❌ FAIL: 'none' still includes boundary text")
-                return False
+            # Key test: 'none' should NOT include the boundary text.
+            assert first_text not in text_none
 
-        # Also check bbox differences
-        if s_both.bbox != s_none.bbox if s_none else True:
-            print("\n✅ Bounding boxes are different!")
-            return True
-        else:
-            print("\n❌ Bounding boxes are the same")
-            return False
+        assert s_both.bbox != s_none.bbox
 
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return False
+    finally:
+        pdf.close()
 
 
 def test_occurrence_example():
@@ -150,10 +135,5 @@ def test_occurrence_example():
 
 
 if __name__ == "__main__":
-    success = test_include_boundaries()
+    test_include_boundaries()
     test_occurrence_example()
-
-    if success:
-        print("\n🎉 include_boundaries parameter is now working correctly!")
-    else:
-        print("\n⚠️  More investigation needed")

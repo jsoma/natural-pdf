@@ -12,9 +12,8 @@ class _OCRStub:
         self.extract_calls = []
         self._exclusion_regions = []
 
-    def apply_ocr(self, *args, **kwargs):
-        self.apply_calls.append((args, kwargs))
-        return self
+    def _execute_ocr_request(self, request):
+        self.apply_calls.append(request)
 
     def extract_ocr_elements(self, *args, **kwargs):
         self.extract_calls.append((args, kwargs))
@@ -36,10 +35,10 @@ def test_flow_region_apply_and_extract_ocr_delegate_to_all_regions():
     flow_region.apply_ocr(engine="easyocr", resolution=150)
     for stub in flow_region.constituent_regions:
         assert len(stub.apply_calls) == 1
-        call_kwargs = stub.apply_calls[0][1]
-        assert call_kwargs["engine"] == "easyocr"
-        assert call_kwargs["resolution"] == 150
-        assert call_kwargs["replace"] is True  # default
+        request = stub.apply_calls[0]
+        assert request.engine == "easyocr"
+        assert request.resolution == 150
+        assert request.replace == "ocr"  # strict default
 
     extracted = flow_region.extract_ocr_elements(engine="surya")
     assert len(extracted) == 2

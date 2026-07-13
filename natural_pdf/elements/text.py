@@ -2,6 +2,8 @@
 Text element classes for natural-pdf.
 """
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from pdfplumber.utils.text import chars_to_textmap
@@ -11,6 +13,27 @@ from natural_pdf.text.font_style import detect_bold_style, detect_italic_style, 
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
+
+
+_TEXT_SYNC_SUPPRESSION_DEPTH: ContextVar[int] = ContextVar(
+    "natural_pdf_text_sync_suppression_depth", default=0
+)
+
+
+@contextmanager
+def disable_text_sync():
+    """Suppress char synchronization in the current task/thread only.
+
+    This is reserved for initial word construction, where the backing character
+    layer is already authoritative.  A ContextVar avoids the process-wide class
+    monkeypatch previously used by ElementManager.
+    """
+
+    token = _TEXT_SYNC_SUPPRESSION_DEPTH.set(_TEXT_SYNC_SUPPRESSION_DEPTH.get() + 1)
+    try:
+        yield
+    finally:
+        _TEXT_SYNC_SUPPRESSION_DEPTH.reset(token)
 
 
 class TextElement(Element):
@@ -45,6 +68,10 @@ class TextElement(Element):
         self._char_dicts = obj.pop("_char_dicts", [])
         self._layout_text_cache: Optional[str] = None
         self._text_manually_set: bool = False
+        # Provenance is deliberately separate from the layout/cache flag above.
+        # Construction-time BiDi and inferred-space rewrites are not user edits
+        # and therefore must not pin native words across a regrouping reload.
+        self._text_user_edited: bool = False
 
     @property
     def chars(self):
@@ -92,64 +119,73 @@ class TextElement(Element):
 
     @text.setter
     def text(self, value: str):
-        """Set the text content and synchronise underlying char dictionaries/indices (if any)."""
-        # Update the primary text value stored on the object itself
+        """Mutate text and keep the page's canonical word/char views coherent."""
+        if not isinstance(value, str):
+            raise TypeError("TextElement.text must be assigned a string")
+
+        if value == self.text:
+            return
+
+        if _TEXT_SYNC_SUPPRESSION_DEPTH.get():
+            self._set_text_value(value)
+            return
+
+        manager = getattr(self.page, "_element_mgr", None)
+        synchronizer = getattr(manager, "update_text_element", None)
+        if callable(synchronizer) and synchronizer(self, value):
+            return
+
+        # Detached/legacy TextElements still maintain their own character data.
+        self._detach_local_text_state()
+        self._set_text_value(value, user_edit=True)
+        self._sync_local_char_dicts(value)
+
+        # A real manager returning False has authoritatively classified this
+        # element as detached, so its local edit is not a page mutation.
+        if callable(synchronizer):
+            return
+
+        from natural_pdf.services._text_state import bump_text_state
+
+        bump_text_state(self.page, elements=(self,))
+
+    def _set_text_value(self, value: str, *, user_edit: bool = False) -> None:
+        """Set only this element's cached/stored value without synchronization."""
+
         self._obj["text"] = value
         self._layout_text_cache = value
         self._text_manually_set = True
+        if user_edit:
+            self._text_user_edited = True
 
-        # --- Sync character data for both memory-efficient and legacy approaches
-        try:
-            # If using memory-efficient character indices, update the referenced chars
-            if hasattr(self, "_char_indices") and self._char_indices:
-                char_elements = self.page.get_elements_by_type("chars")
-                for idx, char_idx in enumerate(self._char_indices):
-                    if char_idx < len(char_elements) and idx < len(value):
-                        char_elements[char_idx].text = value[idx]
+    def _detach_local_text_state(self) -> None:
+        """Copy backing dictionaries before a detached local mutation."""
 
-            # Legacy _char_dicts synchronization for backward compatibility
-            elif hasattr(self, "_char_dicts") and isinstance(self._char_dicts, list):
-                if not self._char_dicts:
-                    return  # Nothing to update
+        resolved = self._resolve_char_dicts_for_textmap()
+        self._obj = self._obj.copy()
+        self._char_dicts = [char_dict.copy() for char_dict in resolved]
+        self._char_indices = []
 
-                if len(self._char_dicts) == 1:
-                    # Simple case – a single char dict represents the whole text
-                    self._char_dicts[0]["text"] = value
-                else:
-                    # Update character-by-character. If new value is shorter than
-                    # existing char dicts, truncate remaining dicts by setting
-                    # their text to empty string; if longer, extend by repeating
-                    # the last char dict geometry (best-effort fallback).
-                    for idx, char_dict in enumerate(self._char_dicts):
-                        if idx < len(value):
-                            char_dict["text"] = value[idx]
-                        else:
-                            # Clear extra characters from old text
-                            char_dict["text"] = ""
+    def _sync_local_char_dicts(self, value: str) -> None:
+        """Synchronize detached legacy char dictionaries without silent failure."""
 
-                    # If new text is longer, append additional char dicts based
-                    # on the last available geometry. This is an approximation
-                    # but ensures text length consistency for downstream joins.
-                    if len(value) > len(self._char_dicts):
-                        last_dict = self._char_dicts[-1]
-                        for extra_idx in range(len(self._char_dicts), len(value)):
-                            new_dict = last_dict.copy()
-                            new_dict["text"] = value[extra_idx]
-                            # Advance x0/x1 roughly by average char width if available
-                            char_width = last_dict.get("adv") or (
-                                last_dict.get("width", 0) / max(len(self.text), 1)
-                            )
-                            if isinstance(char_width, (int, float)) and char_width > 0:
-                                shift = char_width * (extra_idx - len(self._char_dicts) + 1)
-                                new_dict["x0"] = last_dict.get("x0", 0) + shift
-                                new_dict["x1"] = last_dict.get("x1", 0) + shift
-                            self._char_dicts.append(new_dict)
-        except Exception as sync_err:  # pragma: no cover
-            # Keep failures silent but logged; better to have outdated chars than crash.
-            import logging
+        original = [item for item in self._char_dicts if isinstance(item, dict)]
+        if not original and not value:
+            self._char_dicts = []
+            self._char_indices = []
+            return
 
-            logger = logging.getLogger(__name__)
-            logger.debug(f"TextElement: Failed to sync char data after text update: {sync_err}")
+        template = original[-1].copy() if original else self._obj.copy()
+        template["object_type"] = "char"
+        updated: List[Dict[str, Any]] = []
+        for index, char in enumerate(value):
+            char_dict = original[index].copy() if index < len(original) else template.copy()
+            char_dict["text"] = char
+            updated.append(char_dict)
+
+        self._char_dicts = updated
+        if self._char_indices:
+            self._char_indices = self._char_indices[: len(updated)]
 
     @property
     def source(self) -> str:

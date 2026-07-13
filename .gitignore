@@ -9,6 +9,7 @@ audit/
 planning/
 temp
 .claude
+.codex/
 Untitled*.ipynb
 importtime_output.txt
 .notebook_cache.json
