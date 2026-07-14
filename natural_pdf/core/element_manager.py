@@ -454,7 +454,6 @@ class ElementManager:
             x_tolerance_ratio=xtr,
             y_tolerance_ratio=_resolve_numeric("y_tolerance_ratio"),
             keep_blank_chars=_resolve_bool("keep_blank_chars", True),
-            use_text_flow=bool(pdf_config.get("use_text_flow", False)),
             space_gap_ratio=sgr,
         )
         return options

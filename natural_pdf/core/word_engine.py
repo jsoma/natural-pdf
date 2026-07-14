@@ -24,7 +24,6 @@ class WordEngineOptions:
     keep_blank_chars: bool
     x_tolerance_ratio: Optional[float]
     y_tolerance_ratio: Optional[float]
-    use_text_flow: bool
     space_gap_ratio: Optional[float] = None
 
 
@@ -100,8 +99,6 @@ class WordEngine:
         x_tolerance_ratio = options.x_tolerance_ratio
         y_tolerance_ratio = options.y_tolerance_ratio
         keep_blank_chars = options.keep_blank_chars
-        use_flow = options.use_text_flow
-
         attributes_to_preserve = list(
             set(
                 self._split_attrs
@@ -155,7 +152,6 @@ class WordEngine:
                 x_tolerance_ratio=x_tolerance_ratio,
                 y_tolerance_ratio=y_tolerance_ratio,
                 keep_blank_chars=keep_blank_chars,
-                use_text_flow=use_flow,
                 line_dir=line_dir,
                 char_dir=char_dir,
             )

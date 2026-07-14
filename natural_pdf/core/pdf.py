@@ -611,7 +611,7 @@ class PDF(
     def __init__(
         self,
         path_or_url_or_stream,
-        reading_order: bool = True,
+        *,
         font_attrs: Optional[List[str]] = None,
         keep_spaces: bool = True,
         text_tolerance: Optional[dict] = None,
@@ -624,8 +624,6 @@ class PDF(
         Args:
             path_or_url_or_stream: Path to the PDF file (str/Path), a URL (str),
                 or a file-like object (stream). URLs must start with 'http://' or 'https://'.
-            reading_order: If True, use natural reading order for text extraction.
-                Defaults to True.
             font_attrs: List of font attributes for grouping characters into words.
                 Common attributes include ['fontname', 'size']. Defaults to None.
             keep_spaces: If True, include spaces in word elements during text extraction.
@@ -657,7 +655,6 @@ class PDF(
 
             # With custom settings
             pdf = npdf.PDF("document.pdf",
-                          reading_order=False,
                           text_layer=False,  # For OCR-only processing
                           font_attrs=['fontname', 'size', 'flags'])
             ```
@@ -726,9 +723,7 @@ class PDF(
             )
 
         logger.info(f"Opening PDF source: {self.source_path}")
-        logger.debug(
-            f"Parameters: reading_order={reading_order}, font_attrs={font_attrs}, keep_spaces={keep_spaces}"
-        )
+        logger.debug(f"Parameters: font_attrs={font_attrs}, keep_spaces={keep_spaces}")
 
         try:
             self._pdf = pdfplumber.open(stream_to_open)
@@ -738,7 +733,6 @@ class PDF(
             raise IOError(f"Failed to open PDF source: {self.source_path}") from e
 
         # Store configuration used for initialization
-        self._reading_order = reading_order
         self._config = {"keep_spaces": keep_spaces}
         self._font_attrs = font_attrs
 
@@ -2000,7 +1994,6 @@ class PDF(
             logger.info("Creating new PDF object from deskewed stream...")
             new_pdf = PDF(
                 pdf_stream,
-                reading_order=self._reading_order,
                 font_attrs=self._font_attrs,
                 keep_spaces=self._config.get("keep_spaces", True),
                 text_layer=self._text_layer,

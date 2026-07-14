@@ -237,6 +237,7 @@ __all__ = [
     # Configuration
     "configure_logging",
     "options",
+    "set_option",
     # Exceptions (unified hierarchy)
     "NaturalPDFError",
     "OCRError",

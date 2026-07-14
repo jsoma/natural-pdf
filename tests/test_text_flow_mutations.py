@@ -110,7 +110,6 @@ def test_word_engine_indexes_coincident_glyphs_by_dict_identity(mutable_pdf):
         keep_blank_chars=True,
         x_tolerance_ratio=None,
         y_tolerance_ratio=None,
-        use_text_flow=False,
         space_gap_ratio=0,
     )
 

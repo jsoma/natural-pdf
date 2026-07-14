@@ -57,7 +57,6 @@ def test_from_images_custom_resolution_and_options():
         image,
         resolution=150,
         apply_ocr=False,
-        reading_order=False,
         text_layer=False,
     )
     try:
