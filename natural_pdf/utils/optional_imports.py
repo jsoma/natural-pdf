@@ -127,6 +127,11 @@ OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
         ('pip install "natural-pdf[export]"',),
         "Image to PDF conversion helper used by deskew/save routines.",
     ),
+    "openpyxl": OptionalDependency(
+        "openpyxl",
+        ('pip install "natural-pdf[export]"',),
+        "Spreadsheet writer used for Excel exports.",
+    ),
     "jupytext": OptionalDependency(
         "jupytext",
         ('pip install "natural-pdf[export]"',),
@@ -200,7 +205,7 @@ OPTIONAL_DEPENDENCY_GROUPS: Dict[str, tuple[str, ...]] = {
         "timm",
         "doclayout_yolo",
     ),
-    "export": ("pikepdf", "img2pdf", "jupytext", "nbformat"),
+    "export": ("pikepdf", "img2pdf", "openpyxl", "jupytext", "nbformat"),
     "paddle": ("chardet", "paddlepaddle", "paddleocr", "paddlex", "numpy"),
     "all": (
         "rapidocr",
@@ -214,6 +219,7 @@ OPTIONAL_DEPENDENCY_GROUPS: Dict[str, tuple[str, ...]] = {
         "doclayout_yolo",
         "pikepdf",
         "img2pdf",
+        "openpyxl",
         "jupytext",
         "nbformat",
     ),

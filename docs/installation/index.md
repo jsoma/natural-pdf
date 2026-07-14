@@ -15,7 +15,7 @@ Optional dependencies can be installed individually as needed. The library will 
 ```bash
 # Bundles
 pip install "natural-pdf[all]"      # Recommended feature-complete runtime install
-pip install "natural-pdf[export]"   # PDF export helpers only
+pip install "natural-pdf[export]"   # PDF, spreadsheet, and notebook export helpers
 pip install "natural-pdf[paddle]"   # PaddleOCR stack (paddlepaddle + paddleocr + paddlex) — includes paddlevl engine
 
 # Individual packages

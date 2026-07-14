@@ -33,6 +33,10 @@
 - Region, Flow, guide-window, and comparison replacement is scoped to the
   processed geometry. `detect_only=True` never removes native or recognized
   text.
+- Removed the inert `PDF(reading_order=...)` option. Remaining `PDF` constructor
+  settings are keyword-only, so an old positional value cannot silently bind to
+  a different option. Text ordering continues to use the existing geometric
+  behavior.
 
 ### Fixes
 
@@ -48,6 +52,18 @@
   extraction non-mutating.
 - Included effective OCR options, crop/exclusion geometry, and runtime identity
   in cache/engine reuse decisions, avoiding unsafe reuse when identity is unknown.
+- Validate and materialize complete classic and VLM OCR payloads before caching,
+  extraction, or replacement; malformed provider output now raises `OCRError`
+  without partially mutating text or table regions.
+- Propagate table-cell extraction failures with row/column context instead of
+  turning failed cells into blanks.
+- Keep text classification fail-closed on extraction errors; only genuinely
+  empty text falls back to vision, with a warning.
+- Keep successful primary structured extraction results when the optional
+  citation/confidence pass fails, while discarding partial metadata and emitting
+  a `RuntimeWarning`.
+- Declared `openpyxl` in the `export` extra, exposed `set_option` from the package
+  root, and removed obsolete pytest asyncio configuration.
 
 ## 0.6.1 - 2026-04-09
 

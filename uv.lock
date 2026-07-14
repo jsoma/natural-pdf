@@ -2941,6 +2941,7 @@ all = [
     { name = "jupytext" },
     { name = "mlx-vlm", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
     { name = "nbformat" },
+    { name = "openpyxl" },
     { name = "pikepdf" },
     { name = "rapidocr" },
     { name = "sentence-transformers" },
@@ -2992,6 +2993,7 @@ export = [
     { name = "img2pdf" },
     { name = "jupytext" },
     { name = "nbformat" },
+    { name = "openpyxl" },
     { name = "pikepdf" },
 ]
 notebook = [
@@ -3078,6 +3080,7 @@ requires-dist = [
     { name = "onnxruntime", marker = "python_full_version < '3.11'", specifier = "<1.24" },
     { name = "onnxruntime", marker = "python_full_version >= '3.11'" },
     { name = "openai" },
+    { name = "openpyxl", marker = "extra == 'export'" },
     { name = "paddleocr", marker = "extra == 'paddle'", specifier = ">=3.0.1" },
     { name = "paddlepaddle", marker = "extra == 'paddle'", specifier = ">=3.0.0" },
     { name = "paddlex", extras = ["ocr"], marker = "extra == 'paddle'", specifier = ">=3.0.2" },

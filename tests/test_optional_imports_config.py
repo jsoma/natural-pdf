@@ -28,6 +28,7 @@ REQUIRED_DEPENDENCIES = {
     "doclayout_yolo",
     "timm",
     "img2pdf",
+    "openpyxl",
 }
 
 
@@ -92,6 +93,8 @@ def test_cli_public_groups_align_with_runtime_extras():
     else:
         assert "mlx_vlm" not in groups["ai"]
     assert "pikepdf" in groups["export"]
+    assert "openpyxl" in groups["export"]
+    assert "openpyxl" in extras["export"]
     assert "paddlepaddle" in groups["paddle"]
     assert {"ai", "export", "paddle", "all"} <= set(extras)
 

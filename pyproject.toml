@@ -73,6 +73,7 @@ paddle = [
 export = [
     "pikepdf",
     "img2pdf",
+    "openpyxl",
     "jupytext",
     "nbformat",
 ]
@@ -171,7 +172,6 @@ exclude = ["tests"]
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = ["tests"]
-asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     # Ignore specific deprecation warnings from dependencies
     "ignore:The distutils package is deprecated:DeprecationWarning",

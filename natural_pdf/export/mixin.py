@@ -139,5 +139,6 @@ class ExportMixin:
             return str(output_path)
         except ImportError as exc:
             raise ImportError(
-                "Pandas and openpyxl are required for Excel export. Install with: pip install pandas openpyxl"
+                "Pandas and openpyxl are required for Excel export. "
+                'Install with: pip install "natural-pdf[export]"'
             ) from exc
