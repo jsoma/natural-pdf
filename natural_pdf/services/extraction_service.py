@@ -209,6 +209,8 @@ class ExtractionService:
         min_confidence: float = 0.1,
         debug: bool = False,
         question_map: Optional[dict] = None,
+        handle_impossible_answer: bool = True,
+        max_answer_len: int = 30,
         **kwargs,
     ) -> None:
         question_map = question_map or {}
@@ -260,6 +262,8 @@ class ExtractionService:
                         question,
                         min_confidence=min_confidence,
                         debug=debug,
+                        handle_impossible_answer=handle_impossible_answer,
+                        max_answer_len=max_answer_len,
                     )
                 else:
                     qa_resp = qa_engine.ask_pdf_region(
@@ -267,6 +271,8 @@ class ExtractionService:
                         question,
                         min_confidence=min_confidence,
                         debug=debug,
+                        handle_impossible_answer=handle_impossible_answer,
+                        max_answer_len=max_answer_len,
                     )
 
                 qa_item = qa_resp[0] if isinstance(qa_resp, list) and qa_resp else qa_resp

@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import tempfile
 import warnings
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 
@@ -87,38 +86,80 @@ class DocumentQA:
         return self._is_initialized
 
     def _get_word_boxes_from_elements(
-        self, elements: Iterable[Any], offset_x: int = 0, offset_y: int = 0
+        self, elements: Iterable[Any], offset_x: float = 0, offset_y: float = 0
     ) -> List[List[Any]]:
         """
-        Extract word boxes from text elements.
+        Extract source-coordinate word boxes from text elements.
+
+        The returned boxes retain the caller's logical coordinate system.
+        Callers rendering PDF content should normalize them against the page
+        or region bounds before passing them to a LayoutLM-family model.
 
         Args:
             elements: List of TextElement objects
-            offset_x: X-coordinate offset to subtract (for region cropping)
-            offset_y: Y-coordinate offset to subtract (for region cropping)
+            offset_x: X-coordinate offset to subtract from each box.
+            offset_y: Y-coordinate offset to subtract from each box.
 
         Returns:
-            List of [text, [x0, top, x1, bottom]] entries
+            List of ``[text, [x0, top, x1, bottom]]`` entries in the source
+            document's coordinate system.
         """
         word_boxes = []
 
         for element in elements:
             if hasattr(element, "text") and element.text.strip():
-                # Apply offset for cropped regions
-                x0 = int(element.x0) - offset_x
-                top = int(element.top) - offset_y
-                x1 = int(element.x1) - offset_x
-                bottom = int(element.bottom) - offset_y
-
-                # Ensure coordinates are valid (non-negative)
-                x0 = max(0, x0)
-                top = max(0, top)
-                x1 = max(0, x1)
-                bottom = max(0, bottom)
-
-                word_boxes.append([element.text, [x0, top, x1, bottom]])
+                word_boxes.append(
+                    [
+                        element.text,
+                        [
+                            float(element.x0) - offset_x,
+                            float(element.top) - offset_y,
+                            float(element.x1) - offset_x,
+                            float(element.bottom) - offset_y,
+                        ],
+                    ]
+                )
 
         return word_boxes
+
+    @staticmethod
+    def _normalize_word_boxes(
+        word_boxes: List[List[Any]], bounds: Tuple[float, float, float, float]
+    ) -> List[List[Any]]:
+        """Map source-coordinate boxes into Transformers' ``0..1000`` space.
+
+        LayoutLM tokenizers expect every bounding box to be relative to the
+        image supplied to the pipeline, normalized independently on each axis
+        to an inclusive ``0..1000`` range.  In particular, PDF coordinates are
+        points while a 300-DPI render is pixels, so passing the raw PDF values
+        causes text and image geometry to disagree.
+        """
+        left, top, right, bottom = (float(value) for value in bounds)
+        width = right - left
+        height = bottom - top
+        if width <= 0 or height <= 0:
+            raise ValueError("word-box bounds must have positive width and height")
+
+        def _normalize(value: Any, origin: float, size: float) -> int:
+            # Clamping before conversion handles elements that only partly
+            # overlap a Region while keeping the tokenizer contract intact.
+            return max(0, min(1000, int(round((float(value) - origin) * 1000 / size))))
+
+        normalized: List[List[Any]] = []
+        for entry in word_boxes:
+            if not isinstance(entry, (list, tuple)) or len(entry) != 2:
+                raise ValueError("word_boxes entries must be [text, [x0, y0, x1, y1]]")
+            text, box = entry
+            if not isinstance(box, (list, tuple)) or len(box) != 4:
+                raise ValueError("word_boxes entries must contain four box coordinates")
+
+            x0 = _normalize(box[0], left, width)
+            y0 = _normalize(box[1], top, height)
+            x1 = _normalize(box[2], left, width)
+            y1 = _normalize(box[3], top, height)
+            normalized.append([text, [min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)]])
+
+        return normalized
 
     def ask(
         self,
@@ -128,6 +169,9 @@ class DocumentQA:
         min_confidence: float = 0.1,
         debug: bool = False,
         debug_output_dir: str = "output",
+        *,
+        handle_impossible_answer: bool = True,
+        max_answer_len: int = 30,
     ) -> Union[dict, List[dict]]:
         """
         Ask one or more natural-language questions about the supplied document image.
@@ -141,10 +185,16 @@ class DocumentQA:
         Args:
             image: PIL ``Image``, ``numpy`` array, or path to an image file.
             question: A question string *or* a list/tuple of question strings.
-            word_boxes: Optional pre-extracted word-boxes in the LayoutLMv3
-                format ``[[text, [x0, y0, x1, y1]], …]``.
+            word_boxes: Optional pre-extracted word boxes in Transformers'
+                normalized ``0..1000`` LayoutLM coordinate system.
             min_confidence: Minimum confidence threshold below which an answer
                 will be marked as ``found = False``.
+            handle_impossible_answer: Include the model's no-answer candidate.
+                Defaults to ``True`` so absent answers are not forced into a
+                plausible-looking source span.
+            max_answer_len: Maximum answer length in tokens.  Defaults to 30,
+                which keeps extractive answers concise while allowing typical
+                document values and labels.
             debug: If ``True`` intermediate artefacts will be written to
                 *debug_output_dir* to aid troubleshooting.
             debug_output_dir: Directory where debug artefacts should be saved.
@@ -168,6 +218,9 @@ class DocumentQA:
             questions = list(question)
         else:
             raise TypeError("'question' must be a string or a list/tuple of strings")
+
+        if not questions:
+            return []
 
         # Process the image
         if isinstance(image, str):
@@ -216,6 +269,10 @@ class DocumentQA:
 
                 for i, (text, box) in enumerate(word_boxes):
                     x0, y0, x1, y1 = box
+                    x0 = round(x0 * image_obj.width / 1000)
+                    y0 = round(y0 * image_obj.height / 1000)
+                    x1 = round(x1 * image_obj.width / 1000)
+                    y1 = round(y1 * image_obj.height / 1000)
                     draw.rectangle((x0, y0, x1, y1), outline=(255, 0, 0), width=2)
                     # Add text index for reference
                     draw.text((x0, y0), str(i), fill=(255, 0, 0))
@@ -241,7 +298,11 @@ class DocumentQA:
         # results; each per-question result is itself a list (top-k answers).
         # We keep only the best answer (index 0) to maintain backwards
         # compatibility.
-        pipeline_output = self.pipe(queries if len(queries) > 1 else queries[0])
+        pipeline_output = self.pipe(
+            queries if len(queries) > 1 else queries[0],
+            handle_impossible_answer=handle_impossible_answer,
+            max_answer_len=max_answer_len,
+        )
 
         if len(queries) == 1:
             normalized_output = [pipeline_output]
@@ -252,11 +313,16 @@ class DocumentQA:
             List[Union[Dict[str, Any], List[Dict[str, Any]]]],
             normalized_output,
         )
+        if len(raw_results) < len(questions):
+            raw_results = [*raw_results, *([{}] * (len(questions) - len(raw_results)))]
 
         processed_results: List[dict] = []
 
         for q, res in zip(questions, raw_results):
-            top_res = res[0] if isinstance(res, list) else res  # pipeline may or may not nest
+            # A no-answer candidate is normally returned as a dictionary with
+            # an empty ``answer``.  Some pipeline/model combinations instead
+            # return an empty list, so normalize that case as well.
+            top_res = res[0] if isinstance(res, list) and res else (res or {})
 
             # Save per-question result in debug mode
             if debug:
@@ -281,20 +347,22 @@ class DocumentQA:
                     logger.warning(f"Failed to save debug QA result for question '{q}': {e}")
 
             # Apply confidence threshold
-            if top_res["score"] < min_confidence:
+            score = top_res.get("score", 0.0)
+            answer = top_res.get("answer", "")
+            if score < min_confidence or not answer:
                 qa_res = dict(
                     question=q,
                     answer="",
-                    confidence=top_res["score"],
-                    start=top_res.get("start", -1),
-                    end=top_res.get("end", -1),
+                    confidence=score,
+                    start=-1 if not answer else top_res.get("start", -1),
+                    end=-1 if not answer else top_res.get("end", -1),
                     found=False,
                 )
             else:
                 qa_res = dict(
                     question=q,
-                    answer=top_res["answer"],
-                    confidence=top_res["score"],
+                    answer=answer,
+                    confidence=score,
                     start=top_res.get("start", 0),
                     end=top_res.get("end", 0),
                     found=True,
@@ -311,6 +379,9 @@ class DocumentQA:
         question: Union[str, List[str], Tuple[str, ...]],
         min_confidence: float = 0.1,
         debug: bool = False,
+        *,
+        handle_impossible_answer: bool = True,
+        max_answer_len: int = 30,
     ) -> Union[dict, List[dict]]:
         """
         Ask a question about a specific PDF page.
@@ -319,6 +390,9 @@ class DocumentQA:
             page: natural_pdf.core.page.Page object
             question: Question to ask about the page
             min_confidence: Minimum confidence threshold for answers
+            handle_impossible_answer: Include no-answer candidates from the
+                model. Defaults to ``True``.
+            max_answer_len: Maximum answer length in tokens. Defaults to 30.
 
         Returns:
             dict instance with answer details
@@ -357,67 +431,52 @@ class DocumentQA:
                 )
 
         # Extract word boxes
-        word_boxes = self._get_word_boxes_from_elements(elements, offset_x=0, offset_y=0)
+        word_box_elements = [
+            element for element in elements if hasattr(element, "text") and element.text.strip()
+        ]
+        word_boxes = self._normalize_word_boxes(
+            self._get_word_boxes_from_elements(word_box_elements),
+            (0.0, 0.0, float(page.width), float(page.height)),
+        )
 
-        # Generate a high-resolution image of the page
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
-            temp_path = temp_file.name
+        # Pass the clean high-resolution render directly.  The word boxes are
+        # normalized from PDF points relative to the page bounds above.
+        page_image = page.render(resolution=300, highlights=False)
 
-        # Save a high resolution image (300 DPI)
-        # Use render() for clean image without highlights
-        page_image = page.render(resolution=300)
-        page_image.save(temp_path)
+        # Ask the question(s)
+        result_obj = self.ask(
+            image=page_image,
+            question=question,
+            word_boxes=word_boxes,
+            min_confidence=min_confidence,
+            handle_impossible_answer=handle_impossible_answer,
+            max_answer_len=max_answer_len,
+            debug=debug,
+        )
 
-        try:
-            # Ask the question(s)
-            result_obj = self.ask(
-                image=temp_path,
-                question=question,
-                word_boxes=word_boxes,
-                min_confidence=min_confidence,
-                debug=debug,
-            )
+        # Ensure we have a list for uniform processing
+        results = result_obj if isinstance(result_obj, list) else [result_obj]
 
-            # Ensure we have a list for uniform processing
-            results = result_obj if isinstance(result_obj, list) else [result_obj]
+        for res in results:
+            # Attach page reference
+            res["page_num"] = page.index
 
-            for res in results:
-                # Attach page reference
-                res["page_num"] = page.index
+            # Pipeline span indices refer to the filtered word-box sequence,
+            # not all page elements.  Slice that exact sequence so repeated
+            # text values cannot map to an earlier, unrelated occurrence.
+            if res.get("found") and "start" in res and "end" in res:
+                start_idx = res["start"]
+                end_idx = res["end"]
 
-                # Map answer span back to source elements
-                if res.get("found") and "start" in res and "end" in res:
-                    start_idx = res["start"]
-                    end_idx = res["end"]
+                if 0 <= start_idx <= end_idx < len(word_box_elements):
+                    from natural_pdf.elements.element_collection import ElementCollection
 
-                    if (
-                        elements
-                        and 0 <= start_idx < len(word_boxes)
-                        and 0 <= end_idx < len(word_boxes)
-                    ):
-                        matched_texts = [wb[0] for wb in word_boxes[start_idx : end_idx + 1]]
+                    res["source_elements"] = ElementCollection(
+                        word_box_elements[start_idx : end_idx + 1]
+                    )
 
-                        source_elements = []
-                        for element in elements:
-                            if hasattr(element, "text") and element.text in matched_texts:
-                                source_elements.append(element)
-                                if element.text in matched_texts:
-                                    matched_texts.remove(element.text)
-
-                        from natural_pdf.elements.element_collection import ElementCollection
-
-                        res["source_elements"] = ElementCollection(source_elements)
-
-            # Return result(s) preserving original input type
-            if isinstance(question, (list, tuple)):
-                return results
-            else:
-                return results[0]
-
-        finally:
-            # Clean up temporary file
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
+        # Return result(s) preserving original input type
+        return results if isinstance(question, (list, tuple)) else results[0]
 
     def ask_pdf_region(
         self,
@@ -425,6 +484,9 @@ class DocumentQA:
         question: Union[str, List[str], Tuple[str, ...]],
         min_confidence: float = 0.1,
         debug: bool = False,
+        *,
+        handle_impossible_answer: bool = True,
+        max_answer_len: int = 30,
     ) -> Union[dict, List[dict]]:
         """
         Ask a question about a specific region of a PDF page.
@@ -433,6 +495,9 @@ class DocumentQA:
             region: natural_pdf.elements.region.Region object
             question: Question to ask about the region
             min_confidence: Minimum confidence threshold for answers
+            handle_impossible_answer: Include no-answer candidates from the
+                model. Defaults to ``True``.
+            max_answer_len: Maximum answer length in tokens. Defaults to 30.
 
         Returns:
             dict instance with answer details
@@ -472,64 +537,50 @@ class DocumentQA:
                     found=False,
                 )
 
-        # Extract word boxes adjusted for the cropped region
-        x0, top = int(region.x0), int(region.top)
-        word_boxes = self._get_word_boxes_from_elements(elements, offset_x=x0, offset_y=top)
+        word_box_elements = [
+            element for element in elements if hasattr(element, "text") and element.text.strip()
+        ]
+        region_bounds = (
+            float(region.x0),
+            float(region.top),
+            float(region.x1),
+            float(region.bottom),
+        )
+        word_boxes = self._normalize_word_boxes(
+            self._get_word_boxes_from_elements(word_box_elements), region_bounds
+        )
 
-        # Generate a cropped image of the region
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
-            temp_path = temp_file.name
+        # Let Region render its own crop.  It knows how to map the PDF-space
+        # region bounds to the requested render resolution, avoiding a raw
+        # PDF-point crop against a 300-DPI page image.
+        region_image = region.render(resolution=300, crop=True, highlights=False)
 
-        # Get page image at high resolution - this returns a PIL Image directly
-        # Use render() for clean image without highlights
-        page_image = region.page.render(resolution=300)
+        # Ask the question(s)
+        result_obj = self.ask(
+            image=region_image,
+            question=question,
+            word_boxes=word_boxes,
+            min_confidence=min_confidence,
+            handle_impossible_answer=handle_impossible_answer,
+            max_answer_len=max_answer_len,
+            debug=debug,
+        )
 
-        # Crop to region
-        x0, top, x1, bottom = int(region.x0), int(region.top), int(region.x1), int(region.bottom)
-        region_image = page_image.crop((x0, top, x1, bottom))
-        region_image.save(temp_path)
+        results = result_obj if isinstance(result_obj, list) else [result_obj]
 
-        try:
-            # Ask the question(s)
-            result_obj = self.ask(
-                image=temp_path,
-                question=question,
-                word_boxes=word_boxes,
-                min_confidence=min_confidence,
-                debug=debug,
-            )
+        for res in results:
+            res["region"] = region
+            res["page_num"] = region.page.index
 
-            results = result_obj if isinstance(result_obj, list) else [result_obj]
+            if res.get("found") and "start" in res and "end" in res:
+                start_idx = res["start"]
+                end_idx = res["end"]
 
-            for res in results:
-                res["region"] = region
-                res["page_num"] = region.page.index
+                if 0 <= start_idx <= end_idx < len(word_box_elements):
+                    from natural_pdf.elements.element_collection import ElementCollection
 
-                if res.get("found") and "start" in res and "end" in res:
-                    start_idx = res["start"]
-                    end_idx = res["end"]
+                    res["source_elements"] = ElementCollection(
+                        word_box_elements[start_idx : end_idx + 1]
+                    )
 
-                    if (
-                        elements
-                        and 0 <= start_idx < len(word_boxes)
-                        and 0 <= end_idx < len(word_boxes)
-                    ):
-                        matched_texts = [wb[0] for wb in word_boxes[start_idx : end_idx + 1]]
-
-                        source_elements = []
-                        for element in elements:
-                            if hasattr(element, "text") and element.text in matched_texts:
-                                source_elements.append(element)
-                                if element.text in matched_texts:
-                                    matched_texts.remove(element.text)
-
-                        from natural_pdf.elements.element_collection import ElementCollection
-
-                        res["source_elements"] = ElementCollection(source_elements)
-
-            return results if isinstance(question, (list, tuple)) else results[0]
-
-        finally:
-            # Clean up temporary file
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
+        return results if isinstance(question, (list, tuple)) else results[0]

@@ -242,6 +242,29 @@ class TestQAServiceHelpers:
             pdf.close()
         assert "debug" not in captured
 
+    def test_document_qa_options_are_forwarded_to_extract(self, monkeypatch):
+        """Model-specific QA controls should survive the public wrapper."""
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+        captured = {}
+
+        def capture_extract(**kwargs):
+            captured.update(kwargs)
+            return _make_answer_result("ok")
+
+        monkeypatch.setattr(page, "extract", capture_extract)
+        try:
+            page.ask(
+                "test?",
+                handle_impossible_answer=False,
+                max_answer_len=12,
+            )
+        finally:
+            pdf.close()
+
+        assert captured["handle_impossible_answer"] is False
+        assert captured["max_answer_len"] == 12
+
     def test_citations_default_false(self, monkeypatch):
         """Default .ask() should pass citations=False to .extract()."""
         import natural_pdf as npdf
@@ -346,17 +369,13 @@ class TestIntegration:
         pdf = npdf.PDF("pdfs/01-practice.pdf")
         page = pdf.pages[0]
 
-        # Mock the DocumentQA engine at the extraction service level
-        fake_qa_result = MagicMock()
-        fake_qa_result.answer = "mocked answer"
-        fake_qa_result.confidence = 0.95
-        fake_qa_result.start = 0
-        fake_qa_result.end = 10
-
         mock_engine = MagicMock()
-        mock_engine.answer_question.return_value = [
-            {"answer": "mocked answer", "score": 0.95, "start": 0, "end": 10}
-        ]
+        mock_engine.ask_pdf_page.return_value = {
+            "answer": "mocked answer",
+            "confidence": 0.95,
+            "start": 0,
+            "end": 10,
+        }
 
         # Patch the extraction service's doc_qa engine resolution
         monkeypatch.setattr(
@@ -365,10 +384,59 @@ class TestIntegration:
         )
 
         try:
-            result = page.ask("What is the title?")
+            result = page.ask(
+                "What is the title?",
+                handle_impossible_answer=False,
+                max_answer_len=12,
+            )
         finally:
             pdf.close()
 
         assert isinstance(result, StructuredDataResult)
-        # The result should have been processed through the full chain
-        assert result.data is not None
+        assert result.answer == "mocked answer"
+        mock_engine.ask_pdf_page.assert_called_once_with(
+            page,
+            "What is the title?",
+            min_confidence=0.1,
+            debug=False,
+            handle_impossible_answer=False,
+            max_answer_len=12,
+        )
+
+    def test_region_ask_forwards_document_qa_options(self, monkeypatch):
+        """Region and Page should expose the same adapter controls."""
+        from unittest.mock import MagicMock
+
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+        region = page.region(top=0, bottom=page.height, width="full")
+        mock_engine = MagicMock()
+        mock_engine.ask_pdf_region.return_value = {
+            "answer": "mocked region answer",
+            "confidence": 0.9,
+            "start": 0,
+            "end": 1,
+        }
+        monkeypatch.setattr(
+            "natural_pdf.qa.document_qa.get_qa_engine",
+            lambda **kwargs: mock_engine,
+        )
+
+        try:
+            result = region.ask(
+                "What is in this region?",
+                handle_impossible_answer=False,
+                max_answer_len=9,
+            )
+        finally:
+            pdf.close()
+
+        assert result.answer == "mocked region answer"
+        mock_engine.ask_pdf_region.assert_called_once_with(
+            region,
+            "What is in this region?",
+            min_confidence=0.1,
+            debug=False,
+            handle_impossible_answer=False,
+            max_answer_len=9,
+        )
