@@ -13,7 +13,10 @@ from natural_pdf.classification.pipelines import (
     cleanup_models,
 )
 from natural_pdf.classification.results import CategoryScore, ClassificationResult
+from natural_pdf.core.context import PDFContext
 from natural_pdf.engine_provider import EngineProvider
+from natural_pdf.services import classification_service
+from natural_pdf.services.classification_service import ClassificationService
 
 # ---------- Existing test ----------
 
@@ -69,6 +72,68 @@ def test_pdf_text_classification_rejects_removed_use_exclusions():
             )
     finally:
         pdf.close()
+
+
+def test_text_classification_propagates_unexpected_text_extraction_error(monkeypatch):
+    """A broken text extractor must not be treated as a scanned document."""
+
+    class StubEngine:
+        def infer_using(self, model_id, using):
+            return using or "text"
+
+        def default_model(self, using):
+            return "stub-model"
+
+    class BrokenTextHost:
+        analyses = {}
+
+        def _get_classification_content(self, model_type, **kwargs):
+            if model_type == "text":
+                raise OSError("damaged text layer")
+            raise AssertionError("vision fallback must not run after a text extraction failure")
+
+    monkeypatch.setattr(
+        classification_service, "get_classification_engine", lambda *_: StubEngine()
+    )
+    monkeypatch.setattr(
+        classification_service,
+        "run_classification_item",
+        lambda **_: (_ for _ in ()).throw(AssertionError("model must not run")),
+    )
+    with pytest.raises(RuntimeError, match="Failed to extract text content") as exc_info:
+        ClassificationService(PDFContext.with_defaults()).classify(
+            BrokenTextHost(), labels=["stub"], using="text"
+        )
+
+    assert isinstance(exc_info.value.__cause__, OSError)
+
+
+def test_text_classification_does_not_guess_empty_state_from_error_substrings(monkeypatch):
+    class StubEngine:
+        def infer_using(self, model_id, using):
+            return using or "text"
+
+        def default_model(self, using):
+            return "stub-model"
+
+    class BrokenTextHost:
+        analyses = {}
+
+        def _get_classification_content(self, model_type, **kwargs):
+            if model_type == "text":
+                raise ValueError("no extractable text because parser configuration is invalid")
+            raise AssertionError("vision fallback must not run after a text extraction failure")
+
+    monkeypatch.setattr(
+        classification_service, "get_classification_engine", lambda *_: StubEngine()
+    )
+
+    with pytest.raises(RuntimeError, match="Failed to extract text content") as exc_info:
+        ClassificationService(PDFContext.with_defaults()).classify(
+            BrokenTextHost(), labels=["stub"], using="text"
+        )
+
+    assert isinstance(exc_info.value.__cause__, ValueError)
 
 
 # ---------- _parse_raw_scores ----------

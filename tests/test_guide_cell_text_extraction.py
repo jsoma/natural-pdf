@@ -7,6 +7,8 @@ import pytest
 from natural_pdf import PDF
 from natural_pdf.analyzers.guides import Guides
 from natural_pdf.services.table_service import TableService
+from natural_pdf.tables.engines.text import TextTablesEngine
+from natural_pdf.tables.utils.cells import extract_cell_value
 
 
 class FakeWord:
@@ -116,6 +118,44 @@ def test_cell_callback_does_not_warn_at_threshold():
     assert not any(
         "cell_extraction_func runs once per table cell" in str(w.message) for w in caught
     )
+
+
+def test_cell_callback_errors_are_propagated():
+    cell = FakeCell(0, 0, (0, 0, 10, 10))
+
+    def callback(_cell):
+        raise ValueError("callback failed")
+
+    with pytest.raises(ValueError, match="callback failed"):
+        extract_cell_value(cell, cell_extraction_func=callback)
+
+
+def test_cell_callback_rejects_invalid_return_type():
+    cell = FakeCell(0, 0, (0, 0, 10, 10))
+
+    with pytest.raises(TypeError, match="must return str or None"):
+        extract_cell_value(cell, cell_extraction_func=lambda _cell: 42)
+
+
+def test_text_engine_adds_cell_context_to_extraction_errors():
+    class Region:
+        page = None
+
+        def analyze_text_table_structure(self, **_kwargs):
+            return {"cells": [{"top": 0, "left": 0, "width": 10, "height": 10}]}
+
+    class Page:
+        def region(self, **_kwargs):
+            raise OSError("region unavailable")
+
+    Region.page = Page()
+    with pytest.raises(RuntimeError, match=r"row 0, column 0") as exc_info:
+        TextTablesEngine().extract_tables(
+            context=None,
+            region=Region(),
+            cell_extraction_func=lambda _cell: "x",
+        )
+    assert isinstance(exc_info.value.__cause__, OSError)
 
 
 @pytest.mark.parametrize(

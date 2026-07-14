@@ -845,7 +845,10 @@ class ExtractionService:
                 model=model,
                 **kwargs,
             )
-            if meta_result.success and meta_result.data is not None:
+            if not meta_result.success or meta_result.data is None:
+                cause = meta_result.error_message or "metadata pass returned no structured data"
+                self._warn_metadata_unavailable(cause)
+            else:
                 meta_dict = (
                     meta_result.data.model_dump()
                     if hasattr(meta_result.data, "model_dump")
@@ -883,18 +886,19 @@ class ExtractionService:
                             field_name = key[: -len("_confidence")]
                             confidences_dict[field_name] = val
                     confidences_dict = self._clamp_confidences(confidences_dict, confidence_config)
-        except Exception:
+        except Exception as exc:
             logger.warning(
                 "Meta pass failed; returning extraction without meta.",
                 exc_info=True,
             )
-            # Graceful degradation for confidence
-            if use_confidence:
-                if hasattr(schema, "model_fields"):
-                    field_names = list(schema.model_fields.keys())
-                else:
-                    field_names = list(schema.__fields__.keys())
-                confidences_dict = {fname: None for fname in field_names}
+            # Metadata is one best-effort unit. If citation/confidence
+            # resolution fails after producing an earlier component, do not
+            # leak a plausible-looking partial result.
+            sources_dict = None
+            citations_dict = None
+            confidences_dict = None
+            resolved_sources = None
+            self._warn_metadata_unavailable(str(exc))
 
         host.analyses[analysis_key] = StructuredDataResult(
             data=pass1_result.data,
@@ -905,6 +909,17 @@ class ExtractionService:
             citations=citations_dict,
             confidences=confidences_dict,
             sources=resolved_sources,
+        )
+
+    @staticmethod
+    def _warn_metadata_unavailable(cause: str) -> None:
+        """Make best-effort metadata failures visible without failing extraction."""
+
+        warnings.warn(
+            "Structured metadata (citations/confidence) was unavailable; "
+            f"returning the primary extraction result without metadata: {cause}",
+            RuntimeWarning,
+            stacklevel=3,
         )
 
     @staticmethod

@@ -91,6 +91,14 @@ class TextTablesEngine:
 
         cell_text_map: Dict[Tuple[int, int], Optional[str]] = {}
         for cell_data in cell_iterator:
+            rounded_top = round(cell_data["top"] / coord_tolerance) * coord_tolerance
+            rounded_left = round(cell_data["left"] / coord_tolerance) * coord_tolerance
+            row_index = min(
+                range(len(unique_tops)), key=lambda idx: abs(unique_tops[idx] - rounded_top)
+            )
+            col_index = min(
+                range(len(unique_lefts)), key=lambda idx: abs(unique_lefts[idx] - rounded_left)
+            )
             try:
                 cell_region = region.page.region(**cell_data)
                 cell_value = extract_cell_value(
@@ -103,12 +111,12 @@ class TextTablesEngine:
                     cell_newlines=cell_newlines,
                     text_kwargs={"layout": False},
                 )
-
-                rounded_top = round(cell_data["top"] / coord_tolerance) * coord_tolerance
-                rounded_left = round(cell_data["left"] / coord_tolerance) * coord_tolerance
-                cell_text_map[(rounded_top, rounded_left)] = cell_value
-            except Exception:
-                continue
+            except Exception as exc:
+                raise RuntimeError(
+                    "Failed to extract table cell "
+                    f"at row {row_index}, column {col_index} ({cell_data!r})"
+                ) from exc
+            cell_text_map[(rounded_top, rounded_left)] = cell_value
 
         final_table: List[List[Optional[str]]] = []
         for row_top in unique_tops:

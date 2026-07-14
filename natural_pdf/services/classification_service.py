@@ -58,13 +58,21 @@ class ClassificationService:
                     content = tentative_text
                 else:
                     raise ValueError("Empty text")
-            except Exception:
+            except ValueError as exc:
+                if not self._is_empty_text_error(exc):
+                    raise RuntimeError(
+                        "Failed to extract text content for classification while using='text'."
+                    ) from exc
                 warnings.warn(
                     "No text found for classification; falling back to vision model. "
                     "Pass using='vision' explicitly to silence this message.",
                     UserWarning,
                 )
                 chosen_mode = "vision"
+            except Exception as exc:
+                raise RuntimeError(
+                    "Failed to extract text content for classification while using='text'."
+                ) from exc
 
         if content is None:
             if chosen_mode is None:
@@ -91,6 +99,30 @@ class ClassificationService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+    @staticmethod
+    def _is_empty_text_error(exc: ValueError) -> bool:
+        """Return whether a host's ``ValueError`` denotes genuinely empty text.
+
+        Hosts historically signal an absent text layer with ``ValueError``.
+        Restricting the fallback to those known absence messages prevents a
+        broken text extractor from being mistaken for a scanned document.
+        """
+
+        empty_messages = {
+            "empty text",
+            "cannot classify element with 'text' model: no text content found.",
+            "cannot classify page with 'text' model: no text content found.",
+            "cannot classify region with 'text' model: no text content found.",
+            "pdf contains no extractable text for classification.",
+        }
+        current: Optional[BaseException] = exc
+        while current is not None:
+            message = str(current).strip().casefold()
+            if message in empty_messages:
+                return True
+            current = current.__cause__
+        return False
+
     @staticmethod
     def _get_classification_content(host, model_type: str, **kwargs) -> Any:
         getter = getattr(host, "_get_classification_content", None)

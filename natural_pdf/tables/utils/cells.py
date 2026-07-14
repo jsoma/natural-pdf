@@ -101,11 +101,15 @@ def extract_cell_value(
     _validate_cell_options(cell_extract, cell_overlap)
 
     if callable(cell_extraction_func):
-        try:
-            value = cell_extraction_func(cell_region)
-        except Exception:
-            return None
-        return value if isinstance(value, (str, type(None))) else None
+        # Callback failures must be visible to callers.  Silently converting an
+        # exception (or an invalid return value) to ``None`` makes a failed cell
+        # indistinguishable from an intentionally blank one.
+        value = cell_extraction_func(cell_region)
+        if not isinstance(value, (str, type(None))):
+            raise TypeError(
+                "cell_extraction_func must return str or None, " f"got {type(value).__name__}"
+            )
+        return value
 
     if use_ocr:
         resolved_config = merge_ocr_config(ocr_config)

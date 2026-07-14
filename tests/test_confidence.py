@@ -766,13 +766,101 @@ class TestExtractWithConfidenceMock:
             Exception("LLM error on meta pass"),
         ]
 
-        result = page.extract(SimpleSchema, client=mock_client, confidence=True, multipass=True)
+        with pytest.warns(RuntimeWarning, match="Structured metadata.*LLM error on meta pass"):
+            result = page.extract(SimpleSchema, client=mock_client, confidence=True, multipass=True)
 
         assert result.success
         assert result.name == "Jungle Health"
         assert result["name"].confidence is None
         assert result["age"].confidence is None
         pdf.close()
+
+    def test_multipass_unsuccessful_metadata_result_keeps_primary_data(self, monkeypatch):
+        """An unsuccessful metadata result is best-effort, like a raised metadata error."""
+        from natural_pdf import PDF
+
+        pdf = PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+        from natural_pdf.services import extraction_service
+
+        monkeypatch.setattr(
+            extraction_service,
+            "extract_structured_data",
+            MagicMock(
+                side_effect=[
+                    StructuredDataResult(
+                        data=SimpleSchema(name="Jungle Health", age="1905"),
+                        success=True,
+                        model_used="test-model",
+                    ),
+                    StructuredDataResult(
+                        data=None,
+                        success=False,
+                        error_message="metadata model rejected the response",
+                    ),
+                ]
+            ),
+        )
+        try:
+            with pytest.warns(RuntimeWarning, match="metadata model rejected the response"):
+                result = page.extract(
+                    SimpleSchema,
+                    client=MagicMock(),
+                    citations=True,
+                    confidence=True,
+                    multipass=True,
+                )
+        finally:
+            pdf.close()
+
+        assert result.success
+        assert result.data == SimpleSchema(name="Jungle Health", age="1905")
+        assert result.error_message is None
+        assert all(len(citations) == 0 for citations in result.citations.values())
+        assert result.confidences == {"name": None, "age": None}
+        assert result.sources == {"name": None, "age": None}
+
+    def test_multipass_metadata_resolution_failure_discards_partial_metadata(self, monkeypatch):
+        """A late citation failure must not leak earlier resolved source data."""
+        from natural_pdf import PDF
+        from natural_pdf.extraction import citations as citation_helpers
+
+        pdf = PDF("pdfs/01-practice.pdf")
+        page = pdf.pages[0]
+        mock_client = MagicMock()
+        mock_client.beta.chat.completions.parse.side_effect = [
+            self._mock_completion({"name": "Jungle Health", "age": "1905"}),
+            self._mock_completion(
+                {
+                    "name_source_lines": [0],
+                    "age_source_lines": [1],
+                    "name_confidence": 5,
+                    "age_confidence": 4,
+                }
+            ),
+        ]
+
+        def fail_citation_resolution(**_kwargs):
+            raise RuntimeError("citation resolution failed")
+
+        monkeypatch.setattr(citation_helpers, "resolve_citations", fail_citation_resolution)
+        try:
+            with pytest.warns(RuntimeWarning, match="citation resolution failed"):
+                result = page.extract(
+                    SimpleSchema,
+                    client=mock_client,
+                    citations=True,
+                    confidence=True,
+                    multipass=True,
+                )
+        finally:
+            pdf.close()
+
+        assert result.success
+        assert result.error_message is None
+        assert all(len(citations) == 0 for citations in result.citations.values())
+        assert result.confidences == {"name": None, "age": None}
+        assert result.sources == {"name": None, "age": None}
 
     def test_instructions_parameter(self):
         from natural_pdf import PDF
