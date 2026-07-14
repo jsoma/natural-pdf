@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from natural_pdf.exceptions import OCRError
 from natural_pdf.ocr.ocr_cache import (
     OCRCache,
     compute_cache_key,
@@ -304,12 +305,72 @@ def test_malformed_detection_payload_is_not_persistently_cached(monkeypatch, tmp
             ),
         )
 
-        service.apply_ocr(page, engine="rapidocr", detect_only=True)
+        with pytest.raises(OCRError, match=r"result 0.*bbox"):
+            service.apply_ocr(page, engine="rapidocr", detect_only=True)
 
         cache.put.assert_not_called()
         assert page.manager.created == []
     finally:
         set_default_cache(previous_cache)
+
+
+def test_mixed_classic_payload_is_rejected_before_cache_or_replacement(monkeypatch, tmp_path):
+    pdf_path = tmp_path / "source.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+    cache = OCRCache(cache_dir=tmp_path / "ocr-cache")
+    cache.put = MagicMock(wraps=cache.put)
+    previous_cache = set_default_cache(cache)
+    try:
+        service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+        page = _FakePage(pdf_path)
+        page.manager.remove_text_elements_in_bbox = MagicMock(return_value=(0, 0))
+        monkeypatch.setattr(
+            "natural_pdf.services.ocr_service.run_ocr",
+            lambda **kwargs: OCRRunResult(
+                results=[
+                    {"bbox": [0, 0, 10, 10], "text": "valid", "confidence": 0.99},
+                    {"text": "missing bbox", "confidence": 0.75},
+                ],
+                image_size=(100, 100),
+                engine_type="classic",
+            ),
+        )
+
+        with pytest.raises(OCRError, match=r"result 1.*bbox"):
+            service.apply_ocr(page, engine="rapidocr", replace="ocr")
+
+        cache.put.assert_not_called()
+        page.manager.remove_text_elements_in_bbox.assert_not_called()
+        assert page.manager.created == []
+    finally:
+        set_default_cache(previous_cache)
+
+
+@pytest.mark.parametrize(
+    ("result", "message"),
+    [
+        ({"bbox": [0, 0, float("nan"), 10], "text": "bad"}, "finite"),
+        ({"bbox": [10, 0, 0, 10], "text": "bad"}, "ordered"),
+        ({"bbox": [0, 0, 10, 10], "text": 123}, "recognition 'text'"),
+        (
+            {"bbox": [0, 0, 10, 10], "text": "bad", "confidence": float("inf")},
+            "confidence",
+        ),
+        ({"bbox": [0, 0, 10, 10], "text": "   "}, "non-empty"),
+        (
+            {"bbox": [0, 0, 10, 10], "text": None, "_ocr_detection_only": "yes"},
+            "_ocr_detection_only",
+        ),
+    ],
+)
+def test_direct_classic_conversion_rejects_invalid_entry_atomically(tmp_path, result, message):
+    service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+    page = _FakePage(tmp_path / "unused.pdf")
+
+    with pytest.raises(OCRError, match=message):
+        service.create_text_elements_from_ocr(page, [result])
+
+    assert page.manager.created == []
 
 
 # ---------------------------------------------------------------------------
@@ -723,6 +784,122 @@ def test_invalid_cached_vlm_payload_is_evicted_and_retried(monkeypatch, tmp_path
         cached = cache.get(key)
         assert cached is not None
         assert cached.results[0]["text"] == "fresh"
+    finally:
+        set_default_cache(previous_cache)
+
+
+@pytest.mark.parametrize(("confidence", "expected"), [(None, None), ("0.9", 0.9)])
+def test_cached_vlm_accepts_supported_confidence_forms(
+    monkeypatch,
+    tmp_path,
+    confidence,
+    expected,
+):
+    pdf_path = tmp_path / "source.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+    cache = OCRCache(cache_dir=tmp_path / "ocr-cache")
+    previous_cache = set_default_cache(cache)
+    try:
+        service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+        page = _FakePage(pdf_path)
+        key = f"vlm-confidence-{confidence}"
+        monkeypatch.setattr("natural_pdf.ocr.ocr_cache.compute_cache_key", lambda **_: key)
+        cache.put(
+            key,
+            OCRRunResult(
+                results=[
+                    {
+                        "bbox": [0, 0, 10, 10],
+                        "text": "cached",
+                        "confidence": confidence,
+                    }
+                ],
+                image_size=(100, 100),
+                engine_type="vlm",
+            ),
+            "vlm",
+            0,
+        )
+        monkeypatch.setattr(
+            "natural_pdf.services.ocr_service.run_ocr",
+            lambda **_: (_ for _ in ()).throw(AssertionError("valid cache entry was ignored")),
+        )
+
+        service.apply_ocr(
+            page,
+            engine="vlm",
+            model="gemini-3.1-flash-lite",
+            languages=["en"],
+            device="cpu",
+            min_confidence=0.5,
+            replace="none",
+        )
+
+        result = page.manager.created[-1]["ocr_results"][0]
+        assert result["text"] == "cached"
+        assert result["confidence"] == expected
+    finally:
+        set_default_cache(previous_cache)
+
+
+def test_mixed_invalid_cached_classic_detection_is_evicted_before_conversion(monkeypatch, tmp_path):
+    pdf_path = tmp_path / "source.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+
+    cache = OCRCache(cache_dir=tmp_path / "ocr-cache")
+    previous_cache = set_default_cache(cache)
+    try:
+        service = OCRService(SimpleNamespace(get_option=lambda *args, **kwargs: None))
+        page = _FakePage(pdf_path)
+        page.manager._ocr_converter = SimpleNamespace(
+            convert=lambda *args, **kwargs: ([SimpleNamespace()], [])
+        )
+        calls = []
+
+        def fake_run_ocr(**kwargs):
+            calls.append(kwargs)
+            return OCRRunResult(
+                results=[{"bbox": [20, 20, 40, 40], "text": None, "confidence": 0.8}],
+                image_size=(100, 100),
+                engine_type="classic",
+            )
+
+        monkeypatch.setattr("natural_pdf.services.ocr_service.run_ocr", fake_run_ocr)
+        key = "shared-classic-detection-cache-key"
+        monkeypatch.setattr("natural_pdf.ocr.ocr_cache.compute_cache_key", lambda **kwargs: key)
+        cache.put(
+            key,
+            OCRRunResult(
+                results=[
+                    {"bbox": [0, 0, 10, 10], "text": None, "confidence": 0.9},
+                    "not a result mapping",
+                ],
+                image_size=(100, 100),
+                engine_type="classic",
+            ),
+            "rapidocr",
+            0,
+        )
+
+        service.apply_ocr(
+            page,
+            engine="rapidocr",
+            languages=["en"],
+            device="cpu",
+            detect_only=True,
+        )
+
+        assert len(calls) == 1
+        assert len(page.manager.created) == 1
+        assert page.manager.created[0]["ocr_results"][0]["bbox"] == (
+            20.0,
+            20.0,
+            40.0,
+            40.0,
+        )
+        cached = cache.get(key)
+        assert cached is not None
+        assert len(cached.results) == 1
     finally:
         set_default_cache(previous_cache)
 

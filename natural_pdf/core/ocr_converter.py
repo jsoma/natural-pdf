@@ -1,8 +1,119 @@
 from __future__ import annotations
 
-from typing import List, Sequence, Tuple
+import math
+from collections.abc import Mapping, Sequence
+from typing import Any, List, Tuple
 
 from natural_pdf.elements.text import TextElement
+from natural_pdf.exceptions import OCRError
+
+
+def validate_ocr_image_size(image_size: Any) -> tuple[float, float]:
+    """Return a finite positive OCR image size or raise :class:`OCRError`."""
+
+    if isinstance(image_size, (str, bytes, bytearray, Mapping)):
+        raise OCRError("Invalid OCR payload: image_size must contain width and height.")
+    try:
+        values = list(image_size)
+    except TypeError as exc:
+        raise OCRError("Invalid OCR payload: image_size must contain width and height.") from exc
+    if len(values) != 2 or any(isinstance(value, bool) for value in values):
+        raise OCRError("Invalid OCR payload: image_size must contain width and height.")
+    try:
+        width, height = (float(value) for value in values)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise OCRError("Invalid OCR payload: image_size values must be numeric.") from exc
+    if not all(math.isfinite(value) and value > 0 for value in (width, height)):
+        raise OCRError("Invalid OCR payload: image_size values must be finite and positive.")
+    return width, height
+
+
+def validate_classic_ocr_results(
+    ocr_results: Any,
+    *,
+    detection_only: bool | None = None,
+) -> List[Mapping[str, Any]]:
+    """Validate every classic OCR result before any result is converted.
+
+    Numeric strings are accepted for bbox and confidence values for compatibility
+    with public third-party engines, but all numeric values must be finite.  The
+    returned list also safely materializes one-shot iterables before conversion.
+    """
+
+    if isinstance(ocr_results, (str, bytes, bytearray, Mapping)):
+        raise OCRError("Invalid classic OCR payload: results must be an iterable of mappings.")
+    try:
+        results = list(ocr_results)
+    except TypeError as exc:
+        raise OCRError(
+            "Invalid classic OCR payload: results must be an iterable of mappings."
+        ) from exc
+
+    normalized_results: List[Mapping[str, Any]] = []
+    for index, result in enumerate(results):
+        prefix = f"Invalid classic OCR payload at result {index}"
+        if not isinstance(result, Mapping):
+            raise OCRError(f"{prefix}: expected a mapping, got {type(result).__name__}.")
+
+        detection_flag = result.get("_ocr_detection_only", False)
+        if not isinstance(detection_flag, bool):
+            raise OCRError(f"{prefix}: '_ocr_detection_only' must be a boolean when provided.")
+        if detection_only is False and detection_flag:
+            raise OCRError(
+                f"{prefix}: a recognition payload cannot contain detection-only entries."
+            )
+        is_detection = detection_only is True or detection_flag
+
+        bbox = result.get("bbox")
+        if isinstance(bbox, (str, bytes, bytearray, Mapping)):
+            raise OCRError(f"{prefix}: 'bbox' must contain exactly four coordinates.")
+        try:
+            bbox_values = list(bbox)
+        except TypeError as exc:
+            raise OCRError(f"{prefix}: 'bbox' must contain exactly four coordinates.") from exc
+        if len(bbox_values) != 4:
+            raise OCRError(f"{prefix}: 'bbox' must contain exactly four coordinates.")
+        try:
+            x0, top, x1, bottom = (float(value) for value in bbox_values)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise OCRError(f"{prefix}: 'bbox' coordinates must be numeric.") from exc
+        if any(isinstance(value, bool) for value in bbox_values) or not all(
+            math.isfinite(value) for value in (x0, top, x1, bottom)
+        ):
+            raise OCRError(f"{prefix}: 'bbox' coordinates must be finite numbers.")
+        if x1 <= x0 or bottom <= top:
+            raise OCRError(f"{prefix}: 'bbox' must be ordered with x1 > x0 and bottom > top.")
+
+        if is_detection:
+            text = result.get("text")
+            if text is not None and not isinstance(text, str):
+                raise OCRError(f"{prefix}: detection 'text' must be a string or None.")
+        elif (
+            "text" not in result
+            or not isinstance(result["text"], str)
+            or not result["text"].strip()
+        ):
+            raise OCRError(f"{prefix}: recognition 'text' must be a non-empty string.")
+
+        confidence = result.get("confidence")
+        confidence_value = None
+        if confidence is not None:
+            if isinstance(confidence, bool):
+                raise OCRError(f"{prefix}: 'confidence' must be a finite number or None.")
+            try:
+                confidence_value = float(confidence)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise OCRError(f"{prefix}: 'confidence' must be a finite number or None.") from exc
+            if not math.isfinite(confidence_value):
+                raise OCRError(f"{prefix}: 'confidence' must be a finite number or None.")
+
+        normalized_result = dict(result)
+        normalized_result["bbox"] = (x0, top, x1, bottom)
+        if confidence is not None:
+            normalized_result["confidence"] = confidence_value
+        normalized_results.append(normalized_result)
+
+    return normalized_results
 
 
 class OCRConverter:
@@ -21,6 +132,10 @@ class OCRConverter:
         offset_y: float = 0.0,
         engine_name: str | None = None,
     ) -> Tuple[List[TextElement], List[TextElement]]:
+        # Validate the complete payload before constructing even one element.
+        # This keeps mixed valid/invalid payloads atomic.
+        validated_results = validate_classic_ocr_results(ocr_results)
+
         words: List[TextElement] = []
         chars: List[TextElement] = []
 
@@ -29,11 +144,8 @@ class OCRConverter:
         offset_x = float(offset_x)
         offset_y = float(offset_y)
 
-        for result in ocr_results:
-            try:
-                x0_img, top_img, x1_img, bottom_img = map(float, result["bbox"])
-            except Exception:
-                continue
+        for result in validated_results:
+            x0_img, top_img, x1_img, bottom_img = map(float, result["bbox"])
 
             pdf_x0 = offset_x + (x0_img * scale_x)
             pdf_top = offset_y + (top_img * scale_y)

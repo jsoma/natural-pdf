@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Mapping
 from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Tuple, cast
 
+from natural_pdf.core.ocr_converter import validate_classic_ocr_results, validate_ocr_image_size
 from natural_pdf.core.ocr_execution import protected_ocr_artifact_ids, register_ocr_artifacts
+from natural_pdf.exceptions import OCRError
 from natural_pdf.ocr.ocr_manager import (
     normalize_ocr_options,
     resolve_ocr_device,
@@ -338,6 +341,7 @@ class OCRService:
         offset_y: float = 0.0,
         engine_name: Optional[str] = None,
     ):
+        ocr_results = validate_classic_ocr_results(ocr_results)
         mgr = host._ocr_element_manager()
         created = mgr.create_text_elements_from_ocr(
             ocr_results,
@@ -380,8 +384,85 @@ class OCRService:
                 "_ocr_detection_only": True,
             }
             for result in results
-            if isinstance(result, dict)
+            if isinstance(result, Mapping)
         ]
+
+    @staticmethod
+    def _normalize_payload_image_size(ocr_payload: Any) -> Tuple[float, float]:
+        dimensions = validate_ocr_image_size(getattr(ocr_payload, "image_size", None))
+        ocr_payload.image_size = dimensions
+        return dimensions
+
+    @staticmethod
+    def _normalize_classic_payload_results(
+        ocr_payload: Any,
+        *,
+        detection_only: bool | None = None,
+    ) -> List[Mapping[str, Any]]:
+        results = validate_classic_ocr_results(
+            getattr(ocr_payload, "results", None),
+            detection_only=detection_only,
+        )
+        ocr_payload.results = results
+        return results
+
+    @staticmethod
+    def _scale_vlm_payload_results(
+        ocr_payload: Any,
+        *,
+        image_width: float,
+        image_height: float,
+        target_width: float,
+        target_height: float,
+        offset_x: float,
+        offset_y: float,
+        min_confidence: Optional[float],
+        detection_only: bool,
+    ) -> List[Mapping[str, Any]]:
+        """Materialize, scale, and validate a complete VLM payload."""
+
+        from natural_pdf.ocr.vlm_ocr import scale_ocr_results, validate_table_ocr_results
+
+        raw_results = getattr(ocr_payload, "results", None)
+        if isinstance(raw_results, (str, bytes, bytearray, Mapping)):
+            raise OCRError("Invalid VLM OCR payload: results must be an iterable of mappings.")
+        try:
+            materialized_results = list(raw_results)
+        except TypeError as exc:
+            raise OCRError(
+                "Invalid VLM OCR payload: results must be an iterable of mappings."
+            ) from exc
+
+        # Preserve one-shot provider output for preflight, cache, and apply
+        # paths that may inspect the same payload more than once.
+        ocr_payload.results = materialized_results
+        try:
+            scaled = scale_ocr_results(
+                materialized_results,
+                image_width=image_width,
+                image_height=image_height,
+                page_width=target_width,
+                page_height=target_height,
+                offset_x=offset_x,
+                offset_y=offset_y,
+            )
+        except (KeyError, TypeError, ValueError, IndexError, OverflowError) as exc:
+            raise OCRError("Invalid VLM OCR payload: results could not be scaled.") from exc
+
+        normalized = validate_classic_ocr_results(
+            scaled,
+            detection_only=detection_only,
+        )
+        if not validate_table_ocr_results(normalized):
+            raise OCRError("Invalid VLM OCR payload: malformed table result.")
+
+        if min_confidence is not None:
+            normalized = [
+                result
+                for result in normalized
+                if result.get("confidence") is None or float(result["confidence"]) >= min_confidence
+            ]
+        return normalized
 
     @staticmethod
     def _mark_detection_elements(elements: Iterable[Any]) -> None:
@@ -434,37 +515,38 @@ class OCRService:
     ):
         """Scale OCR results and create text elements.
 
-        Returns the created element list, or ``None`` if the payload is invalid.
+        Returns the created element list. Invalid payloads raise :class:`OCRError`.
         Used by both cache-hit and fresh-OCR paths to avoid duplication.
         """
-        image_width, image_height = ocr_payload.image_size
-        if not image_width or not image_height:
-            logger.error("OCR payload missing image dimensions.")
-            return None
+        image_width, image_height = self._normalize_payload_image_size(ocr_payload)
 
         width, height = self._target_dimensions(host, crop_bbox)
         scale_x = width / image_width if width else 1.0
         scale_y = height / image_height if height else 1.0
 
         if ocr_payload.engine_type == "vlm":
-            from natural_pdf.ocr.vlm_ocr import create_table_regions_from_ocr, scale_ocr_results
+            from natural_pdf.ocr.vlm_ocr import create_table_regions_from_ocr
 
-            scaled = scale_ocr_results(
-                ocr_payload.results,
+            scaled = self._scale_vlm_payload_results(
+                ocr_payload,
                 image_width=image_width,
                 image_height=image_height,
-                page_width=width,
-                page_height=height,
+                target_width=width,
+                target_height=height,
                 offset_x=offset_x,
                 offset_y=offset_y,
+                min_confidence=min_confidence,
+                detection_only=detect_only,
             )
-            if min_confidence is not None:
-                scaled = [r for r in scaled if r.get("confidence", 1.0) >= min_confidence]
 
             if detect_only:
+                detection_results = validate_classic_ocr_results(
+                    self._as_detection_results(scaled),
+                    detection_only=True,
+                )
                 created = self.create_text_elements_from_ocr(
                     host,
-                    self._as_detection_results(scaled),
+                    detection_results,
                     scale_x=1.0,
                     scale_y=1.0,
                     offset_x=0.0,
@@ -474,8 +556,17 @@ class OCRService:
                 self._mark_detection_elements(created)
                 return created
 
+            text_results = [
+                result
+                for result in scaled
+                if str(result.get("source_category", "")).lower() != "table"
+            ]
+
+            # Validate every non-table result before table Regions are
+            # registered. A malformed later text entry must not leave an
+            # earlier table partially attached to the page.
             page_obj = getattr(host, "page", host)
-            text_results, table_regions = create_table_regions_from_ocr(
+            _ignored_text_results, table_regions = create_table_regions_from_ocr(
                 page_obj,
                 scaled,
                 source_label=engine_name,
@@ -489,15 +580,25 @@ class OCRService:
                     region._natural_pdf_ocr_generated = True
                 register_ocr_artifacts(*table_regions)
 
-            return self.create_text_elements_from_ocr(
-                host,
-                text_results,
-                scale_x=1.0,
-                scale_y=1.0,
-                offset_x=0.0,
-                offset_y=0.0,
-                engine_name=engine_name,
-            )
+            try:
+                return self.create_text_elements_from_ocr(
+                    host,
+                    text_results,
+                    scale_x=1.0,
+                    scale_y=1.0,
+                    offset_x=0.0,
+                    offset_y=0.0,
+                    engine_name=engine_name,
+                )
+            except Exception:
+                # Text construction is normally atomic in ElementManager, but
+                # third-party managers can still fail after table registration.
+                # Do not leave the table half of one VLM payload attached.
+                remover = getattr(page_obj, "remove_regions", None)
+                if callable(remover) and table_regions:
+                    table_ids = {id(region) for region in table_regions}
+                    remover(predicate=lambda region: id(region) in table_ids)
+                raise
         else:
             results = ocr_payload.results
             if detect_only:
@@ -535,57 +636,45 @@ class OCRService:
         """
 
         try:
-            image_width, image_height = ocr_payload.image_size
-        except (AttributeError, TypeError, ValueError):
+            image_width, image_height = self._normalize_payload_image_size(ocr_payload)
+        except (AttributeError, OCRError):
             return False
-        if not image_width or not image_height:
-            return False
-
-        raw_results = getattr(ocr_payload, "results", None)
-        if raw_results is None:
-            return False
-        try:
-            results = list(raw_results)
-        except TypeError:
-            return False
-        if not results:
-            return True
 
         width, height = self._target_dimensions(host, crop_bbox)
         scale_x = width / image_width if width else 1.0
         scale_y = height / image_height if height else 1.0
-        staged_results = results
         staged_offset_x = offset_x
         staged_offset_y = offset_y
 
-        if ocr_payload.engine_type == "vlm":
-            from natural_pdf.ocr.vlm_ocr import scale_ocr_results, validate_table_ocr_results
-
-            if not validate_table_ocr_results(results):
-                return False
+        if getattr(ocr_payload, "engine_type", None) != "vlm":
             try:
-                staged_results = scale_ocr_results(
-                    results,
+                staged_results = validate_classic_ocr_results(
+                    getattr(ocr_payload, "results", None),
+                    detection_only=True,
+                )
+            except OCRError:
+                return False
+            ocr_payload.results = staged_results
+        else:
+            try:
+                staged_results = self._scale_vlm_payload_results(
+                    ocr_payload,
                     image_width=image_width,
                     image_height=image_height,
-                    page_width=width,
-                    page_height=height,
+                    target_width=width,
+                    target_height=height,
                     offset_x=offset_x,
                     offset_y=offset_y,
+                    min_confidence=min_confidence,
+                    detection_only=True,
                 )
-            except (KeyError, TypeError, ValueError, IndexError):
+            except OCRError:
                 return False
-            if min_confidence is not None:
-                staged_results = [
-                    result
-                    for result in staged_results
-                    if result.get("confidence") is None
-                    or result.get("confidence", 1.0) >= min_confidence
-                ]
-            if not staged_results:
-                return True
             scale_x = scale_y = 1.0
             staged_offset_x = staged_offset_y = 0.0
+
+        if not staged_results:
+            return True
 
         detection_results = self._as_detection_results(staged_results)
         if not detection_results:
@@ -682,10 +771,7 @@ class OCRService:
         crop_bbox=None,
     ):
         """Convert an OCR payload to detached text elements without registration."""
-        image_width, image_height = ocr_payload.image_size
-        if not image_width or not image_height:
-            logger.error("OCR payload missing image dimensions.")
-            return []
+        image_width, image_height = self._normalize_payload_image_size(ocr_payload)
 
         width, height = self._target_dimensions(host, crop_bbox)
         scale_x = width / image_width if width else 1.0
@@ -693,21 +779,17 @@ class OCRService:
         results = ocr_payload.results
 
         if ocr_payload.engine_type == "vlm":
-            from natural_pdf.ocr.vlm_ocr import scale_ocr_results
-
-            results = scale_ocr_results(
-                results,
+            results = self._scale_vlm_payload_results(
+                ocr_payload,
                 image_width=image_width,
                 image_height=image_height,
-                page_width=width,
-                page_height=height,
+                target_width=width,
+                target_height=height,
                 offset_x=offset_x,
                 offset_y=offset_y,
+                min_confidence=min_confidence,
+                detection_only=False,
             )
-            if min_confidence is not None:
-                results = [
-                    result for result in results if result.get("confidence", 1.0) >= min_confidence
-                ]
             # Table payloads are represented as registered Regions only in the
             # mutating apply path. Extraction must not leak selector-visible
             # artifacts into the page.
@@ -746,41 +828,50 @@ class OCRService:
         offset_y,
         crop_bbox=None,
     ) -> bool:
-        image_width, image_height = ocr_payload.image_size
-        if not image_width or not image_height:
+        validated_classic_results = None
+        if getattr(ocr_payload, "engine_type", None) != "vlm":
+            try:
+                validated_classic_results = self._normalize_classic_payload_results(
+                    ocr_payload,
+                    detection_only=False,
+                )
+            except (AttributeError, OCRError):
+                return False
+
+        try:
+            image_width, image_height = self._normalize_payload_image_size(ocr_payload)
+        except (AttributeError, OCRError):
             return False
 
         width, height = self._target_dimensions(host, crop_bbox)
         scale_x = width / image_width if width else 1.0
         scale_y = height / image_height if height else 1.0
 
-        staged_results = ocr_payload.results
+        staged_results = (
+            validated_classic_results
+            if validated_classic_results is not None
+            else ocr_payload.results
+        )
         staged_scale_x = scale_x
         staged_scale_y = scale_y
         staged_offset_x = offset_x
         staged_offset_y = offset_y
 
         if ocr_payload.engine_type == "vlm":
-            from natural_pdf.ocr.vlm_ocr import scale_ocr_results, validate_table_ocr_results
-
-            if not validate_table_ocr_results(ocr_payload.results):
-                return False
             try:
-                scaled = scale_ocr_results(
-                    ocr_payload.results,
+                scaled = self._scale_vlm_payload_results(
+                    ocr_payload,
                     image_width=image_width,
                     image_height=image_height,
-                    page_width=width,
-                    page_height=height,
+                    target_width=width,
+                    target_height=height,
                     offset_x=offset_x,
                     offset_y=offset_y,
+                    min_confidence=min_confidence,
+                    detection_only=False,
                 )
-            except (KeyError, TypeError, ValueError, IndexError):
+            except OCRError:
                 logger.debug("Failed to scale OCR payload before replacement.", exc_info=True)
-                return False
-            if min_confidence is not None:
-                scaled = [r for r in scaled if r.get("confidence", 1.0) >= min_confidence]
-            if not validate_table_ocr_results(scaled):
                 return False
 
             staged_results = [
@@ -802,6 +893,14 @@ class OCRService:
 
         if not staged_results:
             return has_table_results
+
+        try:
+            staged_results = validate_classic_ocr_results(
+                staged_results,
+                detection_only=False,
+            )
+        except OCRError:
+            return False
 
         mgr = host._ocr_element_manager()
         converter = getattr(mgr, "_ocr_converter", None)
@@ -832,9 +931,23 @@ class OCRService:
         offset_x,
         offset_y,
         crop_bbox=None,
+        *,
+        detection_only: bool | None = None,
     ) -> bool:
         """Return whether an OCR payload is safe to persist in the disk cache."""
+        try:
+            self._normalize_payload_image_size(ocr_payload)
+        except (AttributeError, OCRError):
+            return False
+
         if getattr(ocr_payload, "engine_type", None) != "vlm":
+            try:
+                self._normalize_classic_payload_results(
+                    ocr_payload,
+                    detection_only=detection_only,
+                )
+            except (AttributeError, OCRError):
+                return False
             return True
 
         if not getattr(ocr_payload, "results", None):
@@ -1000,6 +1113,7 @@ class OCRService:
                         offset_x,
                         offset_y,
                         crop_bbox,
+                        detection_only=detect_only,
                     ):
                         cache.delete(cache_key)
                         logger.warning(
@@ -1100,6 +1214,30 @@ class OCRService:
             preserve_markup=preserve_markup,
         )
 
+        image_width, image_height = self._normalize_payload_image_size(ocr_payload)
+
+        if getattr(ocr_payload, "engine_type", None) != "vlm":
+            self._normalize_classic_payload_results(
+                ocr_payload,
+                detection_only=detect_only,
+            )
+        else:
+            # Fresh provider output is a public-boundary failure when malformed.
+            # Boolean validation below is reserved for cache eviction and other
+            # non-throwing preflight decisions.
+            target_width, target_height = self._target_dimensions(host, crop_bbox)
+            self._scale_vlm_payload_results(
+                ocr_payload,
+                image_width=image_width,
+                image_height=image_height,
+                target_width=target_width,
+                target_height=target_height,
+                offset_x=offset_x,
+                offset_y=offset_y,
+                min_confidence=resolved_min_conf,
+                detection_only=detect_only,
+            )
+
         detection_valid = not detect_only or self._payload_can_refresh_detection(
             host,
             ocr_payload,
@@ -1126,6 +1264,7 @@ class OCRService:
             offset_x,
             offset_y,
             crop_bbox,
+            detection_only=detect_only,
         ):
             page_index = getattr(page_obj, "index", 0)
             cache.put(cache_key, ocr_payload, engine_name, page_index)
@@ -1342,6 +1481,14 @@ class OCRService:
             layout=layout,
             preserve_markup=preserve_markup,
         )
+
+        self._normalize_payload_image_size(ocr_payload)
+
+        if getattr(ocr_payload, "engine_type", None) != "vlm":
+            self._normalize_classic_payload_results(
+                ocr_payload,
+                detection_only=False,
+            )
 
         created = self._convert_ocr_payload(
             host,

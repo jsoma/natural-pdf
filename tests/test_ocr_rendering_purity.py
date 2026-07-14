@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from natural_pdf.exceptions import OCRError
 from natural_pdf.ocr.ocr_cache import compute_cache_key
 from natural_pdf.ocr.unified_dispatch import (
     EngineEntry,
@@ -202,6 +203,54 @@ def test_extract_ocr_elements_is_pure_for_classic_payload(monkeypatch, practice_
     assert page._text_state_version == revision_before
 
 
+def test_extract_rejects_mixed_classic_payload_before_conversion(monkeypatch, practice_pdf_fresh):
+    page = practice_pdf_fresh.pages[0]
+    words_before = list(page.words)
+    chars_before = list(page.chars)
+    revision_before = page._text_state_version
+    monkeypatch.setattr(
+        "natural_pdf.services.ocr_service.run_ocr",
+        lambda **kwargs: OCRRunResult(
+            results=[
+                {"bbox": [10, 20, 50, 30], "text": "valid", "confidence": 0.9},
+                {"text": "missing bbox", "confidence": 0.8},
+            ],
+            image_size=(int(page.width), int(page.height)),
+            engine_type="classic",
+        ),
+    )
+
+    with pytest.raises(OCRError, match=r"result 1.*bbox"):
+        page.extract_ocr_elements(engine="rapidocr", languages=["en"], device="cpu")
+
+    assert list(page.words) == words_before
+    assert list(page.chars) == chars_before
+    assert page._text_state_version == revision_before
+
+
+def test_extract_materializes_valid_one_shot_bbox_before_reuse(monkeypatch, practice_pdf_fresh):
+    page = practice_pdf_fresh.pages[0]
+    monkeypatch.setattr(
+        "natural_pdf.services.ocr_service.run_ocr",
+        lambda **kwargs: OCRRunResult(
+            results=[
+                {
+                    "bbox": (value for value in [10, 20, 50, 30]),
+                    "text": "materialized",
+                    "confidence": "0.9",
+                }
+            ],
+            image_size=(int(page.width), int(page.height)),
+            engine_type="classic",
+        ),
+    )
+
+    elements = page.extract_ocr_elements(engine="rapidocr", languages=["en"], device="cpu")
+
+    assert [element.text for element in elements] == ["materialized"]
+    assert elements[0].confidence == pytest.approx(0.9)
+
+
 def test_extract_vlm_table_payload_does_not_register_regions(monkeypatch, practice_pdf_fresh):
     page = practice_pdf_fresh.pages[0]
     regions_before = list(page.iter_regions())
@@ -237,6 +286,41 @@ def test_extract_vlm_table_payload_does_not_register_regions(monkeypatch, practi
     assert list(page.iter_regions()) == regions_before
     assert list(page.find_all("region", apply_exclusions=False)) == selector_regions_before
     assert page._text_state_version == revision_before
+
+
+@pytest.mark.parametrize(("confidence", "expected"), [(None, None), ("0.9", 0.9)])
+def test_extract_vlm_accepts_supported_confidence_forms(
+    monkeypatch,
+    practice_pdf_fresh,
+    confidence,
+    expected,
+):
+    page = practice_pdf_fresh.pages[0]
+    monkeypatch.setattr(
+        "natural_pdf.services.ocr_service.run_ocr",
+        lambda **_: OCRRunResult(
+            results=[
+                {
+                    "bbox": [0, 350, 500, 400],
+                    "text": "caption",
+                    "confidence": confidence,
+                    "source_category": "text",
+                }
+            ],
+            image_size=(1000, 1000),
+            engine_type="vlm",
+        ),
+    )
+
+    extracted = page.extract_ocr_elements(
+        engine="vlm",
+        languages=["en"],
+        device="cpu",
+        min_confidence=0.5,
+    )
+
+    assert [element.text for element in extracted] == ["caption"]
+    assert extracted[0].confidence == expected
 
 
 def test_exclusion_geometry_fingerprint_is_stable_and_cache_sensitive(practice_pdf_fresh):

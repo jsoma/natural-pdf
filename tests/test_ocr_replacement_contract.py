@@ -1,6 +1,7 @@
 import pytest
 
 from natural_pdf.elements.element_collection import ElementCollection
+from natural_pdf.exceptions import OCRError
 from natural_pdf.flows.region import FlowRegion
 from natural_pdf.ocr.replacement import normalize_ocr_replace_mode
 from natural_pdf.ocr.unified_dispatch import OCRRunResult
@@ -325,6 +326,66 @@ def test_vlm_detect_only_creates_geometry_not_tables_or_chars(monkeypatch, pract
     assert list(page.iter_regions()) == regions_before
 
 
+def test_vlm_detect_only_materializes_one_shot_results_before_refresh(
+    monkeypatch,
+    practice_pdf_fresh,
+):
+    _disable_ocr_cache(monkeypatch)
+    page = practice_pdf_fresh.pages[0]
+    region = page.create_region(0, 0, page.width / 2, page.height)
+    payloads = iter(
+        [
+            OCRRunResult(
+                results=[{"bbox": [10, 10, 30, 30], "text": "old", "confidence": None}],
+                image_size=(100, 100),
+                engine_type="vlm",
+            ),
+            OCRRunResult(
+                results=(
+                    result
+                    for result in [{"bbox": [50, 10, 70, 30], "text": "new", "confidence": None}]
+                ),
+                image_size=(100, 100),
+                engine_type="vlm",
+            ),
+        ]
+    )
+    monkeypatch.setattr("natural_pdf.services.ocr_service.run_ocr", lambda **_: next(payloads))
+
+    region.apply_ocr(engine="vlm", detect_only=True, min_confidence=0.5)
+    original = next(word for word in _ocr_words(page) if getattr(word, "is_ocr_detection", False))
+    region.apply_ocr(engine="vlm", detect_only=True, min_confidence=0.5)
+
+    detections = [word for word in _ocr_words(page) if getattr(word, "is_ocr_detection", False)]
+    assert len(detections) == 1
+    assert detections[0] is not original
+
+
+@pytest.mark.parametrize(("confidence", "expected"), [(None, None), ("0.9", 0.9)])
+def test_vlm_apply_accepts_supported_confidence_forms(
+    monkeypatch,
+    practice_pdf_fresh,
+    confidence,
+    expected,
+):
+    _disable_ocr_cache(monkeypatch)
+    page = practice_pdf_fresh.pages[0]
+    region = page.create_region(0, 0, page.width / 2, page.height)
+    monkeypatch.setattr(
+        "natural_pdf.services.ocr_service.run_ocr",
+        lambda **_: OCRRunResult(
+            results=[{"bbox": [10, 10, 90, 30], "text": "recognized", "confidence": confidence}],
+            image_size=(100, 100),
+            engine_type="vlm",
+        ),
+    )
+
+    region.apply_ocr(engine="vlm", replace="none", min_confidence=0.5)
+
+    created = next(word for word in _ocr_words(page) if word.text == "recognized")
+    assert created.confidence == expected
+
+
 def test_malformed_detection_payload_preserves_prior_detections(monkeypatch, practice_pdf_fresh):
     _disable_ocr_cache(monkeypatch)
     page = practice_pdf_fresh.pages[0]
@@ -344,7 +405,8 @@ def test_malformed_detection_payload_preserves_prior_detections(monkeypatch, pra
 
     region.apply_ocr(engine="rapidocr", detect_only=True)
     original = next(word for word in _ocr_words(page) if getattr(word, "is_ocr_detection", False))
-    region.apply_ocr(engine="rapidocr", detect_only=True)
+    with pytest.raises(OCRError, match=r"result 0.*bbox"):
+        region.apply_ocr(engine="rapidocr", detect_only=True)
 
     assert original in page.words
     assert [word for word in _ocr_words(page) if getattr(word, "is_ocr_detection", False)] == [
@@ -363,15 +425,84 @@ def test_invalid_payload_does_not_remove_existing_ocr(monkeypatch, practice_pdf_
     monkeypatch.setattr(
         "natural_pdf.services.ocr_service.run_ocr",
         lambda **kwargs: OCRRunResult(
-            results=[{"bbox": [1, 1, 2, 2], "text": "invalid", "confidence": 1.0}],
-            image_size=(0, 0),
+            results=[
+                {"bbox": [1, 1, 20, 20], "text": "valid", "confidence": 1.0},
+                {"text": "missing bbox", "confidence": 1.0},
+            ],
+            image_size=(100, 100),
             engine_type="classic",
         ),
     )
 
-    region.apply_ocr(engine="rapidocr", replace="ocr")
+    with pytest.raises(OCRError, match=r"result 1.*bbox"):
+        region.apply_ocr(engine="rapidocr", replace="ocr")
 
     assert "keep-me" in {word.text for word in _ocr_words(page)}
+
+
+@pytest.mark.parametrize("image_size", [(float("nan"), 100), (-100, 100)])
+def test_invalid_image_size_does_not_remove_or_create_ocr(
+    monkeypatch,
+    practice_pdf_fresh,
+    image_size,
+):
+    _disable_ocr_cache(monkeypatch)
+    page = practice_pdf_fresh.pages[0]
+    region = page.create_region(0, 0, page.width / 2, page.height)
+    page.create_text_elements_from_ocr(
+        [{"bbox": [10, 10, 40, 30], "text": "keep-me", "confidence": 1.0}],
+        engine_name="test",
+    )
+    words_before = list(page.words)
+    chars_before = list(page.chars)
+    monkeypatch.setattr(
+        "natural_pdf.services.ocr_service.run_ocr",
+        lambda **kwargs: OCRRunResult(
+            results=[{"bbox": [1, 1, 20, 20], "text": "new", "confidence": 1.0}],
+            image_size=image_size,
+            engine_type="classic",
+        ),
+    )
+
+    with pytest.raises(OCRError, match="image_size.*finite and positive"):
+        region.apply_ocr(engine="rapidocr", replace="ocr")
+
+    assert list(page.words) == words_before
+    assert list(page.chars) == chars_before
+
+
+def test_vlm_text_validation_precedes_table_registration(monkeypatch, practice_pdf_fresh):
+    _disable_ocr_cache(monkeypatch)
+    page = practice_pdf_fresh.pages[0]
+    region = page.create_region(0, 0, page.width / 2, page.height)
+    regions_before = list(page.iter_regions())
+    words_before = list(page.words)
+    monkeypatch.setattr(
+        "natural_pdf.services.ocr_service.run_ocr",
+        lambda **kwargs: OCRRunResult(
+            results=[
+                {
+                    "bbox": [10, 10, 90, 50],
+                    "text": "valid\ttable",
+                    "confidence": 1.0,
+                    "source_category": "table",
+                },
+                {
+                    "bbox": [10, 60, 90, 80],
+                    "text": "   ",
+                    "confidence": 1.0,
+                },
+            ],
+            image_size=(100, 100),
+            engine_type="vlm",
+        ),
+    )
+
+    with pytest.raises(OCRError, match="recognition 'text'.*non-empty"):
+        region.apply_ocr(engine="vlm", replace="none")
+
+    assert list(page.iter_regions()) == regions_before
+    assert list(page.words) == words_before
 
 
 def test_detached_custom_ocr_never_removes_page_text(practice_pdf_fresh):
@@ -522,7 +653,8 @@ def test_malformed_later_vlm_table_never_removes_or_partially_registers(
         ),
     )
 
-    region.apply_ocr(engine="vlm", replace="ocr")
+    with pytest.raises(OCRError, match="Invalid VLM OCR payload"):
+        region.apply_ocr(engine="vlm", replace="ocr")
 
     assert "keep-me" in {word.text for word in _ocr_words(page)}
     assert list(page.iter_regions()) == regions_before
