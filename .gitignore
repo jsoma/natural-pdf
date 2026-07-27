@@ -13,6 +13,7 @@ temp
 Untitled*.ipynb
 importtime_output.txt
 .notebook_cache.json
+.docs-build-cache.json
 .venv
 bad-pdfs/
 bad-pdfs-analysis/**/*.pdf
