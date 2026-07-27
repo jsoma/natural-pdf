@@ -75,6 +75,16 @@ def test_pdf_text_classification_rejects_removed_use_exclusions():
         pdf.close()
 
 
+def _stub_engine_checkout(engine):
+    from contextlib import contextmanager
+
+    @contextmanager
+    def fake_checkout(context, engine_name=None):
+        yield engine
+
+    return fake_checkout
+
+
 def test_text_classification_propagates_unexpected_text_extraction_error(monkeypatch):
     """A broken text extractor must not be treated as a scanned document."""
 
@@ -94,7 +104,9 @@ def test_text_classification_propagates_unexpected_text_extraction_error(monkeyp
             raise AssertionError("vision fallback must not run after a text extraction failure")
 
     monkeypatch.setattr(
-        classification_service, "get_classification_engine", lambda *_: StubEngine()
+        classification_service,
+        "checkout_classification_engine",
+        _stub_engine_checkout(StubEngine()),
     )
     monkeypatch.setattr(
         classification_service,
@@ -126,7 +138,9 @@ def test_text_classification_does_not_guess_empty_state_from_error_substrings(mo
             raise AssertionError("vision fallback must not run after a text extraction failure")
 
     monkeypatch.setattr(
-        classification_service, "get_classification_engine", lambda *_: StubEngine()
+        classification_service,
+        "checkout_classification_engine",
+        _stub_engine_checkout(StubEngine()),
     )
 
     with pytest.raises(RuntimeError, match="Failed to extract text content") as exc_info:
@@ -178,6 +192,19 @@ class TestParseRawScores:
         with pytest.raises(ClassificationError, match="Malformed entry"):
             _parse_raw_scores(raw, 0.0, "test-model")
 
+    def test_string_labels_container_raises(self):
+        # A plain string would zip character-by-character; must be rejected.
+        raw = {"labels": "cat", "scores": [0.5, 0.3, 0.2]}
+        with pytest.raises(ClassificationError, match="labels"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
+    def test_non_sequence_scores_raises(self):
+        # A scalar would leak a raw TypeError from len(); must be a
+        # ClassificationError instead.
+        raw = {"labels": ["cat"], "scores": 0.5}
+        with pytest.raises(ClassificationError, match="scores"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
     def test_non_numeric_score_raises(self):
         raw = {"labels": ["cat"], "scores": ["high"]}
         with pytest.raises(ClassificationError, match="Non-numeric score"):
@@ -192,6 +219,54 @@ class TestParseRawScores:
         raw = {"labels": ["cat"], "scores": [0.8, 0.2]}
         with pytest.raises(ClassificationError, match="Mismatched"):
             _parse_raw_scores(raw, 0.0, "test-model")
+
+    def test_mapping_labels_container_raises(self):
+        raw = {"labels": {"cat": 1}, "scores": [0.5]}
+        with pytest.raises(ClassificationError, match="labels"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
+    def test_mapping_scores_container_raises(self):
+        raw = {"labels": ["cat"], "scores": {"cat": 0.5}}
+        with pytest.raises(ClassificationError, match="scores"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
+    def test_empty_labels_container_raises(self):
+        with pytest.raises(ClassificationError, match="Empty"):
+            _parse_raw_scores({"labels": [], "scores": []}, 0.0, "test-model")
+
+    def test_empty_list_payload_raises(self):
+        with pytest.raises(ClassificationError, match="Empty"):
+            _parse_raw_scores([], 0.0, "test-model")
+
+    def test_non_string_label_raises(self):
+        raw = {"labels": [5], "scores": [0.5]}
+        with pytest.raises(ClassificationError, match="Non-string label"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
+    def test_non_string_label_in_list_format_raises(self):
+        raw = [{"label": {"x": 1}, "score": 0.5}]
+        with pytest.raises(ClassificationError, match="Non-string label"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
+    def test_bool_score_raises(self):
+        raw = {"labels": ["cat"], "scores": [True]}
+        with pytest.raises(ClassificationError, match="Non-numeric score"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
+    def test_infinite_score_raises(self):
+        raw = {"labels": ["cat"], "scores": [float("inf")]}
+        with pytest.raises(ClassificationError, match="Non-finite score"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
+    def test_nan_score_raises(self):
+        raw = {"labels": ["cat"], "scores": [float("nan")]}
+        with pytest.raises(ClassificationError, match="Non-finite score"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
+    def test_tuple_containers_accepted(self):
+        raw = {"labels": ("cat", "dog"), "scores": (0.7, 0.3)}
+        scores = _parse_raw_scores(raw, 0.0, "test-model")
+        assert [s.label for s in scores] == ["cat", "dog"]
 
 
 # ---------- cleanup_models ----------
@@ -267,6 +342,203 @@ class _RecordingBatchEngine:
             )
             for _ in kwargs["contents"]
         ]
+
+
+def test_classify_custom_engine_invokes_custom_classify_item(monkeypatch):
+    """classification_engine='custom' must route the actual classification to
+    the custom engine, not just model/mode inference."""
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+    monkeypatch.setattr(provider_module, "_PROVIDER", provider)
+
+    custom_calls = []
+
+    class _CustomEngine:
+        def infer_using(self, model_id, using):
+            return using or "text"
+
+        def default_model(self, using):
+            return "custom-model"
+
+        def classify_item(self, **kwargs):
+            custom_calls.append(kwargs)
+            return ClassificationResult(
+                scores=[CategoryScore("custom", 0.99)],
+                model_id=kwargs.get("model_id", "custom-model"),
+                using=kwargs.get("using", "text"),
+            )
+
+        def classify_batch(self, **kwargs):
+            raise AssertionError("single-item classify must not call classify_batch")
+
+    class _DefaultEngine(_CustomEngine):
+        def classify_item(self, **kwargs):
+            raise AssertionError(
+                "classification_engine='custom' must not fall back to the default engine"
+            )
+
+    provider.register("classification", "default", lambda **_: _DefaultEngine(), replace=True)
+    provider.register("classification", "custom", lambda **_: _CustomEngine(), replace=True)
+
+    pdf = npdf.PDF("pdfs/01-practice.pdf")
+    try:
+        page = pdf.pages[0]
+        page.classify(labels=["custom"], classification_engine="custom")
+        assert custom_calls, "custom engine classify_item was never invoked"
+        assert page.analyses["classification"].category == "custom"
+    finally:
+        pdf.close()
+
+
+def test_classify_all_transient_engine_resolved_once(monkeypatch):
+    """classify_all must create exactly one engine instance even for
+    transient-lifetime registrations (no second resolution inside
+    run_classification_batch)."""
+    from natural_pdf.core.pdf_collection import PDFCollection
+
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+    monkeypatch.setattr(provider_module, "_PROVIDER", provider)
+
+    engine_calls = []
+    factory_calls = []
+
+    def factory(**_):
+        factory_calls.append(1)
+        return _RecordingBatchEngine(engine_calls)
+
+    provider.register("classification", "default", factory, replace=True, lifetime="transient")
+
+    collection = PDFCollection(["pdfs/01-practice.pdf"])
+    try:
+        for pdf in collection.pdfs:
+            monkeypatch.setattr(
+                pdf, "_get_classification_content", lambda model_type, **kw: "pdf text"
+            )
+        collection.classify_all(labels=["a"], progress_bar=False)
+        assert engine_calls, "engine classify_batch was never called"
+        assert len(factory_calls) == 1, "transient engine factory ran more than once"
+    finally:
+        for pdf in collection.pdfs:
+            pdf.close()
+
+
+# ---------- Transient engine lifecycle (checkout cleanup) ----------
+
+
+class _ClosableEngine:
+    """Stub engine recording classify calls and close() invocations."""
+
+    def __init__(self, closed):
+        self._closed = closed
+
+    def infer_using(self, model_id, using):
+        return using or "text"
+
+    def default_model(self, using):
+        return "stub-model"
+
+    def _result(self):
+        return ClassificationResult(
+            scores=[CategoryScore("stub", 0.9)],
+            model_id="stub-model",
+            using="text",
+        )
+
+    def classify_item(self, **kwargs):
+        return self._result()
+
+    def classify_batch(self, **kwargs):
+        return [self._result() for _ in kwargs["contents"]]
+
+    def close(self):
+        self._closed.append(self)
+
+
+class TestTransientEngineCleanup:
+    def _install(self, monkeypatch, lifetime):
+        provider = EngineProvider()
+        provider._entry_points_loaded = True
+        monkeypatch.setattr(provider_module, "_PROVIDER", provider)
+        closed = []
+        factory_calls = []
+
+        def factory(**_):
+            factory_calls.append(1)
+            return _ClosableEngine(closed)
+
+        provider.register("classification", "default", factory, replace=True, lifetime=lifetime)
+        return closed, factory_calls
+
+    def test_page_classify_closes_transient_engine_once_per_call(self, monkeypatch):
+        closed, factory_calls = self._install(monkeypatch, "transient")
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        try:
+            page = pdf.pages[0]
+            page.classify(labels=["stub"])
+            assert len(factory_calls) == 1
+            assert len(closed) == 1
+            page.classify(labels=["stub"])
+            assert len(factory_calls) == 2
+            assert len(closed) == 2
+        finally:
+            pdf.close()
+
+    def test_classify_pages_closes_transient_engine_once(self, monkeypatch):
+        closed, factory_calls = self._install(monkeypatch, "transient")
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        try:
+            for page in pdf.pages:
+                monkeypatch.setattr(
+                    page, "_get_classification_content", lambda model_type, **kw: "page text"
+                )
+            pdf.classify_pages(labels=["a"], progress_bar=False)
+            assert len(factory_calls) == 1
+            assert len(closed) == 1
+        finally:
+            pdf.close()
+
+    def test_collection_classify_all_closes_transient_engine_once(self, monkeypatch):
+        from natural_pdf.core.pdf_collection import PDFCollection
+
+        closed, factory_calls = self._install(monkeypatch, "transient")
+        collection = PDFCollection(["pdfs/01-practice.pdf"])
+        try:
+            for pdf in collection.pdfs:
+                monkeypatch.setattr(
+                    pdf, "_get_classification_content", lambda model_type, **kw: "pdf text"
+                )
+            collection.classify_all(labels=["a"], progress_bar=False)
+            assert len(factory_calls) == 1
+            assert len(closed) == 1
+        finally:
+            for pdf in collection.pdfs:
+                pdf.close()
+
+    def test_element_collection_classify_all_closes_transient_engine_once(self, monkeypatch):
+        closed, factory_calls = self._install(monkeypatch, "transient")
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        try:
+            elements = pdf.pages[0].find_all("text")[:3]
+            assert len(elements) > 0
+            elements.classify_all(labels=["a"], progress_bar=False)
+            assert len(factory_calls) == 1, "transient engine factory ran more than once"
+            assert len(closed) == 1
+        finally:
+            pdf.close()
+
+    @pytest.mark.parametrize("lifetime", ["context", "singleton"])
+    def test_cached_lifetimes_are_never_cleaned(self, monkeypatch, lifetime):
+        closed, factory_calls = self._install(monkeypatch, lifetime)
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        try:
+            page = pdf.pages[0]
+            page.classify(labels=["stub"])
+            page.classify(labels=["stub"])
+            assert len(factory_calls) == 1
+            assert closed == []
+        finally:
+            pdf.close()
 
 
 class TestBatchKwargRouting:

@@ -183,6 +183,110 @@ def test_region_host_config_and_exclusions_flow_into_guide_ocr_windows(practice_
     assert (0.0, 0.0, 50.0, 50.0) in render_kwargs["_ocr_exclusion_bboxes"]
 
 
+def test_callable_host_exclusions_resolve_against_host_not_window(practice_pdf, monkeypatch):
+    """Callable exclusions are defined against the ORIGINAL host region.
+    Windows must receive the host-resolved static geometry — the callable
+    must never be invoked with a window object (which would change its
+    meaning: unmasking intended content or masking unrelated content)."""
+    from natural_pdf.services.base import resolve_service
+
+    page = practice_pdf.pages[0]
+    host = Region(page, (0.0, 0.0, 200.0, 200.0))
+    mask = Region(page, (0.0, 0.0, 50.0, 50.0))
+
+    callable_args = []
+
+    def dynamic_mask(target):
+        callable_args.append(target)
+        return mask
+
+    host._exclusions = [(dynamic_mask, "mask", "region")]
+    guides = Guides(verticals=[0, 100, 200], horizontals=[0, 100, 200], context=host)
+
+    captured = []
+    monkeypatch.setattr(
+        Region,
+        "_execute_ocr_request",
+        lambda region, request: captured.append(region),
+        raising=False,
+    )
+
+    guides.rows[:1].apply_ocr(engine="rapidocr")
+
+    window = captured[0]
+    assert window is not host
+
+    # The callable was resolved, and only ever against the original host.
+    assert callable_args, "callable exclusion was never resolved"
+    assert all(arg is host for arg in callable_args)
+
+    # The window carries baked geometry, not the callable itself.
+    assert all(not callable(entry[0]) for entry in window._exclusions)
+
+    # Effective exclusion geometry equals the host-resolved region.
+    service = resolve_service(window, "ocr")
+    render_kwargs = service._render_kwargs(window, apply_exclusions=True)
+    assert (0.0, 0.0, 50.0, 50.0) in render_kwargs["_ocr_exclusion_bboxes"]
+    # Rendering the window did not re-invoke the callable with the window.
+    assert all(arg is host for arg in callable_args)
+
+
+def test_plain_guide_region_access_never_invokes_callable_exclusions(practice_pdf):
+    """Materializing guide regions (cells/rows/columns access and iteration)
+    must not run callable host exclusions: they may be expensive or raise, and
+    plain access is not a read of excluded content."""
+    page = practice_pdf.pages[0]
+    host = Region(page, (0.0, 0.0, 200.0, 200.0))
+
+    calls = []
+
+    def raising_mask(target):
+        calls.append(target)
+        raise RuntimeError("callable exclusion must not run on plain access")
+
+    host._exclusions = [(raising_mask, "mask", "region")]
+    guides = Guides(verticals=[0, 100, 200], horizontals=[0, 100, 200], context=host)
+
+    cell = guides.cells[0, 0]
+    assert cell.bbox == (0.0, 0.0, 100.0, 100.0)
+    list(guides.cells)
+    list(guides.rows)
+    list(guides.columns)
+
+    assert calls == []
+
+
+def test_apply_ocr_without_exclusions_never_invokes_callable_exclusions(practice_pdf, monkeypatch):
+    """apply_ocr(apply_exclusions=False) must not execute callable host
+    exclusions: the run will not apply exclusions, so resolving them is pure
+    side effect."""
+    page = practice_pdf.pages[0]
+    host = Region(page, (0.0, 0.0, 200.0, 200.0))
+    mask = Region(page, (0.0, 0.0, 50.0, 50.0))
+
+    calls = []
+
+    def dynamic_mask(target):
+        calls.append(target)
+        return mask
+
+    host._exclusions = [(dynamic_mask, "mask", "region")]
+    guides = Guides(verticals=[0, 100, 200], horizontals=[0, 100, 200], context=host)
+
+    captured = []
+    monkeypatch.setattr(
+        Region,
+        "_execute_ocr_request",
+        lambda region, request: captured.append(region),
+        raising=False,
+    )
+
+    guides.rows[:1].apply_ocr(engine="rapidocr", apply_exclusions=False)
+
+    assert captured, "OCR was never dispatched"
+    assert calls == [], "callable exclusion ran despite apply_exclusions=False"
+
+
 def test_cells_view_prefers_host_configured_resolution_over_auto(practice_pdf, monkeypatch):
     page = practice_pdf.pages[0]
     host = Region(page, (0.0, 0.0, 200.0, 200.0))

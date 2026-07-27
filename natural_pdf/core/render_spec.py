@@ -354,7 +354,8 @@ class Visualizable:
             crop: Cropping mode:
                 - False: No cropping (default)
                 - True: Tight crop to element bounds
-                - int: Padding in pixels around element
+                - int: Padding in PDF points around element (crop bounds are
+                  computed in PDF coordinate space, then scaled by resolution)
                 - 'wide': Full page width, cropped vertically to element
                 - Region: Crop to the bounds of another region
             crop_bbox: Explicit crop bounds

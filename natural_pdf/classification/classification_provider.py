@@ -117,10 +117,15 @@ def run_classification_item(
     min_confidence: float,
     multi_label: bool,
     engine_name: Optional[str] = None,
+    engine: Optional[ClassificationEngine] = None,
     **kwargs,
 ) -> ClassificationResult:
-    engine = _get_engine(context, engine_name)
-    return engine.classify_item(
+    # A pre-resolved engine object wins over name resolution: callers that
+    # already resolved (e.g. to read default_model/infer_using) pass it here
+    # so the same instance handles classification and no second resolution
+    # happens (transient-lifetime factories would otherwise run twice).
+    resolved_engine = engine if engine is not None else _get_engine(context, engine_name)
+    return resolved_engine.classify_item(
         item_content=content,
         labels=labels,
         model_id=model_id,
@@ -143,10 +148,14 @@ def run_classification_batch(
     batch_size: int,
     progress_bar: bool,
     engine_name: Optional[str] = None,
+    engine: Optional[ClassificationEngine] = None,
     **kwargs,
 ) -> List[ClassificationResult]:
-    engine = _get_engine(context, engine_name)
-    return engine.classify_batch(
+    # See run_classification_item: a pre-resolved engine object avoids a
+    # second provider resolution (and a second instance for transient
+    # lifetimes).
+    resolved_engine = engine if engine is not None else _get_engine(context, engine_name)
+    return resolved_engine.classify_batch(
         contents=contents,
         labels=labels,
         model_id=model_id,

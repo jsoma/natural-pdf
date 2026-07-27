@@ -374,7 +374,66 @@ def _snapshot_guide_geometry(guides: "Guides") -> _GuideGeometrySnapshot:
     )
 
 
-def _region_for_target(target: GuidesContext, bbox: Bounds) -> Region:
+def _bake_host_exclusions(host: Region, entries: Sequence) -> list:
+    """Copy host exclusion entries onto a window, resolving callables first.
+
+    Callable exclusions are defined against the ORIGINAL host; copying them
+    onto a window would later invoke them with the window as argument,
+    changing their meaning (they could unmask intended content or mask
+    unrelated content). Resolve them against the host now and attach the
+    resulting static regions instead — geometry is baked, callables never
+    see a window object.
+    """
+    baked: list = []
+    for entry in entries:
+        if len(entry) == 2:
+            item, label = entry
+            method = "region"
+        else:
+            item, label, method = entry
+        if callable(item):
+            resolved = host._evaluate_exclusion_entries([entry], True, False)
+            baked.extend((resolved_region, label, method) for resolved_region in resolved)
+        else:
+            baked.append(entry)
+    return baked
+
+
+def _defer_host_exclusions(host: Region, entries: Sequence) -> list:
+    """Copy host exclusion entries onto a window WITHOUT invoking callables.
+
+    Same host-resolution semantics as :func:`_bake_host_exclusions`, but lazy:
+    each callable entry is wrapped so that, if and when the window's
+    exclusions are actually evaluated (read-time), the original callable is
+    resolved against the ORIGINAL host — never against the window. Plain
+    window materialization therefore never runs user callables (which may be
+    expensive or raise), and OCR with ``apply_exclusions=False`` never runs
+    them either because the render path skips exclusion evaluation entirely.
+    """
+    deferred: list = []
+    for entry in entries:
+        if len(entry) == 2:
+            item, label = entry
+            method = "region"
+        else:
+            item, label, method = entry
+        if callable(item):
+
+            def _resolve_against_host(_window: Any, *, _host=host, _entry=entry) -> list:
+                return _host._evaluate_exclusion_entries([_entry], True, False)
+
+            deferred.append((_resolve_against_host, label, method))
+        else:
+            deferred.append(entry)
+    return deferred
+
+
+def _region_for_target(
+    target: GuidesContext,
+    bbox: Bounds,
+    *,
+    bake_callable_exclusions: bool = False,
+) -> Region:
     x0, top, x1, bottom = bbox
     region = Region(
         resolve_page_for_materialization(target),
@@ -384,9 +443,14 @@ def _region_for_target(target: GuidesContext, bbox: Bounds) -> Region:
         # Windows carved out of a Region host must behave like that host:
         # region-local exclusions keep masking content and region-scope config
         # keeps resolving (page-level state already flows in via ``page``).
+        # Callables resolve against the host either eagerly (OCR request path
+        # with exclusions applied) or lazily (everything else).
         host_exclusions = getattr(target, "_exclusions", None)
         if host_exclusions:
-            region._exclusions = list(host_exclusions)
+            if bake_callable_exclusions:
+                region._exclusions = _bake_host_exclusions(target, host_exclusions)
+            else:
+                region._exclusions = _defer_host_exclusions(target, host_exclusions)
         host_config = target.metadata.get("config") if isinstance(target.metadata, dict) else None
         if isinstance(host_config, dict) and host_config:
             region.metadata["config"] = dict(host_config)
@@ -578,17 +642,30 @@ class _GuideRegionView(OCRScopeMixin, Sequence[Region]):
 
     def _iter_ocr_hosts(self, request: OCRRequest) -> Iterable[Any]:
         plan = self._build_plan(request)
+        bake = bool(getattr(plan.request, "apply_exclusions", True))
         for window in plan.windows:
-            yield _region_for_target(plan.target, cast(Bounds, window["bbox"]))
+            yield _region_for_target(
+                plan.target,
+                cast(Bounds, window["bbox"]),
+                bake_callable_exclusions=bake,
+            )
 
     def _execute_ocr_request(self, request: OCRRequest) -> None:
         self._apply_ocr_plan(self._build_plan(request))
 
     def _apply_ocr_plan(self, plan: GuideOCRPlan) -> GuideOCRResult:
         counts: List[Optional[int]] = []
+        # Resolve callable host exclusions eagerly only when this OCR run will
+        # actually apply exclusions; with apply_exclusions=False the callables
+        # must never be invoked.
+        bake = bool(getattr(plan.request, "apply_exclusions", True))
         with ocr_execution_session():
             for planned in plan.windows:
-                region = _region_for_target(plan.target, cast(Bounds, planned["bbox"]))
+                region = _region_for_target(
+                    plan.target,
+                    cast(Bounds, planned["bbox"]),
+                    bake_callable_exclusions=bake,
+                )
                 before_elements = _scoped_text_elements(region)
                 _execute_region_ocr_request(region, plan.request)
                 after_elements = _scoped_text_elements(region)
@@ -933,6 +1010,11 @@ class GuideCells(_GuideRegionView):
         return plan
 
 
+# Deprecated alias: ``GuidesOcrResult`` was the pre-refactor name of
+# ``GuideOCRResult``. Kept so historical import paths (including the
+# ``natural_pdf.analyzers.guides`` shim) continue to work.
+GuidesOcrResult = GuideOCRResult
+
 __all__ = [
     "GuideCells",
     "GuideColumns",
@@ -940,4 +1022,5 @@ __all__ = [
     "GuideOCRPlanningOptions",
     "GuideOCRResult",
     "GuideRows",
+    "GuidesOcrResult",
 ]

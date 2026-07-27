@@ -24,10 +24,7 @@ if TYPE_CHECKING:
 from PIL import Image
 from tqdm.auto import tqdm
 
-from natural_pdf.classification.classification_provider import (
-    get_classification_engine,
-    run_classification_batch,
-)
+from natural_pdf.classification.classification_provider import run_classification_batch
 
 # Set up logger early
 # Configure logging to include thread information
@@ -742,60 +739,69 @@ class PDFCollection(
         )
 
         engine_name = kwargs.pop("classification_engine", None)
-        # Resolve the engine once with the collection as context — the same
-        # (context, name) pair run_classification_batch uses below — so
-        # context-scoped caching reuses a single engine instance.
-        engine_obj = get_classification_engine(self, engine_name)
-        inferred_using = engine_obj.infer_using(model or engine_obj.default_model("text"), using)
-
-        # Split the kwarg stream the same way ClassificationService.classify
-        # does: content-extraction options go to the content getter, everything
-        # else (e.g. device=) to the engine call.
-        content_kwargs = {}
-        if "resolution" in kwargs:
-            content_kwargs["resolution"] = kwargs.pop("resolution")
-
-        pdf_contents: List[Any] = []
-        valid_pdfs: List[Any] = []
 
         from natural_pdf.exceptions import ClassificationError
-        from natural_pdf.services.classification_service import ClassificationService
-
-        logger.info(f"Gathering content from {len(self._pdfs)} PDFs for batch classification...")
-        for pdf in self._pdfs:
-            try:
-                content = pdf._get_classification_content(
-                    model_type=inferred_using, **content_kwargs
-                )
-                pdf_contents.append(content)
-                valid_pdfs.append(pdf)
-            except ValueError as exc:
-                # Only genuinely empty documents may be skipped; anything else
-                # must surface instead of silently dropping the PDF.
-                if ClassificationService._is_empty_text_error(exc):
-                    logger.warning(f"Skipping PDF {pdf.path}: no extractable content - {exc}")
-                else:
-                    raise ClassificationError(
-                        f"Failed to get classification content for {pdf.path}: {exc}"
-                    ) from exc
-
-        if not pdf_contents:
-            logger.warning("No valid content could be gathered from PDFs for classification.")
-            return self
-
-        batch_results = run_classification_batch(
-            context=self,
-            contents=pdf_contents,
-            labels=labels,
-            model_id=model or engine_obj.default_model(inferred_using),
-            using=inferred_using,
-            min_confidence=min_confidence,
-            multi_label=multi_label,
-            batch_size=batch_size,
-            progress_bar=progress_bar,
-            engine_name=engine_name,
-            **kwargs,
+        from natural_pdf.services.classification_service import (
+            ClassificationService,
+            checkout_classification_engine,
         )
+
+        # Check the engine out once and pass the instance straight to
+        # run_classification_batch below, so exactly one engine instance is
+        # created regardless of registration lifetime — and transient
+        # instances are cleaned up when the call finishes.
+        with checkout_classification_engine(self, engine_name) as engine_obj:
+            inferred_using = engine_obj.infer_using(
+                model or engine_obj.default_model("text"), using
+            )
+
+            # Split the kwarg stream the same way ClassificationService.classify
+            # does: content-extraction options go to the content getter, everything
+            # else (e.g. device=) to the engine call.
+            content_kwargs = {}
+            if "resolution" in kwargs:
+                content_kwargs["resolution"] = kwargs.pop("resolution")
+
+            pdf_contents: List[Any] = []
+            valid_pdfs: List[Any] = []
+
+            logger.info(
+                f"Gathering content from {len(self._pdfs)} PDFs for batch classification..."
+            )
+            for pdf in self._pdfs:
+                try:
+                    content = pdf._get_classification_content(
+                        model_type=inferred_using, **content_kwargs
+                    )
+                    pdf_contents.append(content)
+                    valid_pdfs.append(pdf)
+                except ValueError as exc:
+                    # Only genuinely empty documents may be skipped; anything else
+                    # must surface instead of silently dropping the PDF.
+                    if ClassificationService._is_empty_text_error(exc):
+                        logger.warning(f"Skipping PDF {pdf.path}: no extractable content - {exc}")
+                    else:
+                        raise ClassificationError(
+                            f"Failed to get classification content for {pdf.path}: {exc}"
+                        ) from exc
+
+            if not pdf_contents:
+                logger.warning("No valid content could be gathered from PDFs for classification.")
+                return self
+
+            batch_results = run_classification_batch(
+                context=self,
+                contents=pdf_contents,
+                labels=labels,
+                model_id=model or engine_obj.default_model(inferred_using),
+                using=inferred_using,
+                min_confidence=min_confidence,
+                multi_label=multi_label,
+                batch_size=batch_size,
+                progress_bar=progress_bar,
+                engine=engine_obj,
+                **kwargs,
+            )
 
         if len(batch_results) != len(valid_pdfs):
             raise ClassificationError(

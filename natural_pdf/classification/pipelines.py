@@ -1,6 +1,9 @@
 import logging
+import math
 import threading
 import time
+from collections.abc import Mapping as _Mapping
+from collections.abc import Sequence as _Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence, Union, cast
 
@@ -139,6 +142,20 @@ def _parse_raw_scores(
     if isinstance(raw_result, dict) and "labels" in raw_result and "scores" in raw_result:
         labels = raw_result["labels"]
         scores = raw_result["scores"]
+        # Both must be real sequences of items: not a string (it would zip
+        # character-by-character), not a mapping (iteration would yield keys),
+        # and not a scalar (len() would leak a raw TypeError below).
+        for field_name, value in (("labels", labels), ("scores", scores)):
+            if (
+                isinstance(value, (str, bytes))
+                or isinstance(value, _Mapping)
+                or not isinstance(value, _Sequence)
+            ):
+                raise ClassificationError(
+                    f"Malformed {field_name!r} in pipeline output for model "
+                    f"'{model_id}': expected a sequence, got "
+                    f"{type(value).__name__}"
+                )
         if len(labels) != len(scores):
             raise ClassificationError(
                 f"Mismatched payload from pipeline for model '{model_id}': "
@@ -158,10 +175,28 @@ def _parse_raw_scores(
             f"{type(raw_result).__name__}"
         )
 
+    # An empty labels container is malformed: classification without candidate
+    # labels cannot have happened, so failing closed beats returning an empty
+    # (category=None) result.
+    if not pairs:
+        raise ClassificationError(
+            f"Empty labels/scores payload from pipeline for model '{model_id}'"
+        )
+
     for label, score_val in pairs:
-        if not isinstance(score_val, (int, float)):
+        if not isinstance(label, str):
+            raise ClassificationError(
+                f"Non-string label {label!r} from pipeline for model '{model_id}'"
+            )
+        # bool is an int subclass, but True/False are not scores.
+        if isinstance(score_val, bool) or not isinstance(score_val, (int, float)):
             raise ClassificationError(
                 f"Non-numeric score {score_val!r} for label {label!r} "
+                f"from pipeline for model '{model_id}'"
+            )
+        if not math.isfinite(score_val):
+            raise ClassificationError(
+                f"Non-finite score {score_val!r} for label {label!r} "
                 f"from pipeline for model '{model_id}'"
             )
 

@@ -275,6 +275,53 @@ def test_validation_errors_do_not_delete_old_export(pdf, out_dir):
     assert _staging_dirs(out_dir) == []
 
 
+def test_pathlib_path_output_dir(pdf, out_dir):
+    """A pathlib.Path destination must work exactly like a str destination."""
+    result = export_training_data(pdf, Path(out_dir))
+    assert result["images"] > 0
+    assert (Path(out_dir) / "metadata.jsonl").exists()
+
+    # overwrite with a Path also exercises the staging/promote path
+    result = export_training_data(pdf, Path(out_dir), overwrite=True)
+    assert result["images"] > 0
+    assert _staging_dirs(out_dir) == []
+    assert _old_aside_dirs(out_dir) == []
+
+
+def test_promote_failure_preserves_old_export(pdf, out_dir, monkeypatch):
+    """If renaming staging into place fails, the ORIGINAL export must be
+    restored intact (not deleted before the promote)."""
+    old = export_training_data(pdf, out_dir)
+    assert old["images"] > 0
+    old_files = sorted(p.name for p in (Path(out_dir) / "images").glob("*.png"))
+
+    real_rename = os.rename
+
+    def failing_rename(src, dst):
+        if ".staging-" in os.fspath(src):
+            raise OSError("simulated promote failure")
+        return real_rename(src, dst)
+
+    monkeypatch.setattr(os, "rename", failing_rename)
+
+    with pytest.raises(OSError, match="simulated promote failure"):
+        export_training_data(pdf, out_dir, overwrite=True)
+
+    monkeypatch.undo()
+
+    # Original export restored at its original location, byte-for-byte set
+    assert (Path(out_dir) / "metadata.jsonl").exists()
+    assert sorted(p.name for p in (Path(out_dir) / "images").glob("*.png")) == old_files
+    # No staging or aside leftovers
+    assert _staging_dirs(out_dir) == []
+    assert _old_aside_dirs(out_dir) == []
+
+
+def _old_aside_dirs(out_dir):
+    parent = Path(out_dir).parent
+    return [p for p in parent.iterdir() if p.name.startswith(Path(out_dir).name + ".old-")]
+
+
 def test_overwrite_refuses_unmarked_directory(pdf, out_dir):
     """overwrite=True still refuses a non-empty directory without the marker."""
     os.makedirs(out_dir)
@@ -285,6 +332,87 @@ def test_overwrite_refuses_unmarked_directory(pdf, out_dir):
 
     assert (Path(out_dir) / "precious.txt").read_text() == "user data"
     assert _staging_dirs(out_dir) == []
+
+
+# ── destination appearing between build and promote (TOCTOU) ───────────
+
+
+def _intrude_after_build(monkeypatch, intrude):
+    """Monkeypatch _build_export to run *intrude* between build and promote."""
+    import natural_pdf.exporters.training_data as td
+
+    real_build = td._build_export
+
+    def build_then_intrude(*args, **kwargs):
+        result = real_build(*args, **kwargs)
+        intrude()
+        return result
+
+    monkeypatch.setattr(td, "_build_export", build_then_intrude)
+
+
+def test_destination_dir_appearing_during_build_raises_and_is_untouched(pdf, out_dir, monkeypatch):
+    """overwrite=False, destination absent at start: a directory created by
+    another process during the build must survive, the export must raise, and
+    the completed staging directory must be preserved (path in the error)."""
+
+    def intrude():
+        os.makedirs(out_dir)
+        (Path(out_dir) / "valuable.txt").write_text("irreplaceable")
+
+    _intrude_after_build(monkeypatch, intrude)
+
+    with pytest.raises(FileExistsError, match="appeared") as excinfo:
+        export_training_data(pdf, out_dir, overwrite=False)
+
+    # The interloper is intact.
+    assert (Path(out_dir) / "valuable.txt").read_text() == "irreplaceable"
+    # The finished export is preserved in staging and named in the error.
+    staging = _staging_dirs(out_dir)
+    assert len(staging) == 1
+    assert str(staging[0]) in str(excinfo.value)
+    assert (staging[0] / "metadata.jsonl").exists()
+
+
+def test_destination_file_appearing_during_build_raises_with_overwrite(pdf, out_dir, monkeypatch):
+    """Even with overwrite=True, a plain file that appeared at the destination
+    is not an export and must not be deleted."""
+
+    def intrude():
+        Path(out_dir).write_text("irreplaceable")
+
+    _intrude_after_build(monkeypatch, intrude)
+
+    with pytest.raises(FileExistsError, match="Refusing to overwrite"):
+        export_training_data(pdf, out_dir, overwrite=True)
+
+    assert Path(out_dir).read_text() == "irreplaceable"
+    assert len(_staging_dirs(out_dir)) == 1
+
+
+def test_destination_replaced_with_foreign_dir_during_build_raises(pdf, out_dir, monkeypatch):
+    """overwrite=True on a valid old export: if the destination is swapped for
+    a marker-less non-empty directory during the build, promotion must refuse
+    to touch it and keep the staging directory."""
+    import shutil
+
+    old = export_training_data(pdf, out_dir)
+    assert old["images"] > 0
+
+    def intrude():
+        shutil.rmtree(out_dir)
+        os.makedirs(out_dir)
+        (Path(out_dir) / "valuable.txt").write_text("irreplaceable")
+
+    _intrude_after_build(monkeypatch, intrude)
+
+    with pytest.raises(FileExistsError, match="Refusing to overwrite") as excinfo:
+        export_training_data(pdf, out_dir, overwrite=True)
+
+    assert (Path(out_dir) / "valuable.txt").read_text() == "irreplaceable"
+    staging = _staging_dirs(out_dir)
+    assert len(staging) == 1
+    assert str(staging[0]) in str(excinfo.value)
 
 
 # ── empty elements are skipped ──────────────────────────────────────────

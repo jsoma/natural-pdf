@@ -723,10 +723,12 @@ def _normalize_engine_output(payload, *, engine_name: str):
     """Normalize classic engine output to ``List[Dict]``.
 
     ``process_image`` may return ``List[Dict]`` (single image) or
-    ``List[List[Dict]]`` (batch of one). ``None`` and empty lists mean the
-    engine found no text. Any other shape is malformed provider output and
-    raises :class:`~natural_pdf.exceptions.OCRError` — silently returning
-    ``[]`` would be indistinguishable from a blank page.
+    ``List[List[Dict]]`` (batch of exactly one). ``None`` and empty lists mean
+    the engine found no text. Any other shape — including more than one batch
+    for a single image — is malformed provider output and raises
+    :class:`~natural_pdf.exceptions.OCRError`; silently returning ``[]`` or
+    dropping extra batches would be indistinguishable from a blank page.
+    Every element is validated, not just the first.
     """
     from natural_pdf.exceptions import OCRError
 
@@ -737,14 +739,28 @@ def _normalize_engine_output(payload, *, engine_name: str):
             return []
         first = payload[0]
         if isinstance(first, dict):
+            for item in payload:
+                if not isinstance(item, dict):
+                    raise OCRError(
+                        f"OCR engine {engine_name!r} returned a malformed payload: "
+                        f"expected a list of result dicts, but found a "
+                        f"{type(item).__name__} entry."
+                    )
             return payload
         if isinstance(first, list):
-            if first and not isinstance(first[0], dict):
+            if len(payload) > 1:
                 raise OCRError(
-                    f"OCR engine {engine_name!r} returned a malformed batch "
-                    f"payload: expected a list of result dicts, got a list of "
-                    f"{type(first[0]).__name__}."
+                    f"OCR engine {engine_name!r} returned {len(payload)} result "
+                    f"batches for a single image; expected exactly one. Refusing "
+                    f"to silently discard the extra batches."
                 )
+            for item in first:
+                if not isinstance(item, dict):
+                    raise OCRError(
+                        f"OCR engine {engine_name!r} returned a malformed batch "
+                        f"payload: expected a list of result dicts, got a list "
+                        f"containing {type(item).__name__}."
+                    )
             return first
         raise OCRError(
             f"OCR engine {engine_name!r} returned a malformed payload: expected "

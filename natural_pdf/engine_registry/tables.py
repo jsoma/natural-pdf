@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Optional, Type
 
+from natural_pdf.engine_provider import EngineCacheKey, EngineLifetime
+
 from .base import register_engine
 
 __all__ = [
@@ -25,6 +27,8 @@ def register_table_engine(
     *,
     replace: bool = True,
     metadata: Optional[dict[str, Any]] = None,
+    lifetime: EngineLifetime = "context",
+    cache_key: Optional[EngineCacheKey] = None,
 ) -> None:
     """Register a full-featured table extraction engine."""
 
@@ -34,6 +38,8 @@ def register_table_engine(
         factory,
         replace=replace,
         metadata=metadata,
+        lifetime=lifetime,
+        cache_key=cache_key,
     )
 
 
@@ -62,6 +68,8 @@ def register_structure_engine(
     *,
     replace: bool = True,
     metadata: Optional[dict[str, Any]] = None,
+    lifetime: EngineLifetime = "context",
+    cache_key: Optional[EngineCacheKey] = None,
 ) -> None:
     """Register a table-structure detection engine (e.g., TATR cell consumer)."""
 
@@ -71,6 +79,8 @@ def register_structure_engine(
         factory,
         replace=replace,
         metadata=metadata,
+        lifetime=lifetime,
+        cache_key=cache_key,
     )
 
 

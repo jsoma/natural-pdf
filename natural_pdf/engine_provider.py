@@ -7,6 +7,7 @@ import threading
 import weakref
 from collections import defaultdict
 from collections.abc import Hashable
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import (
     Any,
@@ -273,6 +274,40 @@ class EngineProvider:
                 self._instances[key] = cached
 
             return cached.engine
+
+    @contextmanager
+    def checkout(
+        self,
+        capability: str,
+        *,
+        context: Any,
+        name: Optional[str] = None,
+        **options: Any,
+    ):
+        """Scoped :meth:`get`: yield an engine and clean up transient instances.
+
+        Transient registrations return a fresh instance from every ``get``
+        and assign cleanup to the caller; ``checkout`` discharges that duty by
+        invoking the engine's ``cleanup()`` (or ``close()``) hook on exit —
+        the same convention used for evicted cached engines. Engines with
+        ``context``/``singleton`` lifetimes are yielded untouched: the
+        provider still owns those instances and cleans them via
+        :meth:`evict`/:meth:`clear` or context collection.
+        """
+
+        engine = self.get(capability, context=context, name=name, **options)
+
+        cap = capability.strip().lower()
+        engine_name = (name or "").strip().lower()
+        with self._lock:
+            registration = self._registry.get(cap, {}).get(engine_name)
+        transient = registration is not None and registration.lifetime == "transient"
+
+        try:
+            yield engine
+        finally:
+            if transient:
+                self._cleanup_engines([engine])
 
     def evict(self, capability: str, name: str) -> int:
         """Evict every cached variant for one registration.

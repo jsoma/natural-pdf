@@ -249,12 +249,15 @@ def test_register_selector_engine_round_trip():
     assert isinstance(engine, DummySelectorEngine)
 
 
-def test_capability_wrappers_forward_lifecycle_params(monkeypatch):
-    """Wrappers must forward lifetime/cache_key to base.register_engine so
-    third-party heavy models can opt into singleton reuse via the helpers."""
-    import natural_pdf.engine_registry._capability_wrappers as wrappers
+def _delegating_register_engine_spy(calls):
+    """A spy that records forwarding AND delegates to the real register_engine.
 
-    calls = []
+    The real call runs EngineProvider.register's validation, so these tests
+    can only use combinations that are legal for real callers:
+    ``cache_key`` requires the (default) context lifetime, and
+    singleton/transient registrations must not pass a cache_key.
+    """
+    from natural_pdf.engine_registry.base import register_engine as real_register_engine
 
     def spy(
         capability,
@@ -276,41 +279,78 @@ def test_capability_wrappers_forward_lifecycle_params(monkeypatch):
                 "cache_key": cache_key,
             }
         )
+        real_register_engine(
+            capability,
+            name,
+            factory,
+            replace=replace,
+            metadata=metadata,
+            lifetime=lifetime,
+            cache_key=cache_key,
+        )
 
+    return spy
+
+
+def test_capability_wrappers_forward_lifecycle_params(monkeypatch):
+    """Wrappers must forward lifetime/cache_key to base.register_engine so
+    third-party heavy models can opt into singleton reuse via the helpers.
+
+    The spy delegates to the real register_engine, so every registration here
+    passes through EngineProvider.register's real validation. Only real-caller
+    legal combinations appear: cache_key only with the default context
+    lifetime, singleton/transient without cache_key."""
+    import natural_pdf.engine_registry._capability_wrappers as wrappers
+
+    calls = []
+    spy = _delegating_register_engine_spy(calls)
     monkeypatch.setattr(wrappers, "register_engine", spy)
 
-    def shared_key(*args, **kwargs):
+    def shared_key(_context, _options):
         return "shared"
 
+    layout_name = f"spy-layout-{uuid.uuid4().hex}"
     wrappers.register_layout_engine(
-        "spy-layout",
+        layout_name,
         lambda **_: object(),
-        replace=False,
         metadata={"heavy": True},
         lifetime="singleton",
-        cache_key=shared_key,
     )
     assert calls == [
         {
             "capability": "layout",
-            "name": "spy-layout",
-            "replace": False,
+            "name": layout_name,
+            "replace": True,
             "metadata": {"heavy": True},
             "lifetime": "singleton",
-            "cache_key": shared_key,
+            "cache_key": None,
         }
     ]
-
-    # Multi-capability wrapper forwards to every registration
-    calls.clear()
-    wrappers.register_deskew_engine(
-        "spy-deskew", lambda **_: object(), lifetime="singleton", cache_key=shared_key
+    # The singleton lifetime is live in the real provider: one instance is
+    # shared across unrelated contexts.
+    provider = get_provider()
+    assert provider.get("layout", context=object(), name=layout_name) is provider.get(
+        "layout", context=object(), name=layout_name
     )
+
+    # cache_key is legal only with the default context lifetime.
+    calls.clear()
+    keyed_name = f"spy-layout-{uuid.uuid4().hex}"
+    wrappers.register_layout_engine(keyed_name, lambda **_: object(), cache_key=shared_key)
+    assert calls[0]["lifetime"] == "context"
+    assert calls[0]["cache_key"] is shared_key
+    assert provider.get("layout", context=object(), name=keyed_name) is provider.get(
+        "layout", context=object(), name=keyed_name
+    )
+
+    # Multi-capability wrapper forwards to every registration.
+    calls.clear()
+    deskew_name = f"spy-deskew-{uuid.uuid4().hex}"
+    wrappers.register_deskew_engine(deskew_name, lambda **_: object(), lifetime="singleton")
     assert [c["capability"] for c in calls] == ["deskew", "deskew.detect", "deskew.apply"]
     assert all(c["lifetime"] == "singleton" for c in calls)
-    assert all(c["cache_key"] is shared_key for c in calls)
 
-    # Every collapsed wrapper accepts the lifecycle params
+    # Every collapsed wrapper accepts the lifecycle params.
     calls.clear()
     for wrapper in (
         wrappers.register_checkbox_engine,
@@ -318,6 +358,92 @@ def test_capability_wrappers_forward_lifecycle_params(monkeypatch):
         wrappers.register_guides_engine,
         wrappers.register_selector_engine,
     ):
-        wrapper("spy-generic", lambda **_: object(), lifetime="transient", cache_key=shared_key)
+        wrapper(f"spy-generic-{uuid.uuid4().hex}", lambda **_: object(), lifetime="transient")
     assert len(calls) == 4
-    assert all(c["lifetime"] == "transient" and c["cache_key"] is shared_key for c in calls)
+    assert all(c["lifetime"] == "transient" and c["cache_key"] is None for c in calls)
+
+    # register_ocr_engine forwards lifecycle params to every EngineProvider
+    # registration (the unified-dispatch side has no lifecycle concept).
+    import natural_pdf.engine_registry.ocr as ocr_module
+
+    calls.clear()
+    monkeypatch.setattr(ocr_module, "register_engine", spy)
+    ocr_module.register_ocr_engine(
+        f"spy-ocr-{uuid.uuid4().hex}",
+        lambda **_: object(),
+        lifetime="singleton",
+    )
+    assert [c["capability"] for c in calls] == ["ocr", "ocr.apply", "ocr.extract"]
+    assert all(c["lifetime"] == "singleton" for c in calls)
+
+    # VLM shorthands are not provider-managed: lifecycle controls must be
+    # rejected loudly, not silently ignored.
+    with pytest.raises(ValueError, match="classic"):
+        ocr_module.register_ocr_engine(
+            f"spy-vlm-{uuid.uuid4().hex}",
+            kind="vlm",
+            model_resolver=lambda: "some/model",
+            vlm_family="qwen",
+            lifetime="singleton",
+        )
+
+    # register_table_engine and register_structure_engine forward lifecycle
+    # params too.
+    import natural_pdf.engine_registry.tables as tables_module
+
+    calls.clear()
+    monkeypatch.setattr(tables_module, "register_engine", spy)
+    tables_module.register_table_engine(
+        f"spy-tables-{uuid.uuid4().hex}",
+        lambda **_: object(),
+        lifetime="singleton",
+    )
+    assert [c["capability"] for c in calls] == ["tables"]
+    assert calls[0]["lifetime"] == "singleton"
+    assert calls[0]["cache_key"] is None
+
+    calls.clear()
+    structure_name = f"spy-structure-{uuid.uuid4().hex}"
+    tables_module.register_structure_engine(
+        structure_name,
+        lambda **_: object(),
+        cache_key=shared_key,
+    )
+    assert [c["capability"] for c in calls] == ["tables.detect_structure"]
+    assert calls[0]["lifetime"] == "context"
+    assert calls[0]["cache_key"] is shared_key
+
+    calls.clear()
+    tables_module.register_structure_engine(
+        f"spy-structure-{uuid.uuid4().hex}",
+        lambda **_: object(),
+        lifetime="transient",
+    )
+    assert calls[0]["lifetime"] == "transient"
+
+
+def test_capability_wrappers_hit_real_lifecycle_validation():
+    """Illegal lifetime/cache_key combinations must be rejected by the real
+    provider validation, not silently accepted (regression: earlier tests
+    mocked register_engine away and asserted an impossible combination)."""
+    import natural_pdf.engine_registry._capability_wrappers as wrappers
+    import natural_pdf.engine_registry.tables as tables_module
+
+    def shared_key(_context, _options):
+        return "shared"
+
+    with pytest.raises(ValueError, match="context-lifetime"):
+        wrappers.register_layout_engine(
+            f"spy-illegal-{uuid.uuid4().hex}",
+            lambda **_: object(),
+            lifetime="singleton",
+            cache_key=shared_key,
+        )
+
+    with pytest.raises(ValueError, match="context-lifetime"):
+        tables_module.register_structure_engine(
+            f"spy-illegal-{uuid.uuid4().hex}",
+            lambda **_: object(),
+            lifetime="transient",
+            cache_key=shared_key,
+        )

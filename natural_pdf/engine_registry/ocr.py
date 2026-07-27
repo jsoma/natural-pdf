@@ -6,6 +6,8 @@ from collections.abc import Callable
 from inspect import Parameter, signature
 from typing import TYPE_CHECKING, Any, Optional, Type
 
+from natural_pdf.engine_provider import EngineCacheKey, EngineLifetime
+
 from .base import register_engine
 
 if TYPE_CHECKING:
@@ -77,6 +79,8 @@ def register_ocr_engine(
     cache_namespace: Optional[str] = None,
     replace: bool = True,
     metadata: Optional[dict[str, Any]] = None,
+    lifetime: EngineLifetime = "context",
+    cache_key: Optional[EngineCacheKey] = None,
 ) -> None:
     """Register a custom OCR engine.
 
@@ -90,6 +94,11 @@ def register_ocr_engine(
     the namespace whenever behavior that can affect OCR output changes. The
     namespace is hashed into cache keys and is never inferred from callable
     representations or object identities.
+
+    ``lifetime`` and ``cache_key`` control EngineProvider instance caching for
+    classic engines (see :func:`natural_pdf.engine_registry.base.register_engine`).
+    VLM shorthands are not managed by the EngineProvider, so passing lifecycle
+    controls with ``kind="vlm"`` raises ``ValueError``.
     """
 
     normalized_name = name.strip().lower()
@@ -147,11 +156,20 @@ def register_ocr_engine(
                 provider_factory,
                 replace=replace,
                 metadata=provider_metadata,
+                lifetime=lifetime,
+                cache_key=cache_key,
             )
         register_unified_engine(normalized_name, entry)
         return
 
     if normalized_kind in {"vlm", "vlm_shorthand"}:
+        # VLM shorthands register only into unified dispatch — there is no
+        # EngineProvider registration for lifecycle controls to apply to.
+        if lifetime != "context" or cache_key is not None:
+            raise ValueError(
+                "lifetime/cache_key apply only to classic OCR engines; "
+                "VLM shorthands are not managed by the EngineProvider."
+            )
         from natural_pdf.ocr.unified_dispatch import EngineEntry
         from natural_pdf.ocr.unified_dispatch import register_engine as register_unified_engine
 

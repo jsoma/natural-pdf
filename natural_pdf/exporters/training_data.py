@@ -56,7 +56,7 @@ def _resolve_source_pdfs(
 
 def export_training_data(
     source: Union["PDF", "PDFCollection", List["PDF"]],
-    output_dir: str,
+    output_dir: Union[str, os.PathLike],
     *,
     selector: Optional[str] = "text",
     prompt: str = "OCR this image. Return only the exact text.",
@@ -88,6 +88,10 @@ def export_training_data(
         Summary dict: ``{"images": N, "skipped": M, "output_dir": path}``.
     """
     # ── validate (before touching any existing export) ──────────────────
+    # Accept str or pathlib.Path destinations; everything below builds
+    # sibling paths via string operations, so normalize up front.
+    output_dir = os.fspath(output_dir)
+
     if output_format not in ("jsonl", "csv"):
         raise ValueError(f"output_format must be 'jsonl' or 'csv', got {output_format!r}")
 
@@ -139,6 +143,14 @@ def export_training_data(
         _rmdir_safe(staging_dir)
         raise
 
+    # ── revalidate the destination before promotion (TOCTOU guard) ───────
+    # The destination was checked before the build, but the build takes time:
+    # another process may have created data at output_dir in the meantime.
+    # Promotion must never move aside or delete anything that fails the same
+    # rules used up front; on violation the fully-built staging directory is
+    # left in place and the foreign destination is not touched.
+    _ensure_destination_still_safe(output_dir, overwrite=overwrite, staging_dir=staging_dir)
+
     if result["images"] == 0:
         # Nothing exported: never replace an existing export with an empty
         # one. For a fresh destination, keep the (marker-only) directory so
@@ -150,13 +162,33 @@ def export_training_data(
         return {**result, "output_dir": output_dir}
 
     # ── swap staging into place ──────────────────────────────────────────
+    # Move any existing export aside (rather than deleting it) before
+    # promoting staging, so a failed promote can restore the original
+    # instead of losing both directories.
+    old_aside: Optional[str] = None
+    if os.path.exists(output_dir):
+        old_aside = f"{output_dir.rstrip(os.sep)}.old-{uuid.uuid4().hex[:8]}"
+        try:
+            os.rename(output_dir, old_aside)
+        except Exception:
+            _rmdir_safe(staging_dir)
+            raise
     try:
-        if os.path.exists(output_dir):
-            shutil.rmtree(output_dir)
         os.rename(staging_dir, output_dir)
     except Exception:
         _rmdir_safe(staging_dir)
+        if old_aside is not None:
+            try:
+                os.rename(old_aside, output_dir)
+            except OSError as restore_exc:  # pragma: no cover - filesystem race
+                logger.error(
+                    f"Failed to restore previous export from {old_aside} to "
+                    f"{output_dir}: {restore_exc}. The original data is still "
+                    f"at {old_aside}."
+                )
         raise
+    if old_aside is not None:
+        _rmdir_safe(old_aside)
 
     logger.info(
         f"Exported {result['images']} training images to '{output_dir}' "
@@ -305,6 +337,38 @@ def _build_export(
 
 
 # ── helpers ─────────────────────────────────────────────────────────────
+
+
+def _ensure_destination_still_safe(
+    output_dir: str,
+    *,
+    overwrite: bool,
+    staging_dir: str,
+) -> None:
+    """Re-apply the pre-build destination rules immediately before promotion.
+
+    Raises ``FileExistsError`` (leaving both the destination and the staging
+    directory untouched) when the destination no longer satisfies the rules
+    that were checked before the build started.
+    """
+    if not os.path.exists(output_dir):
+        return
+    if not overwrite:
+        raise FileExistsError(
+            f"Output destination appeared at {output_dir} while the export was "
+            "being built and overwrite=False. It has not been touched. The "
+            f"completed export was left at {staging_dir}; move it into place "
+            "manually or re-run with overwrite=True."
+        )
+    if not os.path.isdir(output_dir) or (
+        os.listdir(output_dir) and not os.path.exists(os.path.join(output_dir, _EXPORT_MARKER))
+    ):
+        raise FileExistsError(
+            f"Refusing to overwrite {output_dir}: it changed while the export "
+            "was being built and does not look like a previous export (missing "
+            f"{_EXPORT_MARKER}). It has not been touched. The completed export "
+            f"was left at {staging_dir}."
+        )
 
 
 def _write_jsonl(

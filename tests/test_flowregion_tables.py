@@ -167,3 +167,58 @@ def test_flow_region_collection_extract_tables_flattens_results():
     assert isinstance(tables[1], TableResult)
     assert list(tables[0]) == flows[0][0]
     assert list(tables[1]) == flows[1][0]
+
+
+def test_flow_region_extract_table_recovers_row_dropped_at_segment_seam():
+    """A row at the top of a post-seam segment must not be dropped.
+
+    In pdfs/multicolumn.pdf, "Table one" starts at the bottom of column 1 and
+    continues at the top of column 2. The renderer never redrew the table
+    border after the column break, so the ruling line above row 25 does not
+    exist in the second segment and pdfplumber's lattice detection starts at
+    the next ruling. The flow path must recover that seam row.
+    """
+    from pathlib import Path
+
+    import pytest
+
+    from natural_pdf import PDF
+
+    source = Path("pdfs/multicolumn.pdf")
+    if not source.exists():
+        pytest.skip("Test requires pdfs/multicolumn.pdf fixture")
+
+    pdf = PDF(str(source))
+    try:
+        page = pdf.pages[0]
+        left = page.region(left=0, right=page.width / 3)
+        mid = page.region(left=page.width / 3, right=2 * page.width / 3)
+        right = page.region(left=2 * page.width / 3, right=page.width)
+        flow = Flow(segments=[left, mid, right], arrangement="vertical")
+
+        table_one = flow.find('text:contains("Table one")').below(
+            until='text:contains("Table two")', include_endpoint=False
+        )
+
+        # The seam row is present in the text layer...
+        assert "25 8115" in table_one.extract_text()
+
+        rows = list(table_one.extract_table())
+        first_col = [row[0] for row in rows]
+
+        # ...and must be present in the extracted table too.
+        assert ["25", "8115"] == rows[25]
+        assert first_col == ["index"] + [str(i) for i in range(1, 40)]
+
+        # Total row count matches the per-segment sum: 25 rows from the first
+        # segment (header + rows 1-24) and 15 from the second (rows 25-39,
+        # including the recovered seam row).
+        assert len(rows) == 40
+
+        # Single-region extraction semantics are unchanged: the recovery only
+        # applies on the flow path.
+        seg_first, seg_second = table_one.constituent_regions
+        assert len(list(seg_first.extract_table())) == 25
+        assert len(list(seg_second.extract_table())) == 14
+    finally:
+        pdf.close()

@@ -178,7 +178,25 @@
   work.
 - The `register_*_engine` helpers forward the engine-lifecycle controls
   (`lifetime`, `cache_key`), so third-party engines registered through them
-  can opt into singleton reuse.
+  can opt into singleton reuse (including `register_ocr_engine`,
+  `register_table_engine`, and `register_structure_engine`).
+- Tables spanning a column or page seam no longer lose the first row after
+  the break: `FlowRegion.extract_table()` detects the seam pattern (the
+  ruling that closes the row's cells lives in the previous segment) and
+  recovers the row, accepting the retry only when it is strictly better.
+- `export_training_data` revalidates the destination at promotion time, so
+  files created there by another process during the build are never deleted
+  (the staged export is preserved and named in the error).
+- Guide-grid callable exclusions resolve against the original host lazily
+  and only when OCR applies exclusions — plain `guides.cells[...]` access
+  never invokes them, and `apply_ocr(apply_exclusions=False)` skips them.
+- Classification engines are checked out once per call across all four entry
+  points, a selected custom engine is actually used for classification (not
+  just mode inference), and transient-lifetime engine instances are cleaned
+  up after use. Classification payloads reject empty label sets, non-string
+  labels, boolean or non-finite scores, and mismatched container types.
+- PDF URL downloads send a `natural-pdf/<version>` User-Agent; CDN-fronted
+  hosts (e.g. Cloudflare R2) that reject Python's default agent now work.
 
 
 - Text filtering, newline handling, whitespace normalization, stripping, bidi,

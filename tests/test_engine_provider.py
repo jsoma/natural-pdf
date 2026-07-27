@@ -243,6 +243,73 @@ def test_engine_provider_transient_instances_are_caller_owned() -> None:
     assert not first.cleaned and not second.cleaned
 
 
+def test_engine_provider_checkout_cleans_transient_exactly_once() -> None:
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+
+    cleanups = []
+
+    class Engine:
+        def cleanup(self):
+            cleanups.append(self)
+
+    provider.register("demo", "temporary", lambda **_: Engine(), lifetime="transient")
+
+    with provider.checkout("demo", context=None, name="temporary") as engine:
+        assert isinstance(engine, Engine)
+        assert cleanups == []
+    assert cleanups == [engine]
+
+    # A second checkout creates and cleans a second, distinct instance.
+    with provider.checkout("demo", context=None, name="temporary") as second:
+        pass
+    assert second is not engine
+    assert cleanups == [engine, second]
+
+
+def test_engine_provider_checkout_cleans_transient_on_error_and_uses_close() -> None:
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+
+    closed = []
+
+    class Engine:
+        def close(self):
+            closed.append(self)
+
+    provider.register("demo", "temporary", lambda **_: Engine(), lifetime="transient")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        with provider.checkout("demo", context=None, name="temporary"):
+            raise RuntimeError("boom")
+    assert len(closed) == 1
+
+
+def test_engine_provider_checkout_never_cleans_cached_lifetimes() -> None:
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+
+    cleanups = []
+
+    class Engine:
+        def cleanup(self):
+            cleanups.append(self)
+
+    provider.register("demo", "shared", lambda **_: Engine(), lifetime="singleton")
+    provider.register("demo", "scoped", lambda **_: Engine(), lifetime="context")
+
+    ctx = object()
+    with provider.checkout("demo", context=ctx, name="shared") as singleton_engine:
+        pass
+    with provider.checkout("demo", context=ctx, name="scoped") as context_engine:
+        pass
+
+    assert cleanups == []
+    # Cached instances are still owned (and served) by the provider.
+    assert provider.get("demo", context=ctx, name="shared") is singleton_engine
+    assert provider.get("demo", context=ctx, name="scoped") is context_engine
+
+
 def test_engine_provider_evicts_before_cleanup_and_survives_cleanup_errors() -> None:
     provider = EngineProvider()
     provider._entry_points_loaded = True

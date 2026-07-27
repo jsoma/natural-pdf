@@ -27,6 +27,15 @@ logger = logging.getLogger(__name__)
 class TableService:
     """Service that powers Region.extract_table/extract_tables."""
 
+    # Methods whose region-level extraction may resolve to ruling-based
+    # (pdfplumber lattice) detection, which can silently drop the first row of
+    # a flow segment: at a seam the ruling above that row was drawn in the
+    # *previous* segment (renderers do not redraw table borders after a
+    # column/page break), so lattice starts at the next ruling instead.
+    _SEAM_RECOVERY_METHODS = frozenset(
+        {None, "auto", "default", "pdfplumber", "pdfplumber_auto", "lattice"}
+    )
+
     def __init__(self, context):
         self._context = context
 
@@ -533,6 +542,40 @@ class TableService:
             if not rows:
                 continue
 
+            if (
+                idx > 0
+                and method in self._SEAM_RECOVERY_METHODS
+                and horizontals is None
+                and table_settings.get("horizontal_strategy") != "text"
+            ):
+                seam_top = self._find_dropped_seam_top(
+                    region, rows, apply_exclusions=apply_exclusions
+                )
+                if seam_top is not None:
+                    recovered = self._retry_segment_with_seam_line(
+                        region,
+                        seam_top,
+                        rows,
+                        method=method,
+                        table_settings=table_settings,
+                        use_ocr=use_ocr,
+                        ocr_config=ocr_config,
+                        text_options=text_options,
+                        cell_extraction_func=cell_extraction_func,
+                        cell_extract=cell_extract,
+                        cell_overlap=cell_overlap,
+                        cell_newlines=cell_newlines,
+                        show_progress=show_progress,
+                        content_filter=content_filter,
+                        apply_exclusions=apply_exclusions,
+                        verticals=verticals,
+                        outer=outer,
+                        structure_engine=structure_engine,
+                        **kwargs,
+                    )
+                    if recovered is not None:
+                        rows = recovered
+
             if merge_headers is None:
                 if idx == 0:
                     header_row = list(rows[0])
@@ -574,6 +617,81 @@ class TableService:
             )
 
         return TableResult(aggregated_rows)
+
+    @staticmethod
+    def _find_dropped_seam_top(region, rows, *, apply_exclusions: bool) -> Optional[float]:
+        """Return the top coordinate of the region's first text line when that
+        line is missing from the first extracted row.
+
+        This is the signature of a seam drop: the segment's text layer starts
+        with a row whose cells never made it into the extracted table because
+        the ruling line above it lives in the previous flow segment.
+        Returns None when the first text line is accounted for (no drop).
+        """
+        try:
+            words = [
+                w
+                for w in region.find_all("text", apply_exclusions=apply_exclusions)
+                if (getattr(w, "text", "") or "").strip()
+            ]
+            if not words:
+                return None
+            topmost = min(w.top for w in words)
+            line_texts = [w.text.strip() for w in words if w.top - topmost <= 2.0]
+        except Exception:
+            # Regions without text elements/geometry (mocks, exotic hosts):
+            # never attempt recovery.
+            return None
+        if not line_texts:
+            return None
+        first_row_text = " ".join(str(cell) for cell in rows[0] if cell)
+        if all(text in first_row_text for text in line_texts):
+            return None
+        return topmost
+
+    def _retry_segment_with_seam_line(
+        self,
+        region,
+        seam_top: float,
+        rows: List[List[Optional[str]]],
+        *,
+        method: Optional[str],
+        table_settings: dict,
+        **extract_kwargs,
+    ) -> Optional[List[List[Optional[str]]]]:
+        """Re-extract a flow segment with an explicit horizontal line injected
+        just above its first text line, closing the top of the seam row so
+        ruling-based detection can recover it.
+
+        Returns the recovered rows, or None when the retry did not improve on
+        the original extraction (in which case the caller keeps ``rows``).
+        """
+        retry_settings = dict(table_settings)
+        explicit = list(retry_settings.get("explicit_horizontal_lines") or [])
+        seam_line = seam_top - 0.5
+        region_top = getattr(region, "top", None)
+        if region_top is not None and seam_line < region_top:
+            seam_line = region_top
+        explicit.append(seam_line)
+        retry_settings["explicit_horizontal_lines"] = explicit
+        try:
+            retry_rows = list(
+                region.extract_table(
+                    method=method,
+                    table_settings=retry_settings,
+                    **extract_kwargs,
+                )
+            )
+        except Exception:
+            logger.debug(
+                "Seam-row recovery retry failed for region %s",
+                getattr(region, "bbox", None),
+                exc_info=True,
+            )
+            return None
+        if retry_rows and len(retry_rows) > len(rows) and len(retry_rows[0]) == len(rows[0]):
+            return retry_rows
+        return None
 
     def extract_flow_tables(
         self,

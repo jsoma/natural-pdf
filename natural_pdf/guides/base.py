@@ -3622,3 +3622,18 @@ class Guides:
             return "vertical"
         else:
             return "horizontal"
+
+
+def __getattr__(name: str):
+    # Deprecated alias: ``GuidesOcrResult`` is the pre-refactor name of
+    # ``GuideOCRResult`` (now defined in natural_pdf.guides.ocr). The class
+    # historically lived in this module (as analyzers/guides/base.py), so the
+    # old import path must keep working:
+    #   from natural_pdf.analyzers.guides.base import GuidesOcrResult
+    # (the analyzers shim aliases that path to this canonical module).
+    # Resolved lazily to avoid a module-level import cycle with .ocr.
+    if name == "GuidesOcrResult":
+        from .ocr import GuideOCRResult
+
+        return GuideOCRResult
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -2,17 +2,38 @@ from __future__ import annotations
 
 import logging
 import warnings
+from contextlib import contextmanager
 from typing import Any, List, Optional
 
 from PIL import Image
 
 from natural_pdf.classification.classification_provider import (
-    get_classification_engine,
     run_classification_item,
 )
 from natural_pdf.classification.results import ClassificationResult
+from natural_pdf.engine_provider import get_provider
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def checkout_classification_engine(context: Any, engine_name: Optional[str] = None):
+    """Yield a typed classification engine scoped to one classify call.
+
+    Wraps :meth:`EngineProvider.checkout`, so transient-lifetime registrations
+    have their ``cleanup()``/``close()`` hook invoked exactly once when the
+    call finishes; cached lifetimes (context/singleton) are never cleaned here.
+    """
+    from natural_pdf.classification.classification_provider import ClassificationEngine
+
+    name = (engine_name or "default").strip().lower()
+    with get_provider().checkout("classification", context=context, name=name) as engine:
+        if not isinstance(engine, ClassificationEngine):
+            raise TypeError(
+                f"Classification engine '{name}' does not implement the "
+                "ClassificationEngine interface"
+            )
+        yield engine
 
 
 class ClassificationService:
@@ -39,8 +60,6 @@ class ClassificationService:
             host.analyses = {}
             analyses = host.analyses
 
-        engine_obj = get_classification_engine(host, kwargs.pop("classification_engine", None))
-
         # Split the kwarg stream: content-extraction options go to the host's
         # content getter, everything else to the engine. Forwarding one stream
         # to both lets strays be silently swallowed by the pipeline while still
@@ -49,55 +68,61 @@ class ClassificationService:
         if "resolution" in kwargs:
             content_kwargs["resolution"] = kwargs.pop("resolution")
 
-        chosen_mode = using
-        content = None
+        with checkout_classification_engine(
+            host, kwargs.pop("classification_engine", None)
+        ) as engine_obj:
+            chosen_mode = using
+            content = None
 
-        candidate_model = model or engine_obj.default_model("text")
-        inferred_mode = engine_obj.infer_using(candidate_model, chosen_mode)
-        chosen_mode = inferred_mode
+            candidate_model = model or engine_obj.default_model("text")
+            inferred_mode = engine_obj.infer_using(candidate_model, chosen_mode)
+            chosen_mode = inferred_mode
 
-        if chosen_mode == "text":
-            try:
-                tentative_text = self._get_classification_content(host, "text", **content_kwargs)
-                if tentative_text and not (
-                    isinstance(tentative_text, str) and tentative_text.isspace()
-                ):
-                    content = tentative_text
-                else:
-                    raise ValueError("Empty text")
-            except ValueError as exc:
-                if not self._is_empty_text_error(exc):
+            if chosen_mode == "text":
+                try:
+                    tentative_text = self._get_classification_content(
+                        host, "text", **content_kwargs
+                    )
+                    if tentative_text and not (
+                        isinstance(tentative_text, str) and tentative_text.isspace()
+                    ):
+                        content = tentative_text
+                    else:
+                        raise ValueError("Empty text")
+                except ValueError as exc:
+                    if not self._is_empty_text_error(exc):
+                        raise RuntimeError(
+                            "Failed to extract text content for classification while using='text'."
+                        ) from exc
+                    warnings.warn(
+                        "No text found for classification; falling back to vision model. "
+                        "Pass using='vision' explicitly to silence this message.",
+                        UserWarning,
+                    )
+                    chosen_mode = "vision"
+                except Exception as exc:
                     raise RuntimeError(
                         "Failed to extract text content for classification while using='text'."
                     ) from exc
-                warnings.warn(
-                    "No text found for classification; falling back to vision model. "
-                    "Pass using='vision' explicitly to silence this message.",
-                    UserWarning,
-                )
-                chosen_mode = "vision"
-            except Exception as exc:
-                raise RuntimeError(
-                    "Failed to extract text content for classification while using='text'."
-                ) from exc
 
-        if content is None:
-            if chosen_mode is None:
-                chosen_mode = "vision"
-            content = self._get_classification_content(host, chosen_mode, **content_kwargs)
+            if content is None:
+                if chosen_mode is None:
+                    chosen_mode = "vision"
+                content = self._get_classification_content(host, chosen_mode, **content_kwargs)
 
-        effective_model_id = model or engine_obj.default_model(chosen_mode)
+            effective_model_id = model or engine_obj.default_model(chosen_mode)
 
-        result_obj = run_classification_item(
-            context=host,
-            content=content,
-            labels=labels,
-            model_id=effective_model_id,
-            using=chosen_mode,
-            min_confidence=min_confidence,
-            multi_label=multi_label,
-            **kwargs,
-        )
+            result_obj = run_classification_item(
+                context=host,
+                engine=engine_obj,
+                content=content,
+                labels=labels,
+                model_id=effective_model_id,
+                using=chosen_mode,
+                min_confidence=min_confidence,
+                multi_label=multi_label,
+                **kwargs,
+            )
 
         analyses[analysis_key] = result_obj
         logger.debug("Stored classification result under key '%s': %s", analysis_key, result_obj)

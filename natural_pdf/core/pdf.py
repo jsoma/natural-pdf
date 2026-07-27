@@ -43,10 +43,7 @@ else:
     PdfPlumberPDF = Any  # type: ignore[assignment]
 
 from natural_pdf.classification.accessors import ClassificationResultAccessorMixin
-from natural_pdf.classification.classification_provider import (
-    get_classification_engine,
-    run_classification_batch,
-)
+from natural_pdf.classification.classification_provider import run_classification_batch
 from natural_pdf.classification.pipelines import ClassificationError
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighting_service import HighlightingService
@@ -526,7 +523,8 @@ class PDF(
             if source_str.startswith(("http://", "https://")):
                 # Download from URL
                 ssl_context = PDF._create_ssl_context()
-                with urllib.request.urlopen(source_str, context=ssl_context) as response:
+                request = PDF._create_url_request(source_str)
+                with urllib.request.urlopen(request, context=ssl_context) as response:
                     img_data = response.read()
                 return Image.open(io.BytesIO(img_data))
             else:
@@ -682,8 +680,9 @@ class PDF(
                 logger.info(f"Downloading PDF from URL: {path_or_url}")
                 try:
                     ssl_context = PDF._create_ssl_context()
+                    request = PDF._create_url_request(path_or_url)
 
-                    with urllib.request.urlopen(path_or_url, context=ssl_context) as response:
+                    with urllib.request.urlopen(request, context=ssl_context) as response:
                         data = response.read()
                     # Load directly into an in-memory buffer — no temp file needed
                     buffer = io.BytesIO(data)
@@ -2012,66 +2011,76 @@ class PDF(
             return self
 
         engine_name = kwargs.pop("classification_engine", None)
-        engine_obj = get_classification_engine(self, engine_name)
-        inferred_using = engine_obj.infer_using(model or engine_obj.default_model("text"), using)
 
-        # Split the kwarg stream the same way ClassificationService.classify
-        # does: content-extraction options go to the content getter, everything
-        # else (e.g. device=) to the engine call.
-        content_kwargs = {}
-        if "resolution" in kwargs:
-            content_kwargs["resolution"] = kwargs.pop("resolution")
-
-        logger.info(
-            f"Classifying {len(target_pages)} pages using model '{model or '(default)'}' (mode: {inferred_using})"
+        from natural_pdf.services.classification_service import (
+            ClassificationService,
+            checkout_classification_engine,
         )
 
-        page_contents = []
-        pages_to_classify = []
-        logger.debug(f"Gathering content for {len(target_pages)} pages...")
-
-        from natural_pdf.services.classification_service import ClassificationService
-
-        for page in target_pages:
-            try:
-                content = page._get_classification_content(
-                    model_type=inferred_using, **content_kwargs
-                )
-                page_contents.append(content)
-                pages_to_classify.append(page)
-            except ValueError as e:
-                # Only genuinely empty pages may be skipped; any other failure
-                # must surface instead of silently dropping the page.
-                if ClassificationService._is_empty_text_error(e):
-                    logger.warning(f"Skipping page {page.number}: no extractable content - {e}")
-                else:
-                    raise ClassificationError(
-                        f"Failed to get classification content for page {page.number}: {e}"
-                    ) from e
-
-        if not page_contents:
-            logger.warning("No content could be gathered for batch classification.")
-            return self
-
-        logger.debug(f"Gathered content for {len(pages_to_classify)} pages.")
-
-        try:
-            batch_results = run_classification_batch(
-                context=self,
-                contents=page_contents,
-                labels=labels,
-                model_id=model or engine_obj.default_model(inferred_using),
-                using=inferred_using,
-                min_confidence=min_confidence,
-                multi_label=multi_label,
-                batch_size=batch_size,
-                progress_bar=progress_bar,
-                engine_name=engine_name,
-                **kwargs,
+        # Check the engine out once and pass the instance to
+        # run_classification_batch below, so exactly one engine instance is
+        # created regardless of registration lifetime — and transient
+        # instances are cleaned up when the call finishes.
+        with checkout_classification_engine(self, engine_name) as engine_obj:
+            inferred_using = engine_obj.infer_using(
+                model or engine_obj.default_model("text"), using
             )
-        except Exception as e:
-            logger.error(f"Batch classification failed: {e}")
-            raise ClassificationError(f"Batch classification failed: {e}") from e
+
+            # Split the kwarg stream the same way ClassificationService.classify
+            # does: content-extraction options go to the content getter, everything
+            # else (e.g. device=) to the engine call.
+            content_kwargs = {}
+            if "resolution" in kwargs:
+                content_kwargs["resolution"] = kwargs.pop("resolution")
+
+            logger.info(
+                f"Classifying {len(target_pages)} pages using model '{model or '(default)'}' (mode: {inferred_using})"
+            )
+
+            page_contents = []
+            pages_to_classify = []
+            logger.debug(f"Gathering content for {len(target_pages)} pages...")
+
+            for page in target_pages:
+                try:
+                    content = page._get_classification_content(
+                        model_type=inferred_using, **content_kwargs
+                    )
+                    page_contents.append(content)
+                    pages_to_classify.append(page)
+                except ValueError as e:
+                    # Only genuinely empty pages may be skipped; any other failure
+                    # must surface instead of silently dropping the page.
+                    if ClassificationService._is_empty_text_error(e):
+                        logger.warning(f"Skipping page {page.number}: no extractable content - {e}")
+                    else:
+                        raise ClassificationError(
+                            f"Failed to get classification content for page {page.number}: {e}"
+                        ) from e
+
+            if not page_contents:
+                logger.warning("No content could be gathered for batch classification.")
+                return self
+
+            logger.debug(f"Gathered content for {len(pages_to_classify)} pages.")
+
+            try:
+                batch_results = run_classification_batch(
+                    context=self,
+                    contents=page_contents,
+                    labels=labels,
+                    model_id=model or engine_obj.default_model(inferred_using),
+                    using=inferred_using,
+                    min_confidence=min_confidence,
+                    multi_label=multi_label,
+                    batch_size=batch_size,
+                    progress_bar=progress_bar,
+                    engine=engine_obj,
+                    **kwargs,
+                )
+            except Exception as e:
+                logger.error(f"Batch classification failed: {e}")
+                raise ClassificationError(f"Batch classification failed: {e}") from e
 
         if len(batch_results) != len(pages_to_classify):
             raise ClassificationError(
@@ -2489,6 +2498,25 @@ class PDF(
             return ssl.create_default_context()
         except Exception:
             return ssl.create_default_context()
+
+    @staticmethod
+    def _create_url_request(url: str) -> "urllib.request.Request":
+        """Build a download Request with an identifying User-Agent.
+
+        Some hosts (e.g. Cloudflare R2) return 403 for the default
+        Python-urllib User-Agent while serving the same URL to browsers and
+        curl, so every download in this module must go through this helper.
+        """
+        try:
+            from natural_pdf import __version__ as _version
+        except Exception:  # pragma: no cover - version lookup must never block a download
+            _version = "unknown"
+        return urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": f"natural-pdf/{_version} (+https://github.com/jsoma/natural-pdf)"
+            },
+        )
 
     # Static helper for weakref.finalize to avoid capturing 'self'
     @staticmethod
