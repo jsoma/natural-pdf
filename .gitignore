@@ -314,3 +314,6 @@ datasets/
 
 # Separate private extractor platform repo
 /natural-pdf-agentic/
+docs-executed/
+docs-staging/
+docs-build/

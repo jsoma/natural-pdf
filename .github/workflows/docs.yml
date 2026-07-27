@@ -8,12 +8,17 @@ on:
       - 'docs/**'
       - 'natural_pdf/**'
       - 'mkdocs.yml'
+      - 'scripts/docs_build.py'
       - '.github/workflows/docs.yml'
     tags:
       - 'v*'
 
 permissions:
   contents: write
+
+concurrency:
+  group: docs-deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-deploy:
@@ -32,11 +37,67 @@ jobs:
         with:
           version: "latest"
 
+      - name: Install system dependencies (OpenCV/Paddle need libGL)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+
       - name: Install dependencies
         run: |
-          uv sync --extra docs
+          uv sync --extra all --extra notebook --extra docs
+
+      - name: Cache HF models (nightly-tier pages)
+        uses: actions/cache@v5.0.5
+        with:
+          path: ~/.cache/huggingface
+          key: hf-nightly-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            hf-nightly-
+
+      # docs-executed/ holds ONLY the pipeline's outputs (executed md, assets,
+      # notebooks, thumbnails), kept separate from the authored tree so the
+      # cache and authored-source updates never fight. Same HF key as the
+      # nightly so model weights are shared.
+      - name: Cache executed docs
+        uses: actions/cache@v5.0.5
+        with:
+          path: |
+            .docs-build-cache.json
+            docs-executed
+          key: docs-executed-${{ hashFiles('docs/**/*.md', 'scripts/docs_build.py', 'uv.lock') }}
+          restore-keys: |
+            docs-executed-
+
+      # Execute ALL tiers for deploy: the deployed site is the product, and
+      # the content-hash cache makes reruns incremental. A broken page fails
+      # the deploy (--keep-going surfaces every failure first).
+      - name: Execute docs pages
+        run: |
+          failed=0
+          for section in get-started learn concepts solve troubleshooting for-agents; do
+            if [ -d "docs/$section" ]; then
+              uv run python scripts/docs_build.py "docs/$section" \
+                --out "docs-executed/$section" \
+                --colab-ref gh-pages --colab-prefix "$section" \
+                --keep-going || failed=1
+            fi
+          done
+          exit "$failed"
+
+      - name: Check generated reference pages are current
+        run: uv run python scripts/generate_reference.py --check
+
+      # Staging tree = authored docs overlaid with executed outputs; mkdocs
+      # reads it via the NPDF_DOCS_DIR override in mkdocs.yml.
+      - name: Assemble staging tree
+        run: |
+          rm -rf docs-staging
+          cp -R docs docs-staging
+          rsync -a docs-executed/ docs-staging/
 
       - name: Build docs
+        env:
+          NPDF_DOCS_DIR: docs-staging
         run: uv run mkdocs build
 
       - name: Deploy to GitHub Pages

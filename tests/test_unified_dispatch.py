@@ -356,6 +356,34 @@ class TestNormalizeEngineOutput:
 
         assert _normalize_engine_output([[]], engine_name="fake") == []
 
+    def test_multiple_batches_raise_ocr_error(self):
+        # A single-image call must never silently discard extra batches.
+        from natural_pdf.exceptions import OCRError
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        batch_a = [{"text": "a", "bbox": [0, 0, 1, 1], "confidence": 0.9}]
+        batch_b = [{"text": "b", "bbox": [0, 0, 1, 1], "confidence": 0.9}]
+        with pytest.raises(OCRError, match=r"'fake'.*2 result batches"):
+            _normalize_engine_output([batch_a, batch_b], engine_name="fake")
+
+    def test_batch_inner_non_dict_beyond_first_raises(self):
+        # Every inner element is validated, not just the first.
+        from natural_pdf.exceptions import OCRError
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        inner = [{"text": "a", "bbox": [0, 0, 1, 1], "confidence": 0.9}, "junk"]
+        with pytest.raises(OCRError, match=r"'fake'.*str"):
+            _normalize_engine_output([inner], engine_name="fake")
+
+    def test_flat_list_non_dict_beyond_first_raises(self):
+        # Every element of a flat result list is validated too.
+        from natural_pdf.exceptions import OCRError
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        payload = [{"text": "a", "bbox": [0, 0, 1, 1], "confidence": 0.9}, 42]
+        with pytest.raises(OCRError, match=r"'fake'.*int"):
+            _normalize_engine_output(payload, engine_name="fake")
+
     def test_dict_payload_raises_ocr_error(self):
         from natural_pdf.exceptions import OCRError
         from natural_pdf.ocr.unified_dispatch import _normalize_engine_output

@@ -284,6 +284,495 @@ def test_cache_invalidated_by_source_change(docs_build, tmp_path, monkeypatch):
     assert len(calls) == 3
 
 
+# ---------------------------------------------------------------------------
+# Fake execution helper (no kernel): jupytext-parse the page, normalize
+# metadata like the real path does, then attach fabricated outputs per cell.
+# ---------------------------------------------------------------------------
+
+
+def _install_fake_execute(docs_build, monkeypatch, outputs_for_cell=None, calls=None):
+    from jupytext import jupytext as jt
+
+    def fake_execute(nodes, **kwargs):
+        if calls is not None:
+            calls.append(1)
+        nb = jt.reads(docs_build.nodes_to_execution_markdown(nodes), fmt="md")
+        docs_build.normalize_notebook_metadata(nb)
+        code_cells = [c for c in nb.cells if c.cell_type == "code"]
+        for i, cell in enumerate(code_cells):
+            cell["outputs"] = outputs_for_cell(i) if outputs_for_cell else []
+        return nb
+
+    monkeypatch.setattr(docs_build, "execute_page_notebook", fake_execute)
+
+
+def _stream_output(text):
+    return {"output_type": "stream", "name": "stdout", "text": text}
+
+
+def _png_output(color):
+    import base64
+
+    return {
+        "output_type": "display_data",
+        "data": {"image/png": base64.b64encode(_png_bytes(color)).decode("ascii")},
+    }
+
+
+# ---------------------------------------------------------------------------
+# hide-output fence attribute
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_metadata_maps_hide_output_to_tag(docs_build):
+    from jupytext import jupytext as jt
+
+    md = (
+        "```python hide-output\nprint(1)\n```\n\n"
+        "```python hide-output=true\nprint(2)\n```\n\n"
+        "```python\nprint(3)\n```\n"
+    )
+    nb = jt.reads(md, fmt="md")
+    docs_build.normalize_notebook_metadata(nb)
+    code = [c for c in nb.cells if c.cell_type == "code"]
+    assert docs_build.cell_hides_output(code[0])  # bare attribute
+    assert docs_build.cell_hides_output(code[1])  # =true form
+    assert not docs_build.cell_hides_output(code[2])
+
+
+def test_hide_output_executes_but_omits_outputs(docs_build, tmp_path, monkeypatch):
+    src = tmp_path / "page.md"
+    src.write_text(
+        "# Page\n\n"
+        "```python hide-output\nprint('secret')\n```\n\n"
+        "```python\nprint('visible')\n```\n",
+        encoding="utf-8",
+    )
+    _install_fake_execute(
+        docs_build,
+        monkeypatch,
+        outputs_for_cell=lambda i: [_stream_output(f"out{i}\n")],
+    )
+    docs_build.build_page(src, tmp_path / "out", cache_file=tmp_path / "c.json")
+    md = (tmp_path / "out" / "page.md").read_text(encoding="utf-8")
+    assert "out0" not in md  # executed, but output omitted
+    assert "```output\nout1\n```" in md
+    # attribute is stripped from the rendered fence
+    assert "hide-output" not in md
+    assert "```python\nprint('secret')\n```" in md
+
+
+# ---------------------------------------------------------------------------
+# Alt text for images
+# ---------------------------------------------------------------------------
+
+
+def test_render_cell_outputs_numbers_alt_for_multiple_images(docs_build, tmp_path):
+    cell = {"outputs": [_png_output((255, 0, 0)), _png_output((0, 255, 0))]}
+    rendered = docs_build.render_cell_outputs(cell, tmp_path, "assets/p", alt="Chart")
+    assert rendered.snippets[0].startswith("![Chart](assets/p/")
+    assert rendered.snippets[1].startswith("![Chart (2)](assets/p/")
+
+
+def test_render_cell_outputs_empty_alt_stays_empty(docs_build, tmp_path):
+    cell = {"outputs": [_png_output((255, 0, 0)), _png_output((0, 255, 0))]}
+    rendered = docs_build.render_cell_outputs(cell, tmp_path, "assets/p", alt="")
+    assert rendered.snippets[0].startswith("![](")
+    assert rendered.snippets[1].startswith("![](")  # no " (2)" on empty alt
+
+
+def test_compute_default_alts_tracks_nearest_heading(docs_build):
+    body = (
+        "```python\nbefore_any_heading = 1\n```\n\n"
+        "# Title\n\n"
+        "## Rendering the page\n\n"
+        "```python\nimg\n```\n\n"
+        "Text between.\n\n"
+        "```python\nimg2\n```\n\n"
+        "### Another view\n\n"
+        "```bash\n# not a heading (inside a fence)\nls\n```\n\n"
+        "```python\nimg3\n```\n"
+    )
+    nodes = docs_build.parse_document(body)
+    alts = docs_build.compute_default_alts(nodes)
+    assert alts[0] == ""  # no preceding heading
+    assert alts[1] == "Rendering the page"
+    assert alts[2] == "Rendering the page"
+    assert alts[3] == "Another view"
+
+
+def test_fence_alt_attribute_overrides_heading_default(docs_build):
+    nodes = docs_build.parse_document(
+        '## Section\n\n```python alt="Custom alt"\nimg\n```\n\n```python\nimg2\n```\n'
+    )
+    alts = docs_build.compute_default_alts(nodes)
+    code = list(docs_build.iter_code_nodes(nodes))
+    assert docs_build.fence_alt(code[0], alts) == "Custom alt"
+    assert docs_build.fence_alt(code[1], alts) == "Section"
+
+
+def test_build_page_applies_heading_alt_and_alt_attribute(docs_build, tmp_path, monkeypatch):
+    src = tmp_path / "page.md"
+    src.write_text(
+        "## Rendering the page\n\n"
+        "```python\nimg\n```\n\n"
+        '```python alt="Custom alt"\nimg\n```\n',
+        encoding="utf-8",
+    )
+    _install_fake_execute(
+        docs_build,
+        monkeypatch,
+        outputs_for_cell=lambda i: [
+            _png_output((255, 0, 0)) if i == 0 else _png_output((0, 0, 255))
+        ],
+    )
+    docs_build.build_page(src, tmp_path / "out", cache_file=tmp_path / "c.json")
+    md = (tmp_path / "out" / "page.md").read_text(encoding="utf-8")
+    assert "![Rendering the page](assets/page/" in md
+    assert "![Custom alt](assets/page/" in md
+    assert 'alt="Custom alt"' not in md  # attribute stripped from the fence
+
+
+# ---------------------------------------------------------------------------
+# Pandas <style scoped> stripping
+# ---------------------------------------------------------------------------
+
+
+def test_style_scoped_block_is_stripped_from_html_outputs(docs_build, tmp_path):
+    html = (
+        "<div>\n<style scoped>\n    .dataframe tbody tr th { vertical-align: top; }\n"
+        "</style>\n<table><tr><td>1</td></tr></table>\n</div>"
+    )
+    cell = {
+        "outputs": [
+            {
+                "output_type": "execute_result",
+                "data": {"text/html": html, "text/plain": "a df"},
+            }
+        ]
+    }
+    rendered = docs_build.render_cell_outputs(cell, tmp_path, "assets/p")
+    assert len(rendered.snippets) == 1
+    assert "<style scoped>" not in rendered.snippets[0]
+    assert ".dataframe" not in rendered.snippets[0]
+    assert "<table><tr><td>1</td></tr></table>" in rendered.snippets[0]
+
+
+# ---------------------------------------------------------------------------
+# Trailing whitespace trim inside output blocks
+# ---------------------------------------------------------------------------
+
+
+def test_output_block_lines_are_right_trimmed_but_aligned(docs_build, tmp_path):
+    cell = {"outputs": [_stream_output("col_a  col_b   \n1      2       \n")]}
+    rendered = docs_build.render_cell_outputs(cell, tmp_path, "assets/p")
+    assert rendered.snippets == ["```output\ncol_a  col_b\n1      2\n```"]
+
+
+# ---------------------------------------------------------------------------
+# Colab fixture path rewrite (.ipynb artifact only)
+# ---------------------------------------------------------------------------
+
+
+def test_notebook_rewrites_fixture_paths_but_markdown_keeps_them(docs_build, tmp_path):
+    body = (
+        "# T\n\n"
+        "```python\n"
+        'pdf = PDF("pdfs/01-practice.pdf")\n'
+        "other = PDF('pdfs/Atlanta_Public_Schools_GA_sample.pdf')\n"
+        'remote = PDF("https://example.com/some.pdf")\n'
+        "```\n"
+    )
+    nodes = docs_build.parse_document(body)
+    nb = docs_build.build_notebook_artifact(nodes, tmp_path / "notebooks" / "t.ipynb")
+    code = [c for c in nb.cells if c.cell_type == "code"]
+    # code[0] is the pip-install cell
+    source = code[1].source
+    assert (
+        '"https://raw.githubusercontent.com/jsoma/natural-pdf/main/pdfs/01-practice.pdf"' in source
+    )
+    assert (
+        "'https://raw.githubusercontent.com/jsoma/natural-pdf/main/pdfs/"
+        "Atlanta_Public_Schools_GA_sample.pdf'" in source
+    )
+    assert '"pdfs/' not in source and "'pdfs/" not in source
+    assert 'PDF("https://example.com/some.pdf")' in source  # URL passes through
+
+    # Executed markdown keeps the local path
+    md = docs_build.render_executed_markdown(nodes, {})
+    assert 'PDF("pdfs/01-practice.pdf")' in md
+    assert "raw.githubusercontent.com" not in md
+
+
+# ---------------------------------------------------------------------------
+# Kernel lifecycle: timeout enforcement + no leaked kernels
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.tutorial
+def test_timeout_enforced_and_kernel_shut_down(docs_build, tmp_path, monkeypatch):
+    import time as _time
+
+    kms = []
+    orig = docs_build._DocsNotebookClient.create_kernel_manager
+
+    def capture(self):
+        km = orig(self)
+        kms.append(km)
+        return km
+
+    monkeypatch.setattr(docs_build._DocsNotebookClient, "create_kernel_manager", capture)
+
+    # A cell sleeping far past the timeout must fail the page promptly...
+    slow = tmp_path / "slow.md"
+    slow.write_text("# Slow\n\n```python\nimport time\ntime.sleep(60)\n```\n", encoding="utf-8")
+    start = _time.monotonic()
+    with pytest.raises(docs_build.DocsBuildError, match="timed out"):
+        docs_build.build_page(slow, tmp_path / "out", timeout=2, cache_file=tmp_path / "c.json")
+    assert _time.monotonic() - start < 40  # enforced, not waiting out the sleep
+
+    # ...and the success path must also leave no kernel behind.
+    fast = tmp_path / "fast.md"
+    fast.write_text("# Fast\n\n```python\nprint('hi')\n```\n", encoding="utf-8")
+    result = docs_build.build_page(fast, tmp_path / "out2", cache_file=tmp_path / "c.json")
+    assert result.status == "built"
+
+    assert len(kms) == 2
+    assert all(not km.has_kernel for km in kms)  # no leaked kernel processes
+
+
+# ---------------------------------------------------------------------------
+# Output planning: tree mirroring, overwrite refusal, per-destination cache
+# ---------------------------------------------------------------------------
+
+
+def test_directory_build_mirrors_source_tree(docs_build, tmp_path, monkeypatch):
+    root = tmp_path / "docsrc"
+    (root / "solve").mkdir(parents=True)
+    (root / "learn").mkdir()
+    (root / "solve" / "index.md").write_text("# Solve\n\n```python\nx = 1\n```\n", encoding="utf-8")
+    (root / "learn" / "index.md").write_text("# Learn\n\n```python\ny = 2\n```\n", encoding="utf-8")
+
+    _install_fake_execute(
+        docs_build, monkeypatch, outputs_for_cell=lambda i: [_png_output((9, 9, 9))]
+    )
+    out = tmp_path / "out"
+    for src in docs_build.collect_sources(root):
+        docs_build.build_page(src, out, cache_file=tmp_path / "c.json", source_root=root)
+
+    solve = (out / "solve" / "index.md").read_text(encoding="utf-8")
+    learn = (out / "learn" / "index.md").read_text(encoding="utf-8")
+    assert "# Solve" in solve and "# Learn" in learn  # no overwrite
+    assert (out / "solve" / "notebooks" / "index.ipynb").exists()
+    assert (out / "learn" / "notebooks" / "index.ipynb").exists()
+    # asset links stay relative to the page (resolve from <out>/solve/)
+    assert "](assets/index/" in solve
+    assert list((out / "solve" / "assets" / "index").glob("*.png"))
+    assert list((out / "learn" / "assets" / "index").glob("*.png"))
+
+
+def test_page_outside_source_root_is_an_error(docs_build, tmp_path, monkeypatch):
+    _install_fake_execute(docs_build, monkeypatch)
+    src = tmp_path / "page.md"
+    src.write_text("# P\n", encoding="utf-8")
+    with pytest.raises(docs_build.DocsBuildError, match="source root"):
+        docs_build.build_page(
+            src, tmp_path / "out", cache_file=tmp_path / "c.json", source_root=tmp_path / "other"
+        )
+
+
+def test_refuses_to_overwrite_authored_page(docs_build, tmp_path, monkeypatch):
+    def boom(*args, **kwargs):
+        raise AssertionError("must refuse before executing anything")
+
+    monkeypatch.setattr(docs_build, "execute_page_notebook", boom)
+    src = tmp_path / "page.md"
+    src.write_text("# P\n\n```python\nx = 1\n```\n", encoding="utf-8")
+    with pytest.raises(docs_build.DocsBuildError, match="overwrite"):
+        docs_build.build_page(src, tmp_path, cache_file=tmp_path / "c.json")
+    assert src.read_text(encoding="utf-8").startswith("# P")  # untouched
+
+
+def test_cache_is_per_destination(docs_build, tmp_path, monkeypatch):
+    calls = []
+    _install_fake_execute(docs_build, monkeypatch, calls=calls)
+    src = tmp_path / "page.md"
+    src.write_text("# P\n\n```python\nx = 1\n```\n", encoding="utf-8")
+    cache_file = tmp_path / "c.json"
+
+    assert docs_build.build_page(src, tmp_path / "out1", cache_file=cache_file).status == "built"
+    # Same page, different destination: must build (and write), not report cached
+    second = docs_build.build_page(src, tmp_path / "out2", cache_file=cache_file)
+    assert second.status == "built"
+    assert (tmp_path / "out2" / "page.md").exists()
+    # Original destination is still a cache hit
+    assert docs_build.build_page(src, tmp_path / "out1", cache_file=cache_file).status == "cached"
+    assert len(calls) == 2
+
+
+# ---------------------------------------------------------------------------
+# Output hygiene: --out inside the source tree, stale thumbnails
+# ---------------------------------------------------------------------------
+
+
+def test_directory_build_rejects_out_inside_source(docs_build, tmp_path, capsys):
+    root = tmp_path / "docsrc"
+    root.mkdir()
+    (root / "page.md").write_text("# P\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as excinfo:
+        docs_build.main([str(root), "--out", str(root / "generated"), "--no-execute"])
+    assert excinfo.value.code != 0
+    assert "inside the source directory" in capsys.readouterr().err
+    # --out equal to the source root is refused too
+    with pytest.raises(SystemExit):
+        docs_build.main([str(root), "--out", str(root), "--no-execute"])
+    # Single-file builds keep working with any out dir
+    assert (
+        docs_build.main(
+            [
+                str(root / "page.md"),
+                "--out",
+                str(tmp_path / "single-out"),
+                "--no-execute",
+                "--cache-file",
+                str(tmp_path / "c.json"),
+            ]
+        )
+        == 0
+    )
+    assert (tmp_path / "single-out" / "page.md").exists()
+
+
+def test_collect_sources_excludes_out_dir(docs_build, tmp_path):
+    root = tmp_path / "docsrc"
+    (root / "generated").mkdir(parents=True)
+    (root / "page.md").write_text("# P\n", encoding="utf-8")
+    (root / "generated" / "page.md").write_text("# Old output\n", encoding="utf-8")
+
+    with_exclude = docs_build.collect_sources(root, exclude_dir=root / "generated")
+    assert with_exclude == [root / "page.md"]
+    # Backward compatible: no exclude_dir discovers everything, as before
+    assert len(docs_build.collect_sources(root)) == 2
+
+
+def test_stale_thumbnail_deleted_when_frontmatter_dropped(docs_build, tmp_path, monkeypatch):
+    _install_fake_execute(
+        docs_build, monkeypatch, outputs_for_cell=lambda i: [_png_output((7, 7, 7))]
+    )
+    src = tmp_path / "page.md"
+    out = tmp_path / "out"
+    cache_file = tmp_path / "c.json"
+    thumb = out / "assets" / "page-thumb.png"
+
+    src.write_text("---\nthumbnail: 1\n---\n# P\n\n```python\nimg\n```\n", encoding="utf-8")
+    result = docs_build.build_page(src, out, cache_file=cache_file)
+    assert thumb.exists()
+    assert thumb in result.outputs
+
+    # Author removes `thumbnail:` — the stale artifact must go away.
+    src.write_text("# P\n\n```python\nimg\n```\n", encoding="utf-8")
+    result = docs_build.build_page(src, out, cache_file=cache_file)
+    assert not thumb.exists()
+    assert thumb not in result.outputs
+
+
+# ---------------------------------------------------------------------------
+# skip=true fences in the exported notebook
+# ---------------------------------------------------------------------------
+
+
+def test_skip_fence_tagged_skip_execution_in_notebook(docs_build, tmp_path):
+    body = (
+        "# T\n\n"
+        "```python skip=true\nclient = make_client()\n```\n\n"
+        "```python skip=true\n# my own explanation\nx = 1\n```\n\n"
+        "```python\ny = 2\n```\n"
+    )
+    nodes = docs_build.parse_document(body)
+    nb = docs_build.build_notebook_artifact(nodes, tmp_path / "notebooks" / "t.ipynb")
+    code = [c for c in nb.cells if c.cell_type == "code"]
+    # code[0] is the pip-install cell
+    assert "skip-execution" not in code[0].get("metadata", {}).get("tags", [])
+
+    skip_cell = code[1]
+    assert "skip-execution" in skip_cell.metadata["tags"]
+    assert "skip" not in skip_cell.metadata
+    assert skip_cell.source.splitlines()[0] == docs_build.SKIP_CELL_COMMENT
+    assert "client = make_client()" in skip_cell.source
+
+    # A skip cell that already opens with a comment only gets the tag.
+    commented = code[2]
+    assert "skip-execution" in commented.metadata["tags"]
+    assert commented.source.splitlines()[0] == "# my own explanation"
+    assert docs_build.SKIP_CELL_COMMENT not in commented.source
+
+    plain = code[3]
+    assert "skip-execution" not in plain.get("metadata", {}).get("tags", [])
+    assert docs_build.SKIP_CELL_COMMENT not in plain.source
+
+
+# ---------------------------------------------------------------------------
+# Colab badge URL composition
+# ---------------------------------------------------------------------------
+
+
+def test_colab_url_defaults_and_options(docs_build, tmp_path):
+    out = tmp_path / "out"
+    nb_path = out / "learn" / "notebooks" / "x.ipynb"
+    assert docs_build.colab_url(nb_path, out_root=out) == (
+        "https://colab.research.google.com/github/jsoma/natural-pdf/"
+        "blob/gh-pages/learn/notebooks/x.ipynb"
+    )
+    assert docs_build.colab_url(nb_path, ref="main", prefix="site/docs", out_root=out) == (
+        "https://colab.research.google.com/github/jsoma/natural-pdf/"
+        "blob/main/site/docs/learn/notebooks/x.ipynb"
+    )
+    # No out_root: falls back to notebooks/<name>
+    assert docs_build.colab_url(nb_path).endswith("/blob/gh-pages/notebooks/x.ipynb")
+
+
+def test_build_page_composes_badge_from_colab_options(docs_build, tmp_path, monkeypatch):
+    _install_fake_execute(docs_build, monkeypatch)
+    src = tmp_path / "page.md"
+    src.write_text("# P\n\n```python\nx = 1\n```\n", encoding="utf-8")
+    out = tmp_path / "out"
+
+    docs_build.build_page(
+        src, out, cache_file=tmp_path / "c1.json", colab_ref="v1.2", colab_prefix="dl"
+    )
+    nb = nbformat.read(str(out / "notebooks" / "page.ipynb"), as_version=4)
+    assert "blob/v1.2/dl/notebooks/page.ipynb)" in nb.cells[0].source
+
+    # Default (no options): gh-pages ref, output-tree-relative path, no prefix
+    out2 = tmp_path / "out2"
+    docs_build.build_page(src, out2, cache_file=tmp_path / "c2.json")
+    nb2 = nbformat.read(str(out2 / "notebooks" / "page.ipynb"), as_version=4)
+    assert "blob/gh-pages/notebooks/page.ipynb)" in nb2.cells[0].source
+
+
+def test_cli_colab_options_reach_the_badge(docs_build, tmp_path):
+    src = tmp_path / "page.md"
+    src.write_text("# P\n\n```python\nx = 1\n```\n", encoding="utf-8")
+    out = tmp_path / "out"
+    rc = docs_build.main(
+        [
+            str(src),
+            "--out",
+            str(out),
+            "--no-execute",
+            "--cache-file",
+            str(tmp_path / "c.json"),
+            "--colab-ref",
+            "release",
+            "--colab-prefix",
+            "notebooks-root",
+        ]
+    )
+    assert rc == 0
+    nb = nbformat.read(str(out / "notebooks" / "page.ipynb"), as_version=4)
+    assert "blob/release/notebooks-root/notebooks/page.ipynb)" in nb.cells[0].source
+
+
 def test_frontmatter_skip_passes_page_through(docs_build, tmp_path, monkeypatch):
     src = tmp_path / "skippy.md"
     src.write_text(

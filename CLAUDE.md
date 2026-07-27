@@ -94,7 +94,7 @@ Multiple engines: `rapidocr` (default), `paddle`, `paddlevl`, `doctr`, and VLM-b
 | `region.extract_text()` | `str` | Text content |
 | `page.extract_table()` | `TableResult` | Has `.to_df()` |
 | `page.extract_tables()` | `List[TableResult]` | All tables on page |
-| `page.apply_ocr()` | `ElementCollection` | OCR text elements |
+| `page.apply_ocr()` | `Page` (self) | Adds OCR text elements; chainable |
 | `page.analyze_layout()` | `ElementCollection` | Detected regions |
 | `page.ask(question)` | `StructuredDataResult` | Has `.data`, `.success` |
 | `page.extract(Schema)` | `StructuredDataResult` | Has `.data`, `.success` |

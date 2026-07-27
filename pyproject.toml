@@ -107,8 +107,8 @@ test = [
 ]
 
 dev = [
-    "black",
-    "isort",
+    "black==26.5.1",
+    "isort==7.0.0",
     "mypy",
     "pytest",
     "pytest-xdist",

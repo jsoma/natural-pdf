@@ -1,0 +1,82 @@
+name: Docs fast tier
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'scripts/docs_build.py'
+      - 'natural_pdf/**'
+      - '.github/workflows/docs-fast.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-fast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  execute-fast-docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: '3.10'
+
+      - name: Install system dependencies (OpenCV/Paddle need libGL)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+
+      - name: Sync dependencies
+        run: |
+          uv sync --extra all --extra notebook
+
+      # Fast-tier pages are model-free, so this cache should stay empty;
+      # it is a harmless safety net if a page pulls a model by accident.
+      - name: Cache Hugging Face models
+        uses: actions/cache@v5.0.5
+        with:
+          path: ~/.cache/huggingface
+          key: hf-docs-fast
+
+      # .docs-build-cache.json is gitignored, so without this cache every
+      # run re-executes every page. Cache validity also requires the
+      # recorded output files to exist, so the output dir rides along.
+      - name: Cache docs build outputs
+        uses: actions/cache@v5.0.5
+        with:
+          path: |
+            .docs-build-cache.json
+            docs-build
+          key: docs-build-fast-${{ hashFiles('docs/**/*.md', 'scripts/docs_build.py', 'uv.lock') }}
+          restore-keys: |
+            docs-build-fast-
+
+      - name: Execute fast-tier docs pages
+        run: |
+          found=0
+          failed=0
+          for section in get-started learn concepts solve troubleshooting for-agents; do
+            if [ -d "docs/$section" ]; then
+              found=1
+              uv run python scripts/docs_build.py "docs/$section" --out "docs-executed/$section" --tier fast --keep-going || failed=1
+            fi
+          done
+          if [ "$found" = "0" ]; then
+            echo "No new-format docs sections yet (docs/get-started, docs/concepts, docs/learn); nothing to execute."
+          fi
+          exit "$failed"
+
+      - name: Check generated reference pages are current
+        run: uv run python scripts/generate_reference.py --check

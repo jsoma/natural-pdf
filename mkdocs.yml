@@ -47,14 +47,58 @@ theme:
 extra_css:
   - assets/stylesheets/custom.css
 
+# docs_dir is overridable so CI can point mkdocs at the staging tree that
+# contains executed pages (see .github/workflows/docs.yml). Local builds
+# default to the authored sources in docs/.
+docs_dir: !ENV [NPDF_DOCS_DIR, docs]
+
 nav:
   - Home: index.md
-  - Getting Started:
+  - Get Started:
+    - get-started/index.md
+    - Quickstart: get-started/quickstart.md
+    - Coming from pdfplumber: get-started/from-pdfplumber.md
+  - Learn:
+    - learn/index.md
+    - 1. Text and tables: learn/01-text-and-tables.md
+    - 2. OCR: learn/02-ocr.md
+    - 3. AI extraction: learn/03-ai-extraction.md
+    - 4. Page structure: learn/04-page-structure.md
+    - 5. Putting it together: learn/05-putting-it-together.md
+  - Concepts:
+    - concepts/index.md
+    - The spatial model: concepts/spatial-model.md
+    - How text becomes elements: concepts/text-and-elements.md
+    - Exclusions: concepts/exclusions.md
+    - Selectors: concepts/selectors.md
+    - Tables, a decision guide: concepts/tables.md
+    - Engines and models: concepts/engines-and-models.md
+  - Solve:
+    - solve/index.md
+    - Multi-column reflow: solve/multi-column-reflow.md
+    - Zebra-stripe table: solve/zebra-stripe-table.md
+    - Arabic election table: solve/arabic-election-table.md
+    - Use-of-force logs: solve/use-of-force-logs.md
+    - Pixelated scan table: solve/pixelated-scan-table.md
+    - Serbian multi-page table: solve/serbian-multipage-table.md
+    - Borderless call log: solve/borderless-call-log.md
+    - Complaint database printout: solve/complaint-database-printout.md
+  - Troubleshooting: troubleshooting/index.md
+  - Reference:
+    - Selectors: reference/selectors.md
+    - Engines: reference/engines.md
+    - Installation extras: reference/installation-extras.md
+    - Exceptions: reference/exceptions.md
+    - OCR options: reference/ocr-options.md
+    - API: api/index.md
+    - Text Extraction: api/text-extraction.md
+  - For Agents: for-agents/index.md
+  - More (legacy):
     - Installation: installation/index.md
     - Choose Your Path: getting-started/choose-your-path.md
-    - Quickstart: getting-started/quickstart.md
+    - Old Quickstart: getting-started/quickstart.md
     - Selectors 101: getting-started/selectors.md
-    - Concepts: getting-started/concepts.md
+    - Old Concepts: getting-started/concepts.md
   - Tutorials:
     - 01 Loading PDFs: tutorials/01-loading-and-extraction.ipynb
     - 02 Finding Elements: tutorials/02-finding-elements.ipynb
@@ -100,6 +144,10 @@ markdown_extensions:
   - admonition
   - pymdownx.details
   - pymdownx.tabbed:
+      alternate_style: true
+  # The docs pipeline authors tabs as /// tab | blocks (pymdownx.blocks.tab);
+  # legacy pages use the old pymdownx.tabbed syntax — both stay enabled.
+  - pymdownx.blocks.tab:
       alternate_style: true
   - tables
   - attr_list
@@ -150,6 +198,9 @@ plugins:
       include_source: true
       ignore:
         - "tutorials/*.md"
+        # Pipeline-exported notebooks ship as verbatim static files so the
+        # Colab badges' gh-pages paths resolve; they are not site pages.
+        - "*/notebooks/*.ipynb"
       execute: false
   - exclude:
       glob:

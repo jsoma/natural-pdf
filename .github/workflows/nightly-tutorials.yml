@@ -1,4 +1,9 @@
-name: Nightly Tutorial Run
+name: Nightly docs execution
+
+# Executes ALL docs tiers (fast + nightly) through scripts/docs_build.py and
+# fails on any page failure. The built output is uploaded as an artifact;
+# nothing is committed back to the repo — build-time execution replaced the
+# old commit-executed-notebooks flow (which never successfully pushed).
 
 on:
   schedule:
@@ -7,12 +12,16 @@ on:
   workflow_dispatch: # Allows manual triggering
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: nightly-docs
+  cancel-in-progress: true
 
 jobs:
-  execute-tutorials:
+  execute-docs:
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # Set explicit 2-hour timeout
+    timeout-minutes: 120
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
@@ -27,24 +36,120 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Install system dependencies (OpenCV/Paddle need libGL)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+
+      - name: Sync dependencies
+        run: |
+          uv sync --extra all --extra notebook
+
+      # Nightly pages download models at runtime; key on the lockfile so the
+      # cache rolls over when engine dependencies change.
+      - name: Cache Hugging Face models
+        uses: actions/cache@v5.0.5
+        with:
+          path: ~/.cache/huggingface
+          key: hf-nightly-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            hf-nightly-
+
+      # .docs-build-cache.json is gitignored; restoring it (plus the output
+      # dir its entries point at) makes --force-off runs incremental.
+      - name: Cache docs build outputs
+        uses: actions/cache@v5.0.5
+        with:
+          path: |
+            .docs-build-cache.json
+            docs-build
+          key: docs-build-nightly-${{ hashFiles('docs/**/*.md', 'scripts/docs_build.py', 'uv.lock') }}
+          restore-keys: |
+            docs-build-nightly-
+
+      - name: Execute all docs tiers
+        run: |
+          echo "Starting at $(date)"
+          found=0
+          failed=0
+          for section in get-started learn concepts solve troubleshooting for-agents; do
+            if [ -d "docs/$section" ]; then
+              found=1
+              uv run python scripts/docs_build.py "docs/$section" --out "docs-executed/$section" --keep-going || failed=1
+            fi
+          done
+          if [ "$found" = "0" ]; then
+            echo "No new-format docs sections yet (docs/get-started, docs/concepts, docs/learn); nothing to execute."
+          fi
+          echo "Completed at $(date)"
+          exit "$failed"
+
+      - name: Upload built docs output
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: executed-docs
+          path: docs-build
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Legacy tutorial coverage. The nine docs/tutorials/*.md notebooks (plus
+  # docs/quick-reference/index.md) are still executed by the old executor
+  # (scripts/01-execute_notebooks.py) and verified by `pytest -m tutorial` —
+  # `nox -s docs` runs both steps, exactly what the pre-rewrite nightly did,
+  # minus the commit-back (results are never pushed; any execution or test
+  # failure fails the workflow).
+  # RETIRE this job when the tutorial content migrates to docs/learn/ and is
+  # covered by the execute-docs job above.
+  execute-legacy-tutorials:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: '3.10'
+
+      - name: Install system dependencies (OpenCV/Paddle need libGL)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+
       - name: Sync dependencies
         run: |
           uv sync --extra all --extra dev
+
+      # Tutorial notebooks download models at runtime; share the nightly HF
+      # cache with the execute-docs job.
+      - name: Cache Hugging Face models
+        uses: actions/cache@v5.0.5
+        with:
+          path: ~/.cache/huggingface
+          key: hf-nightly-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            hf-nightly-
 
       - name: Register Jupyter kernel for notebooks
         run: |
           uv run python -m ipykernel install --user --name=natural-pdf-project-venv
 
-      - name: Execute notebooks and run tutorial tests
+      - name: Execute legacy tutorial notebooks and tutorial tests
         run: |
           echo "Starting at $(date)"
           uv run nox --non-interactive -s docs
           echo "Completed at $(date)"
 
-      - name: Commit and push changes
+      # Re-run the tutorial marker in the project venv as an explicit gate on
+      # the freshly executed notebooks (nox -s docs already ran it inside its
+      # own session env; this one fails fast if the outputs did not land).
+      - name: Run tutorial test suite
         run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
-          git add .
-          git commit -m "docs: update executed notebooks [skip ci]" || echo "No changes to commit"
-          git push
+          uv run pytest tests -m tutorial -v --tb=short
