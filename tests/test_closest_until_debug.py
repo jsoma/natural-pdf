@@ -1,4 +1,4 @@
-from natural_pdf.core.page import _jaro_winkler_similarity
+from natural_pdf.core.selector_utils import _jaro_winkler_similarity
 
 
 def jw_ratio(a: str, b: str) -> float:

@@ -23,11 +23,20 @@ class GlyphlessFont(EncodableFont):
     CID_TO_GID_DATA = zlib.compress(b"\x00\x01" * 65536)
     GLYPHLESS_FONT_NAME = "pdf.ttf"
     GLYPHLESS_FONT_PACKAGE_PATH = "natural_pdf.exporters.data"
-    GLYPHLESS_FONT = (package_files(GLYPHLESS_FONT_PACKAGE_PATH) / GLYPHLESS_FONT_NAME).read_bytes()
     CHAR_ASPECT = 2
+    _GLYPHLESS_FONT_BYTES: bytes | None = None
 
     def __init__(self):
         pass
+
+    @classmethod
+    def _font_bytes(cls) -> bytes:
+        # Read the bundled font lazily so importing this module never does disk I/O.
+        if cls._GLYPHLESS_FONT_BYTES is None:
+            cls._GLYPHLESS_FONT_BYTES = (
+                package_files(cls.GLYPHLESS_FONT_PACKAGE_PATH) / cls.GLYPHLESS_FONT_NAME
+            ).read_bytes()
+        return cls._GLYPHLESS_FONT_BYTES
 
     def text_width(self, text: str, fontsize: float) -> float:
         """Estimate the width of a text string when rendered with the given font."""
@@ -110,27 +119,6 @@ class GlyphlessFont(EncodableFont):
                 Type=Name.FontDescriptor,
             )
         )
-        font_descriptor.FontFile2 = pdf.make_stream(self.GLYPHLESS_FONT)
+        font_descriptor.FontFile2 = pdf.make_stream(self._font_bytes())
         cid_font_type2.FontDescriptor = font_descriptor
         return basefont
-
-
-class Courier(EncodableFont):
-    """Courier font."""
-
-    def text_width(self, text: str, fontsize: float) -> float:
-        """Estimate the width of a text string when rendered with the given font."""
-        return len(text) * fontsize
-
-    def text_encode(self, text: str) -> bytes:
-        return text.encode("pdfdoc", errors="ignore")
-
-    def register(self, pdf: Pdf) -> Dictionary:
-        """Register the font."""
-        return pdf.make_indirect(
-            Dictionary(
-                BaseFont=Name.Courier,
-                Type=Name.Font,
-                Subtype=Name.Type1,
-            )
-        )

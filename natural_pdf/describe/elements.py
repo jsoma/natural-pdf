@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 _NAMED_COLOR_MAP = {
     "black": "#000000",
-    "white": "#FFFFFF",
-    "red": "#FF0000",
+    "white": "#ffffff",
+    "red": "#ff0000",
     "green": "#008000",
-    "blue": "#0000FF",
+    "blue": "#0000ff",
 }
 
 
@@ -34,18 +34,17 @@ def _color_to_hex(color: Any) -> Optional[str]:
         if not normalized:
             return None
         if normalized.startswith("#"):
-            hex_value = normalized.upper()
+            # Lowercase to match the tuple path so hex casing is consistent
+            hex_value = normalized.lower()
             if len(hex_value) == 4:  # #RGB → #RRGGBB
-                try:
-                    r, g, b = hex_value[1:]
-                    return f"#{r}{r}{g}{g}{b}{b}"
-                except Exception:
-                    return hex_value
+                r, g, b = hex_value[1:]
+                return f"#{r}{r}{g}{g}{b}{b}"
             return hex_value
         mapped = _NAMED_COLOR_MAP.get(normalized.lower())
         if mapped:
             return mapped
-        return normalized
+        # Not a recognizable color; honor the documented "hex or None" contract
+        return None
 
     if isinstance(color, (tuple, list)):
         if not color:
@@ -92,7 +91,9 @@ def describe_text_elements(elements: List["Element"]) -> Dict[str, Any]:
         if source == "ocr":
             ocr_elements.append(element)
 
-    if len(sources) > 1:
+    # Always report sources when any text is non-native, so a fully-OCR'd
+    # page states that its text came from OCR.
+    if len(sources) > 1 or any(src not in ("native", "pdf") for src in sources):
         result["sources"] = dict(sources)
 
     # Typography analysis
@@ -322,7 +323,7 @@ def _analyze_typography(elements: List["Element"]) -> Dict[str, Any]:
     """Analyze typography patterns in text elements."""
     fonts = Counter()
     sizes = Counter()
-    styles = {"bold": 0, "italic": 0, "strikeout": 0, "underline": 0, "highlight": 0}
+    styles = {"bold": 0, "italic": 0, "strike": 0, "underline": 0, "highlight": 0}
     colors = Counter()
 
     for element in elements:
@@ -345,8 +346,8 @@ def _analyze_typography(elements: List["Element"]) -> Dict[str, Any]:
             styles["bold"] += 1
         if getattr(element, "italic", False):
             styles["italic"] += 1
-        if getattr(element, "strikeout", False):
-            styles["strikeout"] += 1
+        if getattr(element, "strike", False):
+            styles["strike"] += 1
         if getattr(element, "underline", False):
             styles["underline"] += 1
         if getattr(element, "is_highlighted", False):

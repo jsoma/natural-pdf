@@ -245,11 +245,12 @@ class TestEngineRegistration:
     """Test that paddlevl is registered in the engine registry."""
 
     def test_registry_entry(self):
-        from natural_pdf.ocr.ocr_provider import ENGINE_REGISTRY
+        from natural_pdf.ocr.unified_dispatch import get_registry
 
-        assert "paddlevl" in ENGINE_REGISTRY
-        assert ENGINE_REGISTRY["paddlevl"]["provider"] is PaddleOCRVLEngine
-        assert ENGINE_REGISTRY["paddlevl"]["options_class"] is PaddleOCRVLOptions
+        registry = get_registry()
+        assert "paddlevl" in registry
+        assert registry["paddlevl"].provider is PaddleOCRVLEngine
+        assert registry["paddlevl"].options_class is PaddleOCRVLOptions
 
 
 # ---------------------------------------------------------------------------

@@ -12,7 +12,7 @@ import natural_pdf.engine_provider as provider_module
 from natural_pdf.engine_provider import EngineProvider
 from natural_pdf.engine_registry import register_ocr_engine
 from natural_pdf.ocr.ocr_options import BaseOCROptions
-from natural_pdf.ocr.ocr_provider import cleanup_engine, run_ocr_apply, run_ocr_engine
+from natural_pdf.ocr.ocr_provider import cleanup_engine
 from natural_pdf.ocr.unified_dispatch import (
     EngineCache,
     EngineEntry,
@@ -293,9 +293,9 @@ def test_unavailable_public_custom_provider_is_not_cached(isolated_provider):
     assert len(constructed) == 2
 
 
-def test_legacy_provider_paths_forward_options(isolated_provider):
-    apply_name = f"ocr.legacy-apply.{uuid.uuid4().hex}"
-    extract_name = f"ocr.legacy-extract.{uuid.uuid4().hex}"
+def test_provider_capability_paths_forward_options(isolated_provider):
+    apply_name = f"ocr.provider-apply.{uuid.uuid4().hex}"
+    fallback_name = f"ocr.provider-fallback.{uuid.uuid4().hex}"
     received = []
 
     class ProviderOptions(BaseOCROptions):
@@ -309,28 +309,31 @@ def test_legacy_provider_paths_forward_options(isolated_provider):
         received.append((context, options))
         return Engine()
 
+    # "ocr.apply" is the primary provider capability; bare "ocr" is the fallback
+    # path when no "ocr.apply" registration exists (see _run_via_provider).
     isolated_provider.register("ocr.apply", apply_name, factory)
-    isolated_provider.register("ocr.extract", extract_name, factory)
+    isolated_provider.register("ocr", fallback_name, factory)
     apply_context = object()
-    extract_context = object()
+    fallback_context = object()
     apply_options = ProviderOptions()
-    extract_options = ProviderOptions()
+    fallback_options = ProviderOptions()
 
-    run_ocr_apply(
+    run_ocr(
         target=_Target(),
         context=apply_context,
         engine_name=apply_name,
         resolution=72,
         options=apply_options,
     )
-    run_ocr_engine(
-        Image.new("RGB", (8, 8), "white"),
-        context=extract_context,
-        engine_name=extract_name,
-        options=extract_options,
+    run_ocr(
+        target=_Target(),
+        context=fallback_context,
+        engine_name=fallback_name,
+        resolution=72,
+        options=fallback_options,
     )
 
-    assert received == [(apply_context, apply_options), (extract_context, extract_options)]
+    assert received == [(apply_context, apply_options), (fallback_context, fallback_options)]
 
 
 def test_public_registration_replace_and_cleanup_are_provider_owned(isolated_provider):

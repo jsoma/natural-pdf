@@ -1,6 +1,6 @@
 """Fuzzy JSON extraction and Pydantic validation utilities.
 
-Used by the VLM adapter and the structured output ladder to parse
+Used by the VLM extraction path and the structured output ladder to parse
 free-text model responses into validated Pydantic models.
 """
 

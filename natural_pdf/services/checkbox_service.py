@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from natural_pdf.services.registry import register_delegate
-
 if TYPE_CHECKING:
     from natural_pdf.elements.element_collection import ElementCollection
 
@@ -46,7 +44,6 @@ class CheckboxDetectionService:
         merged["engine"] = engine_arg
         return merged
 
-    @register_delegate("checkbox", "detect_checkboxes")
     def detect_checkboxes(self, host: Any, *args, **kwargs) -> "ElementCollection":
         kwargs = self._normalize_engine_arg(args, kwargs)
 

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Literal, Optional, Sequence
+from typing import Any, Callable, Dict, Literal, Optional, Sequence
 
 from natural_pdf.engine_provider import get_provider
-from natural_pdf.engine_registry import register_builtin, register_guides_engine
+from natural_pdf.engine_registry import register_builtin
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ Text element classes for natural-pdf.
 
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from pdfplumber.utils.text import chars_to_textmap
 

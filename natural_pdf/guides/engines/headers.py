@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Sequence, Union
 
-from natural_pdf.analyzers.guides.helpers import (
+from natural_pdf.elements.element_collection import ElementCollection
+from natural_pdf.guides.guides_provider import Axis, GuidesDetectionResult, GuidesEngine
+from natural_pdf.guides.helpers import (
     Bounds,
     GuidesContext,
     _bounds_from_object,
     _require_bounds,
 )
-from natural_pdf.analyzers.guides.separators import (
+from natural_pdf.guides.separators import (
     find_min_crossing_separator,
     find_seam_carving_separator,
     stabilize_with_rows,
 )
-from natural_pdf.elements.element_collection import ElementCollection
-from natural_pdf.guides.guides_provider import Axis, GuidesDetectionResult, GuidesEngine
 
 
 def _normalize_header_input(headers: Union[ElementCollection, Sequence[Any], None]) -> List[Any]:

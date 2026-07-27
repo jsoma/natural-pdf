@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable as IterableABC
-from collections.abc import Mapping
 from collections.abc import Sequence as SequenceABC
 from typing import Any, List, Optional, Sequence, Tuple
 
@@ -11,7 +10,6 @@ from pydantic import Field, create_model
 from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.extraction.result import StructuredDataResult
 from natural_pdf.services._model_support import QA_INSTALL_MESSAGE
-from natural_pdf.services.registry import register_delegate
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +27,6 @@ class QAService:
     def __init__(self, context):
         self._context = context
 
-    @register_delegate("qa", "ask")
     def ask(
         self,
         host: Any,

@@ -10,7 +10,7 @@ import os
 import tempfile
 import zipfile
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, Iterable, List, Optional, Union, cast
 
 from PIL import Image  # type: ignore[import-untyped]
 from tqdm import tqdm

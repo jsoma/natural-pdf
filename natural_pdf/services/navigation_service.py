@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Protocol, Union
 
 import natural_pdf
-from natural_pdf.services.registry import register_delegate
 
 if TYPE_CHECKING:  # pragma: no cover
     from natural_pdf.elements.region import Region
@@ -34,7 +33,6 @@ class NavigationService:
             return offset
         return self._option(host, "directional_offset")
 
-    @register_delegate("navigation", "above")
     def above(
         self,
         host: _DirectionalHost,
@@ -65,7 +63,6 @@ class NavigationService:
             **kwargs,
         )
 
-    @register_delegate("navigation", "below")
     def below(
         self,
         host: _DirectionalHost,
@@ -96,7 +93,6 @@ class NavigationService:
             **kwargs,
         )
 
-    @register_delegate("navigation", "left")
     def left(
         self,
         host: _DirectionalHost,
@@ -127,7 +123,6 @@ class NavigationService:
             **kwargs,
         )
 
-    @register_delegate("navigation", "right")
     def right(
         self,
         host: _DirectionalHost,

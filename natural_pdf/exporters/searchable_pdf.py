@@ -3,7 +3,6 @@ Module for exporting PDF content to various formats.
 """
 
 import logging
-import os
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -11,18 +10,8 @@ from typing import TYPE_CHECKING, List, Sequence, Union
 from xml.etree.ElementTree import Element as ETElement
 from xml.etree.ElementTree import SubElement
 
+from natural_pdf.exceptions import ExportError
 from natural_pdf.utils.optional_imports import require
-
-# Lazy imports for optional dependencies
-try:
-    from PIL import Image
-except ImportError:
-    Image = None  # type: ignore
-
-try:
-    from natural_pdf.exporters.hocr import HocrTransform
-except ImportError:
-    HocrTransform = None  # type: ignore
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -49,14 +38,6 @@ HOCR_TEMPLATE_HEADER = """<?xml version="1.0" encoding="UTF-8"?>
 HOCR_TEMPLATE_PAGE = """  <div class='ocr_page' id='page_{page_num}' title='image "{image_path}"; bbox 0 0 {width} {height}; ppageno {page_num}'>
 """
 
-HOCR_TEMPLATE_WORD = """   <span class='ocrx_word' id='word_{page_num}_{word_id}' title='bbox {x0} {y0} {x1} {y1}; x_wconf {confidence}'>{text}</span>
-"""
-
-HOCR_TEMPLATE_LINE_START = """   <span class='ocr_line' id='line_{page_num}_{line_id}' title='bbox {x0} {y0} {x1} {y1}; baseline 0 0; x_size 0; x_descenders 0; x_ascenders 0'>
-"""
-HOCR_TEMPLATE_LINE_END = """   </span>
-"""
-
 HOCR_TEMPLATE_FOOTER = """  </div>
  </body>
 </html>
@@ -75,9 +56,6 @@ def _generate_hocr_for_page(page: "Page", image_width: int, image_height: int) -
 
     Returns:
         An hOCR XML string.
-
-    Raises:
-        ValueError: If the page has no OCR elements.
     """
     # Attempt to get OCR elements (words) using find_all with selector
     # Use find_all which returns an ElementCollection
@@ -118,11 +96,11 @@ def _generate_hocr_for_page(page: "Page", image_width: int, image_height: int) -
             tolerance_factor = 0.7
             threshold = avg_height * tolerance_factor
             delta_y = abs(current_word_center_y - last_word_center_y)
-            # if delta_y < threshold:
-            #     current_line.append(current_word)
-            # else:
-            lines.append(current_line)
-            current_line = [current_word]
+            if delta_y < threshold:
+                current_line.append(current_word)
+            else:
+                lines.append(current_line)
+                current_line = [current_word]
         if current_line:
             lines.append(current_line)
     logger.debug(f"Page {page.index}: Grouped into {len(lines)} lines.")
@@ -256,11 +234,11 @@ def _generate_hocr_for_page(page: "Page", image_width: int, image_height: int) -
             if img_y1 <= img_y0:
                 img_y1 = img_y0 + 1
 
-            # --- Strip whitespace and check if word is empty --- #
-            text = word.text.strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            # ElementTree escapes XML special characters on serialization;
+            # the text must be assigned raw or entities get double-escaped.
+            text = word.text.strip()
             if not text:
                 continue  # Skip adding this word if it becomes empty after stripping
-            # --- End strip ---
             confidence = getattr(word, "confidence", 1.00)
 
             word_span = SubElement(
@@ -276,24 +254,18 @@ def _generate_hocr_for_page(page: "Page", image_width: int, image_height: int) -
             word_id_counter += 1
         line_id_counter += 1
 
-    # Convert ElementTree to string
-    # xml_declaration = '<?xml version="1.0" encoding="UTF-8"?>\n' # No longer needed
-    # doctype_declaration = '''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-    # "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n''' # No longer needed
-    # ET.indent(page_hocr) # Optional: for pretty printing, requires Python 3.9+
-    # Need bytes for writing, then decode for HocrTransform if it needs str
-    # Let's stick to unicode string output for now, as the file write expects it.
-    hocr_content = ET.tostring(
-        page_hocr, encoding="unicode", method="xml"
-    )  # Revert back to method='xml'
-    # hocr_content = xml_declaration + doctype_declaration + hocr_string_content # Removed string addition
+    hocr_content = ET.tostring(page_hocr, encoding="unicode", method="xml")
     # --- End ElementTree hOCR Generation ---
 
     return hocr_content
 
 
 def create_searchable_pdf(
-    source: Union["Page", "PageCollection", "PDF"], output_path: str, dpi: int = 300
+    source: Union["Page", "PageCollection", "PDF"],
+    output_path: str,
+    *,
+    dpi: int = 300,
+    on_error: str = "raise",
 ) -> None:
     """
     Creates a searchable PDF from a natural_pdf.PDF object using OCR results.
@@ -304,13 +276,24 @@ def create_searchable_pdf(
         source: The natural_pdf.PDF, PageCollection, or Page object
         output_path: The path to save the resulting searchable PDF.
         dpi: The resolution (dots per inch) for rendering page images and hOCR.
+        on_error: "raise" (default) fails on the first page that cannot be
+            processed; "skip" logs a warning and omits the page from the output.
+
+    Raises:
+        ExportError: If a page fails to process (on_error="raise"), if no pages
+            could be processed, or if the final PDF cannot be written.
     """
 
     pikepdf = require("pikepdf")
-    if Image is None:
-        raise ImportError("create_searchable_pdf requires Pillow to render images.")
-    if HocrTransform is None:
-        raise ImportError("create_searchable_pdf requires the hOCR exporter dependencies.")
+    # HocrTransform depends on pikepdf, so import it only after require()
+    # has produced a proper install hint. A failure here is a real bug in
+    # the hOCR module, not a missing dependency, and should surface as-is.
+    from natural_pdf.exporters.hocr import HocrTransform
+
+    if on_error not in ("raise", "skip"):
+        raise ValueError(f"on_error must be 'raise' or 'skip', got {on_error!r}")
+    if dpi <= 0:
+        raise ValueError(f"dpi must be positive, got {dpi}")
 
     from natural_pdf.core.page import Page
     from natural_pdf.core.page_collection import PageCollection
@@ -350,11 +333,9 @@ def create_searchable_pdf(
                 # Use render() for clean image without highlights
                 pil_image = page.render(resolution=dpi)
                 if pil_image is None:
-                    logger.warning(
-                        "  Page %s did not return an image; skipping.",
-                        getattr(page, "number", i + 1),
+                    raise ExportError(
+                        f"Page {getattr(page, 'number', i + 1)} did not return an image."
                     )
-                    continue
                 pil_image.save(str(img_path), format="PNG")
                 img_width, img_height = pil_image.size
                 logger.debug(f"  Image saved to {img_path} ({img_width}x{img_height})")
@@ -376,18 +357,19 @@ def create_searchable_pdf(
 
             except Exception as e:
                 page_label = getattr(page, "number", i + 1)
-                logger.error(f"  Failed to process page {page_label}: {e}", exc_info=True)
-                # Decide whether to skip or raise error
-                # For now, let's skip and continue
-                logger.warning(f"  Skipping page {page_label} due to error.")
+                if on_error == "raise":
+                    raise ExportError(
+                        f"Failed to process page {page_label} for searchable PDF: {e}"
+                    ) from e
+                logger.warning(f"  Skipping page {page_label} due to error: {e}")
                 continue  # Skip to the next page
 
         # 4. Merge temporary PDF pages
         if not temp_pdf_pages:
-            logger.error("No pages were successfully processed. Cannot create output PDF.")
-            raise RuntimeError("Failed to process any pages for searchable PDF creation.")
+            raise ExportError("Failed to process any pages for searchable PDF creation.")
 
         logger.info(f"Merging {len(temp_pdf_pages)} processed pages into final PDF...")
+        tmp_output_path = output_abs_path.with_name(output_abs_path.name + ".tmp")
         try:
             # Use pikepdf for merging
             output_pdf = pikepdf.Pdf.new()
@@ -397,15 +379,20 @@ def create_searchable_pdf(
                     if len(src_page_pdf.pages) == 1:
                         output_pdf.pages.append(src_page_pdf.pages[0])
                     else:
-                        logger.warning(
-                            f"Temporary PDF '{temp_pdf_path}' had unexpected number of pages ({len(src_page_pdf.pages)}). Skipping."
+                        raise ExportError(
+                            f"Temporary PDF '{temp_pdf_path}' had unexpected number of "
+                            f"pages ({len(src_page_pdf.pages)})."
                         )
-            output_pdf.save(str(output_abs_path))
+            # Write to a temp path in the destination directory, then replace,
+            # so a failure never leaves a truncated file at output_path.
+            output_pdf.save(str(tmp_output_path))
+            tmp_output_path.replace(output_abs_path)
             logger.info(f"Successfully saved merged searchable PDF to: {output_abs_path}")
+        except ExportError:
+            tmp_output_path.unlink(missing_ok=True)
+            raise
         except Exception as e:
-            logger.error(
-                f"Failed to merge temporary PDFs into '{output_abs_path}': {e}", exc_info=True
-            )
-            raise RuntimeError(f"Failed to save final PDF: {e}") from e
+            tmp_output_path.unlink(missing_ok=True)
+            raise ExportError(f"Failed to save final PDF to '{output_abs_path}': {e}") from e
 
     logger.debug("Temporary directory cleaned up.")

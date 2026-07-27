@@ -2,10 +2,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import logging
-from typing import Any, Callable, List, Optional, Protocol, Sequence
-
-from natural_pdf.services.base import resolve_service
-from natural_pdf.services.registry import register_delegate
+from typing import Any, Callable, Optional, Protocol, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +29,6 @@ class TextService:
     def __init__(self, _context) -> None:  # context reserved for future use
         self._context = _context
 
-    @register_delegate("text", "correct_ocr")
     def correct_ocr(
         self,
         host: SupportsFindAll,
@@ -47,7 +43,6 @@ class TextService:
             apply_exclusions=apply_exclusions,
         )
 
-    @register_delegate("text", "update_ocr")
     def update_ocr(
         self,
         host: SupportsFindAll,
@@ -68,7 +63,6 @@ class TextService:
             show_progress=show_progress,
         )
 
-    @register_delegate("text", "update_text")
     def update_text(
         self,
         host: SupportsFindAll,

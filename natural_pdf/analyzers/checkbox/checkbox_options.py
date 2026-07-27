@@ -1,79 +1,12 @@
-"""Options classes for checkbox detection engines."""
+"""Compatibility shim — canonical module is natural_pdf.checkbox.checkbox_options.
 
-import logging
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+The module object below replaces this one in ``sys.modules`` so that
+``natural_pdf.analyzers.checkbox.checkbox_options`` and ``natural_pdf.checkbox.checkbox_options`` are the
+same module (monkeypatching either path affects both).
+"""
 
-logger = logging.getLogger(__name__)
+import sys as _sys
 
+from natural_pdf.checkbox import checkbox_options as _canonical
 
-@dataclass
-class BaseCheckboxOptions:
-    """Base options shared by all checkbox detection engines."""
-
-    confidence: float = 0.3
-    resolution: int = 150
-    device: Optional[str] = "cpu"
-    classify: bool = True
-    classify_with: Optional[Any] = None  # Judge instance
-    reject_with_text: bool = True
-    existing: str = "replace"
-    limit: Optional[int] = None
-    # True forces a second 2x pass, False disables it, "auto" runs it for small detected boxes.
-    magnify: Union[bool, str] = "auto"
-    extra_args: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class VectorCheckboxOptions(BaseCheckboxOptions):
-    """Options for vector (native PDF rect) checkbox detection."""
-
-    min_size: float = 6.0  # PDF points
-    max_size: float = 25.0
-    max_aspect_ratio: float = 1.5
-    require_stroke: bool = False
-
-
-@dataclass
-class OnnxCheckboxOptions(BaseCheckboxOptions):
-    """Options for generic YOLO-format ONNX checkbox detection."""
-
-    model_path: Optional[str] = None  # Local .onnx file
-    model_repo: Optional[str] = None  # HuggingFace repo
-    model_file: Optional[str] = None  # File within repo
-    model_revision: Optional[str] = None  # HuggingFace repo revision/tag
-    input_size: int = 640
-    nms_threshold: float = 0.45
-    class_names: Optional[List[str]] = None
-    checkbox_class_indices: Optional[List[int]] = None
-
-    # SAHI tiling — improves detection of small checkboxes on full pages.
-    # Enabled by default; tiles the image into overlapping crops and merges.
-    sahi_enabled: bool = True
-    sahi_overlap: float = 0.2  # Fraction of tile overlap (0.0-0.5)
-    sahi_min_image_ratio: float = 1.0  # Tile whenever image exceeds model input size
-
-
-@dataclass
-class DefaultCheckboxOptions(OnnxCheckboxOptions):
-    """Options for the default wendys-llc/checkbox-detector YOLO12n model.
-
-    Trained on full-page images resized to ~1000px (max side) then
-    letterboxed to 1024x1024.  Checkboxes appear at ~30-35px in that
-    regime.  Rendering at 72 DPI keeps inference scale close to training.
-    """
-
-    model_repo: str = "wendys-llc/checkbox-detector"
-    model_file: str = "checkbox_yolo12n.onnx"
-    model_revision: Optional[str] = "v2"
-    input_size: int = 1024
-    resolution: int = 72  # Matches training scale (~1000px full-page images)
-
-
-@dataclass
-class VLMCheckboxOptions(BaseCheckboxOptions):
-    """Options for VLM-based checkbox detection."""
-
-    model_name: str = "gemini-2.0-flash"
-    client: Optional[Any] = None
-    languages: Optional[List[str]] = None
+_sys.modules[__name__] = _canonical

@@ -15,12 +15,45 @@ import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
+from natural_pdf.exceptions import ExportError
 from natural_pdf.utils.optional_imports import require
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
 
 logger = logging.getLogger(__name__)
+
+
+def _close_all(docs) -> None:
+    """Close every pikepdf document, logging (not raising) close failures."""
+    for doc in docs:
+        try:
+            doc.close()
+        except Exception as exc:
+            logger.warning(f"Failed to close source PDF handle: {exc}")
+
+
+def _save_atomically(target_doc, output_path: Union[str, Path]) -> None:
+    """Save to a temp file in the destination directory, then replace, so a
+    failure never leaves a truncated file at output_path."""
+    output_path_obj = Path(str(output_path))
+    tmp_output_path = output_path_obj.with_name(output_path_obj.name + ".tmp")
+    try:
+        target_doc.save(str(tmp_output_path))
+        tmp_output_path.replace(output_path_obj)
+    except Exception:
+        tmp_output_path.unlink(missing_ok=True)
+        raise
+
+
+def _make_whiteout_stream(pikepdf, target_doc, rects) -> object:
+    """Build a content stream that fills the given (x, y, w, h) rects white."""
+    parts = ["q", "1 1 1 rg"]
+    for x, y, w, h in rects:
+        parts.append(f"{x:.4f} {y:.4f} {w:.4f} {h:.4f} re")
+    parts.append("f")
+    parts.append("Q")
+    return pikepdf.Stream(target_doc, " ".join(parts).encode("ascii"))
 
 
 def _open_source_pdf(page: "Page", cache: Optional[Dict[str, object]] = None):
@@ -58,7 +91,7 @@ def _open_source_pdf(page: "Page", cache: Optional[Dict[str, object]] = None):
             source_doc = pikepdf.Pdf.open(io.BytesIO(pdf_obj._original_bytes))
         elif isinstance(pdf_path, str) and pdf_path.startswith(("http://", "https://")):
             try:
-                with urllib.request.urlopen(pdf_path) as resp:
+                with urllib.request.urlopen(pdf_path, timeout=60) as resp:
                     data = resp.read()
                 source_doc = pikepdf.Pdf.open(io.BytesIO(data))
             except Exception as dl_err:
@@ -89,8 +122,6 @@ def _translate_bbox_to_pdf_coords(
     Returns:
         (pdf_x0, pdf_y0, pdf_x1, pdf_y1) in PDF coordinate space where y0 < y1.
     """
-    pikepdf = require("pikepdf")
-
     # Get the effective page box (CropBox if present, else MediaBox)
     if "/CropBox" in pikepdf_page:
         page_box = pikepdf_page.CropBox
@@ -180,20 +211,13 @@ def _build_whiteout_stream(
         # Region covers the full page, no whiteout needed
         return None
 
-    # Build the content stream: save state, set white fill, draw rects, fill, restore
-    parts = ["q", "1 1 1 rg"]
-    for x, y, w, h in rects:
-        parts.append(f"{x:.4f} {y:.4f} {w:.4f} {h:.4f} re")
-    parts.append("f")
-    parts.append("Q")
-    stream_data = " ".join(parts).encode("ascii")
-
-    return pikepdf.Stream(target_doc, stream_data)
+    return _make_whiteout_stream(pikepdf, target_doc, rects)
 
 
 def create_region_pdf(
     regions: List[Tuple["Page", Tuple[float, float, float, float]]],
     output_path: Union[str, Path],
+    *,
     method: str = "crop",
 ):
     """
@@ -209,6 +233,8 @@ def create_region_pdf(
     Raises:
         ValueError: If regions list is empty or method is invalid.
         ImportError: If pikepdf is not installed.
+        ExportError: If a page index does not exist in its source PDF or the
+                     output cannot be written.
     """
     if method not in ("crop", "whiteout"):
         raise ValueError(f"Invalid method '{method}'. Must be 'crop' or 'whiteout'.")
@@ -229,8 +255,10 @@ def create_region_pdf(
             page_index = page.index
 
             if page_index < 0 or page_index >= len(source_doc.pages):
-                logger.warning(f"Page index {page_index} out of bounds for source PDF. Skipping.")
-                continue
+                raise ExportError(
+                    f"Page index {page_index} out of bounds for source PDF "
+                    f"({len(source_doc.pages)} pages)."
+                )
 
             # Copy the source page into the target document
             target_doc.pages.append(source_doc.pages[page_index])
@@ -250,20 +278,15 @@ def create_region_pdf(
                     _append_content_stream(target_page, stream)
 
         if not target_doc.pages:
-            raise RuntimeError("No valid pages were produced for the output PDF.")
+            raise ExportError("No valid pages were produced for the output PDF.")
 
-        target_doc.save(output_path_str)
+        _save_atomically(target_doc, output_path_str)
         logger.info(
             f"Saved region PDF ({len(target_doc.pages)} pages, method={method}) to: {output_path_str}"
         )
 
     finally:
-        # Close all cached source documents
-        for doc in source_cache.values():
-            try:
-                doc.close()
-            except Exception:
-                pass
+        _close_all(source_cache.values())
 
 
 def create_exclusion_aware_pdf(
@@ -299,15 +322,17 @@ def create_exclusion_aware_pdf(
             page_index = page.index
 
             if page_index < 0 or page_index >= len(source_doc.pages):
-                logger.warning(f"Page index {page_index} out of bounds for source PDF. Skipping.")
-                continue
+                raise ExportError(
+                    f"Page index {page_index} out of bounds for source PDF "
+                    f"({len(source_doc.pages)} pages)."
+                )
 
             # Copy the source page
             target_doc.pages.append(source_doc.pages[page_index])
             target_page = target_doc.pages[-1]
 
             # Get exclusion regions for this page
-            exclusion_regions = page._get_exclusion_regions()
+            exclusion_regions = page._get_exclusion_regions(include_callable=True)
 
             if not exclusion_regions:
                 continue
@@ -328,27 +353,16 @@ def create_exclusion_aware_pdf(
                 continue
 
             # Build a single content stream for all exclusion whiteouts on this page
-            parts = ["q", "1 1 1 rg"]
-            for x, y, w, h in all_rects:
-                parts.append(f"{x:.4f} {y:.4f} {w:.4f} {h:.4f} re")
-            parts.append("f")
-            parts.append("Q")
-            stream_data = " ".join(parts).encode("ascii")
-
-            stream = pikepdf.Stream(target_doc, stream_data)
+            stream = _make_whiteout_stream(pikepdf, target_doc, all_rects)
             _append_content_stream(target_page, stream)
 
         if not target_doc.pages:
-            raise RuntimeError("No valid pages were produced for the exclusion-aware PDF.")
+            raise ExportError("No valid pages were produced for the exclusion-aware PDF.")
 
-        target_doc.save(output_path_str)
+        _save_atomically(target_doc, output_path_str)
         logger.info(
             f"Saved exclusion-aware PDF ({len(target_doc.pages)} pages) to: {output_path_str}"
         )
 
     finally:
-        for doc in source_cache.values():
-            try:
-                doc.close()
-            except Exception:
-                pass
+        _close_all(source_cache.values())

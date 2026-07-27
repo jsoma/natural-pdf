@@ -122,11 +122,6 @@ class ColorManager:
         self._labels_colors = {}
 
 
-# --- Global color state and functions removed ---
-# HIGHLIGHT_COLORS, _color_cycle, _current_labels_colors, _used_colors_iterator
-# get_next_highlight_color(), reset_highlight_colors()
-
-
 def create_legend(
     labels_colors: Mapping[str, Sequence[int]],
     width: int = 250,

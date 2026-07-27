@@ -43,7 +43,7 @@ class SupportsRender(Protocol):
 
 
 if TYPE_CHECKING:
-    from natural_pdf.elements.region import Region
+    pass
 
 # Return types
 Decision = namedtuple("Decision", ["label", "score"])

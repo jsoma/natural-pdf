@@ -795,6 +795,441 @@ def _is_exact_color_match(value1, value2) -> bool:
     return bool(value1 == value2)
 
 
+# --- _build_filter_list decomposition -------------------------------------
+#
+# The selector -> filter conversion is split into small handler functions:
+#   - _build_type_filter: element-type clause
+#   - _ATTRIBUTE_OP_BUILDERS: one builder per attribute-operator family
+#   - _PSEUDO_CLASS_BUILDERS: one builder per locally-handled pseudo-class
+# _build_filter_list itself is reduced to iteration + dispatch.
+
+
+def _extend_filters(
+    filters: List[Dict[str, Any]],
+    result: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]],
+) -> None:
+    """Append a handler result (single filter dict or list of them) to filters."""
+    if not result:
+        return
+    if isinstance(result, list):
+        filters.extend(result)
+    else:
+        filters.append(result)
+
+
+def _build_type_filter(selector_type: str) -> Optional[Dict[str, Any]]:
+    """Build the element-type filter clause, or None for type 'any'."""
+    if selector_type == "any":
+        return None
+
+    filter_name = f"type is '{selector_type}'"
+    normalized_selector_type = _normalize_selector_label(selector_type)
+    if selector_type == "text":
+        filter_name = "type is 'text', 'char', or 'word'"
+        func = lambda el: hasattr(el, "type") and el.type in ["text", "char", "word"]
+    elif selector_type == "region":
+        filter_name = "type is 'region' (has region_type)"
+        # Note: Specific region type attribute (e.g., [type=table]) is checked below
+        func = lambda el: hasattr(el, "region_type")
+    else:
+        # Check against normalized_type first, then element.type
+        func = lambda el: (
+            hasattr(el, "normalized_type")
+            and _normalize_selector_label(el.normalized_type) == normalized_selector_type
+        ) or (
+            not hasattr(
+                el, "normalized_type"
+            )  # Only check element.type if normalized_type doesn't exist/match
+            and hasattr(el, "type")
+            and _normalize_selector_label(el.type) == normalized_selector_type
+        )
+    return {"name": filter_name, "func": func}
+
+
+def _make_exists_filter(getter: Callable[[Any], Any]) -> Callable[[Any], bool]:
+    def exists_filter(element: Any) -> bool:
+        return getter(element) is not None
+
+    return exists_filter
+
+
+def _make_compare_filter(
+    getter: Callable[[Any], Any],
+    comparator: Callable[[Any, Any], bool],
+    expected_value: Any,
+    attr_name: str,
+) -> Callable[[Any], bool]:
+    def compare_filter(element: Any) -> bool:
+        value = getter(element)
+        if value is None:
+            return False
+        try:
+            return bool(comparator(value, expected_value))
+        except (
+            ValueError,
+            TypeError,
+            AttributeError,
+        ) as exc:  # pragma: no cover - defensive logging
+            logger.debug("Comparison failed for attribute '%s': %s", attr_name, exc, exc_info=True)
+            return False
+
+    return compare_filter
+
+
+def _make_element_value_getter(
+    name: str, python_name: str, selector_type: str
+) -> Callable[[Any], Any]:
+    """Build the core value retrieval function for an attribute filter."""
+
+    def get_element_value(
+        element: Any, *, attr_name: str = name, py_name: str = python_name
+    ) -> Any:
+        bbox_mapping = {"x0": 0, "y0": 1, "x1": 2, "y1": 3}
+        if attr_name in bbox_mapping:
+            bbox = getattr(element, "_bbox", None) or getattr(element, "bbox", None)
+            if bbox is None:
+                return None
+            return bbox[bbox_mapping[attr_name]]
+
+        # Special case for region attributes
+        if selector_type == "region":
+            if attr_name == "type":
+                if hasattr(element, "normalized_type") and element.normalized_type:
+                    return _normalize_selector_label(element.normalized_type)
+                else:
+                    return _normalize_selector_label(getattr(element, "region_type", ""))
+            elif attr_name == "model":
+                return getattr(element, "model", None)
+            elif attr_name == "checked":
+                # Map 'checked' attribute to is_checked for checkboxes
+                return getattr(element, "is_checked", None)
+            else:
+                return getattr(element, py_name, None)
+        else:
+            # General case for non-region elements
+            return getattr(element, py_name, None)
+
+    return get_element_value
+
+
+def _resolve_aggregate_value(
+    name: str, value: Dict[str, Any], aggregate_values: Dict[str, Any]
+) -> Tuple[Any, Optional[Dict[str, Any]]]:
+    """Resolve an aggregate attribute value.
+
+    Returns (resolved_value, unavailable_filter). When the aggregate could not
+    be calculated, unavailable_filter is a match-nothing filter dict and the
+    resolved value should be ignored.
+    """
+    aggregate_value = aggregate_values.get(name)
+    if aggregate_value is None:
+        # Aggregate couldn't be calculated; ensure no elements match this filter
+        return None, {
+            "name": f"aggregate {value['func']} for '{name}' unavailable",
+            "func": lambda _el: False,
+        }
+
+    # Apply arithmetic operation if specified
+    if "operator" in value and "operand" in value:
+        operator = value["operator"]
+        operand = value["operand"]
+
+        try:
+            if operator == "+":
+                aggregate_value = aggregate_value + operand
+            elif operator == "-":
+                aggregate_value = aggregate_value - operand
+            elif operator == "*":
+                aggregate_value = aggregate_value * operand
+            elif operator == "/":
+                if operand == 0:
+                    raise ZeroDivisionError(
+                        f"Division by zero in aggregate expression for '{name}'"
+                    )
+                aggregate_value = aggregate_value / operand
+        except (TypeError, ValueError) as e:
+            raise TypeError(
+                f"Could not apply arithmetic operation to aggregate value for '{name}': {e}"
+            ) from e
+
+    return aggregate_value, None
+
+
+# --- Attribute-operator builders -------------------------------------------
+# Each builder takes (name, value) and returns (compare_func, op_desc, value).
+
+
+def _op_equal(name: str, value: Any) -> Tuple[Callable[[Any, Any], bool], str, Any]:
+    if name in [
+        "color",
+        "non_stroking_color",
+        "fill",
+        "stroke",
+        "strokeColor",
+        "fillColor",
+    ]:
+
+        def compare_color(el_val: Any, sel_val: Any) -> bool:
+            return _is_exact_color_match(el_val, sel_val)
+
+        return compare_color, f"= {value!r} (exact color)", value
+
+    if name in ["checked", "is_checked", "bold", "italic"]:
+
+        def compare_bool(el_val: Any, sel_val: Any) -> bool:
+            el_bool = (
+                el_val
+                if isinstance(el_val, bool)
+                else str(el_val).lower()
+                in (
+                    "true",
+                    "1",
+                    "yes",
+                )
+            )
+            sel_bool = (
+                sel_val
+                if isinstance(sel_val, bool)
+                else str(sel_val).lower()
+                in (
+                    "true",
+                    "1",
+                    "yes",
+                )
+            )
+            return el_bool == sel_bool
+
+        return compare_bool, f"= {value!r}", value
+
+    def compare_equal(el_val: Any, sel_val: Any) -> bool:
+        return bool(el_val == sel_val)
+
+    return compare_equal, f"= {value!r}", value
+
+
+def _op_not_equal(name: str, value: Any) -> Tuple[Callable[[Any, Any], bool], str, Any]:
+    def compare_not_equal(el_val: Any, sel_val: Any) -> bool:
+        return bool(el_val != sel_val)
+
+    return compare_not_equal, f"!= {value!r}", value
+
+
+def _op_approx(name: str, value: Any) -> Tuple[Callable[[Any, Any], bool], str, Any]:
+    if isinstance(value, (int, float)):
+        tolerance = abs(value) * 0.1
+
+        def compare_numeric_tolerance(el_val: Any, sel_val: Any) -> bool:
+            return (
+                isinstance(el_val, (int, float))
+                and isinstance(sel_val, (int, float))
+                and (sel_val - tolerance) <= el_val <= (sel_val + tolerance)
+            )
+
+        return compare_numeric_tolerance, f"~= {value!r} (±10%)", float(value)
+
+    def compare_approx(el_val: Any, sel_val: Any) -> bool:
+        return _is_approximate_match(el_val, sel_val)
+
+    return compare_approx, f"~= {value!r} (approx)", value
+
+
+def _op_prefix(name: str, value: Any) -> Tuple[Callable[[Any, Any], bool], str, Any]:
+    def compare_prefix(el_val: Any, sel_val: Any) -> bool:
+        return isinstance(el_val, str) and isinstance(sel_val, str) and el_val.startswith(sel_val)
+
+    return compare_prefix, f"^= {value!r}", value
+
+
+def _op_suffix(name: str, value: Any) -> Tuple[Callable[[Any, Any], bool], str, Any]:
+    def compare_suffix(el_val: Any, sel_val: Any) -> bool:
+        return isinstance(el_val, str) and isinstance(sel_val, str) and el_val.endswith(sel_val)
+
+    return compare_suffix, f"$= {value!r}", value
+
+
+def _op_contains(name: str, value: Any) -> Tuple[Callable[[Any, Any], bool], str, Any]:
+    if name == "fontname":
+
+        def compare_contains_ci(el_val: Any, sel_val: Any) -> bool:
+            return (
+                isinstance(el_val, str)
+                and isinstance(sel_val, str)
+                and sel_val.lower() in el_val.lower()
+            )
+
+        return compare_contains_ci, f"*= {value!r} (contains, case-insensitive)", value
+
+    def compare_contains(el_val: Any, sel_val: Any) -> bool:
+        return isinstance(el_val, str) and isinstance(sel_val, str) and sel_val in el_val
+
+    return compare_contains, f"*= {value!r} (contains)", value
+
+
+def _op_ge(name: str, value: Any) -> Tuple[Callable[[Any, Any], bool], str, Any]:
+    def compare_ge(el_val: Any, sel_val: Any) -> bool:
+        return (
+            isinstance(el_val, (int, float))
+            and isinstance(sel_val, (int, float))
+            and el_val >= sel_val
+        )
+
+    return compare_ge, f">= {value!r}", value
+
+
+def _op_le(name: str, value: Any) -> Tuple[Callable[[Any, Any], bool], str, Any]:
+    def compare_le(el_val: Any, sel_val: Any) -> bool:
+        return (
+            isinstance(el_val, (int, float))
+            and isinstance(sel_val, (int, float))
+            and el_val <= sel_val
+        )
+
+    return compare_le, f"<= {value!r}", value
+
+
+def _op_gt(name: str, value: Any) -> Tuple[Callable[[Any, Any], bool], str, Any]:
+    def compare_gt(el_val: Any, sel_val: Any) -> bool:
+        return (
+            isinstance(el_val, (int, float))
+            and isinstance(sel_val, (int, float))
+            and el_val > sel_val
+        )
+
+    return compare_gt, f"> {value!r}", value
+
+
+def _op_lt(name: str, value: Any) -> Tuple[Callable[[Any, Any], bool], str, Any]:
+    def compare_lt(el_val: Any, sel_val: Any) -> bool:
+        return (
+            isinstance(el_val, (int, float))
+            and isinstance(sel_val, (int, float))
+            and el_val < sel_val
+        )
+
+    return compare_lt, f"< {value!r}", value
+
+
+_ATTRIBUTE_OP_BUILDERS: Dict[
+    str, Callable[[str, Any], Tuple[Callable[[Any, Any], bool], str, Any]]
+] = {
+    "=": _op_equal,
+    "!=": _op_not_equal,
+    "~=": _op_approx,
+    "^=": _op_prefix,
+    "$=": _op_suffix,
+    "*=": _op_contains,
+    ">=": _op_ge,
+    "<=": _op_le,
+    ">": _op_gt,
+    "<": _op_lt,
+}
+
+
+def _build_attribute_filters(
+    attr_filter: Dict[str, Any],
+    selector_type: str,
+    aggregate_values: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """Build filter dicts for a single attribute clause via operator dispatch."""
+    name = attr_filter["name"]
+    op = attr_filter["op"]
+    value = attr_filter["value"]
+    python_name = name.replace("-", "_")  # Convert CSS-style names
+
+    # Check if value is an aggregate function
+    if isinstance(value, dict) and value.get("type") == "aggregate":
+        value, unavailable_filter = _resolve_aggregate_value(name, value, aggregate_values)
+        if unavailable_filter is not None:
+            return [unavailable_filter]
+
+    get_element_value = _make_element_value_getter(name, python_name, selector_type)
+
+    if op == "exists":
+        filter_label = f"attribute [{name} exists]"
+        return [{"name": filter_label, "func": _make_exists_filter(get_element_value)}]
+
+    # Handle operators with values (e.g., =, !=, *=, etc.)
+    op_builder = _ATTRIBUTE_OP_BUILDERS.get(op)
+    if op_builder is None:
+        raise ValueError(f"Unsupported operator '{op}' encountered for attribute '{name}'")
+
+    compare_func, op_desc, value = op_builder(name, value)
+
+    filter_label = f"attribute [{name}{op_desc}]"
+    return [
+        {
+            "name": filter_label,
+            "func": _make_compare_filter(get_element_value, compare_func, value, name),
+        }
+    ]
+
+
+# --- Pseudo-class builders ---------------------------------------------------
+# Each builder takes (pseudo, aggregate_values, kwargs) and returns a filter
+# dict, or None when the pseudo-class cannot be handled (caller raises).
+
+
+def _pseudo_not(
+    pseudo: Dict[str, Any], aggregate_values: Dict[str, Any], kwargs: Dict[str, Any]
+) -> Optional[Dict[str, Any]]:
+    args = pseudo["args"]
+    if not isinstance(args, dict):  # args should be the parsed inner selector
+        logger.error(f"Invalid arguments for :not pseudo-class: {args}")
+        raise TypeError(
+            "Internal error: :not pseudo-class requires a parsed selector dictionary as args."
+        )
+
+    # Recursively get the filter function for the inner selector
+    # Pass kwargs and aggregates down in case regex/case flags affect the inner selector
+    inner_filter_func = selector_to_filter_func(args, aggregates=aggregate_values, **kwargs)
+
+    def not_filter(element: Any, inner_func: Callable[[Any], bool] = inner_filter_func) -> bool:
+        return not inner_func(element)
+
+    inner_filter_list, _, _ = _build_filter_list(args, aggregates=aggregate_values, **kwargs)
+    inner_filter_names = ", ".join([f["name"] for f in inner_filter_list])
+    filter_name = f"pseudo-class :not({inner_filter_names})"
+    return {"name": filter_name, "func": not_filter}
+
+
+def _pseudo_closest(
+    pseudo: Dict[str, Any], aggregate_values: Dict[str, Any], kwargs: Dict[str, Any]
+) -> Optional[Dict[str, Any]]:
+    if pseudo["args"] is None:
+        return None
+
+    # Note: :closest is handled specially in the page._apply_selector method
+    # It doesn't filter elements here, but marks them for special processing
+    # This allows us to first check :contains matches, then sort by similarity
+    def closest_filter(_element: Any) -> bool:
+        return True
+
+    return {"name": "pseudo-class :closest", "func": closest_filter}
+
+
+def _pseudo_ocr(
+    pseudo: Dict[str, Any], aggregate_values: Dict[str, Any], kwargs: Dict[str, Any]
+) -> Optional[Dict[str, Any]]:
+    if pseudo["args"] is None:
+        return None
+
+    # Like :closest, handled specially in page._apply_selector
+    def ocr_filter(_element: Any) -> bool:
+        return True
+
+    return {"name": "pseudo-class :ocr", "func": ocr_filter}
+
+
+_PSEUDO_CLASS_BUILDERS: Dict[
+    str,
+    Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any]], Optional[Dict[str, Any]]],
+] = {
+    "not": _pseudo_not,
+    "closest": _pseudo_closest,
+    "ocr": _pseudo_ocr,
+}
+
+
 def _build_filter_list(
     selector: Dict[str, Any], aggregates: Optional[Dict[str, Any]] = None, **kwargs
 ) -> List[Dict[str, Any]]:
@@ -833,336 +1268,31 @@ def _build_filter_list(
     post_pseudos: List[Dict[str, Any]] = []
     relational_pseudos: List[Dict[str, Any]] = []
 
-    def _extend_from_handler(result: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]):
-        if not result:
-            return
-        if isinstance(result, list):
-            filters.extend(result)
-        else:
-            filters.append(result)
-
     # Filter by element type
-    if selector_type != "any":
-        filter_name = f"type is '{selector_type}'"
-        normalized_selector_type = _normalize_selector_label(selector_type)
-        if selector_type == "text":
-            filter_name = "type is 'text', 'char', or 'word'"
-            func = lambda el: hasattr(el, "type") and el.type in ["text", "char", "word"]
-        elif selector_type == "region":
-            filter_name = "type is 'region' (has region_type)"
-            # Note: Specific region type attribute (e.g., [type=table]) is checked below
-            func = lambda el: hasattr(el, "region_type")
-        else:
-            # Check against normalized_type first, then element.type
-            func = lambda el: (
-                hasattr(el, "normalized_type")
-                and _normalize_selector_label(el.normalized_type) == normalized_selector_type
-            ) or (
-                not hasattr(
-                    el, "normalized_type"
-                )  # Only check element.type if normalized_type doesn't exist/match
-                and hasattr(el, "type")
-                and _normalize_selector_label(el.type) == normalized_selector_type
-            )
-        filters.append({"name": filter_name, "func": func})
-
-    def _make_exists_filter(getter: Callable[[Any], Any]) -> Callable[[Any], bool]:
-        def exists_filter(element: Any) -> bool:
-            return getter(element) is not None
-
-        return exists_filter
-
-    def _make_compare_filter(
-        getter: Callable[[Any], Any],
-        comparator: Callable[[Any, Any], bool],
-        expected_value: Any,
-        attr_name: str,
-    ) -> Callable[[Any], bool]:
-        def compare_filter(element: Any) -> bool:
-            value = getter(element)
-            if value is None:
-                return False
-            try:
-                return bool(comparator(value, expected_value))
-            except (
-                ValueError,
-                TypeError,
-                AttributeError,
-            ) as exc:  # pragma: no cover - defensive logging
-                logger.debug(
-                    "Comparison failed for attribute '%s': %s", attr_name, exc, exc_info=True
-                )
-                return False
-
-        return compare_filter
+    type_filter = _build_type_filter(selector_type)
+    if type_filter is not None:
+        filters.append(type_filter)
 
     # Filter by attributes
     for attr_filter in attribute_filters:
-        name = attr_filter["name"]
-        op = attr_filter["op"]
-        value = attr_filter["value"]
-        python_name = name.replace("-", "_")  # Convert CSS-style names
-
-        handler = get_attribute_handler(name)
+        handler = get_attribute_handler(attr_filter["name"])
         if handler:
             handler_result = handler(attr_filter, clause_ctx)
-            _extend_from_handler(handler_result)
+            _extend_filters(filters, handler_result)
             continue
 
-        # Check if value is an aggregate function
-        if isinstance(value, dict) and value.get("type") == "aggregate":
-            # Use pre-calculated aggregate value
-            aggregate_value = aggregate_values.get(name)
-            if aggregate_value is None:
-                # Aggregate couldn't be calculated; ensure no elements match this filter
-                filters.append(
-                    {
-                        "name": f"aggregate {value['func']} for '{name}' unavailable",
-                        "func": lambda _el: False,
-                    }
-                )
-                continue
-
-            # Apply arithmetic operation if specified
-            if "operator" in value and "operand" in value:
-                operator = value["operator"]
-                operand = value["operand"]
-
-                try:
-                    if operator == "+":
-                        aggregate_value = aggregate_value + operand
-                    elif operator == "-":
-                        aggregate_value = aggregate_value - operand
-                    elif operator == "*":
-                        aggregate_value = aggregate_value * operand
-                    elif operator == "/":
-                        if operand == 0:
-                            raise ZeroDivisionError(
-                                f"Division by zero in aggregate expression for '{name}'"
-                            )
-                        aggregate_value = aggregate_value / operand
-                except (TypeError, ValueError) as e:
-                    raise TypeError(
-                        f"Could not apply arithmetic operation to aggregate value for '{name}': {e}"
-                    ) from e
-
-            value = aggregate_value
-
-        # --- Define the core value retrieval logic ---
-        def get_element_value(
-            element: Any, *, attr_name: str = name, py_name: str = python_name
-        ) -> Any:
-            bbox_mapping = {"x0": 0, "y0": 1, "x1": 2, "y1": 3}
-            if attr_name in bbox_mapping:
-                bbox = getattr(element, "_bbox", None) or getattr(element, "bbox", None)
-                if bbox is None:
-                    return None
-                return bbox[bbox_mapping[attr_name]]
-
-            # Special case for region attributes
-            if selector_type == "region":
-                if attr_name == "type":
-                    if hasattr(element, "normalized_type") and element.normalized_type:
-                        return _normalize_selector_label(element.normalized_type)
-                    else:
-                        return _normalize_selector_label(getattr(element, "region_type", ""))
-                elif attr_name == "model":
-                    return getattr(element, "model", None)
-                elif attr_name == "checked":
-                    # Map 'checked' attribute to is_checked for checkboxes
-                    return getattr(element, "is_checked", None)
-                else:
-                    return getattr(element, py_name, None)
-            else:
-                # General case for non-region elements
-                return getattr(element, py_name, None)
-
-        if op == "exists":
-            filter_label = f"attribute [{name} exists]"
-            filters.append({"name": filter_label, "func": _make_exists_filter(get_element_value)})
-            continue
-
-        # Handle operators with values (e.g., =, !=, *=, etc.)
-        compare_func: Callable[[Any, Any], bool]
-        op_desc = f"{op} {value!r}"  # Default description
-
-        if op == "=":
-            if name in [
-                "color",
-                "non_stroking_color",
-                "fill",
-                "stroke",
-                "strokeColor",
-                "fillColor",
-            ]:
-
-                def compare_color(el_val: Any, sel_val: Any) -> bool:
-                    return _is_exact_color_match(el_val, sel_val)
-
-                compare_func = compare_color
-                op_desc = f"= {value!r} (exact color)"
-            elif name in ["checked", "is_checked", "bold", "italic"]:
-
-                def compare_bool(el_val: Any, sel_val: Any) -> bool:
-                    el_bool = (
-                        el_val
-                        if isinstance(el_val, bool)
-                        else str(el_val).lower()
-                        in (
-                            "true",
-                            "1",
-                            "yes",
-                        )
-                    )
-                    sel_bool = (
-                        sel_val
-                        if isinstance(sel_val, bool)
-                        else str(sel_val).lower()
-                        in (
-                            "true",
-                            "1",
-                            "yes",
-                        )
-                    )
-                    return el_bool == sel_bool
-
-                compare_func = compare_bool
-            else:
-
-                def compare_equal(el_val: Any, sel_val: Any) -> bool:
-                    return bool(el_val == sel_val)
-
-                compare_func = compare_equal
-        elif op == "!=":
-
-            def compare_not_equal(el_val: Any, sel_val: Any) -> bool:
-                return bool(el_val != sel_val)
-
-            compare_func = compare_not_equal
-        elif op == "~=":
-            if isinstance(value, (int, float)):
-                tolerance = abs(value) * 0.1
-
-                def compare_numeric_tolerance(el_val: Any, sel_val: Any) -> bool:
-                    return (
-                        isinstance(el_val, (int, float))
-                        and isinstance(sel_val, (int, float))
-                        and (sel_val - tolerance) <= el_val <= (sel_val + tolerance)
-                    )
-
-                compare_func = compare_numeric_tolerance
-                op_desc = f"~= {value!r} (±10%)"
-                value = float(value)
-            else:
-                op_desc = f"~= {value!r} (approx)"
-
-                def compare_approx(el_val: Any, sel_val: Any) -> bool:
-                    return _is_approximate_match(el_val, sel_val)
-
-                compare_func = compare_approx
-        elif op == "^=":
-
-            def compare_prefix(el_val: Any, sel_val: Any) -> bool:
-                return (
-                    isinstance(el_val, str)
-                    and isinstance(sel_val, str)
-                    and el_val.startswith(sel_val)
-                )
-
-            compare_func = compare_prefix
-        elif op == "$=":
-
-            def compare_suffix(el_val: Any, sel_val: Any) -> bool:
-                return (
-                    isinstance(el_val, str)
-                    and isinstance(sel_val, str)
-                    and el_val.endswith(sel_val)
-                )
-
-            compare_func = compare_suffix
-        elif op == "*=":
-            if name == "fontname":
-                op_desc = f"*= {value!r} (contains, case-insensitive)"
-
-                def compare_contains_ci(el_val: Any, sel_val: Any) -> bool:
-                    return (
-                        isinstance(el_val, str)
-                        and isinstance(sel_val, str)
-                        and sel_val.lower() in el_val.lower()
-                    )
-
-                compare_func = compare_contains_ci
-            else:
-                op_desc = f"*= {value!r} (contains)"
-
-                def compare_contains(el_val: Any, sel_val: Any) -> bool:
-                    return (
-                        isinstance(el_val, str) and isinstance(sel_val, str) and sel_val in el_val
-                    )
-
-                compare_func = compare_contains
-        elif op == ">=":
-
-            def compare_ge(el_val: Any, sel_val: Any) -> bool:
-                return (
-                    isinstance(el_val, (int, float))
-                    and isinstance(sel_val, (int, float))
-                    and el_val >= sel_val
-                )
-
-            compare_func = compare_ge
-        elif op == "<=":
-
-            def compare_le(el_val: Any, sel_val: Any) -> bool:
-                return (
-                    isinstance(el_val, (int, float))
-                    and isinstance(sel_val, (int, float))
-                    and el_val <= sel_val
-                )
-
-            compare_func = compare_le
-        elif op == ">":
-
-            def compare_gt(el_val: Any, sel_val: Any) -> bool:
-                return (
-                    isinstance(el_val, (int, float))
-                    and isinstance(sel_val, (int, float))
-                    and el_val > sel_val
-                )
-
-            compare_func = compare_gt
-        elif op == "<":
-
-            def compare_lt(el_val: Any, sel_val: Any) -> bool:
-                return (
-                    isinstance(el_val, (int, float))
-                    and isinstance(sel_val, (int, float))
-                    and el_val < sel_val
-                )
-
-            compare_func = compare_lt
-        else:
-            raise ValueError(f"Unsupported operator '{op}' encountered for attribute '{name}'")
-
-        filter_label = f"attribute [{name}{op_desc}]"
-        filters.append(
-            {
-                "name": filter_label,
-                "func": _make_compare_filter(get_element_value, compare_func, value, name),
-            }
-        )
+        filters.extend(_build_attribute_filters(attr_filter, selector_type, aggregate_values))
 
     # Filter by pseudo-classes
     for pseudo in pseudo_entries:
         name = pseudo["name"]
-        args = pseudo["args"]
 
         # Relational pseudo-classes and collection-level pseudo-classes are handled separately by the caller
 
         handler = get_pseudo_handler(name)
         if handler:
             handler_result = handler(pseudo, clause_ctx)
-            _extend_from_handler(handler_result)
+            _extend_filters(filters, handler_result)
             continue
         if get_post_handler(name):
             post_pseudos.append(pseudo)
@@ -1171,53 +1301,11 @@ def _build_filter_list(
             relational_pseudos.append(pseudo)
             continue
 
-        # --- Handle :not() ---
-        elif name == "not":
-            if not isinstance(args, dict):  # args should be the parsed inner selector
-                logger.error(f"Invalid arguments for :not pseudo-class: {args}")
-                raise TypeError(
-                    "Internal error: :not pseudo-class requires a parsed selector dictionary as args."
-                )
-
-            # Recursively get the filter function for the inner selector
-            # Pass kwargs and aggregates down in case regex/case flags affect the inner selector
-            inner_filter_func = selector_to_filter_func(args, aggregates=aggregate_values, **kwargs)
-
-            def not_filter(
-                element: Any, inner_func: Callable[[Any], bool] = inner_filter_func
-            ) -> bool:
-                return not inner_func(element)
-
-            inner_filter_list, _, _ = _build_filter_list(
-                args, aggregates=aggregate_values, **kwargs
-            )
-            inner_filter_names = ", ".join([f["name"] for f in inner_filter_list])
-            filter_name = f"pseudo-class :not({inner_filter_names})"
-            filters.append({"name": filter_name, "func": not_filter})
-            continue
-
-        # --- Handle :closest pseudo-class for fuzzy text matching --- #
-        elif name == "closest" and args is not None:
-            # Note: :closest is handled specially in the page._apply_selector method
-            # It doesn't filter elements here, but marks them for special processing
-            # This allows us to first check :contains matches, then sort by similarity
-            def closest_filter(_element: Any) -> bool:
-                return True
-
-            filters.append({"name": "pseudo-class :closest", "func": closest_filter})
-            continue
-
-        # --- Handle :ocr pseudo-class for OCR-tolerant matching --- #
-        elif name == "ocr" and args is not None:
-            # Like :closest, handled specially in page._apply_selector
-            def ocr_filter(_element: Any) -> bool:
-                return True
-
-            filters.append({"name": "pseudo-class :ocr", "func": ocr_filter})
-            continue
-
-        else:
+        builder = _PSEUDO_CLASS_BUILDERS.get(name)
+        pseudo_filter = builder(pseudo, aggregate_values, kwargs) if builder else None
+        if pseudo_filter is None:
             raise ValueError(f"Unknown or unsupported pseudo-class: ':{name}'")
+        filters.append(pseudo_filter)
 
     return filters, post_pseudos, relational_pseudos
 

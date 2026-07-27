@@ -72,10 +72,15 @@ def test_public_runtime_extras_contract():
     assert "easyocr" not in extras["ai"]
     assert any(req.startswith("mlx-vlm;") for req in extras["ai"])
     assert "mlx" not in extras
-    assert extras["all"] == ["natural-pdf[ai]", "natural-pdf[export]"]
+    # quality is deliberately included: the to_llm garble-rate diagnostic is
+    # unreachable without it, and its deps are small pure-Python packages.
+    assert extras["all"] == [
+        "natural-pdf[ai]",
+        "natural-pdf[export]",
+        "natural-pdf[quality]",
+    ]
 
     assert "natural-pdf[test]" not in extras["all"]
-    assert "natural-pdf[quality]" not in extras["all"]
     assert "natural-pdf[dev]" not in extras["all"]
     assert "natural-pdf[paddle]" not in extras["all"]
 

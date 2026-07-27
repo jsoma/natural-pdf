@@ -9,10 +9,12 @@ natural_pdf/          # Library source
   core/               # PDF, Page, PageCollection — main entry points
   elements/           # Element, Region, ElementCollection
   services/           # Service delegation layer (navigation, OCR, extraction, etc.)
-  analyzers/          # Layout, guides, and structure analysis
+  analyzers/          # text_structure, shape_detection, form_cells + permanent re-export shims for guides/layout/checkbox
   selectors/          # CSS-like selector engine
   flows/              # Multi-page/multi-column content reflow (FlowRegion)
-  guides/             # Guides provider and guide engines
+  guides/             # Guides class, grid building, and guide detection engines
+  layout/             # Layout detection engines (yolo, tatr, paddle, surya, vlm, ...)
+  checkbox/           # Checkbox detection engines and analyzer
   ocr/                # OCR engine adapters (rapidocr, paddleocr, doctr, VLM)
   extraction/         # Structured data extraction (LLM, VLM, doc_qa)
   classification/     # Text and vision classification providers
@@ -21,7 +23,7 @@ natural_pdf/          # Library source
   exporters/          # Searchable PDF, hOCR output
   tables/             # Table detection and extraction engines
   widgets/            # Viewer and notebook widgets
-  engine_registry/    # Engine registry compatibility layer
+  engine_registry/    # Public engine-registration API (register_ocr_engine, register_layout_engine, ...)
 docs/                 # mkdocs site source (tutorials, cookbooks, API reference)
 tests/                # pytest suite
 pdfs/                 # Test PDFs — use these, don't create new ones
@@ -36,7 +38,8 @@ That work is intentionally split out and should not drive changes to the main li
 
 ## Architecture
 
-- **Service delegation**: Page/Region/Flow objects delegate to `self.services.<name>.method(self, ...)`. Services are registered via `@register_delegate` in `natural_pdf/services/`.
+- **Explicit typed delegation**: Page/Region/Flow hosts define real methods that call `self.services.<name>.method(self, ...)` (services live in `natural_pdf/services/`, resolved via `resolve_service`). There is no dynamic delegate attachment or registration decorator.
+- **Mixin policy**: small self-contained mixins (~≤200 lines, e.g. `export/mixin.py`, `classification_batch_mixin.py`) are a valid end-state and do not need conversion to services.
 - **`.ask()` is sugar over `.extract()`**: Creates a one-field schema and calls `host.extract()`. Returns `StructuredDataResult`.
 - **Extraction engines**: `doc_qa` (LayoutLM), `llm` (OpenAI-compatible), `vlm` (local HF VLM). Resolved in `ExtractionService._resolve_engine()`.
 

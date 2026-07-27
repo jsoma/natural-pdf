@@ -8,7 +8,11 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 from statistics import median
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    import PIL
+    import PIL.Image
 
 from natural_pdf.ocr.replacement import OCRReplaceMode, normalize_ocr_replace_mode
 
@@ -358,7 +362,7 @@ class OcrComparison:
                 "Toggle mode requires 2 engines, falling back to grid."
             )
 
-        from PIL import Image, ImageDraw, ImageFont
+        from PIL import Image, ImageDraw
 
         from natural_pdf.utils.visualization import render_plain_page
 
@@ -422,7 +426,7 @@ class OcrComparison:
         import base64
         import io
 
-        from PIL import Image, ImageDraw, ImageFont
+        from PIL import Image, ImageDraw
 
         from natural_pdf.utils.visualization import render_plain_page
 
@@ -536,7 +540,6 @@ class OcrComparison:
         result = Image.alpha_composite(base, overlay)
 
         # Add legend
-        from PIL import ImageFont
 
         legend_font_size = max(18, int(res / 7))
         legend_h = legend_font_size + 8
@@ -571,7 +574,7 @@ class OcrComparison:
         Unlike heatmap() which shows disagreement, this shows presence/absence:
         which engine detected text in each region, regardless of what it read.
         """
-        from PIL import Image, ImageDraw, ImageFont
+        from PIL import Image, ImageDraw
 
         from natural_pdf.utils.visualization import render_plain_page
 

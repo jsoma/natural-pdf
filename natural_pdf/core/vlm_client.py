@@ -53,7 +53,7 @@ def get_default_client() -> Tuple[Optional[Any], Optional[str]]:
 
 
 # ---------------------------------------------------------------------------
-# Local HF adapter cache (reuses pattern from vlm_adapter.py)
+# Local HF adapter cache
 # ---------------------------------------------------------------------------
 
 _local_cache: dict[str, Any] = {}

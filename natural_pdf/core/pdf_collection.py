@@ -12,13 +12,14 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Sequence,
     Set,
     Type,
     Union,
     cast,
-    overload,
 )
+
+if TYPE_CHECKING:
+    from natural_pdf.core.page_collection import PageCollection
 
 from PIL import Image
 from tqdm.auto import tqdm
@@ -43,7 +44,7 @@ from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
-from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.base import ServiceHostMixin
 from natural_pdf.text.contracts import ContentFilter, TextLayoutOptions, WhitespaceMode
 from natural_pdf.text.pipeline import prepare_text_transform, validate_layout_request
 
@@ -676,20 +677,26 @@ class PDFCollection(
             PageCollection of the most relevant pages, ordered by relevance.
             Each page has a ``_search_score`` attribute with the similarity score.
         """
+        import numpy as np
+
         from natural_pdf.core.page_collection import PageCollection
-        from natural_pdf.search.search_service import SearchService
+        from natural_pdf.search.search_service import DEFAULT_MODEL, SearchService
 
-        model_name = model or "all-MiniLM-L6-v2"
+        model_name = model or DEFAULT_MODEL
 
-        # Gather all pages across all PDFs
+        # Gather all pages across all PDFs, reusing each PDF's cached
+        # (fingerprint-invalidated) embeddings instead of re-encoding the
+        # whole collection on every query.
         all_pages = []
+        per_pdf_embeddings = []
         for pdf in self._pdfs:
             all_pages.extend(pdf.pages)
+            per_pdf_embeddings.append(pdf._get_page_embeddings(model_name))
 
         if not all_pages:
             return PageCollection([])
 
-        embeddings = SearchService.encode_pages(all_pages, model_name=model_name)
+        embeddings = np.concatenate([e for e in per_pdf_embeddings if len(e)], axis=0)
         results = SearchService.rank(
             query, embeddings, all_pages, top_k=top_k, model_name=model_name
         )
@@ -705,6 +712,7 @@ class PDFCollection(
     def classify_all(
         self,
         labels: List[str],
+        *,
         using: Optional[str] = None,
         model: Optional[str] = None,
         analysis_key: str = "classification",
@@ -737,56 +745,55 @@ class PDFCollection(
         pdf_contents: List[Any] = []
         valid_pdfs: List[Any] = []
 
+        from natural_pdf.exceptions import ClassificationError
+        from natural_pdf.services.classification_service import ClassificationService
+
         logger.info(f"Gathering content from {len(self._pdfs)} PDFs for batch classification...")
         for pdf in self._pdfs:
             try:
                 content = pdf._get_classification_content(model_type=inferred_using, **kwargs)
                 pdf_contents.append(content)
                 valid_pdfs.append(pdf)
-            except Exception as exc:
-                logger.warning(f"Skipping PDF {pdf.path}: {exc}")
+            except ValueError as exc:
+                # Only genuinely empty documents may be skipped; anything else
+                # must surface instead of silently dropping the PDF.
+                if ClassificationService._is_empty_text_error(exc):
+                    logger.warning(f"Skipping PDF {pdf.path}: no extractable content - {exc}")
+                else:
+                    raise ClassificationError(
+                        f"Failed to get classification content for {pdf.path}: {exc}"
+                    ) from exc
 
         if not pdf_contents:
             logger.warning("No valid content could be gathered from PDFs for classification.")
             return self
 
-        try:
-            batch_results = run_classification_batch(
-                context=self,
-                contents=pdf_contents,
-                labels=labels,
-                model_id=model or engine_obj.default_model(inferred_using),
-                using=inferred_using,
-                min_confidence=min_confidence,
-                multi_label=multi_label,
-                batch_size=batch_size,
-                progress_bar=progress_bar,
-                engine_name=engine_name,
-            )
-        except Exception as exc:
-            logger.error("Batch classification failed for PDFCollection: %s", exc)
-            return self
+        batch_results = run_classification_batch(
+            context=self,
+            contents=pdf_contents,
+            labels=labels,
+            model_id=model or engine_obj.default_model(inferred_using),
+            using=inferred_using,
+            min_confidence=min_confidence,
+            multi_label=multi_label,
+            batch_size=batch_size,
+            progress_bar=progress_bar,
+            engine_name=engine_name,
+        )
 
         if len(batch_results) != len(valid_pdfs):
-            logger.error(
-                "Batch classification result count (%d) mismatch with input PDFs (%d).",
-                len(batch_results),
-                len(valid_pdfs),
+            raise ClassificationError(
+                f"Batch classification returned {len(batch_results)} results "
+                f"for {len(valid_pdfs)} PDFs."
             )
-            return self
 
-        processed_count = 0
         for pdf, result_obj in zip(valid_pdfs, batch_results):
-            try:
-                if not hasattr(pdf, "analyses") or pdf.analyses is None:
-                    pdf.analyses = {}
-                pdf.analyses[analysis_key] = result_obj
-                processed_count += 1
-            except Exception as exc:
-                logger.warning(f"Failed to store classification result for {pdf.path}: {exc}")
+            if not hasattr(pdf, "analyses") or pdf.analyses is None:
+                pdf.analyses = {}
+            pdf.analyses[analysis_key] = result_obj
 
-        skipped_count = len(self._pdfs) - processed_count
-        final_message = f"Finished batch classification. Processed: {processed_count}"
+        skipped_count = len(self._pdfs) - len(valid_pdfs)
+        final_message = f"Finished batch classification. Processed: {len(valid_pdfs)}"
         if skipped_count > 0:
             final_message += f", Skipped: {skipped_count}"
         logger.info(final_message + ".")

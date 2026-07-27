@@ -11,15 +11,25 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
-    from natural_pdf.core.page_collection import PageCollection
-    from natural_pdf.core.pdf import PDF
     from natural_pdf.elements.base import Element
     from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.region import Region
 
+_VALID_DETAIL = ("brief", "standard", "full")
+_VALID_HINTS = ("none", "descriptive", "api")
+
+
+def _validate_common(detail: str, include_hints: str) -> None:
+    """Reject unknown mode strings instead of silently degrading."""
+    if detail not in _VALID_DETAIL:
+        raise ValueError(f"detail must be one of {_VALID_DETAIL}, got {detail!r}")
+    if include_hints not in _VALID_HINTS:
+        raise ValueError(f"include_hints must be one of {_VALID_HINTS}, got {include_hints!r}")
+
 
 def page_to_llm(
     page: "Page",
+    *,
     detail: str = "standard",
     include_text: bool = True,
     include_hints: str = "none",
@@ -38,6 +48,7 @@ def page_to_llm(
     include_rendered_diagnostics: opt into render-dependent diagnostics
     max_chars: cap final output length; None disables final cap
     """
+    _validate_common(detail, include_hints)
     from natural_pdf.describe.to_llm_sections import (
         render_alignment,
         render_hints,
@@ -129,16 +140,22 @@ def _cap_output(text: str, max_chars: int | None) -> str:
 
 def region_to_llm(
     region: "Region",
+    *,
     detail: str = "standard",
     include_text: bool = True,
     include_hints: str = "none",
+    max_chars: int | None = 6000,
 ) -> str:
-    """Build LLM representation for a region — microscope view."""
-    from natural_pdf.describe.to_llm_sections import (
-        _cluster_values,
-        render_lines,
-        render_rectangles,
-    )
+    """Build LLM representation for a region — microscope view.
+
+    ``include_hints`` is accepted for API symmetry with ``page.to_llm()``;
+    hint sections are currently generated for pages only.
+    """
+    from natural_pdf.exceptions import TextExtractionError
+
+    _validate_common(detail, include_hints)
+
+    max_text_lines = {"brief": 10, "standard": 30, "full": 60}[detail]
 
     page = region.page
     parts = []
@@ -148,8 +165,17 @@ def region_to_llm(
     )
     parts.append("")
 
-    # Layout text within region
-    text = region.extract_text(layout=True) if include_text else None
+    # Layout text within region. Layout extraction raises TextExtractionError
+    # on failure under the unified text contract; a describe view should stay
+    # usable, so fall back to plain extraction with an explicit marker.
+    text = None
+    layout_note = None
+    if include_text:
+        try:
+            text = region.extract_text(layout=True)
+        except TextExtractionError as exc:
+            layout_note = f"  (layout extraction failed: {exc}; showing plain text)"
+            text = region.extract_text()
     if text and text.strip():
         text_lines = text.split("\n")
         # Strip empty leading/trailing
@@ -158,9 +184,11 @@ def region_to_llm(
         while text_lines and not text_lines[0].strip():
             text_lines.pop(0)
         parts.append("TEXT CONTENT")
-        for line in text_lines[:30]:
+        if layout_note:
+            parts.append(layout_note)
+        for line in text_lines[:max_text_lines]:
             parts.append(f"  {line}")
-        if len(text_lines) > 30:
+        if len(text_lines) > max_text_lines:
             parts.append("  ...")
     else:
         parts.append("TEXT CONTENT\n  (no text in region)")
@@ -184,17 +212,25 @@ def region_to_llm(
             samples = [f'"{el.text}"' for el in elements[:5]]
             parts.append(f"  {style_str} — {len(elements)} elements: {', '.join(samples)}")
 
-    return "\n".join(parts)
+    return _cap_output("\n".join(parts), max_chars)
 
 
 def collection_to_llm(
     collection: "ElementCollection",
+    *,
     detail: str = "standard",
     include_text: bool = True,
     include_hints: str = "none",
+    max_chars: int | None = 6000,
 ) -> str:
-    """Build LLM representation for an element collection."""
+    """Build LLM representation for an element collection.
+
+    ``include_hints`` is accepted for API symmetry with ``page.to_llm()``;
+    hint sections are currently generated for pages only.
+    """
     from natural_pdf.describe.to_llm_sections import _cluster_values
+
+    _validate_common(detail, include_hints)
 
     parts = []
     count = len(collection)
@@ -254,21 +290,28 @@ def collection_to_llm(
             for center, indices in significant:
                 parts.append(f"  x≈{center:.0f} ({len(indices)} elements)")
 
-    return "\n".join(parts)
+    return _cap_output("\n".join(parts), max_chars)
 
 
 def element_to_llm(
     element: "Element",
+    *,
     detail: str = "standard",
     include_text: bool = True,
     include_hints: str = "none",
     vertical_radius: float = 30,
+    max_chars: int | None = 6000,
 ) -> str:
     """Build LLM representation for a single element — card view with neighbors.
 
     Neighbor search: full page width on the same horizontal band (±element height),
     then elements directly above/below within vertical_radius pts.
+
+    ``include_hints`` is accepted for API symmetry with ``page.to_llm()``;
+    hint sections are currently generated for pages only.
     """
+    _validate_common(detail, include_hints)
+
     text = getattr(element, "text", "")
     size = getattr(element, "size", None)
     bold = getattr(element, "bold", False)
@@ -289,7 +332,7 @@ def element_to_llm(
     parts.append(f"  size: {element.width:.0f}x{element.height:.0f} pts, source: {source}")
 
     if detail == "brief":
-        return "\n".join(parts)
+        return _cap_output("\n".join(parts), max_chars)
 
     page = getattr(element, "page", None) or getattr(element, "_page", None)
     if page is not None:
@@ -310,9 +353,11 @@ def element_to_llm(
             y_diff = el_cy - my_cy
 
             if abs(y_diff) <= y_tolerance:
-                # Same line — classify as left/right
-                gap = el.x0 - element.x1 if el.x0 > element.x1 else element.x0 - el.x1
-                direction = "right" if el.x0 >= element.x1 else "left"
+                # Same line — classify as left/right (>= so an exactly-touching
+                # element is "right" with a 0pt gap, matching the gap formula)
+                is_right = el.x0 >= element.x1
+                gap = el.x0 - element.x1 if is_right else element.x0 - el.x1
+                direction = "right" if is_right else "left"
                 same_line.append((abs(gap), direction, max(0, gap), el))
             elif 0 < y_diff <= vertical_radius:
                 gap = el.top - element.bottom
@@ -357,30 +402,49 @@ def element_to_llm(
                 parts.append("")
                 parts.append(f"SAME STYLE ON PAGE: {len(same_style)} elements")
 
-    return "\n".join(parts)
+    return _cap_output("\n".join(parts), max_chars)
 
 
 def pdf_to_llm(
     pdf_or_collection,
+    *,
     detail: str = "standard",
     include_text: bool = True,
     include_hints: str = "none",
+    max_pages: int | None = 50,
+    max_chars: int | None = 6000,
 ) -> str:
-    """Build LLM representation for a PDF or PageCollection (routing view)."""
+    """Build LLM representation for a PDF or PageCollection (routing view).
+
+    Every summarized page is fully parsed, so ``max_pages`` (default 50) bounds
+    the work on large documents; pass ``max_pages=None`` to summarize all pages.
+
+    ``include_hints`` is accepted for API symmetry with ``page.to_llm()``;
+    hint sections are currently generated for pages only.
+    """
+    import os
+
     from natural_pdf.core.pdf import PDF
 
+    _validate_common(detail, include_hints)
+
     if isinstance(pdf_or_collection, PDF):
-        source = getattr(pdf_or_collection, "source", "PDF")
+        source_path = getattr(pdf_or_collection, "source_path", None)
+        source = os.path.basename(str(source_path)) if source_path else "PDF"
         pages = pdf_or_collection.pages
     else:
         source = "PageCollection"
         pages = pdf_or_collection
 
+    total_pages = len(pages)
+    truncated = max_pages is not None and total_pages > max_pages
+
     parts = []
-    parts.append(f"=== {source} ({len(pages)} pages) ===")
+    parts.append(f"=== {source} ({total_pages} pages) ===")
     parts.append("")
 
-    for page in pages:
+    pages_to_summarize = pages[:max_pages] if truncated else pages
+    for page in pages_to_summarize:
         text_els = page.find_all("text")
         word_count = len(text_els)
         h_lines = sum(1 for l in page.lines if l.is_horizontal)
@@ -418,4 +482,7 @@ def pdf_to_llm(
         anchor_str = f" — {', '.join(anchors)}" if anchors else ""
         parts.append(f"  Page {page.number}: {', '.join(summary_parts)}{anchor_str}")
 
-    return "\n".join(parts)
+    if truncated:
+        parts.append(f"  ... +{total_pages - max_pages} more pages (pass max_pages=None for all)")
+
+    return _cap_output("\n".join(parts), max_chars)

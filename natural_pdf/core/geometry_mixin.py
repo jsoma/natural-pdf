@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, List, Optional, Protocol, Sequence, Tuple, cast
+from typing import Any, Protocol, Sequence, Tuple, cast
 
 from natural_pdf.utils.spatial import is_element_in_region
 

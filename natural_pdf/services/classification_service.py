@@ -11,7 +11,6 @@ from natural_pdf.classification.classification_provider import (
     run_classification_item,
 )
 from natural_pdf.classification.results import ClassificationResult
-from natural_pdf.services.registry import register_delegate
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +21,11 @@ class ClassificationService:
     def __init__(self, context):
         self._context = context
 
-    @register_delegate("classification", "classify")
     def classify(
         self,
         host,
         labels: List[str],
+        *,
         model: Optional[str] = None,
         using: Optional[str] = None,
         min_confidence: float = 0.0,
@@ -42,6 +41,14 @@ class ClassificationService:
 
         engine_obj = get_classification_engine(host, kwargs.pop("classification_engine", None))
 
+        # Split the kwarg stream: content-extraction options go to the host's
+        # content getter, everything else to the engine. Forwarding one stream
+        # to both lets strays be silently swallowed by the pipeline while still
+        # being recorded in the result's parameters.
+        content_kwargs = {}
+        if "resolution" in kwargs:
+            content_kwargs["resolution"] = kwargs.pop("resolution")
+
         chosen_mode = using
         content = None
 
@@ -51,7 +58,7 @@ class ClassificationService:
 
         if chosen_mode == "text":
             try:
-                tentative_text = self._get_classification_content(host, "text", **kwargs)
+                tentative_text = self._get_classification_content(host, "text", **content_kwargs)
                 if tentative_text and not (
                     isinstance(tentative_text, str) and tentative_text.isspace()
                 ):
@@ -77,7 +84,7 @@ class ClassificationService:
         if content is None:
             if chosen_mode is None:
                 chosen_mode = "vision"
-            content = self._get_classification_content(host, chosen_mode, **kwargs)
+            content = self._get_classification_content(host, chosen_mode, **content_kwargs)
 
         effective_model_id = model or engine_obj.default_model(chosen_mode)
 

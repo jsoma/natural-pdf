@@ -199,17 +199,17 @@ class TestRapidOCREngineRegistry:
     """Tests for engine registration."""
 
     def test_engine_in_registry(self):
-        from natural_pdf.ocr.ocr_provider import ENGINE_REGISTRY
+        from natural_pdf.ocr.unified_dispatch import get_registry
 
-        assert "rapidocr" in ENGINE_REGISTRY
-        assert ENGINE_REGISTRY["rapidocr"]["options_class"] is RapidOCROptions
+        registry = get_registry()
+        assert "rapidocr" in registry
+        assert registry["rapidocr"].options_class is RapidOCROptions
 
-    def test_engine_in_factory_preference(self):
-        from natural_pdf.ocr.ocr_factory import _ENGINE_PREFERENCE
+    def test_engine_is_global_default(self):
+        import natural_pdf
 
-        assert "rapidocr" in _ENGINE_PREFERENCE
-        # Should be first in preference (default engine)
-        assert _ENGINE_PREFERENCE.index("rapidocr") == 0
+        # rapidocr is the library-wide default OCR engine
+        assert natural_pdf.options.ocr.engine == "rapidocr"
 
 
 @pytest.mark.skipif(not rapidocr_available(), reason="RapidOCR not installed")

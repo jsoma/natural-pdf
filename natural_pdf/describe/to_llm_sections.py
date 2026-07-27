@@ -7,12 +7,26 @@ All computations are O(n) over pre-parsed elements. No ML, no image rendering.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
-    from natural_pdf.elements.base import Element
+
+
+def _rect_text(rect) -> "str | None":
+    """Text inside a rect, or None when extraction fails under the text contract.
+
+    Callers must distinguish None (extraction failed) from "" (genuinely empty)
+    so a failure is never reported as a positive "empty" claim.
+    """
+    from natural_pdf.exceptions import TextExtractionError
+
+    try:
+        return (rect.extract_text() or "").strip()
+    except TextExtractionError:
+        return None
 
 
 def _cluster_values(values: List[float], tolerance: float = 3.0) -> List[Tuple[float, List[int]]]:
@@ -60,10 +74,8 @@ def _detect_script(text: str) -> str:
     for ch in text:
         if not ch.isalpha():
             continue
-        try:
-            name = unicodedata.name(ch, "")
-        except ValueError:
-            continue
+        # name() never raises with a default argument
+        name = unicodedata.name(ch, "")
         # Unicode names start with the script, e.g. "LATIN SMALL LETTER A"
         script = name.split(" ", 1)[0] if name else "UNKNOWN"
         # Normalise CJK variants
@@ -73,7 +85,10 @@ def _detect_script(text: str) -> str:
 
     if not script_counts:
         return "Latin"
-    return max(script_counts, key=script_counts.get)  # type: ignore[arg-type]
+    # Unicode names are all-caps ("LATIN"); normalize to the title-case form
+    # promised in the docstring and printed to users.
+    dominant = max(script_counts, key=script_counts.get)  # type: ignore[arg-type]
+    return dominant.title() if dominant.isupper() else dominant
 
 
 # Maps scripts to pyspellchecker language codes.
@@ -87,10 +102,12 @@ _SCRIPT_TO_LANG: Dict[str, str] = {
 _SPELLCHECK_LANGS = {"en", "es", "fr", "de", "pt", "ru", "ar", "eu", "lv", "nl"}
 
 
-_spellchecker_cache: Dict[str, "Any"] = {}
+_spellchecker_cache: Dict[str, Any] = {}
+
+_WORD_RE = re.compile(r"^[a-zA-Z]+(?:['''-][a-zA-Z]+)*$")
 
 
-def _get_spellchecker(lang: str) -> "Any":
+def _get_spellchecker(lang: str) -> Any:
     """Return a cached SpellChecker instance for *lang*."""
     if lang not in _spellchecker_cache:
         from spellchecker import SpellChecker
@@ -104,25 +121,24 @@ def _compute_garble_rate(text_elements: list) -> "Dict[str, object] | None":
 
     Returns a dict with keys ``language``, ``garble_rate``,
     ``misspelled_count``, ``alpha_word_count``, ``script``,
-    ``supported``, ``auto_detected``.
-    Returns ``None`` if ``pyspellchecker`` is not installed.
+    ``supported``, ``detection_method``.
+    Returns ``None`` only if ``pyspellchecker`` is not installed
+    (install with: pip install "natural-pdf[all]").
     """
     try:
-        from spellchecker import SpellChecker
+        import spellchecker  # noqa: F401 — availability probe
     except ImportError:
         return None
 
     # Collect all text
     combined = " ".join(getattr(el, "text", "") for el in text_elements)
-    if not combined.strip():
-        return None
 
     # Detect dominant script
     script = _detect_script(combined)
 
     # Default language from script
     lang = _SCRIPT_TO_LANG.get(script.upper(), None)
-    auto_detected = True
+    detection_method = "script-default"
 
     # For Latin scripts, try langdetect for better language resolution
     if script.upper() == "LATIN" and lang == "en":
@@ -132,8 +148,11 @@ def _compute_garble_rate(text_elements: list) -> "Dict[str, object] | None":
             detected = _detect_lang(combined)
             if detected in _SPELLCHECK_LANGS:
                 lang = detected
+                detection_method = "langdetect"
+        except ImportError:
+            pass  # langdetect not installed; keep the script default
         except Exception:
-            pass  # langdetect not installed or detection failed
+            pass  # detection failed; keep the script default
 
     # Script not supported
     if lang is None or lang not in _SPELLCHECK_LANGS:
@@ -144,13 +163,8 @@ def _compute_garble_rate(text_elements: list) -> "Dict[str, object] | None":
             "garble_rate": 0.0,
             "misspelled_count": 0,
             "alpha_word_count": 0,
-            "auto_detected": auto_detected,
+            "detection_method": detection_method,
         }
-
-    # Tokenize and filter
-    import re
-
-    _WORD_RE = re.compile(r"^[a-zA-Z]+(?:['''-][a-zA-Z]+)*$")
 
     words: List[str] = []
     for el in text_elements:
@@ -183,7 +197,7 @@ def _compute_garble_rate(text_elements: list) -> "Dict[str, object] | None":
             "garble_rate": 0.0,
             "misspelled_count": 0,
             "alpha_word_count": 0,
-            "auto_detected": auto_detected,
+            "detection_method": detection_method,
         }
 
     spell = _get_spellchecker(lang)
@@ -197,7 +211,7 @@ def _compute_garble_rate(text_elements: list) -> "Dict[str, object] | None":
         "garble_rate": rate,
         "misspelled_count": len(misspelled),
         "alpha_word_count": len(words),
-        "auto_detected": auto_detected,
+        "detection_method": detection_method,
     }
 
 
@@ -257,8 +271,15 @@ def render_text_layer(page: "Page") -> str:
                 missed = garble_info["misspelled_count"]
                 total_alpha = garble_info["alpha_word_count"]
                 lang = garble_info["language"]
+                # Only claim "detected" when langdetect actually ran; otherwise
+                # the language is an assumption based on the dominant script.
+                lang_label = (
+                    "detected"
+                    if garble_info.get("detection_method") == "langdetect"
+                    else "assumed from script"
+                )
                 lines.append(
-                    f"  Language: {lang} (detected), "
+                    f"  Language: {lang} ({lang_label}), "
                     f"garble rate {rate:.0%} "
                     f"({missed} of {total_alpha} alpha words not in dictionary)"
                 )
@@ -540,11 +561,7 @@ def render_rectangles(page: "Page", detail: str = "standard") -> str:
         omitted = len(display_rects) - len(shown)
         for i, r in shown:
             # Extract text content
-            try:
-                text = r.extract_text()
-            except Exception:
-                text = ""
-            text = (text or "").strip()
+            text = _rect_text(r)
 
             # Format position and size
             pos = f"({r.x0:.0f},{r.top:.0f})-({r.x1:.0f},{r.bottom:.0f})"
@@ -558,6 +575,8 @@ def render_rectangles(page: "Page", detail: str = "standard") -> str:
                 if len(preview) > preview_len:
                     preview = preview[:preview_len] + "..."
                 text_part = f'{char_count} chars: "{preview}"'
+            elif text is None:
+                text_part = "(text extraction failed)"
             else:
                 text_part = "empty"
 
@@ -595,13 +614,12 @@ def render_pixel_histogram(page: "Page") -> str:
     (vector, raster, image-based PDF). Returns empty string if no
     significant structure detected.
     """
-    try:
-        import numpy as np
-    except ImportError:
-        return ""
+    import numpy as np
 
-    pimg = page._page.to_image(resolution=72)
-    arr = np.array(pimg.original.convert("L"))
+    # Use the library's own render pipeline (honors rotation) rather than
+    # reaching into the private pdfplumber page handle.
+    img = page.render(resolution=72)
+    arr = np.array(img.convert("L"))
     dark = (arr < 128).astype(np.int32)
 
     x_pct = dark.sum(axis=0) / arr.shape[0] * 100
@@ -824,6 +842,7 @@ def render_layout_preview(
     if not text_elements:
         return "LAYOUT PREVIEW\n  (no text on this page)"
 
+    layout_note = None
     if show_boundaries:
         text = _render_layout_with_separators(
             page,
@@ -831,7 +850,16 @@ def render_layout_preview(
             max_line_chars=max_line_chars,
         )
     else:
-        text = page.extract_text(layout=True)
+        # Layout extraction raises TextExtractionError on failure under the
+        # unified text contract; a describe view should stay usable, so fall
+        # back to plain extraction with an explicit marker.
+        from natural_pdf.exceptions import TextExtractionError
+
+        try:
+            text = page.extract_text(layout=True)
+        except TextExtractionError as exc:
+            layout_note = f"  (layout extraction failed: {exc}; showing plain text)"
+            text = page.extract_text()
 
     if not text or not text.strip():
         return "LAYOUT PREVIEW\n  (no text on this page)"
@@ -851,6 +879,8 @@ def render_layout_preview(
         out.append(f"LAYOUT PREVIEW (first {max_lines} of {total_count} lines)")
     else:
         out.append("LAYOUT PREVIEW")
+    if layout_note:
+        out.append(layout_note)
 
     capped_lines = 0
     for line in shown:
@@ -921,7 +951,7 @@ def render_hints(page: "Page", style: str = "api") -> str:
     for r in rects:
         if r.width < 15 or r.height < 8:
             continue  # skip tiny ones (checkboxes)
-        text = r.extract_text().strip()
+        text = _rect_text(r)
         if text:
             rects_with_text.append(text)
     if len(rects_with_text) >= 5:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import textwrap
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Type
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from pydantic import BaseModel
 

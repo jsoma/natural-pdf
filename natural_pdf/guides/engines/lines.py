@@ -7,17 +7,16 @@ import warnings
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Sequence
 
-from natural_pdf.analyzers.guides.helpers import (
-    Bounds,
-    GuidesContext,
-    _bounds_from_object,
-    _collect_line_elements,
-)
 from natural_pdf.guides.guides_provider import (
     Axis,
     GuidesBothDetectionResult,
     GuidesDetectionResult,
     GuidesEngine,
+)
+from natural_pdf.guides.helpers import (
+    GuidesContext,
+    _bounds_from_object,
+    _collect_line_elements,
 )
 
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Tupl
 from natural_pdf.core.ocr_converter import validate_classic_ocr_results, validate_ocr_image_size
 from natural_pdf.core.ocr_execution import protected_ocr_artifact_ids, register_ocr_artifacts
 from natural_pdf.exceptions import OCRError
-from natural_pdf.ocr.ocr_manager import (
+from natural_pdf.ocr.ocr_provider import (
     normalize_ocr_options,
     resolve_ocr_device,
     resolve_ocr_languages,
@@ -16,7 +16,6 @@ from natural_pdf.ocr.ocr_manager import (
 )
 from natural_pdf.ocr.replacement import OCRReplaceMode, normalize_ocr_replace_mode
 from natural_pdf.ocr.unified_dispatch import get_registry, run_ocr
-from natural_pdf.services.registry import register_delegate
 
 logger = logging.getLogger(__name__)
 
@@ -302,7 +301,6 @@ class OCRService:
         bx0, btop, bx1, bbottom = bbox
         return bx0 <= (x0 + x1) / 2.0 <= bx1 and btop <= (top + bottom) / 2.0 <= bbottom
 
-    @register_delegate("ocr", "remove_ocr_elements")
     def remove_ocr_elements(self, host: SupportsOCRElementManager) -> int:
         mgr = host._ocr_element_manager()
         bbox = self._host_bbox(host)
@@ -317,7 +315,6 @@ class OCRService:
                 removed = int(mgr.remove_ocr_elements())
         return removed
 
-    @register_delegate("ocr", "clear_text_layer")
     def clear_text_layer(self, host: SupportsOCRElementManager):
         mgr = host._ocr_element_manager()
         bbox = self._host_bbox(host)
@@ -330,7 +327,6 @@ class OCRService:
                 removed = mgr.clear_text_layer()
         return removed
 
-    @register_delegate("ocr", "create_text_elements_from_ocr")
     def create_text_elements_from_ocr(
         self,
         host: SupportsOCRElementManager,
@@ -368,7 +364,7 @@ class OCRService:
                 return normalized
 
         # Fall back to config/global defaults for classic engines
-        from natural_pdf.ocr.ocr_manager import resolve_ocr_engine_name
+        from natural_pdf.ocr.ocr_provider import resolve_ocr_engine_name
 
         return resolve_ocr_engine_name(
             context=host, requested=requested, options=options, scope=scope
@@ -963,7 +959,6 @@ class OCRService:
             crop_bbox,
         )
 
-    @register_delegate("ocr", "apply_ocr")
     def apply_ocr(
         self,
         host,
@@ -1312,7 +1307,6 @@ class OCRService:
         logger.info("Added %d OCR elements using '%s'.", len(created_elements), engine_name)
         return host
 
-    @register_delegate("ocr", "apply_custom_ocr")
     def apply_custom_ocr(
         self,
         host,
@@ -1425,7 +1419,6 @@ class OCRService:
                 return None
         return None
 
-    @register_delegate("ocr", "extract_ocr_elements")
     def extract_ocr_elements(
         self,
         host,

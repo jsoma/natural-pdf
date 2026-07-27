@@ -1,59 +1,12 @@
-"""Typed grid-build result containers for internal guides workflows."""
+"""Compatibility shim — canonical module is natural_pdf.guides._grid_types.
 
-from __future__ import annotations
+The module object below replaces this one in ``sys.modules`` so that
+``natural_pdf.analyzers.guides._grid_types`` and ``natural_pdf.guides._grid_types`` are the
+same module (monkeypatching either path affects both).
+"""
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+import sys as _sys
 
-Bounds = Tuple[float, float, float, float]
+from natural_pdf.guides import _grid_types as _canonical
 
-
-@dataclass
-class GridBuildCounts:
-    table: int = 0
-    rows: int = 0
-    columns: int = 0
-    cells: int = 0
-
-    def as_dict(self) -> Dict[str, int]:
-        return {
-            "table": self.table,
-            "rows": self.rows,
-            "columns": self.columns,
-            "cells": self.cells,
-        }
-
-    def add(self, other: "GridBuildCounts") -> None:
-        self.table += other.table
-        self.rows += other.rows
-        self.columns += other.columns
-        self.cells += other.cells
-
-
-@dataclass
-class GridBuildRegions:
-    table: Any = None
-    rows: List[Any] = field(default_factory=list)
-    columns: List[Any] = field(default_factory=list)
-    cells: List[Any] = field(default_factory=list)
-
-    def as_dict(self) -> Dict[str, Any]:
-        return {
-            "table": self.table,
-            "rows": list(self.rows),
-            "columns": list(self.columns),
-            "cells": list(self.cells),
-        }
-
-
-@dataclass
-class GridBuildResult:
-    counts: GridBuildCounts = field(default_factory=GridBuildCounts)
-    regions: GridBuildRegions = field(default_factory=GridBuildRegions)
-    effective_bbox: Optional[Bounds] = None
-
-    def as_dict(self) -> Dict[str, Any]:
-        return {
-            "counts": self.counts.as_dict(),
-            "regions": self.regions.as_dict(),
-        }
+_sys.modules[__name__] = _canonical

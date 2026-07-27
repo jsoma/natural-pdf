@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from natural_pdf.core.geometry_mixin import RegionGeometryMixin
-from natural_pdf.core.mixins import SinglePageContextMixin
 from natural_pdf.elements.base import DirectionalMixin
 
 

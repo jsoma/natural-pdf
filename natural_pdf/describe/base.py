@@ -3,7 +3,6 @@ Main describe functions for pages, collections, and regions.
 """
 
 import logging
-from collections import Counter
 from typing import TYPE_CHECKING, Any, List
 
 from .elements import (
@@ -22,6 +21,13 @@ if TYPE_CHECKING:
     from natural_pdf.elements.region import Region
 
 logger = logging.getLogger(__name__)
+
+
+def _is_region_group(elements: List["Element"]) -> bool:
+    """True when the group consists of Region objects (grouped by region_type)."""
+    from natural_pdf.elements.region import Region
+
+    return bool(elements) and isinstance(elements[0], Region)
 
 
 def describe_page(page: "Page") -> ElementSummary:
@@ -109,7 +115,10 @@ def describe_collection(collection: "ElementCollection") -> ElementSummary:
             analysis = describe_rect_elements(type_elements)
         elif element_type == "line":
             analysis = describe_line_elements(type_elements)
-        elif element_type == "region":
+        elif _is_region_group(type_elements):
+            # Region.type reports region_type ("table", "checkbox", ...), so
+            # layout-detected regions never group under the literal "region".
+            # Dispatch by class, not by the type string.
             analysis = describe_region_elements(type_elements)
         else:
             analysis = {"count": len(type_elements)}
@@ -211,10 +220,13 @@ def inspect_collection(collection: "ElementCollection", limit: int = 30) -> Insp
         # Get appropriate columns for this type
         columns = _get_columns_for_type(element_type, show_page_column)
 
+        # Regions group under their region_type ("table", "checkbox", ...),
+        # so give any region group the region column set.
+        if _is_region_group(display_elements) and element_type != "region":
+            columns = _get_columns_for_type("region", show_page_column)
+
         # Add checkbox state column if we have checkbox regions
-        if element_type == "region" and any(
-            getattr(e, "region_type", "") == "checkbox" for e in display_elements
-        ):
+        if any(getattr(e, "region_type", "") == "checkbox" for e in display_elements):
             # Insert state column after type column
             if "type" in columns:
                 type_idx = columns.index("type")
@@ -389,9 +401,10 @@ def _extract_element_value(element: "Element", column: str) -> Any:
             return str(value)
 
     except Exception as e:
-        # Fallback for any unexpected errors
+        # A broken property must be visible in the output, not rendered as an
+        # empty cell indistinguishable from a genuinely absent value.
         logger.warning(f"Error extracting {column} from element: {e}")
-        return ""
+        return "<error>"
 
 
 def describe_element(element: "Element") -> "ElementSummary":

@@ -7,15 +7,6 @@ logger = logging.getLogger("natural_pdf.ocr")
 from natural_pdf.engine_registry import register_ocr_engine
 
 from .engine import OCREngine
-from .ocr_manager import (
-    cleanup_engine,
-    infer_engine_from_options,
-    normalize_ocr_options,
-    resolve_ocr_device,
-    resolve_ocr_engine_name,
-    resolve_ocr_languages,
-    resolve_ocr_min_confidence,
-)
 from .ocr_options import (
     BaseOCROptions,
     ChandraOCROptions,
@@ -26,6 +17,15 @@ from .ocr_options import (
     PaddleOCRVLOptions,
     RapidOCROptions,
     SuryaOCROptions,
+)
+from .ocr_provider import (
+    cleanup_engine,
+    infer_engine_from_options,
+    normalize_ocr_options,
+    resolve_ocr_device,
+    resolve_ocr_engine_name,
+    resolve_ocr_languages,
+    resolve_ocr_min_confidence,
 )
 from .replacement import OCRReplaceMode, normalize_ocr_replace_mode
 from .unified_dispatch import list_engines as _list_engine_entries

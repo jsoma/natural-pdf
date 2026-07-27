@@ -20,8 +20,6 @@ from typing import (
     Literal,
     Optional,
     Protocol,
-    Sequence,
-    Set,
     Tuple,
     Union,
     cast,
@@ -30,9 +28,7 @@ from typing import (
 if TYPE_CHECKING:
     from PIL.Image import Image as PILImage
 
-    from natural_pdf.core.highlighting_service import HighlightingService
     from natural_pdf.core.page import Page
-    from natural_pdf.elements.base import Element
     from natural_pdf.elements.region import Region
 
 from natural_pdf.core.highlighter_utils import resolve_highlighter

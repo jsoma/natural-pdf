@@ -13,7 +13,6 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from difflib import SequenceMatcher
 from typing import Any, Dict, List, Literal, Optional, Tuple, Type, Union
 
 from pydantic import BaseModel, Field, create_model

@@ -3,9 +3,6 @@ include LICENSE
 include pyproject.toml
 include MANIFEST.in
 
-# HTML templates
-recursive-include natural_pdf/templates *.html
-
 # Data files
 recursive-include natural_pdf/exporters/data *
 

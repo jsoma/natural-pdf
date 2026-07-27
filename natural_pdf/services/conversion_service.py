@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from natural_pdf.services.registry import register_delegate
 from natural_pdf.utils.locks import pdf_render_lock
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,6 @@ class ConversionService:
             image = render_fn(resolution=resolution, **kwargs)
         return image
 
-    @register_delegate("conversion", "to_markdown")
     def to_markdown(
         self,
         host: Any,

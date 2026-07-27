@@ -139,6 +139,7 @@ quality = [
 all = [
     "natural-pdf[ai]",
     "natural-pdf[export]",
+    "natural-pdf[quality]",
 ]
 
 [project.urls]
@@ -195,7 +196,6 @@ include-package-data = false
 
 [tool.setuptools.package-data]
 "natural_pdf.exporters" = ["data/*.ttf", "data/*"]
-"natural_pdf" = ["templates/*.html"]
 
 [tool.setuptools.packages.find]
 where = ["."]

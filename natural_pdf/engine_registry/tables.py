@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Optional, Type
 
 from .base import register_engine
@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 if TYPE_CHECKING:  # pragma: no cover
-    from natural_pdf.tables.result import TableResult
+    pass
 
 _TABLE_RESULT_CLASS: Optional[Type[Any]] = None
 

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Tuple
 
 from natural_pdf.core.selector_utils import execute_selector_query, normalize_selector_input
 from natural_pdf.elements.element_collection import ElementCollection
-from natural_pdf.services.registry import register_delegate
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +15,6 @@ class SelectorService:
     def __init__(self, context):
         self._context = context
 
-    @register_delegate("selector", "find")
     def find(self, host, **kwargs):
         collection = self.find_all(host, **kwargs)
         if collection is None:
@@ -31,7 +29,6 @@ class SelectorService:
             return collection[0] if collection else None
         return None
 
-    @register_delegate("selector", "find_all")
     def find_all(self, host, **kwargs):
         from natural_pdf.core.page import Page
         from natural_pdf.core.page_collection import PageCollection

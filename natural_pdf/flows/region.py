@@ -34,8 +34,6 @@ from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
-
-# Service modules are loaded lazily via the registry in natural_pdf.services.registry
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.tables import TableResult
 from natural_pdf.text.contracts import AggregatePolicy

@@ -9,7 +9,6 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Tuple,
 )
 
 from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes

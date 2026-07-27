@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable as IterableABC
 from contextlib import AbstractContextManager, nullcontext
-from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Tuple, cast
 
 if TYPE_CHECKING:  # pragma: no cover
     from natural_pdf.elements.region import Region
@@ -11,7 +11,6 @@ if TYPE_CHECKING:  # pragma: no cover
 from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.exceptions import ExclusionError
-from natural_pdf.services.registry import register_delegate
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,6 @@ class ExclusionService:
     def __init__(self, context):
         self._context = context
 
-    @register_delegate("exclusion", "add_exclusion")
     def add_exclusion(
         self,
         host: Any,

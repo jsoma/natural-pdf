@@ -30,6 +30,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Marker file identifying a directory as produced by this exporter, so that
+# overwrite=True never deletes a directory it didn't create.
+_EXPORT_MARKER = ".natural-pdf-export"
+
 
 def _resolve_source_pdfs(
     source: Union["PDF", "PDFCollection", List["PDF"]],
@@ -83,14 +87,24 @@ def export_training_data(
         Summary dict: ``{"images": N, "skipped": M, "output_dir": path}``.
     """
     # ── validate ────────────────────────────────────────────────────────
+    if output_format not in ("jsonl", "csv"):
+        raise ValueError(f"output_format must be 'jsonl' or 'csv', got {output_format!r}")
+
     if os.path.exists(output_dir):
-        if overwrite:
-            shutil.rmtree(output_dir)
-        else:
+        if not overwrite:
             raise FileExistsError(
                 f"Output directory already exists: {output_dir}. "
                 "Pass overwrite=True to replace it."
             )
+        # Refuse to delete a directory this exporter didn't create: overwrite
+        # is meant to replace a previous export, not arbitrary user data.
+        if os.listdir(output_dir) and not os.path.exists(os.path.join(output_dir, _EXPORT_MARKER)):
+            raise FileExistsError(
+                f"Refusing to overwrite {output_dir}: it is not empty and does not "
+                f"look like a previous export (missing {_EXPORT_MARKER}). "
+                "Delete it manually if you really want to replace it."
+            )
+        shutil.rmtree(output_dir)
 
     pdfs = _resolve_source_pdfs(source)
     if not pdfs:
@@ -107,6 +121,8 @@ def export_training_data(
     # We'll write images to a temporary flat list first, then move to
     # the correct split directories at the end.
     os.makedirs(output_dir, exist_ok=True)
+    with open(os.path.join(output_dir, _EXPORT_MARKER), "w", encoding="utf-8") as marker_fh:
+        marker_fh.write("Created by natural_pdf.exporters.training_data.export_training_data\n")
     tmp_images_dir = os.path.join(output_dir, "_tmp_images")
     os.makedirs(tmp_images_dir, exist_ok=True)
 
@@ -197,11 +213,13 @@ def export_training_data(
         images_dir = os.path.join(split_dir, "images")
         os.makedirs(images_dir, exist_ok=True)
 
-        # Move image files into this split's images/ directory
+        # Copy image files into this split's images/ directory. Copy (not move)
+        # so a mid-write failure leaves _tmp_images/ intact and recoverable;
+        # the temp directory is removed only after all splits are written.
         for rec in split_records:
-            src = rec.pop("_abs_image_path")
+            src = rec["_abs_image_path"]
             dst = os.path.join(images_dir, os.path.basename(src))
-            shutil.move(src, dst)
+            shutil.copy2(src, dst)
 
         # Write metadata file
         if output_format == "jsonl":
@@ -253,7 +271,9 @@ def _write_csv(
 ) -> None:
     path = os.path.join(directory, "metadata.csv")
     base_fields = ["file_name", "text"]
-    meta_fields = ["source_pdf", "page", "x0", "y0", "x1", "y1"] if include_metadata else []
+    # Column names follow the library's pdfplumber-style coordinate vocabulary:
+    # the vertical values are top/bottom (distance from page top), not y0/y1.
+    meta_fields = ["source_pdf", "page", "x0", "top", "x1", "bottom"] if include_metadata else []
     fieldnames = base_fields + meta_fields
 
     with open(path, "w", encoding="utf-8", newline="") as fh:
@@ -269,14 +289,14 @@ def _write_csv(
                 row["source_pdf"] = meta.get("source_pdf", "")
                 row["page"] = meta.get("page", "")
                 bbox = meta.get("bbox", [0, 0, 0, 0])
-                row["x0"], row["y0"], row["x1"], row["y1"] = bbox
+                row["x0"], row["top"], row["x1"], row["bottom"] = bbox
             writer.writerow(row)
 
 
 def _rmdir_safe(path: str) -> None:
-    """Remove a directory if it exists, ignoring errors."""
+    """Remove a directory if it exists; log (don't raise) on failure."""
     try:
         if os.path.isdir(path):
             shutil.rmtree(path)
-    except OSError:
-        pass
+    except OSError as exc:
+        logger.warning(f"Could not remove temporary directory {path}: {exc}")

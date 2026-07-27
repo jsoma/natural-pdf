@@ -4,7 +4,6 @@ import os
 import ssl
 import threading
 import urllib.request
-import warnings
 import weakref
 from collections.abc import Iterator, Sequence
 from dataclasses import replace as replace_request
@@ -58,7 +57,7 @@ from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.region import Region
 from natural_pdf.export.mixin import ExportMixin
-from natural_pdf.ocr.ocr_manager import (
+from natural_pdf.ocr.ocr_provider import (
     normalize_ocr_options,
     resolve_ocr_device,
     resolve_ocr_engine_name,
@@ -82,27 +81,10 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     certifi = None  # type: ignore[assignment]
 
-CreateSearchablePdfFn = Callable[..., None]
-CreateOriginalPdfFn = Callable[..., None]
-
-try:
-    from natural_pdf.exporters.searchable_pdf import (
-        create_searchable_pdf as _create_searchable_pdf_impl,
-    )
-except ImportError:
-    _create_searchable_pdf_impl = None  # type: ignore[assignment]
-
-try:
-    from natural_pdf.exporters.original_pdf import create_original_pdf as _create_original_pdf_impl
-except ImportError:
-    _create_original_pdf_impl = None  # type: ignore[assignment]
-
-create_searchable_pdf: Optional[CreateSearchablePdfFn] = cast(
-    Optional[CreateSearchablePdfFn], _create_searchable_pdf_impl
-)
-create_original_pdf: Optional[CreateOriginalPdfFn] = cast(
-    Optional[CreateOriginalPdfFn], _create_original_pdf_impl
-)
+# Both exporter modules import without their optional dependencies installed;
+# they call require("pikepdf") with an install hint at execution time.
+from natural_pdf.exporters.original_pdf import create_original_pdf
+from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
 
 logger = logging.getLogger("natural_pdf.core.pdf")
 
@@ -111,15 +93,15 @@ ExclusionSpec = Tuple[Any, Optional[str]]
 RegionFactory = Callable[["Page"], Optional["Region"]]
 RegionRegistry = List[Tuple[RegionFactory, Optional[str]]]
 
-# Deskew Imports (Conditional)
+# img2pdf is optional; only PDF.deskew() needs it (to assemble the output).
+# Skew detection itself relies on core deps and is always available.
 try:
     import img2pdf  # type: ignore[import]
 
-    DESKEW_AVAILABLE = True
+    IMG2PDF_AVAILABLE = True
 except ImportError:
-    DESKEW_AVAILABLE = False
+    IMG2PDF_AVAILABLE = False
     img2pdf = None
-# End Deskew Imports
 
 # --- Lazy Page List Helper --- #
 
@@ -736,12 +718,7 @@ class PDF(
         self._config = {"keep_spaces": keep_spaces}
         self._font_attrs = font_attrs
 
-        # Deprecated managers remain for backwards compatibility but are no longer instantiated.
-        self._layout_manager = None
-
         self.highlighter: HighlightingService = HighlightingService(self)
-        self._manager_factories: ManagerFactories = {}
-        self._managers: ManagerCache = {}
         # All lazy-list views share this parent-owned materialization state.
         # It is initialized before ``_pages`` so slices can never create an
         # independent cache/lock domain.
@@ -1294,11 +1271,6 @@ class PDF(
         logger.warning(
             "PDF.save_searchable() is deprecated. Use PDF.save_pdf(..., ocr=True) instead."
         )
-        if create_searchable_pdf is None:
-            raise ImportError(
-                "Saving searchable PDF requires 'pikepdf'. "
-                'Install with: pip install "natural-pdf[export]"'
-            )
         output_path_str = str(output_path)
         # Call the exporter directly, passing self (the PDF instance)
         create_searchable_pdf(self, output_path_str, dpi=dpi)
@@ -1360,11 +1332,6 @@ class PDF(
         output_path_str = str(output_path_obj)
 
         if ocr:
-            if create_searchable_pdf is None:
-                raise ImportError(
-                    "Saving with ocr=True requires the OCR export dependencies. "
-                    'Install with: pip install "natural-pdf[export]"'
-                )
             has_vector_elements = False
             for page in self.pages:
                 rects = getattr(page, "rects", None)
@@ -1401,19 +1368,11 @@ class PDF(
                 )
 
             logger.info(f"Saving searchable PDF (OCR text layer) to: {output_path_str}")
-            try:
-                # Delegate to the searchable PDF exporter, passing self (PDF instance)
-                create_searchable_pdf(self, output_path_str, dpi=dpi)
-            except Exception as e:
-                raise RuntimeError(f"Failed to create searchable PDF: {e}") from e
+            # Delegate to the searchable PDF exporter, passing self (PDF instance).
+            # It raises ExportError with page context on failure.
+            create_searchable_pdf(self, output_path_str, dpi=dpi)
 
         elif original:
-            if create_original_pdf is None:
-                raise ImportError(
-                    "Saving with original=True requires 'pikepdf'. "
-                    'Install with: pip install "natural-pdf[export]"'
-                )
-
             # Optional: Add warning about losing OCR data similar to PageCollection
             has_ocr_elements = False
             for page in self.pages:
@@ -1554,6 +1513,7 @@ class PDF(
     def classify(
         self,
         labels: List[str],
+        *,
         model: Optional[str] = None,
         using: Optional[str] = None,
         min_confidence: float = 0.0,
@@ -1626,16 +1586,26 @@ class PDF(
     # --- Semantic Search ---
 
     def _get_page_embeddings(self, model_name: str) -> Any:
-        """Lazily compute and cache page embeddings for semantic search."""
+        """Lazily compute and cache page embeddings for semantic search.
+
+        The cache is keyed on a fingerprint of the current page texts, so
+        text mutations (apply_ocr, correct_ocr, ...) trigger re-encoding
+        instead of silently ranking against stale embeddings.
+        """
+        from natural_pdf.search.search_service import SearchService
+
         if not hasattr(self, "_search_embeddings"):
             self._search_embeddings: Dict[str, Any] = {}
-        if model_name not in self._search_embeddings:
-            from natural_pdf.search.search_service import SearchService
 
-            self._search_embeddings[model_name] = SearchService.encode_pages(
-                self.pages, model_name=model_name
+        texts = SearchService.page_texts(self.pages)
+        fingerprint = SearchService.text_fingerprint(texts)
+        entry = self._search_embeddings.get(model_name)
+        if entry is None or entry[0] != fingerprint:
+            self._search_embeddings[model_name] = (
+                fingerprint,
+                SearchService.encode_texts(texts, model_name=model_name),
             )
-        return self._search_embeddings[model_name]
+        return self._search_embeddings[model_name][1]
 
     def search(
         self,
@@ -1658,9 +1628,9 @@ class PDF(
             PageCollection of the most relevant pages, ordered by relevance.
             Each page has a ``_search_score`` attribute with the similarity score.
         """
-        from natural_pdf.search.search_service import SearchService
+        from natural_pdf.search.search_service import DEFAULT_MODEL, SearchService
 
-        model_name = model or "all-MiniLM-L6-v2"
+        model_name = model or DEFAULT_MODEL
         embeddings = self._get_page_embeddings(model_name)
         page_list = list(self.pages)
 
@@ -1675,7 +1645,7 @@ class PDF(
 
         from natural_pdf.core.page_collection import PageCollection
 
-        return PageCollection(ranked_pages)
+        return PageCollection(ranked_pages, context=self._context)
 
     def export_ocr_correction_task(
         self,
@@ -1878,6 +1848,7 @@ class PDF(
     def deskew(
         self,
         pages: Optional[Union[Iterable[int], range, slice]] = None,
+        *,
         resolution: int = 300,
         angle: Optional[float] = None,
         detection_resolution: int = 72,
@@ -1919,7 +1890,7 @@ class PDF(
             IOError: If creating the in-memory PDF fails.
             RuntimeError: If rendering or deskewing individual pages fails.
         """
-        if not DESKEW_AVAILABLE:
+        if not IMG2PDF_AVAILABLE:
             raise ImportError(
                 "img2pdf library missing. Install with: pip install natural-pdf[export]"
             )
@@ -1953,12 +1924,6 @@ class PDF(
                     **deskew_kwargs,
                 )
 
-                if not deskewed_img:
-                    logger.warning(
-                        f"Page {page.number}: Failed to generate deskewed image, skipping."
-                    )
-                    continue
-
                 # Convert image to bytes for img2pdf (use PNG for lossless quality)
                 with io.BytesIO() as buf:
                     deskewed_img.save(buf, format="PNG")
@@ -1981,7 +1946,7 @@ class PDF(
             # Use img2pdf to combine image bytes into PDF bytes
             if img2pdf is None:
                 raise RuntimeError(
-                    "img2pdf library is not available despite DESKEW_AVAILABLE flag being set."
+                    "img2pdf library is not available despite IMG2PDF_AVAILABLE flag being set."
                 )
             pdf_bytes = img2pdf.convert(deskewed_images_bytes)
             if pdf_bytes is None:
@@ -2010,6 +1975,7 @@ class PDF(
     def classify_pages(
         self,
         labels: List[str],
+        *,
         model: Optional[str] = None,
         pages: Optional[Union[Iterable[int], range, slice]] = None,
         analysis_key: str = "classification",
@@ -2054,15 +2020,22 @@ class PDF(
         pages_to_classify = []
         logger.debug(f"Gathering content for {len(target_pages)} pages...")
 
+        from natural_pdf.services.classification_service import ClassificationService
+
         for page in target_pages:
             try:
                 content = page._get_classification_content(model_type=inferred_using, **kwargs)
                 page_contents.append(content)
                 pages_to_classify.append(page)
             except ValueError as e:
-                logger.warning(f"Skipping page {page.number}: Cannot get content - {e}")
-            except Exception as e:
-                logger.warning(f"Skipping page {page.number}: Error getting content - {e}")
+                # Only genuinely empty pages may be skipped; any other failure
+                # must surface instead of silently dropping the page.
+                if ClassificationService._is_empty_text_error(e):
+                    logger.warning(f"Skipping page {page.number}: no extractable content - {e}")
+                else:
+                    raise ClassificationError(
+                        f"Failed to get classification content for page {page.number}: {e}"
+                    ) from e
 
         if not page_contents:
             logger.warning("No content could be gathered for batch classification.")
@@ -2089,23 +2062,18 @@ class PDF(
             raise ClassificationError(f"Batch classification failed: {e}") from e
 
         if len(batch_results) != len(pages_to_classify):
-            logger.error(
-                f"Mismatch between number of results ({len(batch_results)}) and pages ({len(pages_to_classify)})"
+            raise ClassificationError(
+                f"Batch classification returned {len(batch_results)} results "
+                f"for {len(pages_to_classify)} pages."
             )
-            return self
 
         logger.debug(
             f"Distributing {len(batch_results)} results to pages under key '{analysis_key}'..."
         )
         for page, result_obj in zip(pages_to_classify, batch_results):
-            try:
-                if not hasattr(page, "analyses") or page.analyses is None:
-                    page.analyses = {}
-                page.analyses[analysis_key] = result_obj
-            except Exception as e:
-                logger.warning(
-                    f"Failed to store classification results for page {page.number}: {e}"
-                )
+            if not hasattr(page, "analyses") or page.analyses is None:
+                page.analyses = {}
+            page.analyses[analysis_key] = result_obj
 
         logger.info("Finished classifying PDF pages.")
         return self
@@ -2456,18 +2424,16 @@ class PDF(
                     "use_exclusions was removed from text extraction; "
                     "use apply_exclusions instead"
                 )
-            try:
-                # Extract text without layout spacing for cleaner NLI input
-                extract_kwargs = {
-                    k: v for k, v in kwargs.items() if k not in ("layout", "apply_exclusions")
-                }
-                text = self.extract_text(layout=False, apply_exclusions=False, **extract_kwargs)
-                if not text or text.isspace():
-                    raise ValueError("PDF contains no extractable text for classification.")
-                return _normalize_whitespace(text)
-            except Exception as e:
-                logger.error(f"Error extracting text for PDF classification: {e}")
-                raise ValueError("Failed to extract text for classification.") from e
+            # Extract text without layout spacing for cleaner NLI input.
+            # Extraction failures propagate unflattened so callers can tell a
+            # broken extractor apart from a genuinely empty document.
+            extract_kwargs = {
+                k: v for k, v in kwargs.items() if k not in ("layout", "apply_exclusions")
+            }
+            text = self.extract_text(layout=False, apply_exclusions=False, **extract_kwargs)
+            if not text or text.isspace():
+                raise ValueError("PDF contains no extractable text for classification.")
+            return _normalize_whitespace(text)
 
         elif model_type == "vision":
             if len(self.pages) == 1:

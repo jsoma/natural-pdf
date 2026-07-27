@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from natural_pdf.services.registry import register_delegate
-
 if TYPE_CHECKING:
     from natural_pdf.elements.element_collection import ElementCollection
 
@@ -19,7 +17,6 @@ class FormCellService:
     def __init__(self, context):
         self._context = context
 
-    @register_delegate("form_cell", "detect_form_cells")
     def detect_form_cells(self, host: Any, *args, **kwargs) -> "ElementCollection":
         from natural_pdf.core.page import Page
         from natural_pdf.core.page_collection import PageCollection

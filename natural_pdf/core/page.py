@@ -1,9 +1,7 @@
 import contextlib
 import copy
-import functools
 import logging
 import os
-import re
 from collections.abc import Iterable, Mapping
 from contextvars import ContextVar
 from pathlib import Path
@@ -31,7 +29,6 @@ from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
-from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.tables.result import TableResult
 
 if TYPE_CHECKING:
@@ -39,7 +36,6 @@ if TYPE_CHECKING:
 
     from natural_pdf.core.highlighting_service import HighlightContext, HighlightingService
     from natural_pdf.core.pdf import PDF
-    from natural_pdf.describe.summary import InspectionSummary
     from natural_pdf.elements.base import Element
     from natural_pdf.extraction.anchored_rows import AnchoredRow
     from natural_pdf.extraction.result import StructuredDataResult
@@ -51,7 +47,6 @@ else:  # pragma: no cover - runtime typing helper
 # # Deskew Imports (Conditional)
 
 from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
-from natural_pdf.analyzers.layout.layout_options import LayoutOptions
 from natural_pdf.analyzers.text_options import TextStyleOptions
 from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
 from natural_pdf.core.context import PDFContext
@@ -59,18 +54,15 @@ from natural_pdf.core.context import PDFContext
 # Add new import
 from natural_pdf.core.crop_utils import resolve_crop_bbox
 from natural_pdf.core.element_manager import ElementManager
-from natural_pdf.core.interfaces import Bounds, SupportsGeometry, SupportsSections
+from natural_pdf.core.interfaces import Bounds, SupportsSections
 from natural_pdf.core.mixins import SinglePageContextMixin
 from natural_pdf.core.ocr_contracts import OCRRequest
 from natural_pdf.core.ocr_mixin import OCRDirectTargetMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable, add_explicit_highlights_to_spec
-from natural_pdf.core.selector_utils import _jaro_winkler_similarity, execute_parsed_selector
+from natural_pdf.core.selector_utils import execute_parsed_selector
 from natural_pdf.deskew import run_deskew_apply, run_deskew_detect
 from natural_pdf.elements.base import Element  # Import base element
-from natural_pdf.elements.text import TextElement
 from natural_pdf.ocr.replacement import OCRReplaceMode, normalize_ocr_replace_mode
-
-# Service modules are loaded lazily via the registry in natural_pdf.services.registry
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.text.contracts import ExtractedText, TextLayoutOptions
 from natural_pdf.text.facades import SpatialTextMixin
@@ -250,6 +242,9 @@ class Page(
         self._text_state_version = 0
         self._exclusions = []  # List to store exclusion functions/regions
         self._skew_angle: Optional[float] = None  # Stores detected skew angle
+        # True once detection has run, so a legitimate None result (blank
+        # page) is cached instead of re-running the sweep on every access.
+        self._skew_angle_computed: bool = False
 
         self.metadata: Dict[str, Any] = {}
 
@@ -1379,35 +1374,6 @@ class Page(
                 )
             return all_elements
 
-    def filter_elements(
-        self, elements: List["Element"], selector: str, **kwargs
-    ) -> List["Element"]:
-        """
-        Filter a list of elements based on a selector.
-
-        Args:
-            elements: List of elements to filter
-            selector: CSS-like selector string
-            **kwargs: Additional filter parameters
-
-        Returns:
-            List of elements that match the selector
-        """
-        from natural_pdf.selectors.parser import parse_selector
-
-        # Parse the selector
-        selector_obj = parse_selector(selector)
-        matching_elements = execute_selector_branch(
-            self,
-            selector_obj,
-            elements,
-            selector_kwargs=kwargs,
-            selector_type=selector_obj.get("type", "any").lower(),
-            logger=logger,
-        )
-
-        return matching_elements
-
     def until(
         self,
         selector: str,
@@ -1763,7 +1729,6 @@ class Page(
             Literal["top", "bottom"],
         ] = "between",
         row_outer: Union[bool, Literal["first", "last"]] = True,
-        row_tolerance: float = 5,
         source: str = "guides_temp",
         cell_padding: float = 0.5,
         include_outer_boundaries: bool = True,
@@ -1814,7 +1779,6 @@ class Page(
             snap_vertical_kwargs: Options for ``vertical.snap_to_whitespace``.
             row_align: Alignment mode for row-anchor horizontal guides.
             row_outer: Whether to add outer horizontal boundary guides.
-            row_tolerance: Tolerance for resolving row-anchor content.
             source: Source label for temporary guide grid regions.
             cell_padding: Padding for guide-built cell regions.
             include_outer_boundaries: Add table bounds from the page when outer
@@ -1868,7 +1832,6 @@ class Page(
             snap_vertical_kwargs=snap_vertical_kwargs,
             row_align=row_align,
             row_outer=row_outer,
-            row_tolerance=row_tolerance,
             apply_exclusions=apply_exclusions,
         )
         return guides.extract_table(
@@ -2351,32 +2314,35 @@ class Page(
 
     def viewer(
         self,
-        # elements_to_render: Optional[List['Element']] = None, # No longer needed, from_page handles it
-        # include_source_types: List[str] = ['word', 'line', 'rect', 'region'] # No longer needed
+        *,
+        resolution: int = 150,
+        elements_to_render: Optional[List["Element"]] = None,
+        include_attributes: Optional[List[str]] = None,
     ) -> Any:
         """
-        Creates and returns an interactive ipywidget for exploring elements on this page.
+        Creates and returns an interactive viewer for exploring elements on this page.
 
-        Uses InteractiveViewerWidget.from_page() to create the viewer.
+        The viewer shows every element on the page (exclusions are NOT applied —
+        this is a debugging view), unless an explicit element list is given.
+
+        Args:
+            resolution: Rendering resolution in DPI (default 150).
+            elements_to_render: Explicit list of elements to overlay instead of
+                all page elements.
+            include_attributes: Extra element attributes to show in the info panel.
 
         Returns:
             An InteractiveViewerWidget instance ready for display in Jupyter.
-
-        Raises:
-            ImportError: If required dependencies (ipywidgets) are missing.
-            ValueError: If image rendering or data preparation fails within from_page.
         """
-        # Lazy import to avoid pulling in ipywidgets/IPython at startup
-        from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
+        # Lazy import to avoid pulling in IPython at startup
+        from natural_pdf.widgets.viewer import InteractiveViewerWidget
 
-        if not _IPYWIDGETS_AVAILABLE or InteractiveViewerWidget is None:
-            raise ImportError(
-                "Interactive viewer requires 'ipywidgets'. "
-                'Please install with: pip install "ipywidgets>=7.0.0,<10.0.0"'
-            )
-
-        # Pass self (the Page object) to the factory method
-        return InteractiveViewerWidget.from_page(self)
+        return InteractiveViewerWidget.from_page(
+            self,
+            resolution=resolution,
+            elements_to_render=elements_to_render,
+            include_attributes=include_attributes,
+        )
 
     def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300):
         """
@@ -2473,6 +2439,7 @@ class Page(
 
     def detect_skew_angle(
         self,
+        *,
         resolution: int = 72,
         grayscale: bool = True,
         force_recalculate: bool = False,
@@ -2487,9 +2454,15 @@ class Page(
             force_recalculate: Re-detect even if a cached angle exists.
             engine: Engine name — ``"projection"`` (default), ``"hough"``, or ``"standard"``.
             **deskew_kwargs: Extra arguments forwarded to the detection engine.
+                Unknown keys are rejected with a ValueError.
+
+        Returns:
+            The correction angle in degrees, ``0.0`` when content is present
+            but not significantly skewed, or ``None`` when detection was not
+            possible (e.g. a blank page). ``None`` results are cached too.
         """
-        if self._skew_angle is not None and not force_recalculate:
-            logger.debug(f"Page {self.number}: Returning cached skew angle: {self._skew_angle:.2f}")
+        if self._skew_angle_computed and not force_recalculate:
+            logger.debug(f"Page {self.number}: Returning cached skew angle: {self._skew_angle}")
             return self._skew_angle
 
         try:
@@ -2506,13 +2479,16 @@ class Page(
         except Exception as exc:
             logger.warning(f"Page {self.number}: Skew detection failed: {exc}", exc_info=True)
             self._skew_angle = None
+            self._skew_angle_computed = False
             raise
 
         self._skew_angle = angle
+        self._skew_angle_computed = True
         return angle
 
     def deskew(
         self,
+        *,
         resolution: int = 300,
         angle: Optional[float] = None,
         detection_resolution: int = 72,
@@ -2700,24 +2676,6 @@ class Page(
     def detect_form_cells(self, *args, **kwargs):
         return self.services.form_cell.detect_form_cells(self, *args, **kwargs)
 
-    def annotate_checkboxes(self, resolution: int = 150):
-        """Open an interactive widget for manual checkbox annotation.
-
-        Draw rectangles on the page image to mark checkbox locations.
-        Call ``get_regions()`` on the returned annotator to retrieve results.
-
-        Args:
-            resolution: DPI for rendering the page image.
-
-        Returns:
-            CheckboxAnnotator instance.
-        """
-        from natural_pdf.widgets.checkbox_annotator import CheckboxAnnotator
-
-        annotator = CheckboxAnnotator(self, resolution=resolution)
-        annotator.show()
-        return annotator
-
     def guides(self, *args, **kwargs):
         return self.services.guides.guides(self, *args, **kwargs)
 
@@ -2762,6 +2720,7 @@ class Page(
     def classify(
         self,
         labels: List[str],
+        *,
         model: Optional[str] = None,
         using: Optional[str] = None,
         min_confidence: float = 0.0,

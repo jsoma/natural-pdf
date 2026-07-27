@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 
-from natural_pdf.analyzers.guides.helpers import (
+from natural_pdf.elements.element_collection import ElementCollection
+from natural_pdf.guides.guides_provider import Axis, GuidesDetectionResult, GuidesEngine
+from natural_pdf.guides.helpers import (
     Bounds,
     GuidesContext,
     _bounds_from_object,
     _normalize_markers,
     _require_bounds,
 )
-from natural_pdf.elements.element_collection import ElementCollection
-from natural_pdf.guides.guides_provider import Axis, GuidesDetectionResult, GuidesEngine
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,6 @@ class ContentGuidesEngine(GuidesEngine):
         markers = options.get("markers")
         align = options.get("align", "left")
         outer = options.get("outer", True)
-        tolerance = float(options.get("tolerance", 5))
         apply_exclusions = bool(options.get("apply_exclusions", True))
 
         if axis == "horizontal":

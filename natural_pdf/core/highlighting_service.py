@@ -22,9 +22,6 @@ from natural_pdf.elements.base import extract_bbox
 from natural_pdf.utils.visualization import (
     ColorManager,
     DirectCropRenderUnsupportedError,
-    create_legend,
-    legend_width_for_image,
-    merge_images_with_legend,
     render_cropped_page,
     render_plain_page,
 )

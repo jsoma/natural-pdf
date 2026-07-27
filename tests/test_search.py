@@ -157,9 +157,32 @@ class TestPDFSearch:
         # Store reference to cached embeddings
         cached = pdf._search_embeddings["all-MiniLM-L6-v2"]
 
-        # Second search should reuse cache
+        # Second search should reuse cache while the text is unchanged
         pdf.search("query two")
         assert pdf._search_embeddings["all-MiniLM-L6-v2"] is cached
+
+    def test_pdf_search_cache_invalidated_when_text_changes(self, monkeypatch):
+        """After a text mutation (e.g. apply_ocr), search must re-encode
+        instead of ranking against stale embeddings."""
+        pdf = _make_pdf()
+        pdf.search("query one")
+        cached = pdf._search_embeddings["all-MiniLM-L6-v2"]
+
+        page = pdf.pages[0]
+        monkeypatch.setattr(page, "extract_text", lambda *a, **kw: "completely new ocr text")
+
+        pdf.search("query two")
+        assert pdf._search_embeddings["all-MiniLM-L6-v2"] is not cached
+
+    def test_rank_rejects_bad_inputs(self):
+        from natural_pdf.search.search_service import SearchService
+
+        embeddings = np.zeros((2, 4), dtype=np.float32)
+        pages = [FakePage("a"), FakePage("b")]
+        with pytest.raises(ValueError, match="top_k"):
+            SearchService.rank("query", embeddings, pages, top_k=0)
+        with pytest.raises(ValueError, match="query"):
+            SearchService.rank("   ", embeddings, pages)
 
     def test_pdf_search_scores_descending(self):
         pdf = _make_pdf()

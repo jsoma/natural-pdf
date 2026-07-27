@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Union, cast
 
-from natural_pdf.services.registry import register_delegate
 from natural_pdf.tables import TableResult
 from natural_pdf.tables.structure_provider import (
     resolve_structure_engine_name as resolve_table_structure_engine_name,
@@ -45,7 +44,6 @@ class TableService:
 
         return False
 
-    @register_delegate("table", "extract_table")
     def extract_table(
         self,
         host,
@@ -250,7 +248,6 @@ class TableService:
         table_rows = select_primary_table(provider_tables)
         return TableResult(table_rows)
 
-    @register_delegate("table", "extract_tables")
     def extract_tables(
         self,
         host,

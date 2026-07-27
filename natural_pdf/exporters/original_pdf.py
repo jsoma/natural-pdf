@@ -9,6 +9,7 @@ import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Set, Union
 
+from natural_pdf.exceptions import ExportError
 from natural_pdf.utils.optional_imports import require
 
 if TYPE_CHECKING:
@@ -36,7 +37,8 @@ def create_original_pdf(
         ImportError: If 'pikepdf' is not installed.
         ValueError: If the source object is empty, pages are from different PDFs,
                     or the source PDF path cannot be determined.
-        RuntimeError: If pikepdf fails to open the source or save the output.
+        ExportError: If pikepdf fails to open the source or save the output, or
+                     if a requested page index does not exist in the source PDF.
         pikepdf.PasswordError: If the source PDF is password-protected.
     """
     pikepdf = require("pikepdf")
@@ -124,13 +126,13 @@ def create_original_pdf(
                     ("http://", "https://")
                 ):
                     try:
-                        with urllib.request.urlopen(first_page_pdf_path) as resp:
+                        with urllib.request.urlopen(first_page_pdf_path, timeout=60) as resp:
                             data = resp.read()
                         source_handle = pikepdf.Pdf.open(io.BytesIO(data))
                     except Exception as dl_err:
                         raise FileNotFoundError(
                             f"Source PDF bytes not available and download failed for {first_page_pdf_path}: {dl_err}"
-                        )
+                        ) from dl_err
                 else:
                     raise FileNotFoundError(
                         f"Source PDF bytes not available for {first_page_pdf_path}"
@@ -144,30 +146,33 @@ def create_original_pdf(
                     # This correctly appends the pikepdf.Page object
                     target_pikepdf_doc.pages.append(source_pikepdf_doc.pages[page_index])
                 else:
-                    logger.warning(
-                        f"Page index {page_index} out of bounds for source PDF '{first_page_pdf_path}'. Skipping."
+                    raise ExportError(
+                        f"Page index {page_index} out of bounds for source PDF "
+                        f"'{first_page_pdf_path}' ({len(source_pikepdf_doc.pages)} pages)."
                     )
 
-            if not target_pikepdf_doc.pages:
-                raise RuntimeError("No valid pages found to save from source PDF.")
-
-            target_pikepdf_doc.save(output_path_str)
+            # Write to a temp path in the destination directory, then replace,
+            # so a failure never leaves a truncated file at output_path.
+            output_path_obj = Path(output_path_str)
+            tmp_output_path = output_path_obj.with_name(output_path_obj.name + ".tmp")
+            try:
+                target_pikepdf_doc.save(str(tmp_output_path))
+                tmp_output_path.replace(output_path_obj)
+            except Exception:
+                tmp_output_path.unlink(missing_ok=True)
+                raise
             logger.info(
                 f"Successfully saved original pages PDF ({len(target_pikepdf_doc.pages)} pages) to: {output_path_str}"
             )
 
+    except (ExportError, pikepdf.PasswordError):
+        # PasswordError propagates as documented; ExportError already has context.
+        raise
     except FileNotFoundError as e:
-        logger.error(str(e))
-        raise RuntimeError(f"Failed to save original pages PDF: {e}")
-    except pikepdf.PasswordError:
-        logger.error(f"Failed to open password-protected source PDF: {first_page_pdf_path}")
-        raise RuntimeError(
-            f"Source PDF '{first_page_pdf_path}' is password-protected."
-        ) from None  # Raise specific error without chaining the generic Exception
+        raise ExportError(f"Failed to save original pages PDF: {e}") from e
     except Exception as e:
         logger.error(
             f"Failed to save original pages PDF to '{output_path_str}': {e}",
             exc_info=True,
         )
-        # Re-raise as RuntimeError for consistent API error handling
-        raise RuntimeError(f"Failed to save original pages PDF: {e}") from e
+        raise ExportError(f"Failed to save original pages PDF: {e}") from e

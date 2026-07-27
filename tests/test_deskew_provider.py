@@ -74,9 +74,15 @@ def test_page_detect_skew_engine_param(monkeypatch):
         def detect(self, **kwargs):
             return 1.0
 
+        def apply(self, **kwargs):  # pragma: no cover - not used here
+            return DeskewApplyResult(image=Image.new("RGB", (1, 1)), angle=1.0)
+
     class _StubHough:
         def detect(self, **kwargs):
             return 2.0
+
+        def apply(self, **kwargs):  # pragma: no cover - not used here
+            return DeskewApplyResult(image=Image.new("RGB", (1, 1)), angle=2.0)
 
     proj = _StubProjection()
     hough = _StubHough()
@@ -110,6 +116,9 @@ def test_page_deskew_engine_param(monkeypatch):
     class _StubEngine:
         def __init__(self, marker):
             self.marker = marker
+
+        def detect(self, **kwargs):  # pragma: no cover - not used here
+            return 0.5
 
         def apply(self, **kwargs):
             img = Image.new("RGB", (self.marker, self.marker), color="white")

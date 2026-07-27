@@ -3,7 +3,7 @@ import importlib.util
 import logging
 from importlib import import_module
 from types import ModuleType
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, cast
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, cast
 
 import numpy as np
 from PIL import Image

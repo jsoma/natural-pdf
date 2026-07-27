@@ -52,14 +52,13 @@ try:
 except ImportError:
     create_original_pdf = None
 # <--- END ADDED
-from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.base import ServiceHostMixin
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ipywidgets import DOMWidget
 
-    from natural_pdf.classification.results import ClassificationResult
     from natural_pdf.core.page import Page
     from natural_pdf.elements.region import Region
     from natural_pdf.elements.text import TextElement  # Ensure TextElement is imported
@@ -1544,50 +1543,27 @@ class ElementCollection(
 
         return base_data
 
-    def viewer(self, title: Optional[str] = None) -> Optional["DOMWidget"]:
+    def viewer(self) -> Any:
         """
-        Creates and returns an interactive ipywidget showing ONLY the elements
+        Creates and returns an interactive viewer showing ONLY the elements
         in this collection on their page background.
 
-        Args:
-            title: Optional title for the viewer window/widget.
-
         Returns:
-            An InteractiveViewerWidget instance or None if elements lack page context.
+            An InteractiveViewerWidget instance.
+
+        Raises:
+            ValueError: If the collection is empty or its elements lack page context.
         """
         if not self.elements:
             raise ValueError("Cannot generate interactive viewer for empty collection.")
 
         # Assume all elements are on the same page and have .page attribute
-        try:
-            page = self.elements[0].page
-            # Check if the page object actually has the method
-            if hasattr(page, "viewer") and callable(page.viewer):
-                final_title = (
-                    title or f"Interactive Viewer for Collection ({len(self.elements)} elements)"
-                )
-                page_viewer = cast(Any, page.viewer)
-                return page_viewer(
-                    elements_to_render=self.elements,
-                    title=final_title,
-                )
-            else:
-                logger.error("Page object is missing the 'viewer' method.")
-                return None
-        except AttributeError:
-            logger.error(
-                "Cannot generate interactive viewer: Elements in collection lack 'page' attribute."
+        page = getattr(self.elements[0], "page", None)
+        if page is None:
+            raise ValueError(
+                "Cannot generate interactive viewer: elements in collection lack a page."
             )
-            return None
-        except IndexError:
-            # Should be caught by the empty check, but just in case
-            logger.error(
-                "Cannot generate interactive viewer: Collection unexpectedly became empty."
-            )
-            return None
-        except Exception as e:
-            logger.error(f"Error creating interactive viewer from collection: {e}", exc_info=True)
-            return None
+        return page.viewer(elements_to_render=self.elements)
 
     # Sentinel value for "no default provided"
     _NO_DEFAULT = object()

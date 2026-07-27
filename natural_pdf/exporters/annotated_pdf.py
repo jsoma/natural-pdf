@@ -264,6 +264,7 @@ def _draw_sidebar_legend(target_doc, target_page, legend_items, sidebar_width):
 def create_annotated_pdf(
     fields: Dict[str, "FieldResult"],
     output_path: str,
+    *,
     pages: str = "all",
     legend_scope: str = "page",
 ) -> None:
@@ -284,13 +285,20 @@ def create_annotated_pdf(
         ValueError: If no citation elements are found.
         ImportError: If pikepdf is not installed.
     """
+    if pages not in {"all", "cited"}:
+        raise ValueError(f"pages must be 'all' or 'cited', got {pages!r}")
     if legend_scope not in {"page", "document"}:
         raise ValueError("legend_scope must be 'page' or 'document'")
 
     pikepdf = require("pikepdf")
     from pikepdf import Array, Dictionary, Name
 
-    from natural_pdf.exporters.region_pdf import _open_source_pdf, _translate_bbox_to_pdf_coords
+    from natural_pdf.exporters.region_pdf import (
+        _close_all,
+        _open_source_pdf,
+        _save_atomically,
+        _translate_bbox_to_pdf_coords,
+    )
     from natural_pdf.extraction.result import build_enriched_label
 
     # Collect highlight info grouped by page
@@ -443,12 +451,8 @@ def create_annotated_pdf(
                 legend_items = list(pf.values())
                 _draw_sidebar_legend(target_doc, target_page, legend_items, SIDEBAR_WIDTH)
 
-        target_doc.save(str(output_path))
+        _save_atomically(target_doc, output_path)
         logger.info(f"Saved annotated PDF to: {output_path}")
 
     finally:
-        for doc in source_cache.values():
-            try:
-                doc.close()
-            except Exception:
-                pass
+        _close_all(source_cache.values())

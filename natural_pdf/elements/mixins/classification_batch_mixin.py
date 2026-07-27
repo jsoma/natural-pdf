@@ -21,6 +21,7 @@ class ClassificationBatchMixin(_HasElements):
     def classify_all(
         self,
         labels: List[str],
+        *,
         model: Optional[str] = None,
         using: Optional[str] = None,
         min_confidence: float = 0.0,
@@ -66,10 +67,12 @@ class ClassificationBatchMixin(_HasElements):
         )
 
         if len(batch_results) != len(original_elements):
-            logger.error(
-                f"Batch classification result count ({len(batch_results)}) mismatch with elements processed ({len(original_elements)})."
+            from natural_pdf.exceptions import ClassificationError
+
+            raise ClassificationError(
+                f"Batch classification returned {len(batch_results)} results "
+                f"for {len(original_elements)} elements."
             )
-            return self
 
         for element, result_obj in zip(original_elements, batch_results):
             if not hasattr(element, "analyses") or element.analyses is None:

@@ -11,8 +11,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-from natural_pdf.selectors.host_mixin import SelectorHostMixin
-
 
 class FlowElement:
     """

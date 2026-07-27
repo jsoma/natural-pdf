@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from natural_pdf.services.registry import register_delegate
-
 
 class DescribeService:
     """Service powering describe/inspect helpers."""
@@ -11,7 +9,6 @@ class DescribeService:
     def __init__(self, context):
         self._context = context
 
-    @register_delegate("describe", "describe")
     def describe(self, host) -> Any:
         from natural_pdf.core.page import Page
         from natural_pdf.describe import (
@@ -41,7 +38,6 @@ class DescribeService:
         }
         return ElementSummary(data, f"{class_name} Summary")
 
-    @register_delegate("describe", "inspect")
     def inspect(self, host, limit: int = 30) -> Any:
         from natural_pdf.core.page import Page
         from natural_pdf.describe import inspect_collection

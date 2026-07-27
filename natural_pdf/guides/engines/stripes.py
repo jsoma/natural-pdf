@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
-from natural_pdf.analyzers.guides.helpers import Bounds, GuidesContext, _bounds_from_object
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.guides.guides_provider import Axis, GuidesDetectionResult, GuidesEngine
+from natural_pdf.guides.helpers import Bounds, GuidesContext, _bounds_from_object
 
 
 def _normalize_stripes_input(

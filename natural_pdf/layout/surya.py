@@ -1,0 +1,388 @@
+# layout_detector_surya.py
+import importlib
+import importlib.util
+import logging
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, cast
+
+from PIL import Image
+
+from natural_pdf.utils.page_context import resolve_page_context
+
+from .base import LayoutDetector
+from .layout_options import BaseLayoutOptions, SuryaLayoutOptions
+
+logger = logging.getLogger(__name__)
+
+
+def _surya_compat_hint() -> str:
+    """Build a version-aware compatibility hint."""
+    tf_ver = ""
+    try:
+        import transformers
+
+        tf_ver = getattr(transformers, "__version__", "")
+    except ImportError:
+        pass
+
+    if tf_ver and tf_ver.startswith("5"):
+        return (
+            f"surya-ocr is not yet compatible with transformers {tf_ver}. "
+            "Surya requires transformers 4.x. If other dependencies need transformers 5, "
+            "you may need to use a different layout engine "
+            "until surya releases a compatible update.\n"
+            'To downgrade: pip install "transformers<5"'
+        )
+    return (
+        "Your version of surya-ocr is not compatible with your installed transformers. "
+        "Try: pip install --upgrade surya-ocr transformers\n"
+        "See: https://github.com/datalab-to/surya/issues/484"
+    )
+
+
+# Check for dependencies
+surya_spec = importlib.util.find_spec("surya")
+LayoutPredictor: Optional[Type[Any]] = None
+TableRecPredictor: Optional[Type[Any]] = None
+expand_bbox: Optional[Callable[[List[float]], List[float]]] = None
+rescale_bbox: Optional[Callable[[List[float], Tuple[int, int], Tuple[int, int]], List[float]]] = (
+    None
+)
+
+if surya_spec:
+    try:
+        surya_common = importlib.import_module("surya.common.util")
+        expand_bbox = cast(
+            Callable[[List[float]], List[float]],
+            getattr(surya_common, "expand_bbox", None),
+        )
+        rescale_bbox = cast(
+            Callable[[List[float], Tuple[int, int], Tuple[int, int]], List[float]],
+            getattr(surya_common, "rescale_bbox", None),
+        )
+        surya_layout = importlib.import_module("surya.layout")
+        LayoutPredictor = cast(Type[Any], getattr(surya_layout, "LayoutPredictor", None))
+
+        try:
+            surya_table_rec = importlib.import_module("surya.table_rec")
+            TableRecPredictor = cast(Type[Any], getattr(surya_table_rec, "TableRecPredictor", None))
+        except (ImportError, Exception) as e:
+            logger.warning(
+                "Could not import Surya TableRecPredictor: %s. "
+                "Table structure recognition will be unavailable.",
+                e,
+            )
+    except ImportError as e:  # pragma: no cover - optional dependency
+        logger.warning(f"Could not import Surya dependencies: {e}")
+else:  # pragma: no cover - optional dependency
+    logger.warning("surya not found. SuryaLayoutDetector will not be available.")
+
+
+class SuryaLayoutDetector(LayoutDetector):
+    """Document layout and table structure detector using Surya models."""
+
+    TYPE_MAP: Dict[str, str] = {
+        "pageheader": "header",
+        "pagefooter": "footer",
+        "sectionheader": "heading",
+        "tableofcontents": "table-of-contents",
+        "picture": "figure",
+        "listitem": "list-item",
+        "textinlinemath": "formula",
+        "mathformula": "formula",
+        "table-cell": "table-cell",
+        # text, caption, heading, title, list, code, form, table,
+        # table-row, table-column pass through as-is (already canonical)
+    }
+
+    def __init__(self):
+        super().__init__()
+        self.supported_classes = {
+            "text",
+            "pageheader",
+            "pagefooter",
+            "sectionheader",
+            "table",
+            "tableofcontents",
+            "picture",
+            "caption",
+            "heading",
+            "title",
+            "list",
+            "listitem",
+            "code",
+            "textinlinemath",
+            "mathformula",
+            "form",
+            "table-row",
+            "table-column",
+        }
+
+    def is_available(self) -> bool:
+        return LayoutPredictor is not None and TableRecPredictor is not None
+
+    def _get_cache_key(self, options: BaseLayoutOptions) -> str:
+        if not isinstance(options, SuryaLayoutOptions):
+            options = SuryaLayoutOptions(device=options.device)
+        device_key = str(options.device).lower() if options.device else "default_device"
+        model_key = options.model_name
+        return f"{self.__class__.__name__}_{device_key}_{model_key}"
+
+    def _load_model_from_options(self, options: BaseLayoutOptions) -> Dict[str, Any]:
+        if not self.is_available():
+            raise RuntimeError(
+                "Surya dependencies (surya.layout) not installed. "
+                "Install with: pip install surya-ocr"
+            )
+        if not isinstance(options, SuryaLayoutOptions):
+            raise TypeError("Incorrect options type provided for Surya model loading.")
+        self.logger.info(f"Loading Surya models (device={options.device})...")
+        models: Dict[str, Any] = {}
+        assert LayoutPredictor is not None
+        try:
+            # Surya >= 0.17: LayoutPredictor requires a FoundationPredictor
+            try:
+                from surya.foundation import FoundationPredictor  # type: ignore[import-untyped]
+
+                foundation = FoundationPredictor()
+                models["layout"] = LayoutPredictor(foundation)
+            except ImportError:
+                models["layout"] = LayoutPredictor()
+
+            if TableRecPredictor is not None:
+                models["table_rec"] = TableRecPredictor()
+            else:
+                self.logger.warning(
+                    "TableRecPredictor not available — table structure recognition disabled."
+                )
+        except TypeError as exc:
+            raise RuntimeError(
+                f"Failed to initialize Surya predictors: {exc}\n{_surya_compat_hint()}"
+            ) from exc
+        except AttributeError as exc:
+            if "pad_token_id" in str(exc) or "rope" in str(exc).lower():
+                raise RuntimeError(_surya_compat_hint()) from exc
+            raise
+        except KeyError as exc:
+            if "rope" in str(exc).lower() or "default" in str(exc).lower():
+                raise RuntimeError(_surya_compat_hint()) from exc
+            raise
+        self.logger.info("Surya layout models loaded.")
+        return models
+
+    def detect(
+        self, image: Image.Image, options: BaseLayoutOptions, context=None
+    ) -> List[Dict[str, Any]]:
+        """Detect layout elements and optionally table structure in an image using Surya."""
+        if not self.is_available():
+            raise RuntimeError(
+                "Surya dependencies (layout and table_rec) not installed. "
+                'Install with: pip install "surya-ocr<0.15"'
+            )
+
+        if not isinstance(options, SuryaLayoutOptions):
+            self.logger.warning(
+                "Received BaseLayoutOptions, expected SuryaLayoutOptions. Using defaults."
+            )
+            options = SuryaLayoutOptions(
+                confidence=options.confidence,
+                classes=options.classes,
+                exclude_classes=options.exclude_classes,
+                device=options.device,
+                extra_args=options.extra_args,
+                recognize_table_structure=True,
+            )
+
+        # Extract page reference from DetectionContext (passed by LayoutAnalyzer)
+        host_obj = context.layout_host if context else None
+        page_ref = None
+        context_bounds: Optional[Tuple[float, float, float, float]] = None
+        if host_obj is not None:
+            try:
+                page_ref, context_bounds = resolve_page_context(host_obj)
+            except ValueError as exc:
+                self.logger.debug("Unable to resolve page context from %s: %s", host_obj, exc)
+
+        if options.recognize_table_structure and (expand_bbox is None or rescale_bbox is None):
+            logger.warning(
+                "Surya table recognition functions unavailable; disabling table recognition."
+            )
+            options.recognize_table_structure = False
+
+        # Validate classes
+        if options.classes:
+            self.validate_classes(options.classes)
+        if options.exclude_classes:
+            self.validate_classes(options.exclude_classes)
+
+        models = self._get_model(options)
+        layout_predictor = cast(Any, models["layout"])
+        table_rec_predictor = cast(Any, models.get("table_rec"))
+        if table_rec_predictor is None and options.recognize_table_structure:
+            self.logger.warning(
+                "TableRecPredictor not loaded; disabling table structure recognition."
+            )
+            options.recognize_table_structure = False
+
+        input_image = image.convert("RGB")
+
+        initial_layout_detections = []
+        tables_to_process = []
+
+        self.logger.debug("Running Surya layout prediction...")
+        layout_predictions = layout_predictor([input_image])
+        self.logger.debug(f"Surya prediction returned {len(layout_predictions)} results.")
+        if not layout_predictions:
+            return []
+        prediction = layout_predictions[0]
+
+        normalized_classes_req, normalized_classes_excl = self._build_class_filters(options)
+
+        for layout_box in prediction.bboxes:
+
+            class_name_orig = layout_box.label
+            normalized_class = self._normalize_class_name(class_name_orig)
+            score = float(layout_box.confidence)
+
+            if score < options.confidence:
+                continue
+            if normalized_classes_req and normalized_class not in normalized_classes_req:
+                continue
+            if normalized_class in normalized_classes_excl:
+                continue
+
+            x_min, y_min, x_max, y_max = map(float, layout_box.bbox)
+            detection_data = {
+                "bbox": (x_min, y_min, x_max, y_max),
+                "class": class_name_orig,
+                "confidence": score,
+                "normalized_class": normalized_class,
+                "source": "layout",
+                "model": "surya",
+            }
+            initial_layout_detections.append(detection_data)
+
+            if options.recognize_table_structure and normalized_class in (
+                "table",
+                "tableofcontents",
+            ):
+                tables_to_process.append(detection_data)
+
+        self.logger.info(
+            f"Surya initially detected {len(initial_layout_detections)} layout elements matching criteria."
+        )
+
+        if not options.recognize_table_structure or not tables_to_process:
+            self.logger.debug(
+                "Skipping Surya table structure recognition (disabled or no tables found)."
+            )
+            return initial_layout_detections
+
+        if page_ref is None:
+            self.logger.warning(
+                "Page reference not available; skipping Surya table structure recognition."
+            )
+            return initial_layout_detections
+
+        self.logger.info(
+            f"Attempting Surya table structure recognition for {len(tables_to_process)} tables..."
+        )
+        high_res_crops: List[Image.Image] = []
+
+        parent_doc = getattr(page_ref, "_parent", None)
+        config = parent_doc._config if parent_doc is not None else {}
+
+        high_res_dpi = config.get("surya_table_rec_dpi", 192)
+        # Use render() for clean image without highlights
+        high_res_page_image = page_ref.render(resolution=high_res_dpi)
+        if high_res_page_image is None:
+            self.logger.warning(
+                "Could not render high-resolution page image; skipping table recognition."
+            )
+            return initial_layout_detections
+
+        # Render high-res page ONCE
+        self.logger.debug(
+            "Rendering page %s at %s DPI for table recognition, size %sx%s.",
+            getattr(page_ref, "number", "unknown"),
+            high_res_dpi,
+            high_res_page_image.width,
+            high_res_page_image.height,
+        )
+
+        source_tables: List[List[float]] = []
+        local_rescale = rescale_bbox
+        local_expand = expand_bbox
+        if local_rescale is None or local_expand is None:
+            self.logger.warning(
+                "Surya table recognition helpers unavailable; skipping structure extraction."
+            )
+            return initial_layout_detections
+
+        for table_detection in tables_to_process:
+            highres_bbox = local_rescale(
+                list(table_detection["bbox"]), image.size, high_res_page_image.size
+            )
+            expanded_bbox = local_expand(highres_bbox)
+            if not isinstance(expanded_bbox, (list, tuple)) or len(expanded_bbox) != 4:
+                self.logger.debug(
+                    "Skipping table detection with invalid expanded bbox: %s", expanded_bbox
+                )
+                continue
+
+            crop_bbox = (
+                float(expanded_bbox[0]),
+                float(expanded_bbox[1]),
+                float(expanded_bbox[2]),
+                float(expanded_bbox[3]),
+            )
+
+            crop = high_res_page_image.crop(crop_bbox)
+            high_res_crops.append(crop)
+            source_tables.append([float(v) for v in crop_bbox])
+
+        if not high_res_crops:
+            self.logger.info("No valid high-resolution table crops generated.")
+            return initial_layout_detections
+
+        structure_detections = []  # Detections relative to std_res input_image
+
+        self.logger.debug(
+            f"Running Surya table recognition on {len(high_res_crops)} high-res images..."
+        )
+        table_predictions = table_rec_predictor(high_res_crops)
+        self.logger.debug(f"Surya table recognition returned {len(table_predictions)} results.")
+
+        def build_row_item(
+            element: Any, source_table_bbox: List[float], label: str
+        ) -> Dict[str, Any]:
+            adjusted_bbox = [
+                float(element.bbox[0] + source_table_bbox[0]),
+                float(element.bbox[1] + source_table_bbox[1]),
+                float(element.bbox[2] + source_table_bbox[0]),
+                float(element.bbox[3] + source_table_bbox[1]),
+            ]
+
+            adjusted_bbox = local_rescale(adjusted_bbox, high_res_page_image.size, image.size)
+
+            return {
+                "bbox": adjusted_bbox,
+                "class": label,
+                "confidence": 1.0,
+                "normalized_class": label,
+                "source": "layout",
+                "model": "surya",
+            }
+
+        for table_pred, source_table_bbox in zip(table_predictions, source_tables):
+            for box in table_pred.rows:
+                structure_detections.append(build_row_item(box, source_table_bbox, "table-row"))
+
+            for box in table_pred.cols:
+                structure_detections.append(build_row_item(box, source_table_bbox, "table-column"))
+
+            for box in table_pred.cells:
+                structure_detections.append(build_row_item(box, source_table_bbox, "table-cell"))
+
+        self.logger.info(f"Added {len(structure_detections)} table structure elements.")
+
+        return initial_layout_detections + structure_detections

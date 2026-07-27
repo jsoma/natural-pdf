@@ -15,9 +15,7 @@ from typing_extensions import Self, overload
 
 from natural_pdf.core.ocr_contracts import (
     CustomOCRCallable,
-    OCRDetectionRequest,
     OCRFunctionRequest,
-    OCRRecognitionRequest,
     OCRRequest,
     normalize_ocr_request,
 )

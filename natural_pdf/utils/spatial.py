@@ -124,17 +124,7 @@ def is_element_in_region(
 
 
 def get_inclusion_strategy() -> InclusionStrategy:
-    """
-    Get the current global inclusion strategy.
-
-    This could be made configurable via environment variable or settings.
-    For now, returns the default strategy.
-
-    Returns:
-        The current inclusion strategy (default: "center")
-    """
-    # Could read from settings or environment
-    # return os.environ.get("NATURAL_PDF_INCLUSION_STRATEGY", "center")
+    """Return the global inclusion strategy ("center")."""
     return "center"
 
 

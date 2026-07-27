@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, Protocol, Union
 
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.engine_provider import get_provider
-from natural_pdf.engine_registry import register_builtin, register_selector_engine
+from natural_pdf.engine_registry import register_builtin
 from natural_pdf.selectors.host_mixin import SupportsSelectorHost
 
 NATIVE_SELECTOR_ENGINE = "native"

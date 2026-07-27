@@ -57,7 +57,7 @@ def test_optional_dependency_groups_match_pyproject_extras():
     dep_info = list_optional_dependencies()
     groups = list_dependency_groups()
 
-    for group_name in ("ai", "export", "paddle"):
+    for group_name in ("ai", "export", "paddle", "quality"):
         expected = _active_extra_deps(extras[group_name])
         actual = {
             package_name.lower().replace("-", "_")
@@ -71,8 +71,12 @@ def test_optional_dependency_groups_match_pyproject_extras():
     assert "rapidocr" in ai
     assert "doclayout_yolo" in ai
     assert "easyocr" not in groups["all"]
-    assert set(groups["all"]) == set(groups["ai"]) | set(groups["export"])
-    assert extras["all"] == ["natural-pdf[ai]", "natural-pdf[export]"]
+    assert set(groups["all"]) == set(groups["ai"]) | set(groups["export"]) | set(groups["quality"])
+    assert extras["all"] == [
+        "natural-pdf[ai]",
+        "natural-pdf[export]",
+        "natural-pdf[quality]",
+    ]
 
 
 def test_npdf_doctor_and_list_are_same_output(monkeypatch, capsys):

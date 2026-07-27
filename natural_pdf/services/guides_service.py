@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Iterable, Optional, Type, Union
 
-from natural_pdf.services.registry import register_delegate
-
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from natural_pdf.analyzers.guides.base import Guides, GuidesContext
 
@@ -25,7 +23,6 @@ class GuidesService:
     def __init__(self, context):
         self._context = context
 
-    @register_delegate("guides", "guides")
     def guides(
         self,
         host,

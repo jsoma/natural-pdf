@@ -4,33 +4,14 @@ from __future__ import annotations
 
 import logging
 import threading
-from dataclasses import dataclass, fields, is_dataclass
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Type, TypedDict, Union, cast
-
-from PIL import Image
+from dataclasses import fields, is_dataclass
+from typing import Any, Callable, Dict, List, Mapping, Optional, Type, Union, cast
 
 from natural_pdf.engine_provider import get_provider
-from natural_pdf.engine_registry import register_builtin, register_ocr_engine
-from natural_pdf.utils.locks import pdf_render_lock
+from natural_pdf.engine_registry import register_builtin
 
 from .engine import OCREngine
-from .engine_chandra import ChandraOCREngine
-from .engine_doctr import DoctrOCREngine
-from .engine_easyocr import EasyOCREngine
-from .engine_paddle import PaddleOCREngine
-from .engine_paddleocr_vl import PaddleOCRVLEngine
-from .engine_rapidocr import RapidOCREngine
-from .engine_surya import SuryaOCREngine
-from .ocr_options import (
-    BaseOCROptions,
-    ChandraOCROptions,
-    DoctrOCROptions,
-    EasyOCROptions,
-    PaddleOCROptions,
-    PaddleOCRVLOptions,
-    RapidOCROptions,
-    SuryaOCROptions,
-)
+from .ocr_options import BaseOCROptions
 
 logger = logging.getLogger(__name__)
 
@@ -38,28 +19,17 @@ logger = logging.getLogger(__name__)
 EngineProviderValue = Union[Callable[[], OCREngine], Type[OCREngine], OCREngine]
 
 
-class EngineRegistryEntry(TypedDict):
-    provider: EngineProviderValue
-    options_class: Optional[Type[BaseOCROptions]]
+def _classic_engine_entries() -> Dict[str, Any]:
+    """Return unified-registry entries that carry an engine provider.
 
+    These are the "classic" OCR engines (including platform-adaptive ones
+    like paddlevl) that EngineProvider manages lifecycles for. VLM shorthand
+    and generic VLM entries have no provider and are dispatched directly by
+    :mod:`natural_pdf.ocr.unified_dispatch`.
+    """
+    from natural_pdf.ocr.unified_dispatch import get_registry
 
-@dataclass
-class OCRRunResult:
-    """Container for OCR execution output."""
-
-    results: List[Dict[str, Any]]
-    image_size: Tuple[int, int]
-
-
-ENGINE_REGISTRY: Dict[str, EngineRegistryEntry] = {
-    "easyocr": {"provider": EasyOCREngine, "options_class": EasyOCROptions},
-    "paddle": {"provider": PaddleOCREngine, "options_class": PaddleOCROptions},
-    "surya": {"provider": SuryaOCREngine, "options_class": SuryaOCROptions},
-    "chandra2": {"provider": ChandraOCREngine, "options_class": ChandraOCROptions},
-    "doctr": {"provider": DoctrOCREngine, "options_class": DoctrOCROptions},
-    "rapidocr": {"provider": RapidOCREngine, "options_class": RapidOCROptions},
-    "paddlevl": {"provider": PaddleOCRVLEngine, "options_class": PaddleOCRVLOptions},
-}
+    return {name: entry for name, entry in get_registry().items() if entry.provider is not None}
 
 
 def _instantiate_engine_provider(provider: EngineProviderValue) -> OCREngine:
@@ -75,34 +45,20 @@ _engine_inference_locks: Dict[str, threading.Lock] = {}
 def _create_engine_instance(engine_name: str) -> OCREngine:
     """Create a new OCR engine instance. EngineProvider handles caching."""
     engine_name = engine_name.lower()
-    if engine_name not in ENGINE_REGISTRY:
-        raise RuntimeError(
-            f"Unknown OCR engine '{engine_name}'. Available: {list(ENGINE_REGISTRY.keys())}"
-        )
+    entries = _classic_engine_entries()
+    if engine_name not in entries:
+        raise RuntimeError(f"Unknown OCR engine '{engine_name}'. Available: {list(entries.keys())}")
 
-    registry_entry = ENGINE_REGISTRY[engine_name]
-    engine_instance = _instantiate_engine_provider(registry_entry["provider"])
+    registry_entry = entries[engine_name]
+    engine_instance = _instantiate_engine_provider(registry_entry.provider)
     if not engine_instance.is_available():
-        install_hints = {
-            "easyocr": "pip install easyocr",
-            "paddle": "pip install paddleocr",
-            "surya": "pip install surya-ocr",
-            "chandra2": "pip install chandra-ocr[hf]",
-            "doctr": "pip install python-doctr",
-            "rapidocr": "pip install rapidocr",
-            "paddlevl": "pip install paddleocr",
-        }
-        hint = install_hints.get(engine_name, f"pip install {engine_name}")
+        hint = registry_entry.install_hint or f"pip install {engine_name}"
         raise RuntimeError(f"OCR engine '{engine_name}' is not available. Install it with: {hint}")
     return engine_instance
 
 
-def _get_engine_inference_lock(engine_name: str) -> threading.Lock:
-    return _engine_inference_locks.setdefault(engine_name, threading.Lock())
-
-
 def register_ocr_engines(provider=None) -> None:
-    for engine_name in ENGINE_REGISTRY.keys():
+    for engine_name in _classic_engine_entries():
 
         def factory(*, _engine_name=engine_name, **_opts):
             # EngineProvider handles caching - we just create the instance
@@ -117,10 +73,6 @@ def get_ocr_options_class(engine_name: str) -> Optional[Type[BaseOCROptions]]:
     normalized_name = _normalize_engine_name(engine_name)
     if normalized_name is None:
         return None
-
-    entry = ENGINE_REGISTRY.get(normalized_name)
-    if entry is not None:
-        return entry.get("options_class")
 
     try:
         from natural_pdf.ocr.unified_dispatch import get_registry
@@ -210,10 +162,6 @@ def normalize_ocr_options(
 def infer_engine_from_options(options: Optional[BaseOCROptions]) -> Optional[str]:
     if options is None:
         return None
-    for name, entry in ENGINE_REGISTRY.items():
-        opt_cls = entry.get("options_class")
-        if opt_cls is not None and isinstance(options, opt_cls):
-            return name
     try:
         from natural_pdf.ocr.unified_dispatch import list_engines
     except Exception:
@@ -417,231 +365,6 @@ def resolve_ocr_device(
     raise TypeError("device must be a string if provided")
 
 
-def run_ocr_apply(
-    *,
-    target: Any,
-    context: Any,
-    engine_name: str,
-    resolution: int,
-    languages: Optional[List[str]] = None,
-    min_confidence: Optional[float] = None,
-    device: Optional[str] = None,
-    detect_only: bool = False,
-    options: Optional[BaseOCROptions] = None,
-    render_kwargs: Optional[Dict[str, Any]] = None,
-) -> OCRRunResult:
-    return _run_ocr_capability(
-        capability="ocr.apply",
-        target=target,
-        context=context,
-        engine_name=engine_name,
-        resolution=resolution,
-        languages=languages,
-        min_confidence=min_confidence,
-        device=device,
-        detect_only=detect_only,
-        options=options,
-        render_kwargs=render_kwargs,
-    )
-
-
-def run_ocr_extract(
-    *,
-    target: Any,
-    context: Any,
-    engine_name: str,
-    resolution: int,
-    languages: Optional[List[str]] = None,
-    min_confidence: Optional[float] = None,
-    device: Optional[str] = None,
-    detect_only: bool = False,
-    options: Optional[BaseOCROptions] = None,
-    render_kwargs: Optional[Dict[str, Any]] = None,
-) -> OCRRunResult:
-    return _run_ocr_capability(
-        capability="ocr.extract",
-        target=target,
-        context=context,
-        engine_name=engine_name,
-        resolution=resolution,
-        languages=languages,
-        min_confidence=min_confidence,
-        device=device,
-        detect_only=detect_only,
-        options=options,
-        render_kwargs=render_kwargs,
-    )
-
-
-def run_ocr_engine(
-    images: Union[Image.Image, List[Image.Image]],
-    *,
-    context: Any,
-    engine_name: str,
-    languages: Optional[List[str]] = None,
-    min_confidence: Optional[float] = None,
-    device: Optional[str] = None,
-    detect_only: bool = False,
-    options: Optional[BaseOCROptions] = None,
-) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
-    """Backward compatible helper that executes OCR on provided image(s)."""
-
-    options = normalize_ocr_options(options, engine_name=engine_name)
-    constructor_options = _provider_constructor_options(
-        engine_name=engine_name,
-        languages=languages,
-        device=device,
-        options=options,
-    )
-    provider = get_provider()
-    try:
-        engine = provider.get(
-            "ocr.extract", context=context, name=engine_name, **constructor_options
-        )
-    except LookupError:
-        engine = provider.get("ocr", context=context, name=engine_name, **constructor_options)
-    lock = _get_engine_inference_lock(engine_name)
-    with lock:
-        return engine.process_image(
-            images=images,
-            languages=languages,
-            min_confidence=min_confidence,
-            device=device,
-            detect_only=detect_only,
-            options=options,
-        )
-
-
-def _run_ocr_capability(
-    *,
-    capability: str,
-    target: Any,
-    context: Any,
-    engine_name: str,
-    resolution: int,
-    languages: Optional[List[str]],
-    min_confidence: Optional[float],
-    device: Optional[str],
-    detect_only: bool,
-    options: Optional[BaseOCROptions],
-    render_kwargs: Optional[Dict[str, Any]],
-) -> OCRRunResult:
-    image = _render_target(target, resolution=resolution, render_kwargs=render_kwargs or {})
-    engine_output = _call_engine(
-        capability=capability,
-        context=context,
-        engine_name=engine_name,
-        image=image,
-        languages=languages,
-        min_confidence=min_confidence,
-        device=device,
-        detect_only=detect_only,
-        options=options,
-    )
-    normalized = _normalize_engine_output(engine_output)
-    return OCRRunResult(results=normalized, image_size=image.size)
-
-
-def _render_target(target: Any, *, resolution: int, render_kwargs: Dict[str, Any]) -> Image.Image:
-    render_fn = getattr(target, "render", None)
-    if not callable(render_fn):
-        raise AttributeError("Target object does not support rendering for OCR operations.")
-    with pdf_render_lock:
-        image = render_fn(resolution=resolution, **render_kwargs)
-    if image is None:
-        raise RuntimeError("Render call returned None for OCR input.")
-    if not isinstance(image, Image.Image):
-        raise TypeError(
-            f"Expected render() to return a PIL Image, received {type(image).__name__} instead."
-        )
-    return image
-
-
-def _call_engine(
-    *,
-    capability: str,
-    context: Any,
-    engine_name: str,
-    image: Image.Image,
-    languages: Optional[List[str]],
-    min_confidence: Optional[float],
-    device: Optional[str],
-    detect_only: bool,
-    options: Optional[BaseOCROptions],
-) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
-    options = normalize_ocr_options(options, engine_name=engine_name)
-    constructor_options = _provider_constructor_options(
-        engine_name=engine_name,
-        languages=languages,
-        device=device,
-        options=options,
-    )
-    provider = get_provider()
-    engine = provider.get(
-        capability,
-        context=context,
-        name=engine_name,
-        **constructor_options,
-    )
-
-    lock = _get_engine_inference_lock(engine_name)
-    with lock:
-        return engine.process_image(
-            image,
-            languages=languages,
-            min_confidence=min_confidence,
-            device=device,
-            detect_only=detect_only,
-            options=options,
-        )
-
-
-def _provider_constructor_options(
-    *,
-    engine_name: str,
-    languages: Optional[List[str]],
-    device: Optional[str],
-    options: Optional[BaseOCROptions],
-) -> Dict[str, Any]:
-    """Build provider kwargs without widening provider-only factory contracts."""
-
-    constructor_options: Dict[str, Any] = {}
-    try:
-        from natural_pdf.ocr.unified_dispatch import get_registry
-
-        entry = get_registry().get(engine_name.strip().lower())
-        public_custom = (
-            entry is not None
-            and entry.engine_type == "classic_provider"
-            and entry.provider_init_options
-        )
-    except Exception:  # pragma: no cover - defensive around optional dispatch imports
-        public_custom = False
-
-    if options is not None or public_custom:
-        constructor_options["options"] = options
-    if public_custom:
-        constructor_options["languages"] = list(languages or ["en"])
-        constructor_options["device"] = device or "auto"
-    return constructor_options
-
-
-def _normalize_engine_output(
-    payload: Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]],
-) -> List[Dict[str, Any]]:
-    if isinstance(payload, list):
-        if payload and isinstance(payload[0], list):
-            # Single image – engines sometimes wrap in an extra list.
-            first = payload[0]
-            if isinstance(first, list):
-                return cast(List[Dict[str, Any]], first)
-        elif payload and isinstance(payload[0], dict):
-            return cast(List[Dict[str, Any]], payload)
-        elif not payload:
-            return []
-    raise TypeError(f"OCR engine returned unsupported result type: {type(payload).__name__}")
-
-
 def cleanup_engine(engine_name: Optional[str] = None) -> int:
     """Clean up OCR engine instances from the provider cache and unified cache."""
     provider = get_provider()
@@ -649,7 +372,7 @@ def cleanup_engine(engine_name: Optional[str] = None) -> int:
     if engine_name:
         targets = [engine_name.lower()]
     else:
-        targets = list(ENGINE_REGISTRY.keys())
+        targets = list(_classic_engine_entries().keys())
         for capability in ("ocr", "ocr.apply", "ocr.extract"):
             targets.extend(provider.list(capability).get(capability, ()))
         targets = list(dict.fromkeys(targets))
@@ -677,10 +400,9 @@ def cleanup_engine(engine_name: Optional[str] = None) -> int:
 def list_available_engines() -> List[str]:
     """List OCR engines that are available (dependencies installed)."""
     available = []
-    for name in ENGINE_REGISTRY:
+    for name, registry_entry in _classic_engine_entries().items():
         try:
-            registry_entry = ENGINE_REGISTRY[name]
-            engine_instance = _instantiate_engine_provider(registry_entry["provider"])
+            engine_instance = _instantiate_engine_provider(registry_entry.provider)
             if engine_instance.is_available():
                 available.append(name)
         except Exception:
@@ -695,10 +417,6 @@ except Exception:  # pragma: no cover
 
 
 __all__ = [
-    "run_ocr_apply",
-    "run_ocr_extract",
-    "run_ocr_engine",
-    "OCRRunResult",
     "register_ocr_engines",
     "cleanup_engine",
     "list_available_engines",

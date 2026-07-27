@@ -8,7 +8,6 @@ initialising a PDF backend.
 from __future__ import annotations
 
 import math
-import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from numbers import Real

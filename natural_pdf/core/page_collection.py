@@ -27,35 +27,25 @@ from natural_pdf.collections.mixins import (
     _SectionHost,
 )
 from natural_pdf.core.context import PDFContext
-from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
+from natural_pdf.core.interfaces import SupportsGeometry
 from natural_pdf.core.ocr_contracts import OCRRequest
 from natural_pdf.core.ocr_mixin import OCRScopeMixin
 from natural_pdf.core.pdf import PDF
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
+from natural_pdf.exporters.original_pdf import create_original_pdf
+from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
-from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.base import ServiceHostMixin
 from natural_pdf.text.contracts import AggregatePolicy
 from natural_pdf.text.facades import AggregateTextMixin
 from natural_pdf.utils.sections import sanitize_sections
 
-try:
-    from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
-except ImportError:
-    create_searchable_pdf = None
-
-# ---> ADDED Import for the new exporter
-try:
-    from natural_pdf.exporters.original_pdf import create_original_pdf
-except ImportError:
-    create_original_pdf = None
-# <--- END ADDED
-
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from natural_pdf.core.highlighting_service import HighlightContext, HighlightingService
+    from natural_pdf.core.highlighting_service import HighlightContext
     from natural_pdf.core.page import Page
     from natural_pdf.core.page_groupby import PageGroupBy
     from natural_pdf.elements.base import Element
@@ -639,6 +629,7 @@ class PageCollection(
 
     def deskew(
         self,
+        *,
         resolution: int = 300,
         detection_resolution: int = 72,
         force_overwrite: bool = False,
@@ -670,7 +661,7 @@ class PageCollection(
             A new PDF object representing the deskewed document.
 
         Raises:
-            ImportError: If 'deskew' or 'img2pdf' libraries are not installed (raised by PDF.deskew).
+            ImportError: If 'img2pdf' is not installed (raised by PDF.deskew).
             ValueError: If `force_overwrite` is False and target pages contain elements (raised by PDF.deskew),
                         or if the collection is empty.
             RuntimeError: If pages lack a parent PDF reference, or the parent PDF lacks the `deskew` method.
@@ -814,12 +805,6 @@ class PageCollection(
         output_path_str = str(output_path_obj)
 
         if ocr:
-            if create_searchable_pdf is None:
-                raise ImportError(
-                    "Saving with ocr=True requires 'pikepdf' and 'Pillow'. "
-                    'Install with: pip install \\"natural-pdf[export]\\"'  # Escaped quotes
-                )
-
             # Check for non-OCR vector elements (provide a warning)
             has_vector_elements = False
             for page in self.pages:
@@ -847,25 +832,11 @@ class PageCollection(
                 )
 
             logger.info(f"Saving searchable PDF (OCR text layer) to: {output_path_str}")
-            try:
-                # Delegate to the searchable PDF exporter function
-                # Pass `self` (the PageCollection instance) as the source
-                create_searchable_pdf(self, output_path_str, dpi=dpi)
-                # Success log is now inside create_searchable_pdf if needed, or keep here
-                # logger.info(f"Successfully saved searchable PDF to: {output_path_str}")
-            except Exception as e:
-                logger.error(f"Failed to create searchable PDF: {e}", exc_info=True)
-                # Re-raise as RuntimeError for consistency, potentially handled in exporter too
-                raise RuntimeError(f"Failed to create searchable PDF: {e}") from e
+            # Delegate to the searchable PDF exporter; it raises ExportError
+            # with page context on failure.
+            create_searchable_pdf(self, output_path_str, dpi=dpi)
 
         elif original:
-            # ---> MODIFIED: Call the new exporter
-            if create_original_pdf is None:
-                raise ImportError(
-                    "Saving with original=True requires 'pikepdf'. "
-                    'Install with: pip install \\"natural-pdf[export]\\"'  # Escaped quotes
-                )
-
             # Check for OCR elements (provide a warning) - keep this check here
             has_ocr_elements = False
             for page in self.pages:

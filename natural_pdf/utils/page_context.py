@@ -9,7 +9,6 @@ from natural_pdf.elements.base import extract_bbox
 
 if TYPE_CHECKING:  # pragma: no cover
     from natural_pdf.core.page import Page
-    from natural_pdf.elements.region import Region
 
 
 def _unique_page(sequence: Sequence["Page"]) -> "Page":

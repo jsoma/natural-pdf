@@ -10,12 +10,10 @@ from typing import (
     Literal,
     Optional,
     Sequence,
-    Set,
     SupportsIndex,
     Tuple,
     Union,
     cast,
-    overload,
 )
 
 from PIL import Image  # Single import for PIL.Image module
@@ -32,8 +30,6 @@ from natural_pdf.text.facades import AggregateTextMixin, SelectedTextMixin
 if TYPE_CHECKING:
     # from PIL.Image import Image as PIL_Image # No longer needed with Image.Image type hint
     from natural_pdf.core.page import Page as PhysicalPage
-    from natural_pdf.elements.base import Element as PhysicalElement
-    from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.region import Region
 
     from .element import FlowElement
@@ -473,8 +469,9 @@ class FlowRegionCollection(
             return within
         if isinstance(within, FlowRegion):
             raise TypeError(
-                "FlowRegionCollection directional 'within' expects a Region; FlowRegion is not supported. "
-                "TODO: support FlowRegion-to-FlowRegion constraints by intersecting constituent pages."
+                "FlowRegionCollection directional 'within' expects a Region; "
+                "FlowRegion is not supported. Pass one of its constituent "
+                "regions (flow_region.constituent_regions) instead."
             )
         raise TypeError(
             f"Unsupported within argument type '{type(within).__name__}' for FlowRegionCollection."

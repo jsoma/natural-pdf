@@ -1,9 +1,7 @@
 import logging
-import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
     Iterable,
     List,
@@ -12,15 +10,12 @@ from typing import (
     Sequence,
     Tuple,
     Union,
-    cast,
 )
 
 if TYPE_CHECKING:
     from PIL.Image import Image as PIL_Image
 
-    from natural_pdf.core.page import Page
     from natural_pdf.core.page_collection import PageCollection
-    from natural_pdf.elements.base import Element as PhysicalElement
     from natural_pdf.elements.element_collection import (
         ElementCollection as PhysicalElementCollection,
     )
@@ -39,7 +34,7 @@ from natural_pdf.flows.collections import FlowElementCollection
 from natural_pdf.flows.element import FlowElement
 from natural_pdf.flows.region import FlowRegion
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
-from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.base import ServiceHostMixin
 from natural_pdf.tables import TableResult
 from natural_pdf.text.contracts import AggregatePolicy
 from natural_pdf.text.facades import AggregateTextMixin

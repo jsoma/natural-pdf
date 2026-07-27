@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional, Protocol, Sequence, Set
 
 import natural_pdf
 from natural_pdf.engine_provider import get_provider
-from natural_pdf.engine_registry import register_builtin, register_structure_engine
+from natural_pdf.engine_registry import register_builtin
 
 logger = logging.getLogger(__name__)
 

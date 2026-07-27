@@ -16,7 +16,7 @@ import logging
 import os
 import warnings
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 

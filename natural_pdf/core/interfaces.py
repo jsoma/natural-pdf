@@ -3,9 +3,7 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
-    Iterable,
     Iterator,
     Optional,
     Protocol,
@@ -18,7 +16,6 @@ from typing import (
 if TYPE_CHECKING:
     from PIL import Image as PILImage
 
-    from natural_pdf.core.element_manager import ElementManager
     from natural_pdf.core.highlighting_service import HighlightingService
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element

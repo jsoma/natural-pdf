@@ -6,8 +6,6 @@ import logging
 import time
 from typing import Any, Dict, List, Optional, Union
 
-from natural_pdf.services.registry import register_delegate
-
 logger = logging.getLogger(__name__)
 
 # Type for engine specs: either a string or a dict with at least "engine" key
@@ -100,7 +98,6 @@ class OcrComparisonService:
     def __init__(self, context):
         self._context = context
 
-    @register_delegate("ocr_comparison", "compare_ocr")
     def compare_ocr(
         self,
         host,

@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping as MappingABC
-from collections.abc import Sequence as SequenceABC
 from contextvars import ContextVar, Token
-from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -13,7 +10,6 @@ from typing import (
     Iterable,
     List,
     Literal,
-    Mapping,
     Optional,
     Protocol,
     Sequence,
@@ -26,16 +22,13 @@ from typing import (
 from pdfplumber.utils import crop_to_bbox
 from pdfplumber.utils.geometry import get_bbox_overlap
 
-# New Imports
-from tqdm.auto import tqdm
-
 from natural_pdf.analyzers.layout.pdfplumber_table_finder import find_text_based_tables
 from natural_pdf.classification.accessors import ClassificationResultAccessorMixin
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.crop_utils import resolve_crop_bbox
-from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
+from natural_pdf.core.exclusion_mixin import ExclusionSpec
 from natural_pdf.core.geometry_mixin import RegionGeometryMixin
-from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
+from natural_pdf.core.interfaces import SupportsSections
 from natural_pdf.core.mixins import SinglePageContextMixin
 from natural_pdf.core.navigation_context import (
     reset_directional_within,
@@ -48,12 +41,9 @@ from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.ocr.replacement import OCRReplaceMode, normalize_ocr_replace_mode
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.selectors.parser import (
-    build_text_contains_selector,
     parse_selector,
     selector_to_filter_func,
 )
-
-# Service modules are loaded lazily via the registry in natural_pdf.services.registry
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.tables.result import TableResult
 from natural_pdf.text.contracts import ExtractedText, SpatialTextInput, TextLayoutOptions
@@ -68,6 +58,9 @@ from natural_pdf.text.operations import (
     word_elements_to_textmap_char_dicts,
 )
 from natural_pdf.text.pipeline import extract_spatial_text
+
+# New Imports
+
 
 # Viewer widget support is lazy-loaded to avoid importing ipywidgets/IPython at startup
 
@@ -1984,8 +1977,29 @@ class Region(
     def correct_ocr(self, *args, **kwargs):
         return self.services.text.correct_ocr(self, *args, **kwargs)
 
-    def classify(self, *args, **kwargs):
-        return self.services.classification.classify(self, *args, **kwargs)
+    def classify(
+        self,
+        labels: List[str],
+        *,
+        model: Optional[str] = None,
+        using: Optional[str] = None,
+        min_confidence: float = 0.0,
+        analysis_key: str = "classification",
+        multi_label: bool = False,
+        **kwargs: Any,
+    ):
+        """Delegate classification to the classification service and return the result."""
+
+        return self.services.classification.classify(
+            self,
+            labels,
+            model=model,
+            using=using,
+            min_confidence=min_confidence,
+            analysis_key=analysis_key,
+            multi_label=multi_label,
+            **kwargs,
+        )
 
     def ask(self, *args, **kwargs):
         return self.services.qa.ask(self, *args, **kwargs)
@@ -2841,104 +2855,73 @@ class Region(
 
         Returns
         -------
-        InteractiveViewerWidgetType | None
-            The widget instance, or ``None`` if *ipywidgets* is not installed or
-            an error occurred during creation.
+        InteractiveViewerWidget
+            The widget instance.
         """
 
-        # Dependency / environment checks (lazy import to avoid startup cost)
-        from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
+        # Lazy import to avoid startup cost
+        import base64
+        from io import BytesIO
 
-        if not _IPYWIDGETS_AVAILABLE or InteractiveViewerWidget is None:
-            logger.error(
-                "Interactive viewer requires 'ipywidgets'. "
-                'Please install with: pip install "ipywidgets>=7.0.0,<10.0.0"'
-            )
-            return None
+        from natural_pdf.widgets.viewer import _DEFAULT_ELEMENT_ATTRIBUTES, InteractiveViewerWidget
 
-        try:
-            # Render region image (cropped) and encode as data URI
-            import base64
-            from io import BytesIO
+        # Render region image (cropped) and encode as data URI
+        # Use unified render() with crop=True to obtain just the region
+        img = self.render(resolution=resolution, crop=True)
+        if img is None:
+            raise ValueError(f"Failed to render image for region {self.bbox} viewer.")
 
-            # Use unified render() with crop=True to obtain just the region
-            img = self.render(resolution=resolution, crop=True)
-            if img is None:
-                logger.error(f"Failed to render image for region {self.bbox} viewer.")
-                return None
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        img_str = base64.b64encode(buf.getvalue()).decode()
+        image_uri = f"data:image/png;base64,{img_str}"
 
-            buf = BytesIO()
-            img.save(buf, format="PNG")
-            img_str = base64.b64encode(buf.getvalue()).decode()
-            image_uri = f"data:image/png;base64,{img_str}"
+        # Prepare element overlay data (coordinates relative to region)
+        scale = resolution / 72.0  # Same convention as page viewer
 
-            # Prepare element overlay data (coordinates relative to region)
-            scale = resolution / 72.0  # Same convention as page viewer
+        # Gather elements intersecting the region
+        region_elements = self.get_elements(apply_exclusions=False)
 
-            # Gather elements intersecting the region
-            region_elements = self.get_elements(apply_exclusions=False)
-
-            # Optionally filter out chars
-            if not include_chars:
-                region_elements = [
-                    el for el in region_elements if str(getattr(el, "type", "")).lower() != "char"
-                ]
-
-            default_attrs = [
-                "text",
-                "fontname",
-                "size",
-                "bold",
-                "italic",
-                "color",
-                "linewidth",
-                "is_horizontal",
-                "is_vertical",
-                "source",
-                "confidence",
-                "label",
-                "model",
-                "upright",
-                "direction",
+        # Optionally filter out chars
+        if not include_chars:
+            region_elements = [
+                el for el in region_elements if str(getattr(el, "type", "")).lower() != "char"
             ]
 
-            if include_attributes:
-                default_attrs.extend([a for a in include_attributes if a not in default_attrs])
+        default_attrs = list(_DEFAULT_ELEMENT_ATTRIBUTES)
+        if include_attributes:
+            default_attrs.extend([a for a in include_attributes if a not in default_attrs])
 
-            elements_json: List[dict] = []
-            for idx, el in enumerate(region_elements):
-                x0 = (el.x0 - self.x0) * scale
-                y0 = (el.top - self.top) * scale
-                x1 = (el.x1 - self.x0) * scale
-                y1 = (el.bottom - self.top) * scale
+        elements_json: List[dict] = []
+        for idx, el in enumerate(region_elements):
+            x0 = (el.x0 - self.x0) * scale
+            y0 = (el.top - self.top) * scale
+            x1 = (el.x1 - self.x0) * scale
+            y1 = (el.bottom - self.top) * scale
 
-                elem_dict = {
-                    "id": idx,
-                    "type": getattr(el, "type", "unknown"),
-                    "x0": round(x0, 2),
-                    "y0": round(y0, 2),
-                    "x1": round(x1, 2),
-                    "y1": round(y1, 2),
-                    "width": round(x1 - x0, 2),
-                    "height": round(y1 - y0, 2),
-                }
+            elem_dict = {
+                "id": idx,
+                "type": getattr(el, "type", "unknown"),
+                "x0": round(x0, 2),
+                "y0": round(y0, 2),
+                "x1": round(x1, 2),
+                "y1": round(y1, 2),
+                "width": round(x1 - x0, 2),
+                "height": round(y1 - y0, 2),
+            }
 
-                for attr_name in default_attrs:
-                    if hasattr(el, attr_name):
-                        val = getattr(el, attr_name)
-                        if not isinstance(val, (str, int, float, bool, list, dict, type(None))):
-                            val = str(val)
-                        elem_dict[attr_name] = val
-                elements_json.append(elem_dict)
+            for attr_name in default_attrs:
+                if hasattr(el, attr_name):
+                    val = getattr(el, attr_name)
+                    if not isinstance(val, (str, int, float, bool, list, dict, type(None))):
+                        val = str(val)
+                    elem_dict[attr_name] = val
+            elements_json.append(elem_dict)
 
-            viewer_data = {"page_image": image_uri, "elements": elements_json}
+        viewer_data = {"page_image": image_uri, "elements": elements_json}
 
-            # Instantiate the widget directly using the prepared data
-            return InteractiveViewerWidget(pdf_data=viewer_data)
-
-        except Exception as e:
-            logger.error(f"Error creating viewer for region {self.bbox}: {e}", exc_info=True)
-            return None
+        # Instantiate the widget directly using the prepared data
+        return InteractiveViewerWidget(pdf_data=viewer_data)
 
     def within(self):
         """Context manager that constrains directional operations to this region.

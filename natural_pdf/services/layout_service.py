@@ -3,8 +3,6 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Iterable, List
 
-from natural_pdf.services.registry import register_delegate
-
 logger = logging.getLogger(__name__)
 
 
@@ -44,7 +42,6 @@ class LayoutService:
     # ------------------------------------------------------------------
     # Delegates
     # ------------------------------------------------------------------
-    @register_delegate("layout", "layout_analyzer")
     def layout_analyzer(self, host):
         from natural_pdf.core.page import Page
 
@@ -52,7 +49,6 @@ class LayoutService:
             raise TypeError("layout_analyzer() is only available on Page objects.")
         return self._get_page_analyzer(host)
 
-    @register_delegate("layout", "analyze_layout")
     def analyze_layout(self, host, *args, **kwargs):
         kwargs = self._normalize_engine_arg(args, kwargs)
         from natural_pdf.core.page import Page

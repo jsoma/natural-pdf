@@ -4,6 +4,70 @@
 
 ### Breaking changes
 
+- Exporters now raise `ExportError` (instead of bare `RuntimeError`) and fail
+  closed: a page that cannot be processed raises with page context instead of
+  being silently skipped (`create_searchable_pdf` accepts `on_error="skip"` to
+  opt back into skipping). Exporter options are keyword-only and validated
+  (`pages`, `legend_scope`, `output_format`, `method`, `dpi`). All PDF outputs
+  are written atomically (temp file + rename). `pikepdf.PasswordError`
+  propagates from `create_original_pdf` as documented.
+- `export_training_data(overwrite=True)` refuses to delete a non-empty
+  directory it did not create (a `.natural-pdf-export` marker file identifies
+  previous exports). CSV metadata columns are now `x0, top, x1, bottom`
+  (previously mislabeled `y0`/`y1` for values that were top/bottom).
+- Classification is fail-closed end to end: malformed or non-numeric provider
+  payloads raise `ClassificationError` instead of silently producing
+  `category=None`; batch paths (`pdf.classify_pages`, `classify_all`) raise on
+  result-count mismatches and on content errors other than genuinely empty
+  documents; an unrecognized model id raises instead of downloading the model
+  to probe its mode; `multi_label=True` is rejected in vision mode (the
+  pipeline silently ignored it). Classification signatures are keyword-only
+  after `labels`, and `Region.classify`/`Element.classify` have real
+  signatures. `device=` now works (it previously crashed with a duplicate
+  keyword or was silently ignored).
+- `to_llm()` validates `detail` and `include_hints` and rejects unknown values;
+  all five builders (page/region/collection/element/pdf) accept `max_chars`
+  and cap output; `pdf.to_llm()` bounds page iteration with `max_pages=50` by
+  default. Layout-extraction failures inside `to_llm` degrade to plain text
+  with an explicit marker instead of raising or silently changing shape.
+- Deskew: `deskew_kwargs` are validated per engine (unknown keys raise);
+  `grayscale=` is honored instead of silently ignored; deskew/skew-detection
+  signatures are keyword-only; a `None` detection result (blank page) is
+  cached instead of re-running the sweep on every access; the projection
+  engine's sweep parameters are tunable via `deskew_kwargs`.
+- Search: `pdf.search()` embedding caches are invalidated when page text
+  changes (previously results were silently stale after `apply_ocr()` etc.);
+  `PDFCollection.search()` reuses per-PDF caches; `top_k < 1` and empty
+  queries raise `ValueError`.
+- Directional methods reject a number in the cross-direction mode slot:
+  `.below(width=200)` / `.above(width=200)` / `.left(height=50)` /
+  `.right(height=50)` now raise `TypeError` (the value was silently treated
+  like `"element"`, producing a plausible but wrong region). `width` on
+  above/below and `height` on left/right are mode strings (`"full"` /
+  `"element"`); the numeric extent parameter is the other one.
+- Removed the inert `tolerance`/`row_tolerance` parameters from
+  `Guides.from_content`, `add_content`, `from_headers_and_row_anchors`, and
+  `page.extract_table_guided` — they were accepted and never used.
+- Removed `page.filter_elements()` (raised `NameError` on any call; nothing
+  used it) and `page.annotate_checkboxes()` plus the `CheckboxAnnotator`
+  widget (its drawn boxes never reached Python; it always returned zero
+  regions).
+- `ElementCollection.viewer()` no longer accepts `title=` and raises
+  `ValueError` for empty collections instead of returning `None`; it now
+  works again (it had been passing arguments a zero-argument `Page.viewer()`
+  rejected, silently returning `None`). `Page.viewer()` accepts `resolution`,
+  `elements_to_render`, and `include_attributes`, shows excluded elements
+  (it is a debugging view), and `Region.viewer()` raises on render failure
+  instead of returning `None`.
+- `extract(engine="vlm")` now honors `client=` and
+  `natural_pdf.set_default_client()` with the same semantics as
+  `apply_ocr(engine="vlm")` (an explicit `client=` is used; the default
+  client applies only when neither `model=` nor `client=` is passed), and
+  runs through the shared VLM client stack — gaining MLX model support and
+  the same processor pixel caps as OCR. The internal `HFVLMAdapter`
+  (`natural_pdf.extraction.vlm_adapter`) was removed; previously a `client=`
+  passed with `engine="vlm"` was silently ignored.
+
 - Text extraction now has four explicit, shared signature families: spatial,
   scalar, ordered aggregate, and selected aggregate. Common options have one
   spelling and meaning on every host that advertises them.
@@ -39,6 +103,31 @@
   behavior.
 
 ### Fixes
+
+- Searchable PDF text layers no longer double-escape `&`, `<`, and `>`
+  (previously every affected word contained literal `&amp;`), and words on the
+  same visual line are grouped into one hOCR line again, restoring inter-word
+  spaces in extracted text. Both regressions are covered by new round-trip
+  tests.
+- `pdf.to_llm()` headers show the source filename (previously always the
+  literal "PDF"); typography summaries count strikethrough text (the counter
+  read a nonexistent attribute and was permanently zero); checkbox regions in
+  `.inspect()` get their `state` column (the guard was unreachable); region
+  stat summaries run for layout-detected regions.
+- The garble-rate diagnostics dependencies (`pyspellchecker`, `langdetect`)
+  are included in `natural-pdf[all]` via the `quality` extra; the feature was
+  previously unreachable on every documented install path. The reported
+  language is labeled "assumed from script" when langdetect did not run.
+- `HocrTransform` deprecation warning no longer crashes the logging machinery;
+  an hOCR file with no `ocr_page` element raises `HocrTransformError` instead
+  of `AttributeError`; URL downloads in exporters have timeouts.
+- `optional_imports` distinguishes installed-but-broken packages from missing
+  ones instead of reporting both as "not installed".
+- `.describe()` reports text sources whenever any text is non-native, so a
+  fully-OCR'd page says so; broken element properties render as `<error>` in
+  `.inspect()` instead of an empty cell; `_color_to_hex` honors its "hex or
+  None" contract with consistent casing.
+
 
 - Text filtering, newline handling, whitespace normalization, stripping, bidi,
   exclusions, and separators now follow one validated order. Aggregate filters

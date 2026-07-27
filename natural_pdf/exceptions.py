@@ -181,8 +181,6 @@ class SearchError(NaturalPDFError):
 
 
 # --- Classification Errors ---
-# Note: Existing ClassificationError in classification/pipelines.py
-# should migrate to inherit from this
 
 
 class ClassificationError(NaturalPDFError):

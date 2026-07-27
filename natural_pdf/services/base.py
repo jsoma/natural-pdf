@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from natural_pdf.core.context import PDFContext
 
@@ -118,10 +118,6 @@ class ServiceHostMixin:
     def _init_service_host(self, context: PDFContext) -> None:
         self._context = context
         self.services = ServiceNamespace(context)
-
-    def _get_service(self, capability: str) -> Any:
-        # Deprecated: Use self.services.[capability] instead
-        return self._context.get_service(capability)
 
 
 def resolve_service(host: Any, capability: str) -> Any:

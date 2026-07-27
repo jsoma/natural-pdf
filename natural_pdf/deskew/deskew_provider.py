@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Protocol, runtime_checkable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -16,11 +16,58 @@ from natural_pdf.utils.locks import pdf_render_lock
 
 logger = logging.getLogger(__name__)
 
+# Correction angles at or below this magnitude (degrees) are treated as "not
+# skewed" and skip the rotation entirely — rotating by a few hundredths of a
+# degree only degrades the raster without visibly straightening anything.
+NO_SKEW_EPSILON_DEG = 0.05
+
+
+@runtime_checkable
+class DeskewEngine(Protocol):
+    """Structural interface for deskew engines.
+
+    ``detect`` returns the correction angle in degrees, ``0.0`` when content
+    was found but is not significantly skewed, or ``None`` when detection was
+    not possible (e.g. a blank page).
+    """
+
+    def detect(
+        self,
+        *,
+        target: Any,
+        context: Any,
+        resolution: int,
+        grayscale: bool,
+        deskew_kwargs: Dict[str, Any],
+    ) -> Optional[float]: ...
+
+    def apply(
+        self,
+        *,
+        target: Any,
+        context: Any,
+        resolution: int,
+        angle: Optional[float],
+        detection_resolution: int,
+        grayscale: bool,
+        deskew_kwargs: Dict[str, Any],
+    ) -> "DeskewApplyResult": ...
+
 
 @dataclass
 class DeskewApplyResult:
-    image: Optional[Image.Image]
+    image: Image.Image
     angle: Optional[float]
+
+
+def _validate_deskew_kwargs(engine_label: str, kwargs: Dict[str, Any], allowed: set) -> None:
+    """Reject unknown tuning keys instead of silently discarding typos."""
+    unknown = set(kwargs) - allowed
+    if unknown:
+        raise ValueError(
+            f"Unknown deskew_kwargs for {engine_label}: {sorted(unknown)}. "
+            f"Supported keys: {sorted(allowed)}"
+        )
 
 
 def register_deskew_engines(provider=None) -> None:
@@ -54,6 +101,8 @@ def run_deskew_detect(
         engine = provider.get("deskew.detect", context=context, name=name)
     except LookupError:
         engine = provider.get("deskew", context=context, name=name)
+    if not isinstance(engine, DeskewEngine):
+        raise TypeError(f"Deskew engine '{name}' does not implement the DeskewEngine interface")
     return engine.detect(
         target=target,
         context=context,
@@ -80,6 +129,8 @@ def run_deskew_apply(
         engine = provider.get("deskew.apply", context=context, name=name)
     except LookupError:
         engine = provider.get("deskew", context=context, name=name)
+    if not isinstance(engine, DeskewEngine):
+        raise TypeError(f"Deskew engine '{name}' does not implement the DeskewEngine interface")
     return engine.apply(
         target=target,
         context=context,
@@ -102,6 +153,15 @@ class ProjectionProfileEngine:
     +3° counter-clockwise the return value will be approximately -3°.
     """
 
+    #: Tuning keys accepted via deskew_kwargs, with defaults.
+    SUPPORTED_KWARGS = {
+        "downsample_max_dim",  # px cap for the working image (default 600)
+        "coarse_range_deg",  # coarse sweep half-range (default 10.0)
+        "coarse_step_deg",  # coarse sweep step (default 0.5)
+        "fine_range_deg",  # fine sweep half-range around coarse best (default 1.0)
+        "fine_step_deg",  # fine sweep step (default 0.1)
+    }
+
     def detect(
         self,
         *,
@@ -113,16 +173,23 @@ class ProjectionProfileEngine:
     ) -> Optional[float]:
         from scipy.ndimage import rotate as ndi_rotate
 
-        image = _render_target(target, resolution=resolution, grayscale=True)
+        _validate_deskew_kwargs("ProjectionProfileEngine", deskew_kwargs, self.SUPPORTED_KWARGS)
+        downsample_max_dim = deskew_kwargs.get("downsample_max_dim", 600)
+        coarse_range_deg = deskew_kwargs.get("coarse_range_deg", 10.0)
+        coarse_step_deg = deskew_kwargs.get("coarse_step_deg", 0.5)
+        fine_range_deg = deskew_kwargs.get("fine_range_deg", 1.0)
+        fine_step_deg = deskew_kwargs.get("fine_step_deg", 0.1)
+
+        image = _render_target(target, resolution=resolution, grayscale=grayscale)
         img_np: NDArray[np.uint8] = np.array(image)
-        # Ensure 2-D even if render returned an RGB image
+        # Ensure 2-D even if render returned an RGB image (grayscale=False)
         if img_np.ndim == 3:
             img_np = img_np.mean(axis=2).astype(np.uint8)
 
         # Downsample for speed during coarse sweep
         max_dim = max(img_np.shape[:2])
-        if max_dim > 600:
-            scale = 600.0 / max_dim
+        if max_dim > downsample_max_dim:
+            scale = float(downsample_max_dim) / max_dim
             from PIL import Image as _Img
 
             small = image.resize(
@@ -130,6 +197,8 @@ class ProjectionProfileEngine:
                 _Img.Resampling.BILINEAR,
             )
             work = np.array(small)
+            if work.ndim == 3:
+                work = work.mean(axis=2).astype(np.uint8)
         else:
             work = img_np
 
@@ -137,8 +206,10 @@ class ProjectionProfileEngine:
         threshold = np.mean(work)
         binary = (work < threshold).astype(np.float32)
 
-        # Coarse sweep: -10 to +10 degrees, 0.5-degree steps
-        coarse_range = np.arange(-10.0, 10.5, 0.5)
+        # Coarse sweep
+        coarse_range = np.arange(
+            -coarse_range_deg, coarse_range_deg + coarse_step_deg, coarse_step_deg
+        )
         best_angle = 0.0
         best_var = -1.0
         for angle in coarse_range:
@@ -153,8 +224,12 @@ class ProjectionProfileEngine:
         if best_var <= 0:
             return None
 
-        # Fine sweep: ±1 degree around coarse estimate, 0.1-degree steps
-        fine_range = np.arange(best_angle - 1.0, best_angle + 1.05, 0.1)
+        # Fine sweep around the coarse estimate
+        fine_range = np.arange(
+            best_angle - fine_range_deg,
+            best_angle + fine_range_deg + fine_step_deg / 2,
+            fine_step_deg,
+        )
         for angle in fine_range:
             rotated = ndi_rotate(binary, angle, reshape=False, order=0)
             row_sums = rotated.sum(axis=1)
@@ -198,6 +273,14 @@ class HoughEngine:
     :class:`ProjectionProfileEngine`).
     """
 
+    #: Tuning keys accepted via deskew_kwargs, with defaults.
+    SUPPORTED_KWARGS = {
+        "sigma",  # Canny gaussian sigma (default 3.0)
+        "num_peaks",  # max Hough peaks considered (default 20)
+        "max_skew_deg",  # half-range of the angle sweep (default 15.0)
+        "min_deviation_deg",  # below this mean deviation, report 0.0 (default 1.0)
+    }
+
     def detect(
         self,
         *,
@@ -210,9 +293,11 @@ class HoughEngine:
         from skimage.feature import canny
         from skimage.transform import hough_line, hough_line_peaks
 
-        image = _render_target(target, resolution=resolution, grayscale=True)
+        _validate_deskew_kwargs("HoughEngine", deskew_kwargs, self.SUPPORTED_KWARGS)
+
+        image = _render_target(target, resolution=resolution, grayscale=grayscale)
         img_np: NDArray[np.uint8] = np.array(image)
-        # Ensure 2-D for Canny
+        # Ensure 2-D for Canny (grayscale=False renders RGB)
         if img_np.ndim == 3:
             img_np = img_np.mean(axis=2).astype(np.uint8)
 
@@ -301,7 +386,7 @@ def _shared_apply(
             deskew_kwargs=deskew_kwargs,
         )
     image: Image.Image = _render_target(target, resolution=resolution, grayscale=False)
-    if rotation_angle is None or abs(rotation_angle) <= 0.05:
+    if rotation_angle is None or abs(rotation_angle) <= NO_SKEW_EPSILON_DEG:
         return DeskewApplyResult(image=image, angle=rotation_angle)
     if image.mode == "RGB":
         fill = (255, 255, 255)
@@ -333,7 +418,7 @@ def _render_target(target: Any, *, resolution: int, grayscale: bool) -> Image.Im
     return image
 
 
-try:  # Register built-in engines
-    register_deskew_engines()
-except Exception:  # pragma: no cover
-    logger.exception("Failed to register deskew engines")
+# Register built-in engines at import time. A failure here must surface
+# immediately — swallowing it turns every later deskew call into an opaque
+# LookupError.
+register_deskew_engines()

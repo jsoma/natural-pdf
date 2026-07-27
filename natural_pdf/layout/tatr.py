@@ -1,0 +1,429 @@
+# layout_detector_tatr.py
+import importlib.util
+import logging
+from typing import Any, Dict, List
+
+from PIL import Image, ImageEnhance
+
+# Assuming base class and options are importable
+from .base import LayoutDetector
+from .layout_options import BaseLayoutOptions, TATRLayoutOptions
+
+logger = logging.getLogger(__name__)
+
+# Check for dependencies
+torch_spec = importlib.util.find_spec("torch")
+torchvision_spec = importlib.util.find_spec("torchvision")
+transformers_spec = importlib.util.find_spec("transformers")
+torch: Any = None
+transforms: Any = None
+AutoModelForObjectDetection: Any = None
+PretrainedConfig: Any = None
+TableTransformerConfig: Any = None
+
+if torch_spec and torchvision_spec and transformers_spec:
+    try:
+        import torch
+        from torchvision import transforms  # type: ignore[import]
+        from transformers import (
+            AutoModelForObjectDetection,
+            PretrainedConfig,
+            TableTransformerConfig,
+        )
+    except ImportError as e:
+        logger.warning(
+            f"Could not import TATR dependencies (torch, torchvision, transformers): {e}"
+        )
+else:
+    logger.warning(
+        "torch, torchvision, or transformers not found. TableTransformerDetector will not be available."
+    )
+
+
+class TableTransformerDetector(LayoutDetector):
+    """Table structure detector using Microsoft's Table Transformer (TATR) models."""
+
+    TYPE_MAP: Dict[str, str] = {
+        # TATR types are already canonical table-* names; identity mappings.
+        "table": "table",
+        "table-row": "table-row",
+        "table-column": "table-column",
+        "table-column-header": "table-column-header",
+        "table-projected-row-header": "table-projected-row-header",
+        "table-spanning-cell": "table-spanning-cell",
+    }
+
+    # Custom resize transform (keep as nested class or move outside)
+    class MaxResize(object):
+        def __init__(self, max_size=2000):
+            self.max_size = max_size
+
+        def __call__(self, image):
+            width, height = image.size
+            current_max_size = max(width, height)
+            scale = self.max_size / current_max_size
+            # Use LANCZOS for resizing
+            resized_image = image.resize(
+                (int(round(scale * width)), int(round(scale * height))), Image.Resampling.LANCZOS
+            )
+            return resized_image
+
+    def __init__(self):
+        super().__init__()
+        self.supported_classes = {
+            "table",
+            "table row",
+            "table column",
+            "table column header",
+            "table projected row header",
+            "table spanning cell",  # Add others if supported by models used
+        }
+        # Models are loaded via _get_model
+
+    def is_available(self) -> bool:
+        """Check if dependencies are installed."""
+        return (
+            torch is not None and transforms is not None and AutoModelForObjectDetection is not None
+        )
+
+    def _get_cache_key(self, options: BaseLayoutOptions) -> str:
+        """Generate cache key based on model IDs and device."""
+        if not isinstance(options, TATRLayoutOptions):
+            options = TATRLayoutOptions(device=options.device)
+
+        device_key = str(options.device).lower()
+        det_model_key = options.detection_model.replace("/", "_")
+        struct_model_key = options.structure_model.replace("/", "_")
+        return f"{self.__class__.__name__}_{device_key}_{det_model_key}_{struct_model_key}"
+
+    def _load_model_from_options(self, options: BaseLayoutOptions) -> Dict[str, Any]:
+        """Load the TATR detection and structure models."""
+        if not self.is_available():
+            raise RuntimeError(
+                "TATR dependencies (torch, torchvision, transformers) not installed."
+            )
+        if not isinstance(options, TATRLayoutOptions):
+            raise TypeError("Incorrect options type provided for TATR model loading.")
+
+        device = options.device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.logger.info(
+            f"Loading TATR models: Detection='{options.detection_model}', Structure='{options.structure_model}' onto device='{device}'"
+        )
+        try:
+            detection_model = self._load_model_with_sanitized_config(
+                options.detection_model, revision="no_timm"  # Important revision for some versions
+            ).to(device)
+            structure_model = self._load_model_with_sanitized_config(options.structure_model).to(
+                device
+            )
+            # Build transforms once per model load
+            detection_transform = transforms.Compose(
+                [
+                    self.MaxResize(options.max_detection_size),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                ]
+            )
+            structure_transform = transforms.Compose(
+                [
+                    self.MaxResize(options.max_structure_size),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                ]
+            )
+            self.logger.info("TATR models loaded.")
+            return {
+                "detection": detection_model,
+                "structure": structure_model,
+                "detection_transform": detection_transform,
+                "structure_transform": structure_transform,
+            }
+        except Exception as e:
+            self.logger.error(f"Failed to load TATR models: {e}", exc_info=True)
+            raise
+
+    def _load_model_with_sanitized_config(self, model_name: str, **kwargs):
+        """Load a TATR model, normalizing legacy table-transformer config values.
+
+        The upstream Microsoft Table Transformer configs currently expose
+        ``"dilation": null``. Newer Transformers/Hugging Face strict config
+        validation expects a bool, so direct ``from_pretrained`` can fail before
+        weights load. Reading and fixing the config first keeps the model
+        compatible without changing inference behavior.
+        """
+
+        config = self._load_sanitized_table_transformer_config(model_name, **kwargs)
+        if config is None:
+            return AutoModelForObjectDetection.from_pretrained(model_name, **kwargs)
+        return AutoModelForObjectDetection.from_pretrained(model_name, config=config, **kwargs)
+
+    def _load_sanitized_table_transformer_config(self, model_name: str, **kwargs):
+        if PretrainedConfig is None or TableTransformerConfig is None:
+            return None
+
+        try:
+            config_dict, _ = PretrainedConfig.get_config_dict(model_name, **kwargs)
+        except Exception:
+            self.logger.debug("Could not pre-load TATR config for %s", model_name, exc_info=True)
+            return None
+
+        if config_dict.get("model_type") != "table-transformer":
+            return None
+
+        if config_dict.get("dilation") is None:
+            config_dict["dilation"] = False
+
+        return TableTransformerConfig(**config_dict)
+
+    # --- Helper methods (box_cxcywh_to_xyxy, rescale_bboxes, outputs_to_objects) ---
+    # Keep these as defined in the original tatr.txt file, making them instance methods
+    def box_cxcywh_to_xyxy(self, x):
+        x_c, y_c, w, h = x.unbind(-1)
+        b = [(x_c - 0.5 * w), (y_c - 0.5 * h), (x_c + 0.5 * w), (y_c + 0.5 * h)]
+        return torch.stack(b, dim=1)
+
+    def rescale_bboxes(self, out_bbox, size):
+        img_w, img_h = size
+        boxes = self.box_cxcywh_to_xyxy(out_bbox)
+        boxes = boxes * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32).to(
+            out_bbox.device
+        )  # Ensure tensor on correct device
+        return boxes
+
+    def outputs_to_objects(self, outputs, img_size, id2label):
+        logits = outputs.logits
+        bboxes = outputs.pred_boxes
+        # Use softmax activation function
+        prob = logits.softmax(-1)[0, :, :-1]  # Exclude the "no object" class
+        scores, labels = prob.max(-1)
+
+        # Convert to absolute coordinates
+        img_w, img_h = img_size
+        boxes = self.rescale_bboxes(bboxes[0, ...], (img_w, img_h))  # Pass tuple size
+
+        # Move results to CPU for list comprehension
+        scores = scores.cpu().tolist()
+        labels = labels.cpu().tolist()
+        boxes = boxes.cpu().tolist()
+
+        objects = []
+        for score, label_idx, bbox in zip(scores, labels, boxes):
+            class_label = id2label.get(label_idx, "unknown")  # Use get with default
+            if class_label != "no object" and class_label != "unknown":
+                objects.append(
+                    {
+                        "label": class_label,
+                        "score": float(score),
+                        "bbox": [round(float(c), 2) for c in bbox],  # Round coordinates
+                    }
+                )
+        return objects
+
+    def preprocess_image(self, image: Image.Image, enhance_contrast: float = 1.5) -> Image.Image:
+        """Enhance the image to improve table structure detection.
+
+        Args:
+            image: The input PIL image
+            enhance_contrast: Contrast enhancement factor (1.0 = no change)
+
+        Returns:
+            Enhanced PIL image
+        """
+        # Convert to grayscale and back to RGB for better structure detection
+        if image.mode != "L":  # If not already grayscale
+            grayscale = image.convert("L")
+            enhanced = ImageEnhance.Contrast(grayscale).enhance(enhance_contrast)
+            return enhanced.convert("RGB")  # Convert back to RGB for model input
+        else:
+            # Just enhance contrast if already grayscale
+            enhanced = ImageEnhance.Contrast(image).enhance(enhance_contrast)
+            return enhanced.convert("RGB")
+
+    # --- End Helper Methods ---
+
+    def detect(
+        self, image: Image.Image, options: BaseLayoutOptions, context=None
+    ) -> List[Dict[str, Any]]:
+        """Detect tables and their structure in an image."""
+        if not self.is_available():
+            raise RuntimeError(
+                "TATR dependencies (torch, torchvision, transformers) not installed."
+            )
+
+        if not isinstance(options, TATRLayoutOptions):
+            self.logger.warning(
+                "Received BaseLayoutOptions, expected TATRLayoutOptions. Using defaults."
+            )
+            options = TATRLayoutOptions(
+                confidence=options.confidence,
+                classes=options.classes,
+                exclude_classes=options.exclude_classes,
+                device=options.device,
+                extra_args=options.extra_args,
+            )
+
+        self.validate_classes(options.classes or [])
+        if options.exclude_classes:
+            self.validate_classes(options.exclude_classes)
+
+        models = self._get_model(options)
+        detection_model = models["detection"]
+        structure_model = models["structure"]
+        detection_transform = models["detection_transform"]
+        structure_transform = models["structure_transform"]
+        device = options.device or ("cuda" if torch.cuda.is_available() else "cpu")
+
+        # Use image preprocessing for better structure detection
+        enhance_contrast = (
+            options.enhance_contrast
+            if hasattr(options, "enhance_contrast")
+            else options.extra_args.get("enhance_contrast", 1.5)
+        )
+        processed_image = self.preprocess_image(image, enhance_contrast)
+
+        # --- Detect Tables ---
+        self.logger.debug("Running TATR table detection...")
+        pixel_values = detection_transform(processed_image).unsqueeze(0).to(device)
+        with torch.no_grad():
+            outputs = detection_model(pixel_values)
+
+        id2label_det = detection_model.config.id2label
+        id2label_det[detection_model.config.num_labels] = "no object"  # Add no object class
+        tables = self.outputs_to_objects(outputs, image.size, id2label_det)
+        tables = [
+            t for t in tables if t["score"] >= options.confidence and t["label"] == "table"
+        ]  # Filter for tables
+        self.logger.debug(f"Detected {len(tables)} table regions.")
+
+        all_detections = []
+
+        normalized_classes_req, normalized_classes_excl = self._build_class_filters(options)
+
+        if normalized_classes_req is None or "table" in normalized_classes_req:
+            if "table" not in normalized_classes_excl:
+                for table in tables:
+                    all_detections.append(
+                        {
+                            "bbox": tuple(table["bbox"]),
+                            "class": "table",
+                            "confidence": float(table["score"]),
+                            "normalized_class": "table",
+                            "source": "layout",
+                            "model": "tatr",
+                        }
+                    )
+
+        # --- Process Structure ---
+        structure_class_names = {
+            "table row",
+            "table column",
+            "table column header",
+            "table projected row header",
+            "table spanning cell",
+        }
+        normalized_structure_classes = {
+            self._normalize_class_name(c) for c in structure_class_names
+        }
+
+        needed_structure = False
+        if normalized_classes_req is None:  # If no specific classes requested
+            needed_structure = any(
+                norm_cls not in normalized_classes_excl for norm_cls in normalized_structure_classes
+            )
+        else:  # Specific classes requested
+            needed_structure = any(
+                norm_cls in normalized_classes_req for norm_cls in normalized_structure_classes
+            )
+
+        if needed_structure and tables:
+            self.logger.debug("Running TATR structure recognition...")
+            id2label_struct = structure_model.config.id2label
+            id2label_struct[structure_model.config.num_labels] = "no object"
+
+            for table in tables:
+                x_min, y_min, x_max, y_max = map(int, table["bbox"])
+                # Ensure coordinates are within image bounds
+                x_min, y_min = max(0, x_min), max(0, y_min)
+                x_max, y_max = min(image.width, x_max), min(image.height, y_max)
+                if x_max <= x_min or y_max <= y_min:
+                    continue  # Skip invalid crop
+
+                # Process the cropped table for better structure detection
+                cropped_table = image.crop((x_min, y_min, x_max, y_max))
+                if cropped_table.width == 0 or cropped_table.height == 0:
+                    continue  # Skip empty crop
+
+                processed_crop = self.preprocess_image(cropped_table, enhance_contrast)
+                pixel_values_struct = structure_transform(processed_crop).unsqueeze(0).to(device)
+
+                with torch.no_grad():
+                    outputs_struct = structure_model(pixel_values_struct)
+
+                structure_elements = self.outputs_to_objects(
+                    outputs_struct, cropped_table.size, id2label_struct
+                )
+
+                # Reduce confidence threshold specifically for columns to catch more
+                column_threshold = None
+                if hasattr(options, "column_threshold") and options.column_threshold is not None:
+                    column_threshold = options.column_threshold
+                else:
+                    column_threshold = options.extra_args.get(
+                        "column_threshold", options.confidence * 0.8
+                    )
+
+                structure_elements = [
+                    e
+                    for e in structure_elements
+                    if (
+                        e["score"] >= column_threshold
+                        if "column" in e["label"]
+                        else e["score"] >= options.confidence
+                    )
+                ]
+
+                for element in structure_elements:
+                    element_class_orig = element["label"]
+                    normalized_class = self._normalize_class_name(element_class_orig)
+
+                    # Apply class filtering
+                    if normalized_classes_req and normalized_class not in normalized_classes_req:
+                        continue
+                    if normalized_class in normalized_classes_excl:
+                        continue
+
+                    # Adjust coordinates
+                    ex0, ey0, ex1, ey1 = element["bbox"]
+                    adj_bbox = (ex0 + x_min, ey0 + y_min, ex1 + x_min, ey1 + y_min)
+
+                    all_detections.append(
+                        {
+                            "bbox": adj_bbox,
+                            "class": element_class_orig,
+                            "confidence": float(element["score"]),
+                            "normalized_class": normalized_class,
+                            "source": "layout",
+                            "model": "tatr",
+                        }
+                    )
+            self.logger.debug(f"Added {len(all_detections) - len(tables)} structure elements.")
+
+        self.logger.info(f"TATR detected {len(all_detections)} layout elements matching criteria.")
+        return all_detections
+
+    def post_process_regions(self, regions, options):
+        """Create cells for detected table regions if requested."""
+        if not isinstance(options, TATRLayoutOptions) or not options.create_cells:
+            return
+        self.logger.info("Option create_cells=True: attempting cell creation for TATR tables...")
+        for region in regions:
+            if (
+                getattr(region, "model", None) == "tatr"
+                and getattr(region, "region_type", None) == "table"
+            ):
+                try:
+                    region.create_cells()
+                except Exception as e:
+                    self.logger.warning(
+                        "Error calling create_cells for table region %s: %s", region.bbox, e
+                    )

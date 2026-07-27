@@ -4,7 +4,7 @@ import logging
 import re
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Type, Union, cast
+from typing import Any, Dict, List, Optional, Sequence, Type, Union
 
 from pydantic import BaseModel, Field, create_model
 
@@ -18,9 +18,12 @@ from natural_pdf.services._model_support import (
     VISION_MODE_REQUIREMENTS,
     VLM_INSTALL_MESSAGE,
 )
-from natural_pdf.services.registry import register_delegate
 
 DEFAULT_STRUCTURED_KEY = "structured"
+
+#: Local model used by ``extract(engine="vlm")`` when no ``model=``/``client=``
+#: is passed and no default client is configured.
+DEFAULT_VLM_MODEL = "Qwen/Qwen3-VL-2B-Instruct"
 
 _PROVENANCE_INCOMPATIBLE_TEXT_OPTIONS = frozenset(
     {"newlines", "whitespace", "strip", "bidi", "content_filter"}
@@ -41,7 +44,6 @@ class ExtractionService:
     def __init__(self, context):
         self._context = context
 
-    @register_delegate("extraction", "extract")
     def extract(
         self,
         host,
@@ -109,6 +111,7 @@ class ExtractionService:
                 analysis_key=key,
                 prompt=prompt,
                 model=model,
+                client=client,
                 **kwargs,
             )
         else:
@@ -337,6 +340,19 @@ class ExtractionService:
 
         host.analyses[analysis_key] = result
 
+    @staticmethod
+    def _vlm_schema_prompt(schema: Type[BaseModel]) -> str:
+        """Build a system prompt instructing the model to return JSON matching *schema*."""
+        import json
+
+        schema_json = schema.model_json_schema()
+        return (
+            "You are a document extraction assistant. "
+            "Return ONLY valid JSON matching this schema:\n"
+            f"```json\n{json.dumps(schema_json, indent=2)}\n```\n"
+            "Do not include any text before or after the JSON."
+        )
+
     def _perform_vlm_extraction(
         self,
         *,
@@ -345,13 +361,23 @@ class ExtractionService:
         analysis_key: str,
         prompt: Optional[str],
         model: Optional[str],
+        client: Any = None,
         **kwargs,
     ) -> None:
-        """Run extraction using a local HuggingFace VLM."""
+        """Run extraction through the shared VLM client stack.
+
+        Mirrors ``apply_ocr(engine="vlm")`` client semantics: an explicitly
+        passed ``client=`` is honored; the module-level default client
+        (``natural_pdf.set_default_client()``) applies only when both
+        ``model`` and ``client`` are ``None``; otherwise the local model
+        path is used (defaulting to :data:`DEFAULT_VLM_MODEL`).
+        """
         try:
-            from natural_pdf.extraction.vlm_adapter import get_vlm_adapter
+            import natural_pdf.core.vlm_client as vlm_client
         except ImportError as exc:
             raise RuntimeError(VLM_INSTALL_MESSAGE) from exc
+
+        from natural_pdf.extraction.json_parser import parse_json_response
 
         # Get image from host
         renderer = getattr(host, "render", None)
@@ -360,37 +386,47 @@ class ExtractionService:
         resolution = kwargs.pop("resolution", 150)
         image = renderer(resolution=resolution)
 
-        adapter = get_vlm_adapter(model_name=model)
-        effective_prompt = prompt or (
+        if model is None and client is None:
+            default_client, default_model = vlm_client.get_default_client()
+            if default_client is None:
+                model = DEFAULT_VLM_MODEL
+            else:
+                # Leave client=None: vlm_client.generate() falls back to the
+                # module-level default client itself (same as OCR dispatch).
+                model = default_model
+
+        user_prompt = prompt or (
             f"Extract the information corresponding to the fields in the "
             f"{schema.__name__} schema from this document image."
         )
+        full_prompt = f"{self._vlm_schema_prompt(schema)}\n\n{user_prompt}"
 
-        from natural_pdf.core.vlm_client import DEFAULT_VLM_MAX_TOKENS
+        max_new_tokens = kwargs.pop("max_new_tokens", vlm_client.DEFAULT_VLM_MAX_TOKENS)
 
-        max_new_tokens = kwargs.pop("max_new_tokens", DEFAULT_VLM_MAX_TOKENS)
-
+        raw_response: Optional[str] = None
         try:
-            parsed = adapter.generate(
-                image=image,
-                prompt=effective_prompt,
-                schema=schema,
+            raw_response = vlm_client.generate(
+                image,
+                full_prompt,
+                model=model,
+                client=client,
                 max_new_tokens=max_new_tokens,
             )
+            parsed = parse_json_response(raw_response, schema)
             result = StructuredDataResult(
                 data=parsed,
                 success=True,
                 error_message=None,
-                raw_output=None,
-                model_used=adapter.model_name,
+                raw_output=raw_response,
+                model_used=model,
             )
         except Exception as exc:
             result = StructuredDataResult(
                 data=None,
                 success=False,
                 error_message=str(exc),
-                raw_output=None,
-                model_used=adapter.model_name,
+                raw_output=raw_response,
+                model_used=model,
             )
 
         host.analyses[analysis_key] = result
@@ -417,15 +453,7 @@ class ExtractionService:
 
         from natural_pdf.extraction.citations import (
             add_line_numbers,
-            build_char_to_element_map,
-            build_extended_prompt,
-            build_extended_schema,
-            build_meta_prompt,
-            build_meta_schema,
             normalize_confidence_config,
-            resolve_citations,
-            resolve_source_lines_to_text,
-            split_extended_result,
         )
 
         # Normalize confidence config
@@ -957,7 +985,6 @@ class ExtractionService:
                 clamped[field_name] = val
         return clamped
 
-    @register_delegate("extraction", "extracted")
     def extracted(
         self,
         host,

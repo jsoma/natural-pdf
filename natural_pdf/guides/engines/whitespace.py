@@ -18,7 +18,7 @@ class WhitespaceGuidesEngine(GuidesEngine):
         context: Any,
         options: Dict[str, Any],
     ) -> GuidesDetectionResult:
-        from natural_pdf.analyzers.guides.base import Guides
+        from natural_pdf.guides.base import Guides
 
         min_gap = float(options.get("min_gap", 10))
         guides = Guides.divide(context, n=3, axis=axis)

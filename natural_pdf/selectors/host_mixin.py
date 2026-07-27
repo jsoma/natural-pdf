@@ -5,14 +5,11 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
     Optional,
     Protocol,
     Sequence,
-    TypeVar,
     Union,
-    cast,
     runtime_checkable,
 )
 

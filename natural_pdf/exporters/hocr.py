@@ -12,6 +12,7 @@ import logging
 import os
 import re
 import unicodedata
+import warnings
 from dataclasses import dataclass
 from itertools import pairwise
 from math import atan, pi
@@ -105,7 +106,11 @@ class HocrTransform:
     ):
         """Initialize the HocrTransform object."""
         if debug:
-            log.warning("Use debug_render_options instead", DeprecationWarning)
+            warnings.warn(
+                "HocrTransform(debug=...) is deprecated; use debug_render_options instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             self.render_options = DebugRenderOptions(
                 render_baseline=debug,
                 render_triangle=debug,
@@ -128,6 +133,8 @@ class HocrTransform:
         if matches:
             self.xmlns = matches.group(1)
 
+        self.width: Optional[float] = None
+        self.height: Optional[float] = None
         for div in self.hocr.findall(self._child_xpath("div", "ocr_page")):
             coords = self.element_coordinates(div)
             if not coords:
@@ -136,6 +143,8 @@ class HocrTransform:
             self.height = (coords.ury - coords.lly) / (self.dpi / INCH)
             # Stop after first div that has page coordinates
             break
+        if self.width is None or self.height is None:
+            raise HocrTransformError("hocr file contains no ocr_page element")
 
     def _get_element_text(self, element: Element) -> str:
         """Return the textual content of the element and its children."""
@@ -284,11 +293,6 @@ class HocrTransform:
         if lang in {"chi_sim", "chi_tra", "jpn", "kor"}:
             return False
         return True
-
-    @classmethod
-    def polyval(cls, poly, x):  # pragma: no cover
-        """Calculate the value of a polynomial at a point."""
-        return x * poly[0] + poly[1]
 
     def _do_line(
         self,

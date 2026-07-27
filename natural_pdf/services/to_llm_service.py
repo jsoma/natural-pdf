@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
-from natural_pdf.services.registry import register_delegate
-
 
 class ToLLMService:
     """Service that produces LLM-optimized text representations of PDF objects."""
@@ -11,7 +7,6 @@ class ToLLMService:
     def __init__(self, context):
         self._context = context
 
-    @register_delegate("to_llm", "to_llm")
     def to_llm(self, host, **kwargs) -> str:
         from natural_pdf.core.page import Page
         from natural_pdf.core.page_collection import PageCollection

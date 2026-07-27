@@ -2,14 +2,14 @@
 import importlib.util
 import logging
 import re
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Union
+from typing import Any, Callable, Iterable, List, Optional, Sequence
 
 from PIL import Image
 
 logger = logging.getLogger(__name__)
 
 from .engine import OCREngine, TextRegion
-from .ocr_options import BaseOCROptions, SuryaOCROptions
+from .ocr_options import BaseOCROptions
 
 
 def _surya_compat_hint() -> str:

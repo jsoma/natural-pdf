@@ -23,8 +23,16 @@ DEFAULT_VISION_MODEL = "openai/clip-vit-base-patch16"
 _PIPELINE_CACHE: Dict[str, "Pipeline"] = {}
 _CACHE_LOCK = threading.RLock()
 
-# Re-export for backward compatibility
-__all__ = ["ClassificationError"]
+__all__ = [
+    "ClassificationError",
+    "DEFAULT_TEXT_MODEL",
+    "DEFAULT_VISION_MODEL",
+    "classify_batch_contents",
+    "classify_single",
+    "cleanup_models",
+    "infer_using",
+    "is_classification_available",
+]
 
 
 def _check_classification_dependencies() -> bool:
@@ -107,22 +115,11 @@ def infer_using(
     if any(token in candidate for token in ("bart", "bert", "mnli", "xnli", "deberta")):
         return "text"
 
-    # Fallback: try loading as text, then vision
-    if model_id:
-        logger.warning(
-            "Could not infer mode for model '%s'. Attempting to load text then vision pipelines.",
-            model_id,
-        )
-        try:
-            _load_pipeline(model_id, "text", device=device)
-            return "text"
-        except Exception:
-            logger.warning("Failed to load '%s' as text model; trying vision.", model_id)
-            _load_pipeline(model_id, "vision", device=device)
-            return "vision"
-
+    # No download-and-probe fallback: attempting to load the model both ways
+    # can silently pull multi-GB weights over the network just to guess a mode.
     raise ClassificationError(
-        "Model identifier required when 'using' cannot be inferred automatically."
+        f"Cannot infer text/vision mode for model {model_id!r}. "
+        "Pass using='text' or using='vision' explicitly."
     )
 
 
@@ -131,31 +128,39 @@ def _parse_raw_scores(
     min_confidence: float,
     model_id: str,
 ) -> List[CategoryScore]:
-    """Parse pipeline output into a list of CategoryScore, filtering by min_confidence."""
-    scores: List[CategoryScore] = []
+    """Parse pipeline output into a list of CategoryScore, filtering by min_confidence.
+
+    The payload is validated before any score is accepted: an unrecognized
+    shape or a non-numeric score raises ClassificationError instead of being
+    silently converted into an empty (category=None) result.
+    """
+    pairs: List[tuple] = []
 
     if isinstance(raw_result, dict) and "labels" in raw_result and "scores" in raw_result:
-        for label, score_val in zip(raw_result["labels"], raw_result["scores"]):
-            if score_val >= min_confidence:
-                scores.append(CategoryScore(label, score_val))
+        pairs = list(zip(raw_result["labels"], raw_result["scores"]))
     elif isinstance(raw_result, list):
         for item in raw_result:
-            if not isinstance(item, dict):
-                continue
-            label = item.get("label")
-            score_val = item.get("score")
-            if label is None or score_val is None:
-                continue
-            if score_val >= min_confidence:
-                scores.append(CategoryScore(label, score_val))
+            if not isinstance(item, dict) or item.get("label") is None or item.get("score") is None:
+                raise ClassificationError(
+                    f"Malformed entry in pipeline output for model '{model_id}': {item!r}"
+                )
+            pairs.append((item["label"], item["score"]))
     else:
-        logger.warning(
-            "Unexpected raw result format from pipeline for model '%s': %s",
-            model_id,
-            type(raw_result),
+        raise ClassificationError(
+            f"Unexpected result format from pipeline for model '{model_id}': "
+            f"{type(raw_result).__name__}"
         )
 
-    return scores
+    for label, score_val in pairs:
+        if not isinstance(score_val, (int, float)):
+            raise ClassificationError(
+                f"Non-numeric score {score_val!r} for label {label!r} "
+                f"from pipeline for model '{model_id}'"
+            )
+
+    return [
+        CategoryScore(label, score_val) for label, score_val in pairs if score_val >= min_confidence
+    ]
 
 
 def classify_single(
@@ -193,6 +198,11 @@ def classify_single(
             raise TypeError(f"Unsupported item_content type: {type(item_content)}")
     else:
         effective_using = infer_using(selected_model, effective_using, device=device)
+
+    if multi_label and effective_using == "vision":
+        # The zero-shot image pipeline silently discards multi_label; recording
+        # a value that did nothing would make the result parameters lie.
+        raise ValueError("multi_label=True is not supported in vision mode.")
 
     pipeline_instance = _load_pipeline(selected_model, effective_using, device=device)
     timestamp = datetime.now()
@@ -260,8 +270,19 @@ def classify_batch_contents(
     if not contents:
         return []
 
-    selected_model = model_id or (DEFAULT_TEXT_MODEL if using == "text" else DEFAULT_VISION_MODEL)
+    # Same default-model rule as classify_single: derive the mode from the
+    # content type when neither model nor using is given.
+    selected_model = model_id
+    if selected_model is None:
+        if using == "text" or (using is None and isinstance(contents[0], str)):
+            selected_model = DEFAULT_TEXT_MODEL
+        else:
+            selected_model = DEFAULT_VISION_MODEL
     effective_using = infer_using(selected_model, using, device=device)
+
+    if multi_label and effective_using == "vision":
+        raise ValueError("multi_label=True is not supported in vision mode.")
+
     pipeline_instance = _load_pipeline(selected_model, effective_using, device=device)
     timestamp = datetime.now()
     parameters = {
@@ -307,11 +328,9 @@ def classify_batch_contents(
     batch_results: List[ClassificationResult] = []
 
     for raw_result in iterator:
-        try:
-            scores_list = _parse_raw_scores(raw_result, min_confidence, selected_model)
-        except Exception as err:
-            logger.error("Error processing batch result: %s", err, exc_info=True)
-            scores_list = []
+        # Fail closed: a malformed per-item payload raises instead of silently
+        # becoming a "no category" row.
+        scores_list = _parse_raw_scores(raw_result, min_confidence, selected_model)
 
         batch_results.append(
             ClassificationResult(

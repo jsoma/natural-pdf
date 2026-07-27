@@ -12,7 +12,6 @@ from natural_pdf.core.context import PDFContext
 from natural_pdf.engine_provider import EngineProvider
 from natural_pdf.ocr.unified_dispatch import EngineCache
 from natural_pdf.services.qa_service import QAService
-from natural_pdf.services.registry import DelegateRegistry
 
 PRACTICE_PDF = "pdfs/01-practice.pdf"
 
@@ -138,34 +137,9 @@ def test_context_get_service_creates_single_instance_under_threads():
     assert all(r is results[0] for r in results)
 
 
-def test_delegate_registry_concurrent_registration():
-    registry = DelegateRegistry()
-    barrier = threading.Barrier(8)
-    errors = []
-
-    def worker(idx):
-        barrier.wait()
-        try:
-            for j in range(50):
-                registry.register("cap", f"method_{idx}_{j}", lambda: None)
-        except Exception as exc:  # pragma: no cover - failure path
-            errors.append(exc)
-
-    threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-
-    assert not errors
-    assert len(registry.iter_entries("cap")) == 8 * 50
-
-
-def test_delegate_registry_duplicate_raises():
-    registry = DelegateRegistry()
-    registry.register("cap", "method", lambda: None)
-    with pytest.raises(ValueError, match="already registered"):
-        registry.register("cap", "method", lambda: None)
+# The DelegateRegistry thread-safety tests were removed along with the
+# @register_delegate machinery: the registry was write-only (never read)
+# since its only consumer was removed on 2025-11-18.
 
 
 def test_engine_provider_not_found_lists_available():

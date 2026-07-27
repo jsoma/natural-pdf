@@ -43,6 +43,19 @@ class OptionalDependency:
                     self._module = import_module(self.module_name)
             except ImportError as exc:  # pragma: no cover - error path
                 hint = " or ".join(self.install_hints) or "pip install"
+                # Distinguish a missing package from an installed-but-broken
+                # one (e.g. a conflicting transitive dependency): reporting a
+                # broken install as "not installed" sends users in circles.
+                try:
+                    installed = util.find_spec(self.module_name) is not None
+                except (ImportError, ValueError):
+                    installed = False
+                if installed:
+                    raise ImportError(
+                        f"Optional dependency '{self.module_name}' is installed but failed "
+                        f"to import: {exc}. Fix the underlying environment issue, or "
+                        f"reinstall with: {hint}"
+                    ) from exc
                 raise ImportError(
                     f"Optional dependency '{self.module_name}' is not installed. Install with: {hint}"
                 ) from exc
@@ -180,6 +193,18 @@ OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
         package_names=("mlx-vlm",),
         applicable=_is_apple_silicon,
     ),
+    # Quality diagnostics
+    "spellchecker": OptionalDependency(
+        "spellchecker",
+        ('pip install "natural-pdf[all]"', "pip install pyspellchecker"),
+        "Dictionary lookups for the to_llm garble-rate diagnostic.",
+        package_names=("pyspellchecker",),
+    ),
+    "langdetect": OptionalDependency(
+        "langdetect",
+        ('pip install "natural-pdf[all]"', "pip install langdetect"),
+        "Language detection for the to_llm garble-rate diagnostic.",
+    ),
     # Layout
     "doclayout_yolo": OptionalDependency(
         "doclayout_yolo",
@@ -207,6 +232,7 @@ OPTIONAL_DEPENDENCY_GROUPS: Dict[str, tuple[str, ...]] = {
     ),
     "export": ("pikepdf", "img2pdf", "openpyxl", "jupytext", "nbformat"),
     "paddle": ("chardet", "paddlepaddle", "paddleocr", "paddlex", "numpy"),
+    "quality": ("spellchecker", "langdetect"),
     "all": (
         "rapidocr",
         "torch",
@@ -222,6 +248,8 @@ OPTIONAL_DEPENDENCY_GROUPS: Dict[str, tuple[str, ...]] = {
         "openpyxl",
         "jupytext",
         "nbformat",
+        "spellchecker",
+        "langdetect",
     ),
 }
 

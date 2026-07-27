@@ -174,7 +174,7 @@ def test_vlm_dependency_error_mentions_core_complete_install(monkeypatch):
     original_import = builtins.__import__
 
     def fail_vlm_import(name, globals=None, locals=None, fromlist=(), level=0):
-        if name == "natural_pdf.extraction.vlm_adapter":
+        if name == "natural_pdf.core.vlm_client":
             raise ImportError("vlm missing")
         return original_import(name, globals, locals, fromlist, level)
 

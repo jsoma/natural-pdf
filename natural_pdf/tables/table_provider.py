@@ -8,7 +8,7 @@ from copy import deepcopy
 from typing import Any, Callable, Dict, List, Optional, Protocol
 
 from natural_pdf.engine_provider import get_provider
-from natural_pdf.engine_registry import register_builtin, register_table_engine
+from natural_pdf.engine_registry import register_builtin
 from natural_pdf.tables.engines.pdfplumber import PdfPlumberTablesEngine
 from natural_pdf.tables.engines.tatr import TATRTableEngine
 from natural_pdf.tables.engines.text import TextTablesEngine

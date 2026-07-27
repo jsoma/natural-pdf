@@ -8,7 +8,7 @@ from typing import Any, List, Optional, Protocol, Sequence, Union, runtime_check
 from PIL import Image
 
 from natural_pdf.engine_provider import get_provider
-from natural_pdf.engine_registry import register_builtin, register_classification_engine
+from natural_pdf.engine_registry import register_builtin
 
 from .pipelines import (
     DEFAULT_TEXT_MODEL,
@@ -75,10 +75,14 @@ class _DefaultClassificationEngine:
         return DEFAULT_TEXT_MODEL if using == "text" else DEFAULT_VISION_MODEL
 
     def classify_item(self, **kwargs):
-        return classify_single(device=self._device, **kwargs)
+        # An explicit device= from the caller wins over the engine default;
+        # popping it also prevents a duplicate-keyword TypeError.
+        device = kwargs.pop("device", self._device)
+        return classify_single(device=device, **kwargs)
 
     def classify_batch(self, **kwargs):
-        return classify_batch_contents(device=self._device, **kwargs)
+        device = kwargs.pop("device", self._device)
+        return classify_batch_contents(device=device, **kwargs)
 
 
 def register_classification_engines(provider=None) -> None:
@@ -155,10 +159,10 @@ def run_classification_batch(
     )
 
 
-try:  # Register built-in engine immediately
-    register_classification_engines()
-except Exception:  # pragma: no cover
-    logger.exception("Failed to register classification engines")
+# Register built-in engine at import time. A failure here must surface
+# immediately — swallowing it turns every later classify() call into an
+# opaque LookupError.
+register_classification_engines()
 
 
 __all__ = [

@@ -15,6 +15,7 @@ from natural_pdf.classification.pipelines import (
 from natural_pdf.classification.results import CategoryScore, ClassificationResult
 from natural_pdf.core.context import PDFContext
 from natural_pdf.engine_provider import EngineProvider
+from natural_pdf.exceptions import ClassificationError
 from natural_pdf.services import classification_service
 from natural_pdf.services.classification_service import ClassificationService
 
@@ -163,22 +164,24 @@ class TestParseRawScores:
         labels = {s.label for s in scores}
         assert "c" not in labels
 
-    def test_unexpected_format_returns_empty(self, caplog):
-        with caplog.at_level(logging.WARNING):
-            scores = _parse_raw_scores("unexpected", 0.0, "test-model")
-        assert scores == []
-        assert "Unexpected raw result format" in caplog.text
+    def test_unexpected_format_raises(self):
+        """Fail closed: an unknown payload shape must raise, not silently
+        become an empty (category=None) result."""
+        with pytest.raises(ClassificationError, match="Unexpected result format"):
+            _parse_raw_scores("unexpected", 0.0, "test-model")
 
-    def test_vision_format_skips_incomplete_items(self):
+    def test_vision_format_rejects_incomplete_items(self):
         raw = [
             {"label": "cat", "score": 0.9},
-            {"label": None, "score": 0.5},  # missing label
             {"score": 0.3},  # no label key
-            {"label": "dog"},  # no score key
         ]
-        scores = _parse_raw_scores(raw, 0.0, "test-model")
-        assert len(scores) == 1
-        assert scores[0].label == "cat"
+        with pytest.raises(ClassificationError, match="Malformed entry"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
+    def test_non_numeric_score_raises(self):
+        raw = {"labels": ["cat"], "scores": ["high"]}
+        with pytest.raises(ClassificationError, match="Non-numeric score"):
+            _parse_raw_scores(raw, 0.0, "test-model")
 
 
 # ---------- cleanup_models ----------
@@ -230,8 +233,9 @@ class TestCleanupModels:
 
 
 class TestBatchMismatch:
-    def test_element_collection_batch_mismatch_logs_error(self, monkeypatch, caplog):
-        """ClassificationBatchMixin logs error on mismatch, returns self."""
+    def test_element_collection_batch_mismatch_raises(self, monkeypatch, caplog):
+        """ClassificationBatchMixin raises on a result-count mismatch instead of
+        silently returning the collection unchanged."""
         provider = EngineProvider()
         provider._entry_points_loaded = True
         monkeypatch.setattr(provider_module, "_PROVIDER", provider)
@@ -260,10 +264,8 @@ class TestBatchMismatch:
         try:
             elements = pdf.pages[0].find_all("text")[:3]
             assert len(elements) > 0
-            with caplog.at_level(logging.ERROR):
-                result = elements.classify_all(labels=["a", "b"])
-            assert result is elements  # Returns self
-            assert "mismatch" in caplog.text.lower()
+            with pytest.raises(ClassificationError, match="returned 0 results"):
+                elements.classify_all(labels=["a", "b"])
         finally:
             pdf.close()
 
