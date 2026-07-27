@@ -363,8 +363,7 @@ def nodes_to_notebook_markdown(nodes: List[Node]) -> str:
 def normalize_notebook_metadata(notebook: Any) -> None:
     """Promote docs fence attributes to cell tags.
 
-    ``skip=true`` becomes nbclient's ``skip-execution`` tag (same
-    normalization as scripts/01-execute_notebooks.py). ``hide-output`` (bare
+    ``skip=true`` becomes nbclient's ``skip-execution`` tag. ``hide-output`` (bare
     or ``=true`` — jupytext parses the bare form into
     ``incorrectly_encoded_metadata``) becomes the ``hide-output`` tag, which
     the output harvester honors by dropping the cell's outputs.

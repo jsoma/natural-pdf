@@ -39,28 +39,16 @@ page.add_exclusion(page.find_all('line')[-1].below())
 clean_text = page.extract_text()
 ```
 
-## Getting Started
+## Where to Go
 
-### New to Natural PDF?
-- **[Choose Your Path](getting-started/choose-your-path.md)** - Find the best starting point for your background and goals
-- **[Installation](installation/index.md)** - Get Natural PDF installed and run your first extraction
-- **[Quickstart](getting-started/quickstart.md)** - Jump in with a hands-on introduction
-- **[Selectors 101](getting-started/selectors.md)** - Learn the selector syntax for finding elements
-- **[Concepts](getting-started/concepts.md)** - Understand the core ideas behind Natural PDF
+The documentation is organized into six sections:
 
-### Tutorials
-Follow the tutorial series to learn Natural PDF systematically:
-
-1. [Loading PDFs](tutorials/01-loading-and-extraction.ipynb) - Load PDFs and extract basic text
-2. [Finding Elements](tutorials/02-finding-elements.ipynb) - Use selectors to locate content
-3. [Spatial Navigation](tutorials/08-spatial-navigation.ipynb) - Navigate relative to elements
-4. [Tables](tutorials/04-table-extraction.ipynb) - Extract and process tabular data
-5. [Exclusions](tutorials/05-excluding-content.ipynb) - Remove headers, footers, and unwanted content
-6. [OCR](tutorials/12-ocr-integration.ipynb) - Extract text from scanned documents
-7. [Layout Analysis](tutorials/07-layout-analysis.ipynb) - Detect document structure automatically
-8. [Regions & Flows](tutorials/15-working-with-regions.ipynb) - Work with document regions and multi-page flows
-9. [Document QA](tutorials/06-document-qa.ipynb) - Ask questions and extract structured data
-10. [Batch Processing](cookbook/batch-processing.md) - Process multiple PDFs efficiently
+- **[Get Started](get-started/index.md)** - Install Natural PDF (base vs. `[all]`), open a PDF, and extract your first value and table. Includes a [translation guide for pdfplumber users](get-started/from-pdfplumber.md).
+- **[Learn](learn/index.md)** - A five-part course: [text and tables](learn/01-text-and-tables.md), [OCR](learn/02-ocr.md), [AI extraction](learn/03-ai-extraction.md), [page structure](learn/04-page-structure.md), and [putting it together across whole documents](learn/05-putting-it-together.md).
+- **[Concepts](concepts/index.md)** - How the library actually works: the [spatial model](concepts/spatial-model.md), [how text becomes elements](concepts/text-and-elements.md), [exclusions](concepts/exclusions.md), [selectors](concepts/selectors.md), [a table-extraction decision guide](concepts/tables.md), and [engines and models](concepts/engines-and-models.md).
+- **[Solve](solve/index.md)** - Worked solutions to real problem documents: multi-column reflow, zebra-stripe tables, pixelated scans, multi-page tables, and more.
+- **[Troubleshooting](troubleshooting/index.md)** - Symptom-indexed fixes for empty extractions, garbled text, missed rows, and OCR failures.
+- **[For Agents](for-agents/index.md)** - Canonical patterns, return types, and anti-patterns for LLMs and coding agents writing Natural PDF code.
 
 ## Key Features
 
@@ -202,7 +190,7 @@ page.viewer()
 
 ## Reference
 
-- **[Quick Reference](quick-reference/index.ipynb)** - Essential commands and patterns in one place
+- **[Selector Reference](reference/selectors.md)** - Every selector, pseudo-class, and attribute filter
+- **[Engine Reference](reference/engines.md)** - OCR, layout, and extraction engines with install commands
+- **[Installation Extras](reference/installation-extras.md)** - What each `pip install "natural-pdf[...]"` extra contains
 - **[API Reference](api/index.md)** - Complete library documentation
-- **[Patterns & Pitfalls](for-llms/common-patterns.md)** - Common patterns and mistakes to avoid
-- **[Troubleshooting](cookbook/troubleshooting.md)** - Solutions to common issues

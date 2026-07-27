@@ -112,19 +112,19 @@ def test_default_ocr_install_hint_matches_public_contract():
 
 def test_docs_describe_all_as_recommended_core_complete_install():
     readme = _read_text("README.md")
-    install_doc = _read_text("docs/installation/index.md")
+    install_doc = _read_text("docs/get-started/index.md")
 
     assert 'pip install "natural-pdf[all]"' in readme
     assert 'pip install "natural-pdf[all]"' in install_doc
     assert "recommended feature-complete runtime bundle" in readme
-    assert "recommended runtime bundle" in install_doc
+    assert "recommended install" in install_doc
     assert "not install every optional backend" in readme
-    assert "does not include every optional backend" in install_doc
+    assert "deliberately not part of `all`" in install_doc
 
 
 def test_search_docs_match_sentence_transformers_runtime():
     readme = _read_text("README.md")
-    install_doc = _read_text("docs/installation/index.md")
+    install_doc = _read_text("docs/get-started/index.md")
 
     assert "Haystack" not in readme
     assert "sentence-transformer embeddings" in readme

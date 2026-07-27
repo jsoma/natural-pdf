@@ -89,8 +89,6 @@ notebook = [
 
 docs = [
     "mkdocs<2",
-    "mkdocs-exclude",
-    "mkdocs-jupyter",
     "mkdocs-material",
     "mkdocs-redirects",
     "mkdocstrings[python]",
@@ -123,8 +121,6 @@ dev = [
     "setuptools",
     "mktestdocs",
     "mkdocs<2",
-    "mkdocs-exclude",
-    "mkdocs-jupyter",
     "mkdocs-material",
     "mkdocs-redirects",
     "mkdocstrings[python]",

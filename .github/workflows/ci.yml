@@ -80,7 +80,6 @@ jobs:
       - name: Run Nox sessions (full)
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.11'
         env:
-          NOTEBOOK_WORKERS: 1
           PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.5"
           PYTEST_ADDOPTS: "--durations=25"
         run: |
@@ -89,7 +88,6 @@ jobs:
       - name: Run Nox sessions (minimal)
         if: matrix.os != 'ubuntu-latest' || matrix.python != '3.11'
         env:
-          NOTEBOOK_WORKERS: 1
           PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.5"
         run: |
           uv run --with nox --with nox-uv nox --non-interactive -s test_minimal

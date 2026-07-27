@@ -93,42 +93,6 @@ nav:
     - API: api/index.md
     - Text Extraction: api/text-extraction.md
   - For Agents: for-agents/index.md
-  - More (legacy):
-    - Installation: installation/index.md
-    - Choose Your Path: getting-started/choose-your-path.md
-    - Old Quickstart: getting-started/quickstart.md
-    - Selectors 101: getting-started/selectors.md
-    - Old Concepts: getting-started/concepts.md
-  - Tutorials:
-    - 01 Loading PDFs: tutorials/01-loading-and-extraction.ipynb
-    - 02 Finding Elements: tutorials/02-finding-elements.ipynb
-    - 03 Spatial Navigation: tutorials/08-spatial-navigation.ipynb
-    - 04 Tables: tutorials/04-table-extraction.ipynb
-    - 05 Exclusions: tutorials/05-excluding-content.ipynb
-    - 06 OCR: tutorials/12-ocr-integration.ipynb
-    - 07 Layout Analysis: tutorials/07-layout-analysis.ipynb
-    - 08 Regions & Flows: tutorials/15-working-with-regions.ipynb
-    - 09 Document QA: tutorials/06-document-qa.ipynb
-    - 10 Structured Extraction: cookbook/structured-extraction.md
-    - 11 Batch Processing: cookbook/batch-processing.md
-  - Cookbook:
-    - One Page = One Row: cookbook/one-page-one-row.md
-    - Label-Value Extraction: cookbook/label-value-extraction.md
-    - Guides: cookbook/guides.md
-    - Form Cells: cookbook/form-cells.md
-    - Messy Tables: cookbook/messy-tables.md
-    - Multi-Column Layouts: cookbook/multi-column-layouts.md
-    - OCR Then Navigate: cookbook/ocr-then-navigate.md
-    - Multipage Content: cookbook/multipage-content.md
-    - Finding Sections: cookbook/finding-sections.md
-  - Use Cases:
-    - Idea Gallery: use-cases/idea-gallery.md
-  - Reference:
-    - Quick Reference: quick-reference/index.ipynb
-    - API: api/index.md
-    - Text Extraction: api/text-extraction.md
-    - Patterns & Pitfalls: for-llms/common-patterns.md
-    - Troubleshooting: cookbook/troubleshooting.md
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -145,8 +109,7 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
-  # The docs pipeline authors tabs as /// tab | blocks (pymdownx.blocks.tab);
-  # legacy pages use the old pymdownx.tabbed syntax — both stay enabled.
+  # The docs pipeline authors tabs as /// tab | blocks (pymdownx.blocks.tab).
   - pymdownx.blocks.tab:
       alternate_style: true
   - tables
@@ -157,54 +120,70 @@ plugins:
   - search
   - redirects:
       redirect_maps:
-        # Old tutorial redirect
-        'tutorials/07-working-with-regions.md': 'tutorials/15-working-with-regions.md'
-        # Deleted tutorials -> closest remaining tutorial (use .md extension)
-        'tutorials/03-extracting-blocks.md': 'tutorials/08-spatial-navigation.md'
-        'tutorials/09-section-extraction.md': 'tutorials/15-working-with-regions.md'
-        'tutorials/10-form-field-extraction.md': 'tutorials/06-document-qa.md'
-        'tutorials/11-enhanced-table-processing.md': 'tutorials/04-table-extraction.md'
-        'tutorials/13-semantic-search.md': 'tutorials/06-document-qa.md'
-        'tutorials/14-categorizing-documents.md': 'tutorials/06-document-qa.md'
-        # How-To Guides -> Tutorials (use .md extension)
-        'text-extraction/index.md': 'tutorials/01-loading-and-extraction.md'
-        'ocr/index.md': 'tutorials/12-ocr-integration.md'
-        'extracting-clean-text/index.md': 'tutorials/05-excluding-content.md'
-        'fix-messy-tables/index.md': 'tutorials/04-table-extraction.md'
-        'tables/index.md': 'tutorials/04-table-extraction.md'
-        'process-forms-and-invoices/index.md': 'tutorials/08-spatial-navigation.md'
-        'data-extraction/index.md': 'tutorials/06-document-qa.md'
-        'document-qa/index.md': 'tutorials/06-document-qa.md'
-        'categorizing-documents/index.md': 'tutorials/06-document-qa.md'
-        'element-selection/index.md': 'tutorials/02-finding-elements.md'
-        'pdf-navigation/index.md': 'tutorials/01-loading-and-extraction.md'
-        'layout-analysis/index.md': 'tutorials/07-layout-analysis.md'
-        'regions/index.md': 'tutorials/15-working-with-regions.md'
-        'visual-debugging/index.md': 'tutorials/01-loading-and-extraction.md'
-        # Extra Fun Features -> Tutorials (use .md extension)
-        'interactive-widget/index.md': 'tutorials/01-loading-and-extraction.md'
-        'describe/index.md': 'tutorials/02-finding-elements.md'
-        'loops-and-groups/index.md': 'cookbook/batch-processing.md'
-        'text-analysis/index.md': 'tutorials/02-finding-elements.md'
-        'reflowing-pages/index.md': 'tutorials/15-working-with-regions.md'
-        'finetuning/index.md': 'tutorials/12-ocr-integration.md'
-        # For LLMs consolidation
-        'for-llms/anti-patterns.md': 'for-llms/common-patterns.md'
-        # Old getting-started index
-        'getting-started/index.md': 'getting-started/quickstart.md'
-        # Cookbook index
-        'cookbook/index.md': 'cookbook/batch-processing.md'
-  - mkdocs-jupyter:
-      include_source: true
-      ignore:
-        - "tutorials/*.md"
-        # Pipeline-exported notebooks ship as verbatim static files so the
-        # Colab badges' gh-pages paths resolve; they are not site pages.
-        - "*/notebooks/*.ipynb"
-      execute: false
-  - exclude:
-      glob:
-        - tutorials/*.md
+        # Retired getting-started section -> new six-section site
+        'installation/index.md': 'get-started/index.md'
+        'getting-started/index.md': 'get-started/index.md'
+        'getting-started/quickstart.md': 'get-started/quickstart.md'
+        'getting-started/selectors.md': 'concepts/selectors.md'
+        'getting-started/concepts.md': 'concepts/index.md'
+        'getting-started/choose-your-path.md': 'learn/index.md'
+        # Retired tutorials -> Learn / Concepts
+        'tutorials/01-loading-and-extraction.md': 'learn/01-text-and-tables.md'
+        'tutorials/02-finding-elements.md': 'learn/01-text-and-tables.md'
+        'tutorials/03-extracting-blocks.md': 'concepts/spatial-model.md'
+        'tutorials/04-table-extraction.md': 'concepts/tables.md'
+        'tutorials/05-excluding-content.md': 'concepts/exclusions.md'
+        'tutorials/06-document-qa.md': 'learn/03-ai-extraction.md'
+        'tutorials/07-layout-analysis.md': 'learn/04-page-structure.md'
+        'tutorials/07-working-with-regions.md': 'learn/04-page-structure.md'
+        'tutorials/08-spatial-navigation.md': 'concepts/spatial-model.md'
+        'tutorials/09-section-extraction.md': 'learn/04-page-structure.md'
+        'tutorials/10-form-field-extraction.md': 'learn/03-ai-extraction.md'
+        'tutorials/11-enhanced-table-processing.md': 'concepts/tables.md'
+        'tutorials/12-ocr-integration.md': 'learn/02-ocr.md'
+        'tutorials/13-semantic-search.md': 'learn/03-ai-extraction.md'
+        'tutorials/14-categorizing-documents.md': 'learn/03-ai-extraction.md'
+        'tutorials/15-working-with-regions.md': 'learn/04-page-structure.md'
+        # Retired cookbook -> Learn / Concepts / Solve / Troubleshooting
+        'cookbook/index.md': 'learn/05-putting-it-together.md'
+        'cookbook/batch-processing.md': 'learn/05-putting-it-together.md'
+        'cookbook/one-page-one-row.md': 'learn/05-putting-it-together.md'
+        'cookbook/finding-sections.md': 'learn/05-putting-it-together.md'
+        'cookbook/structured-extraction.md': 'learn/03-ai-extraction.md'
+        'cookbook/label-value-extraction.md': 'learn/01-text-and-tables.md'
+        'cookbook/guides.md': 'concepts/tables.md'
+        'cookbook/messy-tables.md': 'concepts/tables.md'
+        'cookbook/form-cells.md': 'concepts/tables.md'
+        'cookbook/multi-column-layouts.md': 'solve/multi-column-reflow.md'
+        'cookbook/ocr-then-navigate.md': 'learn/02-ocr.md'
+        'cookbook/multipage-content.md': 'learn/04-page-structure.md'
+        'cookbook/troubleshooting.md': 'troubleshooting/index.md'
+        # Retired standalone sections
+        'use-cases/idea-gallery.md': 'solve/index.md'
+        'quick-reference/index.md': 'reference/selectors.md'
+        'for-llms/common-patterns.md': 'for-agents/index.md'
+        'for-llms/anti-patterns.md': 'for-agents/index.md'
+        # Pre-rewrite how-to guide URLs -> new equivalents
+        'text-extraction/index.md': 'learn/01-text-and-tables.md'
+        'ocr/index.md': 'learn/02-ocr.md'
+        'extracting-clean-text/index.md': 'concepts/exclusions.md'
+        'fix-messy-tables/index.md': 'concepts/tables.md'
+        'tables/index.md': 'concepts/tables.md'
+        'process-forms-and-invoices/index.md': 'concepts/spatial-model.md'
+        'data-extraction/index.md': 'learn/03-ai-extraction.md'
+        'document-qa/index.md': 'learn/03-ai-extraction.md'
+        'categorizing-documents/index.md': 'learn/03-ai-extraction.md'
+        'element-selection/index.md': 'concepts/selectors.md'
+        'pdf-navigation/index.md': 'learn/01-text-and-tables.md'
+        'layout-analysis/index.md': 'learn/04-page-structure.md'
+        'regions/index.md': 'learn/04-page-structure.md'
+        'visual-debugging/index.md': 'learn/01-text-and-tables.md'
+        'interactive-widget/index.md': 'learn/01-text-and-tables.md'
+        'describe/index.md': 'learn/01-text-and-tables.md'
+        'loops-and-groups/index.md': 'learn/05-putting-it-together.md'
+        'text-analysis/index.md': 'concepts/selectors.md'
+        'reflowing-pages/index.md': 'solve/multi-column-reflow.md'
+        'finetuning/index.md': 'learn/02-ocr.md'
   - mkdocstrings:
       default_handler: python
       handlers:

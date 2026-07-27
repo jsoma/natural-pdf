@@ -27,7 +27,7 @@ pip install "natural-pdf[paddle]"   # PaddleOCR stack
 pip install python-doctr            # Doctr OCR engine
 ```
 
-More details in the [installation guide](https://jsoma.github.io/natural-pdf/installation/).
+More details in the [installation guide](https://jsoma.github.io/natural-pdf/get-started/).
 
 `natural-pdf[all]` is the recommended feature-complete runtime bundle for core features: the default RapidOCR engine, sentence-transformers-based semantic search, QA/extraction dependencies, YOLO layout detection, and export support. It does not install every optional backend. Extra engines such as PaddleOCR and Doctr stay opt-in, and Natural PDF will tell you what to install when you try to use something that is missing.
 

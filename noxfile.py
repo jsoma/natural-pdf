@@ -3,22 +3,8 @@ import sys
 
 import nox
 
-# ============================================================================
-# DOCUMENTATION WORKFLOW
-# ============================================================================
-#
-# Common commands for documentation and tutorials:
-#
-# 1. Execute notebooks + run tests (recommended):
-#    nox -s docs
-#
-# 2. Force re-execute all notebooks + run tests:
-#    nox -s docs-force
-#
-# 3. Advanced: Execute notebooks only with custom options:
-#    python scripts/01-execute_notebooks.py --force --workers 8
-#
-# ============================================================================
+# Documentation pages are executed by scripts/docs_build.py (see
+# .github/workflows/docs.yml); there is no nox session for docs.
 
 # Ensure nox uses the same Python version you are developing with or whichever is appropriate
 # Make sure this Python version has nox installed (`pip install nox`)
@@ -135,91 +121,6 @@ def test_full(session):
 
     # Run tests with all dependencies available
     session.run("pytest", "tests", "-n", "auto", "-m", "not tutorial")
-
-
-@nox.session(name="docs", python="3.10")
-def docs(session):
-    """Execute markdown tutorials and run tutorial tests in one command.
-
-    This replaces the old two-step process:
-    - OLD: python scripts/01-execute_notebooks.py && nox -s tutorials
-    - NEW: nox -s docs
-
-    Uses intelligent caching to skip unchanged notebooks.
-    """
-    # Install all dependencies needed for both notebook execution and testing
-    session.install(".[all,dev]")
-
-    # On Windows in CI, pre-install torch from official PyTorch wheel to avoid DLL issues
-    if sys.platform.startswith("win") and "GITHUB_ACTIONS" in os.environ:
-        session.log("Pre-installing torch from official PyTorch wheel to avoid shm.dll error")
-        session.install("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
-
-    session.install("surya-ocr<0.15")
-    session.install("easyocr")
-    session.install("doclayout_yolo")
-    for package in OPTIONAL_PACKAGES:
-        session.install(package)
-
-    # First, execute notebooks (convert md to ipynb and run them)
-    session.log("Step 1: Executing markdown notebooks...")
-    workers = os.environ.get("NOTEBOOK_WORKERS", str(os.cpu_count() or 4))
-    session.run("python", "scripts/01-execute_notebooks.py", "--workers", workers)
-
-    # Then run tutorial tests
-    # Note: These tests verify the notebooks were executed successfully,
-    # they do NOT re-execute the notebooks (that would be redundant)
-    session.log("Step 2: Running tutorial tests...")
-    session.run("pytest", "tests", "-m", "tutorial", "-n", workers, "-v", "--tb=short")
-
-
-@nox.session(name="test-docs", python="3.10")
-def test_docs(session):
-    """Test markdown code examples in documentation.
-
-    This runs mktestdocs to verify that code examples in docs/getting-started/
-    and docs/cookbook/ are actually executable. Catches documentation rot early.
-
-    Usage:
-        nox -s test-docs
-    """
-    session.install(".[test]")
-    session.run("pytest", "tests/test_markdown_docs.py", "-v")
-
-
-@nox.session(name="docs-force", python="3.10")
-def docs_force(session):
-    """Force execute all markdown tutorials and run tutorial tests.
-
-    Use this when you want to re-execute ALL notebooks regardless of cache:
-    - nox -s docs-force
-
-    This is useful when dependencies change or for clean rebuilds.
-    """
-    # Install all dependencies
-    session.install(".[all,dev]")
-
-    # On Windows in CI, pre-install torch from official PyTorch wheel to avoid DLL issues
-    if sys.platform.startswith("win") and "GITHUB_ACTIONS" in os.environ:
-        session.log("Pre-installing torch from official PyTorch wheel to avoid shm.dll error")
-        session.install("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
-
-    session.install("surya-ocr<0.15")
-    session.install("easyocr")
-    session.install("doclayout_yolo")
-    for package in OPTIONAL_PACKAGES:
-        session.install(package)
-
-    # Execute notebooks with --force flag
-    session.log("Step 1: Force executing all markdown notebooks...")
-    workers = os.environ.get("NOTEBOOK_WORKERS", str(os.cpu_count() or 4))
-    session.run("python", "scripts/01-execute_notebooks.py", "--force", "--workers", workers)
-
-    # Run tutorial tests
-    # Note: These tests verify the notebooks were executed successfully,
-    # they do NOT re-execute the notebooks (that would be redundant)
-    session.log("Step 2: Running tutorial tests...")
-    session.run("pytest", "tests", "-m", "tutorial", "-n", workers, "-v", "--tb=short")
 
 
 # Optional: Add a test dependency group to pyproject.toml if needed
