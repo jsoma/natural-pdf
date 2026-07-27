@@ -33,6 +33,53 @@ def test_collection_viewer_returns_widget(practice_pdf):
     )
 
 
+def test_viewer_html_keeps_divs_out_of_svg(practice_pdf):
+    """Element divs belong in the elements-layer; only rects belong in the svg.
+
+    A <div> inside <svg> is invalid HTML — browsers abort SVG parsing at the
+    div, so the highlight JS querying `svg rect` finds nothing.
+    """
+    page = practice_pdf.pages[0]
+    widget = page.viewer()
+    html = widget._build_html()
+    n = len(widget.pdf_data["elements"])
+    assert n > 0
+
+    svg_start = html.index("<svg")
+    svg_end = html.index("</svg>")
+    svg_inner = html[svg_start:svg_end]
+
+    # No HTML elements inside the SVG; all rects inside it
+    assert "<div" not in svg_inner
+    assert svg_inner.count("<rect") == n
+
+    # All element divs live in the elements-layer, before the svg opens
+    layer_start = html.index("elements-layer")
+    assert layer_start < svg_start
+    layer_segment = html[layer_start:svg_start]
+    assert layer_segment.count('class="pdf-element"') == n
+    assert html.count('class="pdf-element"') == n
+
+    # data-element-id hooks preserved on both layers for the JS
+    assert 'data-element-id="0"' in layer_segment
+    assert 'data-element-id="0"' in svg_inner
+
+
+def test_collection_viewer_multipage_raises():
+    from natural_pdf.elements.element_collection import ElementCollection
+
+    pdf = PDF("pdfs/Atlanta_Public_Schools_GA_sample.pdf")
+    try:
+        first = list(pdf.pages[0].find_all("text"))
+        second = list(pdf.pages[1].find_all("text"))
+        assert first and second
+        combined = ElementCollection(first + second)
+        with pytest.raises(ValueError, match="spans multiple pages"):
+            combined.viewer()
+    finally:
+        pdf.close()
+
+
 def test_collection_viewer_empty_raises(practice_pdf):
     page = practice_pdf.pages[0]
     empty = page.find_all('text:contains("zzz-no-such-string-zzz")')

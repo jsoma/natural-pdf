@@ -1341,6 +1341,39 @@ class Guides:
 
                     row_start = row_band_start
                     while row_start < row_band_stop:
+                        base_area = width_px(col_start, col_stop) * height_px(
+                            row_start, row_start + 1
+                        )
+                        if base_area > max_area_px and col_stop - col_start > 1:
+                            # The merged column span already busts the area budget
+                            # for this single row: split back down into smaller
+                            # column groups (per-cell in the worst case).
+                            row_height = height_px(row_start, row_start + 1)
+                            sub_start = col_start
+                            while sub_start < col_stop:
+                                sub_stop = sub_start + 1
+                                while sub_stop < col_stop:
+                                    candidate_stop = sub_stop + 1
+                                    candidate_width = width_px(sub_start, candidate_stop)
+                                    if candidate_width > max_side_px:
+                                        break
+                                    if candidate_width * row_height > max_area_px:
+                                        break
+                                    sub_stop = candidate_stop
+                                windows.append(
+                                    self._ocr_window_dict(
+                                        verticals,
+                                        horizontals,
+                                        sub_start,
+                                        sub_stop,
+                                        row_start,
+                                        row_start + 1,
+                                    )
+                                )
+                                sub_start = sub_stop
+                            row_start += 1
+                            continue
+
                         row_stop = row_start + 1
                         while row_stop < row_band_stop:
                             candidate_stop = row_stop + 1

@@ -247,3 +247,77 @@ def test_register_selector_engine_round_trip():
     provider = get_provider()
     engine = provider.get("selectors", context=None, name=name)
     assert isinstance(engine, DummySelectorEngine)
+
+
+def test_capability_wrappers_forward_lifecycle_params(monkeypatch):
+    """Wrappers must forward lifetime/cache_key to base.register_engine so
+    third-party heavy models can opt into singleton reuse via the helpers."""
+    import natural_pdf.engine_registry._capability_wrappers as wrappers
+
+    calls = []
+
+    def spy(
+        capability,
+        name,
+        factory,
+        *,
+        replace=True,
+        metadata=None,
+        lifetime="context",
+        cache_key=None,
+    ):
+        calls.append(
+            {
+                "capability": capability,
+                "name": name,
+                "replace": replace,
+                "metadata": metadata,
+                "lifetime": lifetime,
+                "cache_key": cache_key,
+            }
+        )
+
+    monkeypatch.setattr(wrappers, "register_engine", spy)
+
+    def shared_key(*args, **kwargs):
+        return "shared"
+
+    wrappers.register_layout_engine(
+        "spy-layout",
+        lambda **_: object(),
+        replace=False,
+        metadata={"heavy": True},
+        lifetime="singleton",
+        cache_key=shared_key,
+    )
+    assert calls == [
+        {
+            "capability": "layout",
+            "name": "spy-layout",
+            "replace": False,
+            "metadata": {"heavy": True},
+            "lifetime": "singleton",
+            "cache_key": shared_key,
+        }
+    ]
+
+    # Multi-capability wrapper forwards to every registration
+    calls.clear()
+    wrappers.register_deskew_engine(
+        "spy-deskew", lambda **_: object(), lifetime="singleton", cache_key=shared_key
+    )
+    assert [c["capability"] for c in calls] == ["deskew", "deskew.detect", "deskew.apply"]
+    assert all(c["lifetime"] == "singleton" for c in calls)
+    assert all(c["cache_key"] is shared_key for c in calls)
+
+    # Every collapsed wrapper accepts the lifecycle params
+    calls.clear()
+    for wrapper in (
+        wrappers.register_checkbox_engine,
+        wrappers.register_classification_engine,
+        wrappers.register_guides_engine,
+        wrappers.register_selector_engine,
+    ):
+        wrapper("spy-generic", lambda **_: object(), lifetime="transient", cache_key=shared_key)
+    assert len(calls) == 4
+    assert all(c["lifetime"] == "transient" and c["cache_key"] is shared_key for c in calls)

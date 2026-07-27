@@ -137,7 +137,14 @@ def _parse_raw_scores(
     pairs: List[tuple] = []
 
     if isinstance(raw_result, dict) and "labels" in raw_result and "scores" in raw_result:
-        pairs = list(zip(raw_result["labels"], raw_result["scores"]))
+        labels = raw_result["labels"]
+        scores = raw_result["scores"]
+        if len(labels) != len(scores):
+            raise ClassificationError(
+                f"Mismatched payload from pipeline for model '{model_id}': "
+                f"{len(labels)} labels but {len(scores)} scores"
+            )
+        pairs = list(zip(labels, scores))
     elif isinstance(raw_result, list):
         for item in raw_result:
             if not isinstance(item, dict) or item.get("label") is None or item.get("score") is None:

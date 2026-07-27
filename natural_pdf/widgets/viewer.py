@@ -69,38 +69,28 @@ class InteractiveViewerWidget:
         self._generate_html()
 
     def _generate_html(self):
-        """Generate the HTML for the PDF viewer"""
+        """Build the viewer HTML and display it via IPython."""
         from IPython.display import HTML, display
 
+        display(HTML(self._build_html()))
+
+        # Generate JavaScript to add interactivity
+        self._add_javascript()
+
+    def _build_html(self) -> str:
+        """Generate the HTML for the PDF viewer and return it as a string.
+
+        The element hit-target ``<div>``s live in the elements-layer container,
+        while the highlight ``<rect>``s live inside the SVG overlay — HTML
+        elements are not valid inside ``<svg>`` and would abort SVG parsing.
+        """
         # Extract data - Coordinates in self.pdf_data['elements'] are already scaled
         page_image = self.pdf_data.get("page_image", "")
         elements = self.pdf_data.get("elements", [])
 
-        # Create the container div
-        container_html = f"""
-        <div id="{self.widget_id}" class="pdf-viewer" style="position: relative; font-family: Arial, sans-serif;">
-            <div class="toolbar" style="margin-bottom: 10px; padding: 5px; background-color: #f0f0f0; border-radius: 4px;">
-                <button id="{self.widget_id}-zoom-in" style="margin-right: 5px;">Zoom In (+)</button>
-                <button id="{self.widget_id}-zoom-out" style="margin-right: 5px;">Zoom Out (-)</button>
-                <button id="{self.widget_id}-reset-zoom" style="margin-right: 5px;">Reset</button>
-            </div>
-            <div style="display: flex; flex-direction: row;">
-                <div class="pdf-outer-container" style="position: relative; overflow: hidden; border: 1px solid #ccc; flex-grow: 1;">
-                    <div id="{self.widget_id}-zoom-pan-container" class="zoom-pan-container" style="position: relative; width: fit-content; height: fit-content; transform-origin: top left; cursor: grab;">
-                    <!-- The image is rendered at scale, so its dimensions match scaled coordinates -->
-                        <img src="{page_image}" style="display: block; max-width: none; height: auto;" />
-                    <div id="{self.widget_id}-elements-layer" class="elements-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
-        """
-
-        # Add SVG overlay layer
-        container_html += f"""
-                    </div>
-                    <div id="{self.widget_id}-svg-layer" class="svg-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
-                        <!-- SVG viewport should match the scaled image size -->
-                        <svg width="100%" height="100%">
-        """
-
-        # Add elements and SVG boxes using the SCALED coordinates
+        # Build the two overlay layers: divs (hit targets) and svg rects (highlights)
+        element_divs = ""
+        svg_rects = ""
         for i, element in enumerate(elements):
             element_type = element.get("type", "unknown")
             # Use the already scaled coordinates
@@ -140,19 +130,37 @@ class InteractiveViewerWidget:
                     "background-color: rgba(200, 200, 200, 0.3); border: 1px dashed transparent; "
                 )
 
-            # Add element div
-            container_html += f"""
+            # Add element div (hit target, elements-layer)
+            element_divs += f"""
                         <div class="pdf-element" data-element-id="{i}" style="{element_style}"></div>
             """
 
-            # Add SVG rectangle using scaled coordinates and dimensions
-            container_html += f"""
+            # Add SVG rectangle using scaled coordinates and dimensions (svg overlay)
+            svg_rects += f"""
                         <rect data-element-id="{i}" x="{x0}" y="{y0}" width="{width}" height="{height}"
                               fill="none" stroke="rgba(255, 165, 0, 0.85)" stroke-width="1.5" />
             """
 
-        # Close SVG and container divs
-        container_html += f"""
+        # Assemble the container with each overlay in its proper layer
+        container_html = f"""
+        <div id="{self.widget_id}" class="pdf-viewer" style="position: relative; font-family: Arial, sans-serif;">
+            <div class="toolbar" style="margin-bottom: 10px; padding: 5px; background-color: #f0f0f0; border-radius: 4px;">
+                <button id="{self.widget_id}-zoom-in" style="margin-right: 5px;">Zoom In (+)</button>
+                <button id="{self.widget_id}-zoom-out" style="margin-right: 5px;">Zoom Out (-)</button>
+                <button id="{self.widget_id}-reset-zoom" style="margin-right: 5px;">Reset</button>
+            </div>
+            <div style="display: flex; flex-direction: row;">
+                <div class="pdf-outer-container" style="position: relative; overflow: hidden; border: 1px solid #ccc; flex-grow: 1;">
+                    <div id="{self.widget_id}-zoom-pan-container" class="zoom-pan-container" style="position: relative; width: fit-content; height: fit-content; transform-origin: top left; cursor: grab;">
+                    <!-- The image is rendered at scale, so its dimensions match scaled coordinates -->
+                        <img src="{page_image}" style="display: block; max-width: none; height: auto;" />
+                    <div id="{self.widget_id}-elements-layer" class="elements-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                        {element_divs}
+                    </div>
+                    <div id="{self.widget_id}-svg-layer" class="svg-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                        <!-- SVG viewport should match the scaled image size -->
+                        <svg width="100%" height="100%">
+                        {svg_rects}
                         </svg>
                     </div>
                 </div>
@@ -166,11 +174,7 @@ class InteractiveViewerWidget:
         </div>
         """
 
-        # Display the HTML
-        display(HTML(container_html))
-
-        # Generate JavaScript to add interactivity
-        self._add_javascript()
+        return container_html
 
     def _add_javascript(self):
         """Add JavaScript to make the viewer interactive"""

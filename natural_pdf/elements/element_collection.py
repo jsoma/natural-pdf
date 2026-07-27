@@ -1552,16 +1552,22 @@ class ElementCollection(
             An InteractiveViewerWidget instance.
 
         Raises:
-            ValueError: If the collection is empty or its elements lack page context.
+            ValueError: If the collection is empty, its elements lack page
+                context, or its elements span multiple pages.
         """
         if not self.elements:
             raise ValueError("Cannot generate interactive viewer for empty collection.")
 
-        # Assume all elements are on the same page and have .page attribute
         page = getattr(self.elements[0], "page", None)
         if page is None:
             raise ValueError(
                 "Cannot generate interactive viewer: elements in collection lack a page."
+            )
+        if any(getattr(el, "page", None) is not page for el in self.elements):
+            raise ValueError(
+                "Cannot generate interactive viewer: collection spans multiple pages. "
+                "Filter to a single page first, e.g. "
+                "elements.filter(lambda el: el.page is page).viewer()."
             )
         return page.viewer(elements_to_render=self.elements)
 

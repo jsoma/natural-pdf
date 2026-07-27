@@ -132,10 +132,14 @@ def page_to_llm(
 
 
 def _cap_output(text: str, max_chars: int | None) -> str:
+    """Hard-cap *text* to ``max_chars``; the result never exceeds the limit."""
     if max_chars is None or len(text) <= max_chars:
         return text
     suffix = f"\n\n[output capped at {max_chars} chars]"
-    return text[: max(0, max_chars - len(suffix))].rstrip() + suffix
+    if len(suffix) >= max_chars:
+        # Suffix doesn't fit inside the budget — bare truncation.
+        return text[:max_chars]
+    return text[: max_chars - len(suffix)].rstrip() + suffix
 
 
 def region_to_llm(
@@ -237,7 +241,7 @@ def collection_to_llm(
     parts.append(f"=== ElementCollection: {count} elements ===")
 
     if count == 0:
-        return "\n".join(parts)
+        return _cap_output("\n".join(parts), max_chars)
 
     parts.append("")
 

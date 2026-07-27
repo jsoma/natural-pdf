@@ -143,9 +143,9 @@ def test_default_client_used_when_model_and_client_are_none(service, generate_sp
         client=None,
     )
 
-    # client stays None here: vlm_client.generate() resolves the default
-    # client itself, exactly as OCR dispatch does.
-    assert generate_spy[0]["client"] is None
+    # The service resolves the default client itself and passes it
+    # explicitly; generate() is never left to backfill it.
+    assert generate_spy[0]["client"] is default_client
     assert generate_spy[0]["model"] == "default-model"
 
 
@@ -163,6 +163,83 @@ def test_local_default_model_when_no_client_configured(service, generate_spy):
 
     assert generate_spy[0]["model"] == DEFAULT_VLM_MODEL
     assert generate_spy[0]["client"] is None
+
+
+def test_explicit_model_never_touches_default_client(service, monkeypatch):
+    """extract(engine='vlm', model=...) must run locally even when a default
+    client is configured — the image must never reach the default client."""
+    default_client = Mock()
+    monkeypatch.setattr(vlm_client, "_default_client", default_client)
+    monkeypatch.setattr(vlm_client, "_default_model", "default-remote-model")
+
+    local_calls = []
+
+    def fake_local(image, prompt, *, model, max_new_tokens):
+        local_calls.append(model)
+        return '{"total": "$100.00", "date": "2024-01-15"}'
+
+    def boom_remote(*args, **kwargs):
+        raise AssertionError("remote path must not be used for an explicit model")
+
+    monkeypatch.setattr(vlm_client, "_generate_local", fake_local)
+    monkeypatch.setattr(vlm_client, "_generate_remote", boom_remote)
+
+    host = _Host()
+    service.extract(host, schema=InvoiceSchema, engine="vlm", model="explicit/local-model")
+
+    result = host.analyses["structured"]
+    assert result.success is True, result.error_message
+    assert local_calls == ["explicit/local-model"]
+    default_client.chat.completions.create.assert_not_called()
+
+
+def test_default_client_applies_when_neither_model_nor_client_passed(service, monkeypatch):
+    """extract(engine='vlm') with neither model= nor client= uses the default
+    client and its default model, through the real generate()."""
+    default_client = Mock()
+    monkeypatch.setattr(vlm_client, "_default_client", default_client)
+    monkeypatch.setattr(vlm_client, "_default_model", "default-remote-model")
+
+    remote_calls = []
+
+    def fake_remote(image, prompt, *, client, model, max_new_tokens, response_format=None):
+        remote_calls.append({"client": client, "model": model})
+        return '{"total": "$100.00", "date": "2024-01-15"}'
+
+    monkeypatch.setattr(vlm_client, "_generate_remote", fake_remote)
+
+    host = _Host()
+    service.extract(host, schema=InvoiceSchema, engine="vlm")
+
+    result = host.analyses["structured"]
+    assert result.success is True, result.error_message
+    assert remote_calls == [{"client": default_client, "model": "default-remote-model"}]
+
+
+def test_explicit_client_and_model_win_over_default(service, monkeypatch):
+    """extract(engine='vlm', client=x, model=y) uses x/y, not the defaults."""
+    default_client = Mock()
+    explicit_client = Mock()
+    monkeypatch.setattr(vlm_client, "_default_client", default_client)
+    monkeypatch.setattr(vlm_client, "_default_model", "default-remote-model")
+
+    remote_calls = []
+
+    def fake_remote(image, prompt, *, client, model, max_new_tokens, response_format=None):
+        remote_calls.append({"client": client, "model": model})
+        return '{"total": "$100.00", "date": "2024-01-15"}'
+
+    monkeypatch.setattr(vlm_client, "_generate_remote", fake_remote)
+
+    host = _Host()
+    service.extract(
+        host, schema=InvoiceSchema, engine="vlm", client=explicit_client, model="my-model"
+    )
+
+    result = host.analyses["structured"]
+    assert result.success is True, result.error_message
+    assert remote_calls == [{"client": explicit_client, "model": "my-model"}]
+    default_client.chat.completions.create.assert_not_called()
 
 
 def test_generation_failure_produces_unsuccessful_result(service, monkeypatch):

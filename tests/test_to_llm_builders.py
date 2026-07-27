@@ -83,6 +83,29 @@ class TestCollectionToLLM:
         assert "0 elements" in out
 
 
+class TestHardCap:
+    """max_chars must be a hard cap even when the truncation suffix can't fit."""
+
+    def test_tiny_max_chars_all_builders(self, pdf, page):
+        region = page.create_region(0, 0, page.width, page.height)
+        words = page.find_all("text")
+        empty = page.find_all('text:contains("zzz-nothing-zzz")')
+        el = page.find("text")
+        assert el is not None
+
+        outputs = {
+            "pdf": pdf.to_llm(max_chars=1),
+            "page": page.to_llm(max_chars=1),
+            "region": region.to_llm(max_chars=1),
+            "collection": words.to_llm(max_chars=1),
+            "empty_collection": empty.to_llm(max_chars=1),
+            "element": el.to_llm(max_chars=1),
+            "element_brief": el.to_llm(detail="brief", max_chars=1),
+        }
+        for label, out in outputs.items():
+            assert len(out) <= 1, f"{label}: len {len(out)} exceeds max_chars=1"
+
+
 class TestElementToLLM:
     def test_basic_output(self, page):
         el = page.find("text")

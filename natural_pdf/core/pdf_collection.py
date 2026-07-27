@@ -684,6 +684,10 @@ class PDFCollection(
 
         model_name = model or DEFAULT_MODEL
 
+        # Validate before the empty-collection early return so bad arguments
+        # raise regardless of collection size.
+        SearchService.validate_query(query, top_k)
+
         # Gather all pages across all PDFs, reusing each PDF's cached
         # (fingerprint-invalidated) embeddings instead of re-encoding the
         # whole collection on every query.
@@ -737,10 +741,19 @@ class PDFCollection(
             f"Starting batch classification for {len(self._pdfs)} PDFs in collection ({mode_desc})..."
         )
 
-        first_pdf = self._pdfs[0]
         engine_name = kwargs.pop("classification_engine", None)
-        engine_obj = get_classification_engine(first_pdf, engine_name)
+        # Resolve the engine once with the collection as context — the same
+        # (context, name) pair run_classification_batch uses below — so
+        # context-scoped caching reuses a single engine instance.
+        engine_obj = get_classification_engine(self, engine_name)
         inferred_using = engine_obj.infer_using(model or engine_obj.default_model("text"), using)
+
+        # Split the kwarg stream the same way ClassificationService.classify
+        # does: content-extraction options go to the content getter, everything
+        # else (e.g. device=) to the engine call.
+        content_kwargs = {}
+        if "resolution" in kwargs:
+            content_kwargs["resolution"] = kwargs.pop("resolution")
 
         pdf_contents: List[Any] = []
         valid_pdfs: List[Any] = []
@@ -751,7 +764,9 @@ class PDFCollection(
         logger.info(f"Gathering content from {len(self._pdfs)} PDFs for batch classification...")
         for pdf in self._pdfs:
             try:
-                content = pdf._get_classification_content(model_type=inferred_using, **kwargs)
+                content = pdf._get_classification_content(
+                    model_type=inferred_using, **content_kwargs
+                )
                 pdf_contents.append(content)
                 valid_pdfs.append(pdf)
             except ValueError as exc:
@@ -779,6 +794,7 @@ class PDFCollection(
             batch_size=batch_size,
             progress_bar=progress_bar,
             engine_name=engine_name,
+            **kwargs,
         )
 
         if len(batch_results) != len(valid_pdfs):

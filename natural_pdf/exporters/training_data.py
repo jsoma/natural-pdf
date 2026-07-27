@@ -18,6 +18,7 @@ import logging
 import os
 import random
 import shutil
+import uuid
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
 
 from tqdm.auto import tqdm
@@ -86,9 +87,12 @@ def export_training_data(
     Returns:
         Summary dict: ``{"images": N, "skipped": M, "output_dir": path}``.
     """
-    # ── validate ────────────────────────────────────────────────────────
+    # ── validate (before touching any existing export) ──────────────────
     if output_format not in ("jsonl", "csv"):
         raise ValueError(f"output_format must be 'jsonl' or 'csv', got {output_format!r}")
+
+    if split is not None and not (0.0 < split < 1.0):
+        raise ValueError(f"split must be between 0 and 1 (exclusive), got {split}")
 
     if os.path.exists(output_dir):
         if not overwrite:
@@ -98,22 +102,89 @@ def export_training_data(
             )
         # Refuse to delete a directory this exporter didn't create: overwrite
         # is meant to replace a previous export, not arbitrary user data.
+        # Checked up front so a doomed run fails before any work is done; the
+        # actual removal happens only after the new export is fully built.
         if os.listdir(output_dir) and not os.path.exists(os.path.join(output_dir, _EXPORT_MARKER)):
             raise FileExistsError(
                 f"Refusing to overwrite {output_dir}: it is not empty and does not "
                 f"look like a previous export (missing {_EXPORT_MARKER}). "
                 "Delete it manually if you really want to replace it."
             )
-        shutil.rmtree(output_dir)
 
     pdfs = _resolve_source_pdfs(source)
     if not pdfs:
         logger.warning("No PDFs provided — nothing to export.")
         return {"images": 0, "skipped": 0, "output_dir": output_dir}
 
-    if split is not None and not (0.0 < split < 1.0):
-        raise ValueError(f"split must be between 0 and 1 (exclusive), got {split}")
+    # ── build into a staging directory ──────────────────────────────────
+    # The whole export is assembled in a sibling staging directory and only
+    # swapped into place after complete success, so a failure partway through
+    # never destroys a previous export at output_dir.
+    staging_dir = f"{output_dir.rstrip(os.sep)}.staging-{uuid.uuid4().hex[:8]}"
 
+    try:
+        result = _build_export(
+            pdfs,
+            staging_dir,
+            selector=selector,
+            prompt=prompt,
+            resolution=resolution,
+            padding=padding,
+            output_format=output_format,
+            split=split,
+            random_seed=random_seed,
+            include_metadata=include_metadata,
+        )
+    except Exception:
+        _rmdir_safe(staging_dir)
+        raise
+
+    if result["images"] == 0:
+        # Nothing exported: never replace an existing export with an empty
+        # one. For a fresh destination, keep the (marker-only) directory so
+        # behavior matches a normal empty export.
+        if os.path.exists(output_dir):
+            _rmdir_safe(staging_dir)
+        else:
+            os.rename(staging_dir, output_dir)
+        return {**result, "output_dir": output_dir}
+
+    # ── swap staging into place ──────────────────────────────────────────
+    try:
+        if os.path.exists(output_dir):
+            shutil.rmtree(output_dir)
+        os.rename(staging_dir, output_dir)
+    except Exception:
+        _rmdir_safe(staging_dir)
+        raise
+
+    logger.info(
+        f"Exported {result['images']} training images to '{output_dir}' "
+        f"(skipped {result['skipped']}, format={output_format}"
+        f"{f', split={split}' if split else ''})."
+    )
+    return {**result, "output_dir": output_dir}
+
+
+def _build_export(
+    pdfs: List["PDF"],
+    output_dir: str,
+    *,
+    selector: Optional[str],
+    prompt: str,
+    resolution: int,
+    padding: int,
+    output_format: str,
+    split: Optional[float],
+    random_seed: int,
+    include_metadata: bool,
+) -> dict:
+    """Render crops and write metadata into *output_dir* (a staging directory).
+
+    Returns the summary dict with ``output_dir`` pointing at the build
+    directory; the caller is responsible for swapping it into its final
+    location.
+    """
     # ── collect records ─────────────────────────────────────────────────
     records: List[Dict[str, Any]] = []
     skipped = 0
@@ -230,13 +301,7 @@ def export_training_data(
     # Clean up temp images dir
     _rmdir_safe(tmp_images_dir)
 
-    total_images = len(records)
-    logger.info(
-        f"Exported {total_images} training images to '{output_dir}' "
-        f"(skipped {skipped}, format={output_format}"
-        f"{f', split={split}' if split else ''})."
-    )
-    return {"images": total_images, "skipped": skipped, "output_dir": output_dir}
+    return {"images": len(records), "skipped": skipped, "output_dir": output_dir}
 
 
 # ── helpers ─────────────────────────────────────────────────────────────

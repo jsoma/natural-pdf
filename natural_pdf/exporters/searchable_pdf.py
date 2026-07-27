@@ -4,6 +4,7 @@ Module for exporting PDF content to various formats.
 
 import logging
 import tempfile
+import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Sequence, Union
@@ -369,7 +370,11 @@ def create_searchable_pdf(
             raise ExportError("Failed to process any pages for searchable PDF creation.")
 
         logger.info(f"Merging {len(temp_pdf_pages)} processed pages into final PDF...")
-        tmp_output_path = output_abs_path.with_name(output_abs_path.name + ".tmp")
+        # Unique per call so concurrent writers targeting the same output path
+        # cannot clobber each other's temp file.
+        tmp_output_path = output_abs_path.with_name(
+            f"{output_abs_path.name}.tmp-{uuid.uuid4().hex[:8]}"
+        )
         try:
             # Use pikepdf for merging
             output_pdf = pikepdf.Pdf.new()

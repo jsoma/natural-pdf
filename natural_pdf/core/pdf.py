@@ -1631,6 +1631,8 @@ class PDF(
         from natural_pdf.search.search_service import DEFAULT_MODEL, SearchService
 
         model_name = model or DEFAULT_MODEL
+        # Validate before computing embeddings so bad arguments fail fast.
+        SearchService.validate_query(query, top_k)
         embeddings = self._get_page_embeddings(model_name)
         page_list = list(self.pages)
 
@@ -2012,6 +2014,14 @@ class PDF(
         engine_name = kwargs.pop("classification_engine", None)
         engine_obj = get_classification_engine(self, engine_name)
         inferred_using = engine_obj.infer_using(model or engine_obj.default_model("text"), using)
+
+        # Split the kwarg stream the same way ClassificationService.classify
+        # does: content-extraction options go to the content getter, everything
+        # else (e.g. device=) to the engine call.
+        content_kwargs = {}
+        if "resolution" in kwargs:
+            content_kwargs["resolution"] = kwargs.pop("resolution")
+
         logger.info(
             f"Classifying {len(target_pages)} pages using model '{model or '(default)'}' (mode: {inferred_using})"
         )
@@ -2024,7 +2034,9 @@ class PDF(
 
         for page in target_pages:
             try:
-                content = page._get_classification_content(model_type=inferred_using, **kwargs)
+                content = page._get_classification_content(
+                    model_type=inferred_using, **content_kwargs
+                )
                 page_contents.append(content)
                 pages_to_classify.append(page)
             except ValueError as e:

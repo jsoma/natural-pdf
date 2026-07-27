@@ -142,6 +142,67 @@ def test_rows_freeze_configured_effective_request_defaults(practice_pdf, monkeyp
     assert guides.last_ocr_result.resolution == 333
 
 
+def test_region_host_config_and_exclusions_flow_into_guide_ocr_windows(practice_pdf, monkeypatch):
+    """Windowed guide OCR must resolve defaults against the ORIGINAL host region
+    and keep honoring the host's region-local exclusions (regression: fresh
+    parentless window Regions dropped both)."""
+    from natural_pdf.services.base import resolve_service
+
+    page = practice_pdf.pages[0]
+    host = Region(page, (0.0, 0.0, 200.0, 200.0))
+    host.metadata["config"] = {
+        "ocr_languages": ["fr"],
+        "ocr_min_confidence": 0.73,
+        "ocr_device": "cpu",
+        "resolution": 333,
+    }
+    mask = Region(page, (0.0, 0.0, 50.0, 50.0))
+    host._exclusions = [(mask, "mask", "region")]
+    guides = Guides(verticals=[0, 100, 200], horizontals=[0, 100, 200], context=host)
+
+    captured = []
+    monkeypatch.setattr(
+        Region,
+        "_execute_ocr_request",
+        lambda region, request: captured.append((region, request)),
+        raising=False,
+    )
+
+    guides.rows[:1].apply_ocr(engine="rapidocr")
+
+    window, request = captured[0]
+    assert request.engine == "rapidocr"
+    assert request.languages == ("fr",)
+    assert request.min_confidence == 0.73
+    assert request.device == "cpu"
+    assert request.resolution == 333
+
+    # The exact mask geometry the OCR render path will use for this window.
+    service = resolve_service(window, "ocr")
+    render_kwargs = service._render_kwargs(window, apply_exclusions=True)
+    assert (0.0, 0.0, 50.0, 50.0) in render_kwargs["_ocr_exclusion_bboxes"]
+
+
+def test_cells_view_prefers_host_configured_resolution_over_auto(practice_pdf, monkeypatch):
+    page = practice_pdf.pages[0]
+    host = Region(page, (0.0, 0.0, 200.0, 200.0))
+    host.metadata["config"] = {"resolution": 333}
+    guides = Guides(verticals=[0, 100, 200], horizontals=[0, 100, 200], context=host)
+
+    requests = []
+    monkeypatch.setattr(
+        Region,
+        "_execute_ocr_request",
+        lambda region, request: requests.append(request),
+        raising=False,
+    )
+
+    guides.cells.apply_ocr(engine="rapidocr")
+
+    assert all(request.resolution == 333 for request in requests)
+    assert guides.last_ocr_result.resolution == 333
+
+
 def test_detection_result_counts_refreshed_artifacts(practice_pdf, monkeypatch):
     guides = _guides(practice_pdf.pages[0])
     selected = guides.cells[0][:1]
@@ -298,3 +359,47 @@ def test_guides_auto_ocr_windows_split_columns_by_rendered_width():
     )
 
     assert [window["cols"] for window in windows] == [(0, 1), (1, 2), (2, 3)]
+
+
+def test_guides_auto_ocr_windows_enforce_max_area_px_on_initial_row_window():
+    """Four compliant 50k-px cells must not merge into a 200k-px window under a
+    60k-px budget (regression: only max_side_px gated the column merge)."""
+    guides = Guides(verticals=[0, 250, 500, 750, 1000], horizontals=[0, 200])
+
+    windows = guides._plan_ocr_windows(
+        [0, 250, 500, 750, 1000],
+        [0, 200],
+        window="auto",
+        resolution=72,
+        max_side_px=1000,
+        max_area_px=60_000,
+        vertical_ratio=2,
+        mixed_cell_threshold=0.5,
+        large_cell_ratio=2,
+    )
+
+    assert [window["cols"] for window in windows] == [(0, 1), (1, 2), (2, 3), (3, 4)]
+    for window in windows:
+        x0, top, x1, bottom = window["bbox"]
+        assert (x1 - x0) * (bottom - top) <= 60_000
+
+
+def test_guides_auto_ocr_windows_split_back_to_column_groups_under_area_budget():
+    guides = Guides(verticals=[0, 250, 500, 750, 1000], horizontals=[0, 200])
+
+    windows = guides._plan_ocr_windows(
+        [0, 250, 500, 750, 1000],
+        [0, 200],
+        window="auto",
+        resolution=72,
+        max_side_px=1000,
+        max_area_px=120_000,
+        vertical_ratio=2,
+        mixed_cell_threshold=0.5,
+        large_cell_ratio=2,
+    )
+
+    assert [window["cols"] for window in windows] == [(0, 2), (2, 4)]
+    for window in windows:
+        x0, top, x1, bottom = window["bbox"]
+        assert (x1 - x0) * (bottom - top) <= 120_000

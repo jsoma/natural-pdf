@@ -16,6 +16,11 @@ from natural_pdf.guides import (
     GuidesList,
 )
 
+# The pre-move package exported ``GuidesOcrResult``; the class was renamed to
+# ``GuideOCRResult`` in the OCR-contract refactor. Keep the old name importable
+# from this compatibility path.
+GuidesOcrResult = GuideOCRResult
+
 __all__ = [
     "GuideCells",
     "GuideColumns",
@@ -25,4 +30,5 @@ __all__ = [
     "GuideRows",
     "Guides",
     "GuidesList",
+    "GuidesOcrResult",
 ]

@@ -376,10 +376,21 @@ def _snapshot_guide_geometry(guides: "Guides") -> _GuideGeometrySnapshot:
 
 def _region_for_target(target: GuidesContext, bbox: Bounds) -> Region:
     x0, top, x1, bottom = bbox
-    return Region(
+    region = Region(
         resolve_page_for_materialization(target),
         (float(x0), float(top), float(x1), float(bottom)),
     )
+    if isinstance(target, Region):
+        # Windows carved out of a Region host must behave like that host:
+        # region-local exclusions keep masking content and region-scope config
+        # keeps resolving (page-level state already flows in via ``page``).
+        host_exclusions = getattr(target, "_exclusions", None)
+        if host_exclusions:
+            region._exclusions = list(host_exclusions)
+        host_config = target.metadata.get("config") if isinstance(target.metadata, dict) else None
+        if isinstance(host_config, dict) and host_config:
+            region.metadata["config"] = dict(host_config)
+    return region
 
 
 def _region_for_bbox(snapshot: _GuideGeometrySnapshot, bbox: Bounds) -> Region:
@@ -390,40 +401,73 @@ def _execute_region_ocr_request(region: Region, request: OCRRequest) -> None:
     region._execute_ocr_request(request)
 
 
+def _ocr_scope_for_target(target: GuidesContext) -> str:
+    scope_getter = getattr(target, "_ocr_scope", None)
+    if callable(scope_getter):
+        scope = scope_getter()
+        if isinstance(scope, str) and scope:
+            return scope
+    return "region"
+
+
+def _configured_ocr_resolution(target: GuidesContext) -> Optional[int]:
+    """Return the host-configured OCR resolution, if any (no built-in fallback)."""
+
+    service = resolve_service(target, "ocr")
+    option_value = service._context.get_option(  # noqa: SLF001 - exact service lookup
+        "ocr",
+        "resolution",
+        host=target,
+        default=None,
+        scope=_ocr_scope_for_target(target),
+    )
+    if option_value is None:
+        return None
+    try:
+        return int(option_value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _prepare_effective_request(
     target: GuidesContext,
     request: OCRRequest,
     *,
     resolution: Optional[int] = None,
 ) -> OCRRequest:
-    """Freeze all configured region-scope defaults into one built-in request."""
+    """Freeze all configured host-scope defaults into one built-in request.
+
+    Every default must resolve against the ORIGINAL host (Page or Region) so
+    region-local configuration is honored; a fresh probe Region would lose the
+    host's config chain.
+    """
 
     if isinstance(request, OCRFunctionRequest):
         return request
-    probe = _region_for_target(target, _require_bounds(target, context="guide OCR target"))
+    scope = _ocr_scope_for_target(target)
     normalized_options = normalize_ocr_options(request.options)
     requested_engine = request.engine
     if requested_engine is None and (request.model is not None or request.client is not None):
         requested_engine = "vlm"
     engine = resolve_ocr_engine_name(
-        context=probe,
+        context=target,
         requested=requested_engine,
         options=normalized_options,
-        scope="region",
+        scope=scope,
     )
     normalized_options = normalize_ocr_options(request.options, engine_name=engine)
     languages = resolve_ocr_languages(
-        probe,
+        target,
         list(request.languages) if request.languages is not None else None,
-        scope="region",
+        scope=scope,
     )
-    min_confidence = resolve_ocr_min_confidence(probe, request.min_confidence, scope="region")
-    device = resolve_ocr_device(probe, request.device, scope="region")
-    service = resolve_service(probe, "ocr")
+    min_confidence = resolve_ocr_min_confidence(target, request.min_confidence, scope=scope)
+    device = resolve_ocr_device(target, request.device, scope=scope)
+    service = resolve_service(target, "ocr")
     final_resolution = service._resolve_resolution(  # noqa: SLF001 - exact service default
-        probe,
+        target,
         resolution if resolution is not None else request.resolution,
-        "region",
+        scope,
     )
     return dataclass_replace(
         request,
@@ -761,7 +805,11 @@ class GuideCells(_GuideRegionView):
             resolution = self._guides._resolve_ocr_resolution_for_guides(
                 snapshot.verticals,
                 snapshot.horizontals,
-                resolution=request.resolution,
+                resolution=(
+                    request.resolution
+                    if request.resolution is not None
+                    else _configured_ocr_resolution(snapshot.target)
+                ),
                 target_cell_px=options.target_cell_px,
                 representative_percentile=options.representative_percentile,
                 min_resolution=options.min_resolution,

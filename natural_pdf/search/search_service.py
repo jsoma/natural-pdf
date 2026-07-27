@@ -37,13 +37,19 @@ class SearchService:
 
     @staticmethod
     def text_fingerprint(texts: List[str]) -> str:
-        """Stable digest of page texts, used to invalidate embedding caches."""
+        """Stable digest of page texts, used to invalidate embedding caches.
+
+        Each text is length-prefixed before hashing so the encoding is
+        injective — separator-based concatenation would collide when texts
+        contain the separator at their boundaries.
+        """
         import hashlib
 
         digest = hashlib.sha1()
         for text in texts:
-            digest.update(text.encode("utf-8", "replace"))
-            digest.update(b"\x00")
+            encoded = text.encode("utf-8", "replace")
+            digest.update(f"{len(encoded)}:".encode("ascii"))
+            digest.update(encoded)
         return digest.hexdigest()
 
     @staticmethod
@@ -71,6 +77,19 @@ class SearchService:
         return SearchService.encode_texts(SearchService.page_texts(pages), model_name=model_name)
 
     @staticmethod
+    def validate_query(query: str, top_k: int) -> None:
+        """Validate search arguments; raises ValueError on bad input.
+
+        Called by :meth:`rank`, and also by search entry points before any
+        early return so an empty collection rejects the same bad arguments
+        a populated one does.
+        """
+        if not query or query.isspace():
+            raise ValueError("Search query cannot be empty.")
+        if top_k < 1:
+            raise ValueError(f"top_k must be >= 1, got {top_k}")
+
+    @staticmethod
     def rank(
         query: str,
         page_embeddings: np.ndarray,
@@ -90,10 +109,7 @@ class SearchService:
         Returns:
             List of (page, score) tuples sorted by descending relevance.
         """
-        if not query or query.isspace():
-            raise ValueError("Search query cannot be empty.")
-        if top_k < 1:
-            raise ValueError(f"top_k must be >= 1, got {top_k}")
+        SearchService.validate_query(query, top_k)
 
         if len(page_embeddings) == 0:
             return []

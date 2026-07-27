@@ -262,6 +262,128 @@ class TestRunOcr:
                 with pytest.raises(ValueError, match="requires a model"):
                     run_ocr(target=target, engine_name="vlm", resolution=72)
 
+    def test_vlm_explicit_model_never_uses_default_client(self, monkeypatch):
+        """apply_ocr(engine='vlm', model=...) must run locally even when a
+        default client is configured (default applies only when neither
+        model= nor client= is passed)."""
+        import natural_pdf.core.vlm_client as vlm_client
+
+        default_client = MagicMock()
+        monkeypatch.setattr(vlm_client, "_default_client", default_client)
+        monkeypatch.setattr(vlm_client, "_default_model", "default-remote-model")
+
+        local_calls = []
+
+        def fake_local(image, prompt, *, model, max_new_tokens):
+            local_calls.append(model)
+            return ""
+
+        def boom_remote(*args, **kwargs):
+            raise AssertionError("default client must not receive the image")
+
+        monkeypatch.setattr(vlm_client, "_generate_local", fake_local)
+        monkeypatch.setattr(vlm_client, "_generate_remote", boom_remote)
+
+        target = MagicMock()
+        target.render.return_value = Image.new("RGB", (100, 100))
+        result = run_ocr(
+            target=target,
+            engine_name="vlm",
+            resolution=72,
+            model="Qwen/Qwen3-VL-2B-Instruct",
+            layout=False,
+        )
+
+        assert local_calls == ["Qwen/Qwen3-VL-2B-Instruct"]
+        assert result.results == []
+        default_client.chat.completions.create.assert_not_called()
+
+    def test_vlm_default_client_used_when_neither_model_nor_client(self, monkeypatch):
+        """apply_ocr(engine='vlm') with neither model= nor client= uses the
+        default client and its default model."""
+        import natural_pdf.core.vlm_client as vlm_client
+
+        default_client = MagicMock()
+        monkeypatch.setattr(vlm_client, "_default_client", default_client)
+        monkeypatch.setattr(vlm_client, "_default_model", "default-remote-model")
+
+        remote_calls = []
+
+        def fake_remote(image, prompt, *, client, model, max_new_tokens, response_format=None):
+            remote_calls.append((client, model))
+            return ""
+
+        monkeypatch.setattr(vlm_client, "_generate_remote", fake_remote)
+
+        target = MagicMock()
+        target.render.return_value = Image.new("RGB", (100, 100))
+        result = run_ocr(target=target, engine_name="vlm", resolution=72, layout=False)
+
+        assert remote_calls == [(default_client, "default-remote-model")]
+        assert result.results == []
+
+
+# ---------------------------------------------------------------------------
+# Classic engine payload normalization (fail-closed)
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeEngineOutput:
+    def test_none_is_empty(self):
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        assert _normalize_engine_output(None, engine_name="fake") == []
+
+    def test_empty_list_is_empty(self):
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        assert _normalize_engine_output([], engine_name="fake") == []
+
+    def test_list_of_dicts_passes_through(self):
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        payload = [{"text": "hi", "bbox": [0, 0, 1, 1], "confidence": 0.9}]
+        assert _normalize_engine_output(payload, engine_name="fake") == payload
+
+    def test_batch_list_unwraps_first(self):
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        inner = [{"text": "hi", "bbox": [0, 0, 1, 1], "confidence": 0.9}]
+        assert _normalize_engine_output([inner], engine_name="fake") == inner
+
+    def test_empty_batch_inner_is_empty(self):
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        assert _normalize_engine_output([[]], engine_name="fake") == []
+
+    def test_dict_payload_raises_ocr_error(self):
+        from natural_pdf.exceptions import OCRError
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        with pytest.raises(OCRError, match=r"'myengine'.*dict"):
+            _normalize_engine_output({"text": "hi"}, engine_name="myengine")
+
+    def test_string_payload_raises_ocr_error(self):
+        from natural_pdf.exceptions import OCRError
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        with pytest.raises(OCRError, match=r"'myengine'.*str"):
+            _normalize_engine_output("some text", engine_name="myengine")
+
+    def test_list_of_unsupported_items_raises_ocr_error(self):
+        from natural_pdf.exceptions import OCRError
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        with pytest.raises(OCRError, match=r"'myengine'.*tuple"):
+            _normalize_engine_output([("hi", 0.9)], engine_name="myengine")
+
+    def test_batch_of_unsupported_items_raises_ocr_error(self):
+        from natural_pdf.exceptions import OCRError
+        from natural_pdf.ocr.unified_dispatch import _normalize_engine_output
+
+        with pytest.raises(OCRError, match=r"'myengine'.*str"):
+            _normalize_engine_output([["not-a-dict"]], engine_name="myengine")
+
 
 # ---------------------------------------------------------------------------
 # Comparison service spec normalization

@@ -6,6 +6,7 @@ import io
 import logging
 import os
 import urllib.request
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Set, Union
 
@@ -154,7 +155,11 @@ def create_original_pdf(
             # Write to a temp path in the destination directory, then replace,
             # so a failure never leaves a truncated file at output_path.
             output_path_obj = Path(output_path_str)
-            tmp_output_path = output_path_obj.with_name(output_path_obj.name + ".tmp")
+            # Unique per call so concurrent writers targeting the same
+            # output_path cannot clobber each other's temp file.
+            tmp_output_path = output_path_obj.with_name(
+                f"{output_path_obj.name}.tmp-{uuid.uuid4().hex[:8]}"
+            )
             try:
                 target_pikepdf_doc.save(str(tmp_output_path))
                 tmp_output_path.replace(output_path_obj)

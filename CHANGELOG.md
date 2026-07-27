@@ -67,6 +67,29 @@
   the same processor pixel caps as OCR. The internal `HFVLMAdapter`
   (`natural_pdf.extraction.vlm_adapter`) was removed; previously a `client=`
   passed with `engine="vlm"` was silently ignored.
+- Removed import paths (internal modules with no documented API):
+  `natural_pdf.ocr.ocr_manager` (re-export shim), `natural_pdf.ocr.ocr_factory`
+  (`OCRFactory` — superseded by the engine registry), the per-capability
+  `natural_pdf.engine_registry.{checkbox,classification,deskew,guides,layout,
+  selectors}` submodules (their registration functions remain importable from
+  `natural_pdf.engine_registry`), and `natural_pdf.templates`. The
+  `natural_pdf.analyzers.{guides,layout,checkbox}` packages are permanent
+  re-export shims for the new top-level packages; `GuidesOcrResult` remains
+  importable there as an alias of `GuideOCRResult` (renamed earlier with a
+  changed field shape).
+- `natural_pdf.set_default_client()` can no longer receive document images
+  from calls that pin a model: `extract(engine="vlm", model=...)`,
+  `apply_ocr(engine="vlm", model=...)`, and shorthand VLM OCR engines
+  (`glm_ocr`, ...) now always run locally unless a client is passed
+  explicitly. Previously the shared generate() path backfilled the global
+  default client, sending pages to a remote endpoint despite an explicitly
+  local model.
+- `export_training_data(overwrite=True)` builds into a staging directory and
+  replaces the previous export only after the new one succeeds — validation
+  errors, empty sources, and mid-build failures leave the prior export
+  untouched (previously it was deleted up front).
+- `ElementCollection.viewer()` raises `ValueError` for collections spanning
+  multiple pages (previously every element was overlaid on the first page).
 
 - Text extraction now has four explicit, shared signature families: spatial,
   scalar, ordered aggregate, and selected aggregate. Common options have one
@@ -127,6 +150,35 @@
   fully-OCR'd page says so; broken element properties render as `<error>` in
   `.inspect()` instead of an empty cell; `_color_to_hex` honors its "hex or
   None" contract with consistent casing.
+- Guide-grid OCR resolves engine, languages, min_confidence, device, and
+  resolution from the host page/region instead of from freshly constructed
+  probe regions, and windowed OCR honors the host's exclusions — a Region
+  configured for e.g. French at 333 DPI no longer silently OCRs in English
+  at 150 DPI with masked content exposed. Auto window batching enforces
+  `max_area_px` on the initial row window (individually compliant cells can
+  no longer merge past the pixel budget).
+- `PDFCollection.classify_all()` and `PDF.classify_pages()` resolve the
+  classification engine once (previously twice, creating duplicate instances
+  under context-scoped caching) and route kwargs correctly: `device=` and
+  other engine options reach the engine, `resolution=` reaches content
+  rendering. Mismatched label/score array lengths in provider payloads raise
+  `ClassificationError` instead of silently truncating; unsupported classic
+  OCR payload shapes raise `OCRError` instead of becoming an empty page.
+- `to_llm(max_chars=N)` is a hard cap even for tiny N (the truncation suffix
+  no longer overflows the limit, and empty-collection output is capped too).
+- Search argument validation (empty query, `top_k < 1`) applies before the
+  empty-collection early return, so empty and populated collections reject
+  the same inputs; embedding-cache fingerprints are length-prefixed so texts
+  containing separator bytes cannot collide across page boundaries.
+- The interactive viewer emits valid markup: element hit-target `<div>`s
+  live in the elements layer and highlight `<rect>`s inside the SVG
+  (previously divs inside `<svg>` aborted browser SVG parsing, breaking
+  click highlighting). Exporter temp files use unique per-call names so
+  concurrent writers to the same output path cannot delete each other's
+  work.
+- The `register_*_engine` helpers forward the engine-lifecycle controls
+  (`lifetime`, `cache_key`), so third-party engines registered through them
+  can opt into singleton reuse.
 
 
 - Text filtering, newline handling, whitespace normalization, stripping, bidi,

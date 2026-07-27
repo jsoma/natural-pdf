@@ -12,6 +12,7 @@ import io
 import logging
 import os
 import urllib.request
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
@@ -37,7 +38,11 @@ def _save_atomically(target_doc, output_path: Union[str, Path]) -> None:
     """Save to a temp file in the destination directory, then replace, so a
     failure never leaves a truncated file at output_path."""
     output_path_obj = Path(str(output_path))
-    tmp_output_path = output_path_obj.with_name(output_path_obj.name + ".tmp")
+    # Unique per call so concurrent writers targeting the same output_path
+    # cannot clobber each other's temp file.
+    tmp_output_path = output_path_obj.with_name(
+        f"{output_path_obj.name}.tmp-{uuid.uuid4().hex[:8]}"
+    )
     try:
         target_doc.save(str(tmp_output_path))
         tmp_output_path.replace(output_path_obj)

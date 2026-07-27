@@ -198,6 +198,95 @@ def test_invalid_split_raises(pdf, out_dir):
         export_training_data(pdf, out_dir, split=1.5)
 
 
+# ── overwrite must not destroy the previous export on failure ──────────
+
+
+def _staging_dirs(out_dir):
+    parent = Path(out_dir).parent
+    return [p for p in parent.iterdir() if p.name.startswith(Path(out_dir).name + ".staging-")]
+
+
+def test_overwrite_with_empty_source_preserves_old_export(pdf, out_dir):
+    """overwrite=True with an empty source must leave the old export intact."""
+    from natural_pdf.core.pdf_collection import PDFCollection
+
+    old = export_training_data(pdf, out_dir)
+    assert old["images"] > 0
+
+    result = export_training_data(PDFCollection([]), out_dir, overwrite=True)
+    assert result["images"] == 0
+
+    # Previous export untouched
+    assert (Path(out_dir) / "metadata.jsonl").exists()
+    png_files = list((Path(out_dir) / "images").glob("*.png"))
+    assert len(png_files) == old["images"]
+    assert _staging_dirs(out_dir) == []
+
+
+def test_overwrite_preserves_old_export_when_build_fails(pdf, out_dir, monkeypatch):
+    """A failure while building the new export must leave the old one intact
+    and clean up the staging directory."""
+    import natural_pdf.exporters.training_data as td
+
+    old = export_training_data(pdf, out_dir)
+    assert old["images"] > 0
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("disk exploded")
+
+    monkeypatch.setattr(td, "_write_jsonl", boom)
+
+    with pytest.raises(RuntimeError, match="disk exploded"):
+        export_training_data(pdf, out_dir, overwrite=True)
+
+    # Previous export untouched, no staging leftovers
+    assert (Path(out_dir) / "metadata.jsonl").exists()
+    png_files = list((Path(out_dir) / "images").glob("*.png"))
+    assert len(png_files) == old["images"]
+    assert _staging_dirs(out_dir) == []
+
+
+def test_overwrite_with_no_matching_elements_preserves_old_export(pdf, out_dir):
+    """A selector that matches nothing must not replace a previous export."""
+    old = export_training_data(pdf, out_dir)
+    assert old["images"] > 0
+
+    result = export_training_data(
+        pdf, out_dir, overwrite=True, selector='text:contains("ZZZNONEXISTENT")'
+    )
+    assert result["images"] == 0
+
+    assert (Path(out_dir) / "metadata.jsonl").exists()
+    assert _staging_dirs(out_dir) == []
+
+
+def test_validation_errors_do_not_delete_old_export(pdf, out_dir):
+    """Bad arguments with overwrite=True must fail before touching the old export."""
+    export_training_data(pdf, out_dir)
+
+    with pytest.raises(ValueError):
+        export_training_data(pdf, out_dir, overwrite=True, split=1.5)
+    with pytest.raises(ValueError):
+        export_training_data(pdf, out_dir, overwrite=True, output_format="parquet")
+    with pytest.raises(TypeError):
+        export_training_data(object(), out_dir, overwrite=True)
+
+    assert (Path(out_dir) / "metadata.jsonl").exists()
+    assert _staging_dirs(out_dir) == []
+
+
+def test_overwrite_refuses_unmarked_directory(pdf, out_dir):
+    """overwrite=True still refuses a non-empty directory without the marker."""
+    os.makedirs(out_dir)
+    (Path(out_dir) / "precious.txt").write_text("user data")
+
+    with pytest.raises(FileExistsError, match="Refusing to overwrite"):
+        export_training_data(pdf, out_dir, overwrite=True)
+
+    assert (Path(out_dir) / "precious.txt").read_text() == "user data"
+    assert _staging_dirs(out_dir) == []
+
+
 # ── empty elements are skipped ──────────────────────────────────────────
 
 

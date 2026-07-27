@@ -13,7 +13,8 @@ import base64
 import io
 import logging
 import threading
-from typing import Any, Dict, Optional, Tuple
+from contextlib import contextmanager
+from typing import Any, Dict, Iterator, Optional, Tuple
 
 from PIL import Image
 
@@ -47,9 +48,36 @@ def set_default_client(client: Any, *, model: Optional[str] = None) -> None:
 
 
 def get_default_client() -> Tuple[Optional[Any], Optional[str]]:
-    """Return the current ``(client, model)`` defaults."""
+    """Return the current ``(client, model)`` defaults.
+
+    Returns ``(None, None)`` while :func:`suppress_default_client` is active
+    on the current thread.
+    """
+    if getattr(_suppress_defaults, "active", False):
+        return None, None
     with _defaults_lock:
         return _default_client, _default_model
+
+
+_suppress_defaults = threading.local()
+
+
+@contextmanager
+def suppress_default_client() -> Iterator[None]:
+    """Make VLM calls on this thread ignore the module-level default client.
+
+    While active, :func:`get_default_client` returns ``(None, None)``, so
+    :func:`generate` cannot backfill the default client (or model) when
+    ``client=None`` is passed. Callers that have already resolved client and
+    model explicitly use this to guarantee an explicitly requested local
+    model is never sent to the remote default client.
+    """
+    previous = getattr(_suppress_defaults, "active", False)
+    _suppress_defaults.active = True
+    try:
+        yield
+    finally:
+        _suppress_defaults.active = previous
 
 
 # ---------------------------------------------------------------------------

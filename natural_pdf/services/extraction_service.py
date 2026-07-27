@@ -386,14 +386,23 @@ class ExtractionService:
         resolution = kwargs.pop("resolution", 150)
         image = renderer(resolution=resolution)
 
-        if model is None and client is None:
-            default_client, default_model = vlm_client.get_default_client()
-            if default_client is None:
-                model = DEFAULT_VLM_MODEL
-            else:
-                # Leave client=None: vlm_client.generate() falls back to the
-                # module-level default client itself (same as OCR dispatch).
+        # Resolve client/model exactly once, here. vlm_client.generate()
+        # normally backfills the module-level default client when client=None;
+        # an explicitly requested model must never be routed to that remote
+        # default client, so generate() runs with defaults suppressed below.
+        default_client, default_model = vlm_client.get_default_client()
+        if client is not None:
+            # Explicit client wins; backfill the model from the default only
+            # when none was given.
+            if model is None:
                 model = default_model
+        elif model is None:
+            if default_client is not None:
+                client = default_client
+                model = default_model
+            else:
+                model = DEFAULT_VLM_MODEL
+        # else: explicit model with no client -> local inference.
 
         user_prompt = prompt or (
             f"Extract the information corresponding to the fields in the "
@@ -405,13 +414,14 @@ class ExtractionService:
 
         raw_response: Optional[str] = None
         try:
-            raw_response = vlm_client.generate(
-                image,
-                full_prompt,
-                model=model,
-                client=client,
-                max_new_tokens=max_new_tokens,
-            )
+            with vlm_client.suppress_default_client():
+                raw_response = vlm_client.generate(
+                    image,
+                    full_prompt,
+                    model=model,
+                    client=client,
+                    max_new_tokens=max_new_tokens,
+                )
             parsed = parse_json_response(raw_response, schema)
             result = StructuredDataResult(
                 data=parsed,

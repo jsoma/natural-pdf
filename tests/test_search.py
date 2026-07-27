@@ -191,6 +191,65 @@ class TestPDFSearch:
         scores = [p._search_score for p in results]
         assert scores == sorted(scores, reverse=True)
 
+    def test_pdf_search_rejects_bad_inputs(self):
+        """PDF.search validates before computing embeddings."""
+        pdf = _make_pdf()
+        with pytest.raises(ValueError, match="query"):
+            pdf.search("   ")
+        with pytest.raises(ValueError, match="top_k"):
+            pdf.search("valid query", top_k=0)
+
+
+class TestCollectionSearchValidation:
+    def test_empty_collection_search_rejects_empty_query(self):
+        """An empty collection must reject bad arguments exactly like a
+        populated one, not short-circuit past validation."""
+        from natural_pdf.core.pdf_collection import PDFCollection
+
+        collection = PDFCollection([])
+        with pytest.raises(ValueError, match="query"):
+            collection.search("")
+        with pytest.raises(ValueError, match="query"):
+            collection.search("   ")
+
+    def test_empty_collection_search_rejects_bad_top_k(self):
+        from natural_pdf.core.pdf_collection import PDFCollection
+
+        collection = PDFCollection([])
+        with pytest.raises(ValueError, match="top_k"):
+            collection.search("valid query", top_k=0)
+
+    def test_empty_collection_valid_args_returns_empty(self):
+        from natural_pdf.core.pdf_collection import PDFCollection
+
+        collection = PDFCollection([])
+        results = collection.search("valid query")
+        assert len(results) == 0
+
+
+class TestTextFingerprint:
+    def test_stable_for_same_texts(self):
+        from natural_pdf.search.search_service import SearchService
+
+        assert SearchService.text_fingerprint(["a", "b"]) == SearchService.text_fingerprint(
+            ["a", "b"]
+        )
+
+    def test_sensitive_to_boundaries(self):
+        from natural_pdf.search.search_service import SearchService
+
+        assert SearchService.text_fingerprint(["ab", "c"]) != SearchService.text_fingerprint(
+            ["a", "bc"]
+        )
+
+    def test_no_collision_on_boundary_nuls(self):
+        """The old NUL-separated concatenation hashed these two identically."""
+        from natural_pdf.search.search_service import SearchService
+
+        assert SearchService.text_fingerprint(["a\x00", "b"]) != SearchService.text_fingerprint(
+            ["a", "\x00b"]
+        )
+
 
 def _make_pdf():
     """Create a real PDF object from the test file."""

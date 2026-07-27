@@ -183,6 +183,16 @@ class TestParseRawScores:
         with pytest.raises(ClassificationError, match="Non-numeric score"):
             _parse_raw_scores(raw, 0.0, "test-model")
 
+    def test_mismatched_labels_scores_raises(self):
+        """A labels/scores length mismatch must raise instead of being
+        silently truncated by zip()."""
+        raw = {"labels": ["cat", "dog", "bird"], "scores": [0.8, 0.2]}
+        with pytest.raises(ClassificationError, match="Mismatched"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+        raw = {"labels": ["cat"], "scores": [0.8, 0.2]}
+        with pytest.raises(ClassificationError, match="Mismatched"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
 
 # ---------- cleanup_models ----------
 
@@ -227,6 +237,107 @@ class TestCleanupModels:
         # Clean up
         with _CACHE_LOCK:
             _PIPELINE_CACHE.clear()
+
+
+# ---------- Batch kwarg routing ----------
+
+
+class _RecordingBatchEngine:
+    """Stub engine that records classify_batch kwargs."""
+
+    def __init__(self, calls):
+        self._calls = calls
+
+    def infer_using(self, model_id, using):
+        return using or "text"
+
+    def default_model(self, using):
+        return "stub-model"
+
+    def classify_item(self, **kwargs):
+        raise AssertionError("batch entry points must not call classify_item")
+
+    def classify_batch(self, **kwargs):
+        self._calls.append(kwargs)
+        return [
+            ClassificationResult(
+                scores=[CategoryScore("stub", 0.9)],
+                model_id="stub-model",
+                using="text",
+            )
+            for _ in kwargs["contents"]
+        ]
+
+
+class TestBatchKwargRouting:
+    def _install_provider(self, monkeypatch):
+        provider = EngineProvider()
+        provider._entry_points_loaded = True
+        monkeypatch.setattr(provider_module, "_PROVIDER", provider)
+        engine_calls = []
+        factory_calls = []
+
+        def factory(**_):
+            factory_calls.append(1)
+            return _RecordingBatchEngine(engine_calls)
+
+        provider.register("classification", "default", factory, replace=True)
+        return engine_calls, factory_calls
+
+    def test_pdf_classify_pages_routes_device_to_engine(self, monkeypatch):
+        """device= must reach the engine batch call; resolution= must reach
+        the content getter only."""
+        engine_calls, factory_calls = self._install_provider(monkeypatch)
+
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        try:
+            content_calls = []
+
+            def fake_content(model_type, **kwargs):
+                content_calls.append(kwargs)
+                return "page text"
+
+            for page in pdf.pages:
+                monkeypatch.setattr(page, "_get_classification_content", fake_content)
+
+            pdf.classify_pages(labels=["a"], device="cpu", resolution=99, progress_bar=False)
+
+            assert engine_calls, "engine classify_batch was never called"
+            assert engine_calls[-1]["device"] == "cpu"
+            assert "resolution" not in engine_calls[-1]
+            assert content_calls and all(c == {"resolution": 99} for c in content_calls)
+            assert len(factory_calls) == 1  # engine resolved once for this context
+        finally:
+            pdf.close()
+
+    def test_collection_classify_all_routes_device_to_engine(self, monkeypatch):
+        """Same split for PDFCollection.classify_all — and the engine must be
+        resolved once (single context), not once per resolution site."""
+        from natural_pdf.core.pdf_collection import PDFCollection
+
+        engine_calls, factory_calls = self._install_provider(monkeypatch)
+
+        collection = PDFCollection(["pdfs/01-practice.pdf"])
+        try:
+            content_calls = []
+
+            def fake_content(model_type, **kwargs):
+                content_calls.append(kwargs)
+                return "pdf text"
+
+            for pdf in collection.pdfs:
+                monkeypatch.setattr(pdf, "_get_classification_content", fake_content)
+
+            collection.classify_all(labels=["a"], device="cpu", resolution=99, progress_bar=False)
+
+            assert engine_calls, "engine classify_batch was never called"
+            assert engine_calls[-1]["device"] == "cpu"
+            assert "resolution" not in engine_calls[-1]
+            assert content_calls == [{"resolution": 99}]
+            assert len(factory_calls) == 1  # single engine instance, context=collection
+        finally:
+            for pdf in collection.pdfs:
+                pdf.close()
 
 
 # ---------- Batch mismatch ----------

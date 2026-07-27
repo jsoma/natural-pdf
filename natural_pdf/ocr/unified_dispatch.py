@@ -640,7 +640,7 @@ def _run_classic(
             EngineCache._cleanup_engine(engine)
 
     # Normalize: process_image may return List[Dict] (single) or List[List[Dict]] (batch)
-    results = _normalize_engine_output(raw_output)
+    results = _normalize_engine_output(raw_output, engine_name=engine_name)
 
     return OCRRunResult(results=results, image_size=image.size, engine_type="classic")
 
@@ -715,20 +715,47 @@ def _run_via_provider(
     else:
         raw_output = process()
 
-    results = _normalize_engine_output(raw_output)
+    results = _normalize_engine_output(raw_output, engine_name=engine_name)
     return OCRRunResult(results=results, image_size=image.size, engine_type="classic")
 
 
-def _normalize_engine_output(payload):
-    """Normalize engine output to List[Dict]."""
+def _normalize_engine_output(payload, *, engine_name: str):
+    """Normalize classic engine output to ``List[Dict]``.
+
+    ``process_image`` may return ``List[Dict]`` (single image) or
+    ``List[List[Dict]]`` (batch of one). ``None`` and empty lists mean the
+    engine found no text. Any other shape is malformed provider output and
+    raises :class:`~natural_pdf.exceptions.OCRError` — silently returning
+    ``[]`` would be indistinguishable from a blank page.
+    """
+    from natural_pdf.exceptions import OCRError
+
+    if payload is None:
+        return []
     if isinstance(payload, list):
-        if payload and isinstance(payload[0], list):
-            return payload[0]
-        elif payload and isinstance(payload[0], dict):
-            return payload
-        elif not payload:
+        if not payload:
             return []
-    return []
+        first = payload[0]
+        if isinstance(first, dict):
+            return payload
+        if isinstance(first, list):
+            if first and not isinstance(first[0], dict):
+                raise OCRError(
+                    f"OCR engine {engine_name!r} returned a malformed batch "
+                    f"payload: expected a list of result dicts, got a list of "
+                    f"{type(first[0]).__name__}."
+                )
+            return first
+        raise OCRError(
+            f"OCR engine {engine_name!r} returned a malformed payload: expected "
+            f"a list of result dicts (or a batch list of such lists), got a "
+            f"list of {type(first).__name__}."
+        )
+    raise OCRError(
+        f"OCR engine {engine_name!r} returned unsupported payload type "
+        f"{type(payload).__name__}; expected a list of result dicts "
+        f"(or a batch list of such lists)."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -830,7 +857,9 @@ def _run_vlm(
         else:
             raise ValueError(f"VLM engine {engine_name!r} requires a model= parameter.")
 
-    # Validate generic VLM
+    # Validate generic VLM. The default client applies only when neither
+    # model= nor client= was passed; it is bound explicitly here so the
+    # resolution happens exactly once.
     if entry.engine_type == "vlm_generic" and model is None and client is None:
         from natural_pdf.core.vlm_client import get_default_client
 
@@ -842,20 +871,33 @@ def _run_vlm(
                 "natural_pdf.set_default_client(). Example:\n"
                 '  page.apply_ocr(engine="vlm", model="gemini-2.5-flash", client=client)'
             )
-        if model is None:
-            model = default_model
+        model = default_model
+        client = default_client
 
-    results, img_size = run_vlm_ocr_on_image(
-        image,
-        model=model,
-        client=client,
-        max_new_tokens=max_new_tokens,
-        prompt=prompt,
-        instructions=instructions,
-        languages=languages,
-        layout=layout,
-        family=entry.vlm_family,
-        preserve_markup=preserve_markup,
-    )
+    if client is None:
+        # An explicit (or engine-resolved) model with no client runs locally.
+        # Suppress the module-level default client so nested generate() calls
+        # cannot backfill it and send images to a remote endpoint.
+        from natural_pdf.core.vlm_client import suppress_default_client
+
+        default_guard = suppress_default_client()
+    else:
+        from contextlib import nullcontext
+
+        default_guard = nullcontext()
+
+    with default_guard:
+        results, img_size = run_vlm_ocr_on_image(
+            image,
+            model=model,
+            client=client,
+            max_new_tokens=max_new_tokens,
+            prompt=prompt,
+            instructions=instructions,
+            languages=languages,
+            layout=layout,
+            family=entry.vlm_family,
+            preserve_markup=preserve_markup,
+        )
 
     return OCRRunResult(results=results, image_size=img_size, engine_type="vlm")
