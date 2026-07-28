@@ -67,21 +67,21 @@ It is a large install — `torch` alone is over a gigabyte of wheels. If you onl
 
 `paddle` is deliberately not part of `all`: it pins `numpy` below 2.0 and ships its own runtime, so install it only if you need PaddleOCR.
 
-!!! warning "These operations download models on first use"
+:::caution[These operations download models on first use]
+Installing `natural-pdf[all]` does **not** download models. The first *call* to each of these features does, into your Hugging Face cache, and the files are reused after that. Sizes below are approximate — check before running these on a metered connection or an offline machine.
 
-    Installing `natural-pdf[all]` does **not** download models. The first *call* to each of these features does, into your Hugging Face cache, and the files are reused after that. Sizes below are approximate — check before running these on a metered connection or an offline machine.
+| Operation | Model | Approx. download |
+|---|---|---|
+| `page.ask(...)` / `page.extract(...)` with no LLM client (the `doc_qa` engine) | `impira/layoutlm-document-qa` | ~500 MB |
+| `page.classify(..., using="text")` | `facebook/bart-large-mnli` | ~1.6 GB |
+| `page.classify(..., using="vision")` | `openai/clip-vit-base-patch16` | ~600 MB |
+| VLM OCR / `to_markdown()` with GLM-OCR | `zai-org/GLM-OCR` (Apple Silicon gets the 4-bit `mlx-community/GLM-OCR-4bit` instead, which is smaller) | ~2 GB |
+| `pdf.search(...)` | `all-MiniLM-L6-v2` sentence embeddings | ~90 MB |
+| `page.analyze_layout("yolo")` | DocLayout-YOLO weights (`juliozhao/DocLayout-YOLO-DocStructBench`) | tens of MB |
+| `page.detect_checkboxes()` | YOLO12n ONNX (`wendys-llc/checkbox-detector`) | ~10 MB |
 
-    | Operation | Model | Approx. download |
-    |---|---|---|
-    | `page.ask(...)` / `page.extract(...)` with no LLM client (the `doc_qa` engine) | `impira/layoutlm-document-qa` | ~500 MB |
-    | `page.classify(..., using="text")` | `facebook/bart-large-mnli` | ~1.6 GB |
-    | `page.classify(..., using="vision")` | `openai/clip-vit-base-patch16` | ~600 MB |
-    | VLM OCR / `to_markdown()` with GLM-OCR | `zai-org/GLM-OCR` (Apple Silicon gets the 4-bit `mlx-community/GLM-OCR-4bit` instead, which is smaller) | ~2 GB |
-    | `pdf.search(...)` | `all-MiniLM-L6-v2` sentence embeddings | ~90 MB |
-    | `page.analyze_layout("yolo")` | DocLayout-YOLO weights (`juliozhao/DocLayout-YOLO-DocStructBench`) | tens of MB |
-    | `page.detect_checkboxes()` | YOLO12n ONNX (`wendys-llc/checkbox-detector`) | ~10 MB |
-
-    The default OCR path is the exception: `page.apply_ocr()` uses RapidOCR, whose standard models ship inside the `rapidocr` package — no download on first use.
+The default OCR path is the exception: `page.apply_ocr()` uses RapidOCR, whose standard models ship inside the `rapidocr` package — no download on first use.
+:::
 
 ## Check your environment
 

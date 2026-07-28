@@ -94,9 +94,9 @@ The two flagged regions here turn out to be word-*order* flips inside table rows
 
 The comparison gets more useful the more different the engines are. Other engines install separately and download their models on first run:
 
-!!! warning "These engines download models on first use"
-
-    RapidOCR is the only engine whose models ship in the wheel. The first call to each of the others downloads weights: EasyOCR (`pip install easyocr`, ~100 MB), Doctr (`pip install python-doctr`, ~100 MB), Surya (`pip install surya-ocr`, ~1 GB). See [the install matrix](../get-started/index.md) for the full list.
+:::caution[These engines download models on first use]
+RapidOCR is the only engine whose models ship in the wheel. The first call to each of the others downloads weights: EasyOCR (`pip install easyocr`, ~100 MB), Doctr (`pip install python-doctr`, ~100 MB), Surya (`pip install surya-ocr`, ~1 GB). See [the install matrix](../get-started/index.md) for the full list.
+:::
 
 ```python skip=true
 comparison = page.compare_ocr(engines=["rapidocr", "easyocr", "doctr"])
@@ -165,9 +165,9 @@ The `instructions` string is where domain context goes — telling the model it'
 
 There are also local vision-language OCR models — no API key, but a real download. GLM-OCR is a 0.9B-parameter model that runs layout detection plus per-region OCR in one call:
 
-!!! warning "This downloads a ~2 GB model on first use"
-
-    `engine="glm_ocr"` downloads `zai-org/GLM-OCR` (~2 GB; Apple Silicon gets the smaller 4-bit `mlx-community/GLM-OCR-4bit`) into your Hugging Face cache on the first call. After that it's reused. It is also much slower than RapidOCR — minutes per page on CPU.
+:::caution[This downloads a ~2 GB model on first use]
+`engine="glm_ocr"` downloads `zai-org/GLM-OCR` (~2 GB; Apple Silicon gets the smaller 4-bit `mlx-community/GLM-OCR-4bit`) into your Hugging Face cache on the first call. After that it's reused. It is also much slower than RapidOCR — minutes per page on CPU.
+:::
 
 ```python skip=true
 page.apply_ocr(engine="glm_ocr")

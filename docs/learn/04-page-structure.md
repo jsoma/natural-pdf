@@ -155,9 +155,9 @@ Groups iterate pandas-style, and each value is a real `PageCollection` — so ea
 
 Everything above required *you* to know the structure. Layout models claim to find it for you: hand them a page image, get back labeled regions. This is genuinely useful when the page has no readable text at all — so here's the scanned inspection report from the OCR page:
 
-!!! warning "This downloads a model on first use"
-
-    `analyze_layout("yolo")` downloads DocLayout-YOLO weights (`juliozhao/DocLayout-YOLO-DocStructBench`, tens of MB) into your Hugging Face cache on the first call. The `logging` lines keep the detector's and OCR engine's chatter out of the output.
+:::caution[This downloads a model on first use]
+`analyze_layout("yolo")` downloads DocLayout-YOLO weights (`juliozhao/DocLayout-YOLO-DocStructBench`, tens of MB) into your Hugging Face cache on the first call. The `logging` lines keep the detector's and OCR engine's chatter out of the output.
+:::
 
 ```python
 import logging
@@ -218,9 +218,9 @@ guides.show()
 
 A full grid, built from headers, whitespace, and a reliable column — three kinds of evidence, none of them ruling lines. One last gap before extracting: the Repeat? column is drawn checkboxes, which OCR can't read. This is the gap left open on the very first Learn page, and this is where it closes:
 
-!!! warning "This downloads a model on first use"
-
-    `detect_checkboxes()` downloads a YOLO12n ONNX model (`wendys-llc/checkbox-detector`, ~10 MB) on the first call.
+:::caution[This downloads a model on first use]
+`detect_checkboxes()` downloads a YOLO12n ONNX model (`wendys-llc/checkbox-detector`, ~10 MB) on the first call.
+:::
 
 ```python
 checkboxes = spage.detect_checkboxes()

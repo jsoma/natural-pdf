@@ -20,9 +20,9 @@ page.show()
 
 `page.ask()` runs a local extractive QA model (LayoutLM) that reads the page's text *and* layout, then points at the span that answers your question.
 
-!!! warning "This downloads a model on first use"
-
-    The first `page.ask()` (or `page.extract()` without an LLM client) downloads `impira/layoutlm-document-qa`, about 500 MB, into your Hugging Face cache. It's reused after that. The two housekeeping lines below just keep model-loading progress bars and font warnings out of the output.
+:::caution[This downloads a model on first use]
+The first `page.ask()` (or `page.extract()` without an LLM client) downloads `impira/layoutlm-document-qa`, about 500 MB, into your Hugging Face cache. It's reused after that. The two housekeeping lines below just keep model-loading progress bars and font warnings out of the output.
+:::
 
 ```python
 import logging
@@ -167,9 +167,9 @@ Look at the page render at the top: three of those boxes are visibly checked. Th
 
 A different job: not "what does this field say" but "what *is* this document." `classify()` scores your labels against the document and stores the winner.
 
-!!! warning "This downloads a model on first use"
-
-    Text classification downloads `facebook/bart-large-mnli`, about 1.6 GB, into your Hugging Face cache on the first call.
+:::caution[This downloads a model on first use]
+Text classification downloads `facebook/bart-large-mnli`, about 1.6 GB, into your Hugging Face cache on the first call.
+:::
 
 ```python
 pdf.classify(['slaughterhouse report', 'dolphin training manual', 'basketball', 'birding'], using='text')
@@ -189,9 +189,9 @@ cia.pages.show(columns=6, resolution=40)
 
 Suppose you only care about the flowcharts. The pages *look* different even where the text is mush, so classify each page by its rendered image instead of its text:
 
-!!! warning "This downloads a model on first use"
-
-    Vision classification downloads `openai/clip-vit-base-patch16`, about 600 MB, into your Hugging Face cache on the first call.
+:::caution[This downloads a model on first use]
+Vision classification downloads `openai/clip-vit-base-patch16`, about 600 MB, into your Hugging Face cache on the first call.
+:::
 
 ```python
 cia.classify_pages(['diagram', 'text', 'form', 'blank'], using='vision', progress_bar=False)
