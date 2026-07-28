@@ -149,6 +149,44 @@
   max-width: 100%;
 }
 
+/* Rendered pandas DataFrames (pandas emits border="1" class="dataframe";
+ * Starlight makes tables display:block). Flat, quiet styling: horizontal
+ * rules only, no full-width bordered box. */
+
+.sl-markdown-content table.dataframe {
+  display: table;
+  width: auto;
+  border: none;
+  border-collapse: collapse;
+  font-size: var(--sl-text-sm);
+  line-height: 1.4;
+}
+
+.sl-markdown-content table.dataframe th,
+.sl-markdown-content table.dataframe td {
+  border: none;
+  border-block-end: 1px solid var(--sl-color-gray-5);
+  padding: 0.4rem 0.85rem;
+  text-align: left;
+  background: none;
+}
+
+.sl-markdown-content table.dataframe thead th {
+  border-block-end: 2px solid var(--sl-color-gray-4);
+  color: var(--sl-color-white);
+}
+
+/* Index column: quiet, not bold */
+.sl-markdown-content table.dataframe tbody th {
+  color: var(--sl-color-gray-3);
+  font-weight: 400;
+}
+
+.sl-markdown-content table.dataframe tbody tr:hover td,
+.sl-markdown-content table.dataframe tbody tr:hover th {
+  background-color: var(--sl-color-gray-6);
+}
+
 /* -------------------------------------------------------------- Images.
  * Generated screenshots pass through unoptimized; keep them inside the
  * content column and at a modest size. */
