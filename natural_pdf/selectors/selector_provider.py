@@ -144,7 +144,6 @@ def run_selector_engine(
         )
 
     provider = get_provider()
-    engine = provider.get("selectors", context=host, name=engine_name)
     context = SelectorContext(host=host)
     options = SelectorOptions(
         selector=selector,
@@ -157,8 +156,9 @@ def run_selector_engine(
         auto_text_tolerance=auto_text_tolerance,
         extra={},
     )
-    result = engine.query(context=context, selector=selector, options=options)
-    return result.elements
+    with provider.checkout("selectors", context=host, name=engine_name) as engine:
+        result = engine.query(context=context, selector=selector, options=options)
+        return result.elements
 
 
 def _normalize_name(value: Optional[str]) -> Optional[str]:

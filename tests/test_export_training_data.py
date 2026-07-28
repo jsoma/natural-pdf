@@ -192,6 +192,15 @@ def test_overwrite_true_succeeds(pdf, out_dir):
     assert result["images"] > 0
 
 
+def test_overwrite_refuses_file_destination(pdf, out_dir):
+    Path(out_dir).write_text("unrelated data", encoding="utf-8")
+
+    with pytest.raises(FileExistsError, match="not a directory"):
+        export_training_data(pdf, out_dir, overwrite=True)
+
+    assert Path(out_dir).read_text(encoding="utf-8") == "unrelated data"
+
+
 def test_invalid_split_raises(pdf, out_dir):
     """Split outside (0, 1) raises ValueError."""
     with pytest.raises(ValueError):
@@ -288,6 +297,41 @@ def test_pathlib_path_output_dir(pdf, out_dir):
     assert _old_aside_dirs(out_dir) == []
 
 
+def test_nested_output_parent_is_created(pdf, tmp_path):
+    output_dir = tmp_path / "missing" / "nested" / "export"
+
+    result = export_training_data(pdf, output_dir)
+
+    assert result["images"] > 0
+    assert (output_dir / "metadata.jsonl").exists()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX directory mode semantics")
+def test_final_output_directory_uses_normal_umask_permissions(pdf, out_dir):
+    previous_umask = os.umask(0o027)
+    try:
+        export_training_data(pdf, out_dir)
+    finally:
+        os.umask(previous_umask)
+
+    assert Path(out_dir).stat().st_mode & 0o777 == 0o750
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX directory mode semantics")
+def test_in_progress_staging_directory_is_private(pdf, out_dir, monkeypatch):
+    import natural_pdf.exporters.training_data as td
+
+    real_build = td._build_export
+
+    def assert_private_then_build(_pdfs, staging_dir, **kwargs):
+        assert Path(staging_dir).stat().st_mode & 0o777 == 0o700
+        return real_build(_pdfs, staging_dir, **kwargs)
+
+    monkeypatch.setattr(td, "_build_export", assert_private_then_build)
+
+    export_training_data(pdf, out_dir)
+
+
 def test_promote_failure_preserves_old_export(pdf, out_dir, monkeypatch):
     """If renaming staging into place fails, the ORIGINAL export must be
     restored intact (not deleted before the promote)."""
@@ -295,14 +339,16 @@ def test_promote_failure_preserves_old_export(pdf, out_dir, monkeypatch):
     assert old["images"] > 0
     old_files = sorted(p.name for p in (Path(out_dir) / "images").glob("*.png"))
 
-    real_rename = os.rename
+    import natural_pdf.exporters.training_data as td
+
+    real_publish = td.publish_directory_noreplace
 
     def failing_rename(src, dst):
         if ".staging-" in os.fspath(src):
             raise OSError("simulated promote failure")
-        return real_rename(src, dst)
+        return real_publish(src, dst)
 
-    monkeypatch.setattr(os, "rename", failing_rename)
+    monkeypatch.setattr(td, "publish_directory_noreplace", failing_rename)
 
     with pytest.raises(OSError, match="simulated promote failure"):
         export_training_data(pdf, out_dir, overwrite=True)
@@ -312,8 +358,10 @@ def test_promote_failure_preserves_old_export(pdf, out_dir, monkeypatch):
     # Original export restored at its original location, byte-for-byte set
     assert (Path(out_dir) / "metadata.jsonl").exists()
     assert sorted(p.name for p in (Path(out_dir) / "images").glob("*.png")) == old_files
-    # No staging or aside leftovers
-    assert _staging_dirs(out_dir) == []
+    # The completed replacement remains recoverable; no aside leftovers.
+    staging = _staging_dirs(out_dir)
+    assert len(staging) == 1
+    assert (staging[0] / "metadata.jsonl").exists()
     assert _old_aside_dirs(out_dir) == []
 
 
@@ -334,6 +382,33 @@ def test_overwrite_refuses_unmarked_directory(pdf, out_dir):
     assert _staging_dirs(out_dir) == []
 
 
+def test_destination_swap_during_initial_validation_is_never_authorized(pdf, out_dir, monkeypatch):
+    """Validation and captured identity must describe the same directory."""
+    import shutil
+
+    import natural_pdf.exporters.training_data as td
+
+    export_training_data(pdf, out_dir)
+    real_has_identity = td.path_has_identity
+    swapped = False
+
+    def swap_then_check(path, identity):
+        nonlocal swapped
+        if not swapped and os.fspath(path) == out_dir:
+            swapped = True
+            shutil.rmtree(out_dir)
+            Path(out_dir).mkdir()
+            (Path(out_dir) / "valuable.txt").write_text("foreign", encoding="utf-8")
+        return real_has_identity(path, identity)
+
+    monkeypatch.setattr(td, "path_has_identity", swap_then_check)
+
+    with pytest.raises(FileExistsError, match="changed during validation"):
+        export_training_data(pdf, out_dir, overwrite=True)
+
+    assert (Path(out_dir) / "valuable.txt").read_text(encoding="utf-8") == "foreign"
+
+
 # ── destination appearing between build and promote (TOCTOU) ───────────
 
 
@@ -349,6 +424,69 @@ def _intrude_after_build(monkeypatch, intrude):
         return result
 
     monkeypatch.setattr(td, "_build_export", build_then_intrude)
+
+
+def test_marker_removal_during_build_aborts_overwrite_and_restores_old_export(
+    pdf, out_dir, monkeypatch
+):
+    export_training_data(pdf, out_dir)
+    marker = Path(out_dir) / ".natural-pdf-export"
+
+    _intrude_after_build(monkeypatch, marker.unlink)
+
+    with pytest.raises(FileExistsError, match="claimed destination"):
+        export_training_data(pdf, out_dir, overwrite=True)
+
+    assert Path(out_dir).is_dir()
+    assert not marker.exists()
+    assert (Path(out_dir) / "metadata.jsonl").exists()
+    staging = _staging_dirs(out_dir)
+    assert len(staging) == 1
+    assert (staging[0] / "metadata.jsonl").exists()
+
+
+def test_claim_validation_exception_restores_old_export(pdf, out_dir, monkeypatch):
+    import natural_pdf.exporters.training_data as td
+
+    export_training_data(pdf, out_dir)
+    real_validate = td._validate_existing_destination
+
+    def fail_claimed_validation(path):
+        if ".old-" in os.fspath(path):
+            raise OSError("simulated validation read failure")
+        return real_validate(path)
+
+    monkeypatch.setattr(td, "_validate_existing_destination", fail_claimed_validation)
+
+    with pytest.raises(FileExistsError, match="claimed destination"):
+        export_training_data(pdf, out_dir, overwrite=True)
+
+    assert (Path(out_dir) / "metadata.jsonl").exists()
+    staging = _staging_dirs(out_dir)
+    assert len(staging) == 1
+    assert (staging[0] / "metadata.jsonl").exists()
+
+
+def test_old_export_cleanup_failure_does_not_fail_committed_overwrite(pdf, out_dir, monkeypatch):
+    import natural_pdf.exporters.training_data as td
+
+    export_training_data(pdf, out_dir)
+    real_remove = td._cleanup_private_directory
+
+    def fail_old_cleanup(path, *, recursive=True):
+        if Path(path).name == "previous-export":
+            return False
+        return real_remove(path, recursive=recursive)
+
+    monkeypatch.setattr(td, "_cleanup_private_directory", fail_old_cleanup)
+
+    result = export_training_data(pdf, out_dir, overwrite=True)
+
+    assert result["images"] > 0
+    assert (Path(out_dir) / "metadata.jsonl").exists()
+    old_dirs = _old_aside_dirs(out_dir)
+    assert len(old_dirs) == 1
+    assert (old_dirs[0] / "previous-export" / "metadata.jsonl").exists()
 
 
 def test_destination_dir_appearing_during_build_raises_and_is_untouched(pdf, out_dir, monkeypatch):
@@ -383,7 +521,7 @@ def test_destination_file_appearing_during_build_raises_with_overwrite(pdf, out_
 
     _intrude_after_build(monkeypatch, intrude)
 
-    with pytest.raises(FileExistsError, match="Refusing to overwrite"):
+    with pytest.raises(FileExistsError, match="appeared"):
         export_training_data(pdf, out_dir, overwrite=True)
 
     assert Path(out_dir).read_text() == "irreplaceable"
@@ -413,6 +551,29 @@ def test_destination_replaced_with_foreign_dir_during_build_raises(pdf, out_dir,
     staging = _staging_dirs(out_dir)
     assert len(staging) == 1
     assert str(staging[0]) in str(excinfo.value)
+
+
+def test_destination_appearing_during_atomic_promotion_is_preserved(pdf, out_dir, monkeypatch):
+    """A destination created after the final guard but before publication is
+    protected by the filesystem's no-replace operation, even when empty."""
+    import natural_pdf.exporters.training_data as td
+
+    real_publish = td.publish_directory_noreplace
+
+    def intruding_rename(source, destination):
+        Path(destination).mkdir()
+        return real_publish(source, destination)
+
+    monkeypatch.setattr(td, "publish_directory_noreplace", intruding_rename)
+
+    with pytest.raises(FileExistsError, match="during promotion"):
+        export_training_data(pdf, out_dir, overwrite=False)
+
+    assert Path(out_dir).is_dir()
+    assert list(Path(out_dir).iterdir()) == []
+    staging = _staging_dirs(out_dir)
+    assert len(staging) == 1
+    assert (staging[0] / "metadata.jsonl").exists()
 
 
 # ── empty elements are skipped ──────────────────────────────────────────

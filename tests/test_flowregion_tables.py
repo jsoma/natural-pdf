@@ -27,6 +27,42 @@ class _DummyRegion:
         return [TableResult(list(self._rows))]
 
 
+class _SeamRecoveryRegion(_DummyRegion):
+    """Region stub whose explicit-line retry returns a different table."""
+
+    def __init__(
+        self,
+        rows: List[List[str]],
+        retry_rows: List[List[str]],
+        text_lines: List[List[str]],
+        page_number: int = 2,
+    ):
+        super().__init__(rows, page_number)
+        self._retry_rows = retry_rows
+        self.top = 0.0
+        self._words = [
+            SimpleNamespace(
+                text=text,
+                top=float(line_index * 10),
+                bottom=float(line_index * 10 + 8),
+                x0=float(word_index * 50),
+                x1=float(word_index * 50 + 20),
+            )
+            for line_index, line in enumerate(text_lines, start=1)
+            for word_index, text in enumerate(line, start=1)
+        ]
+
+    def find_all(self, *_args: Any, **_kwargs: Any):
+        return list(self._words)
+
+    def extract_table(self, **kwargs: Any) -> TableResult:
+        self.extract_table_calls.append(kwargs)
+        settings = kwargs.get("table_settings", {})
+        if settings.get("explicit_horizontal_lines"):
+            return TableResult(list(self._retry_rows))
+        return TableResult(list(self._rows))
+
+
 def _flow_region_with(rows_per_region: List[List[List[Optional[str]]]]) -> FlowRegion:
     regions = [
         _DummyRegion(rows=rows, page_number=index + 1) for index, rows in enumerate(rows_per_region)
@@ -222,3 +258,68 @@ def test_flow_region_extract_table_recovers_row_dropped_at_segment_seam():
         assert len(list(seg_second.extract_table())) == 14
     finally:
         pdf.close()
+
+
+def test_flow_seam_recovery_uses_exact_token_boundaries():
+    """The missing ``1``/``2`` row is not already present in ``10``/``20``."""
+
+    first = _DummyRegion([["0", "0"]], page_number=1)
+    second = _SeamRecoveryRegion(
+        rows=[["10", "20"], ["11", "21"]],
+        retry_rows=[["1", "2"], ["10", "20"], ["11", "21"]],
+        text_lines=[["1", "2"], ["10", "20"], ["11", "21"]],
+    )
+    flow_region = FlowRegion(flow=SimpleNamespace(), constituent_regions=[first, second])
+
+    rows = list(flow_region.extract_table(method="pdfplumber", merge_headers=False))
+
+    assert rows == [["0", "0"], ["1", "2"], ["10", "20"], ["11", "21"]]
+    assert len(second.extract_table_calls) == 2
+
+
+def test_flow_seam_recovery_rejects_arbitrary_top_text():
+    """A retry must not turn a page heading into a numeric table row."""
+
+    first = _DummyRegion([["0", "0"]], page_number=1)
+    second = _SeamRecoveryRegion(
+        rows=[["10", "20"], ["11", "21"]],
+        retry_rows=[["PAGE", "HEADER"], ["10", "20"], ["11", "21"]],
+        text_lines=[["PAGE", "HEADER"], ["10", "20"], ["11", "21"]],
+    )
+    flow_region = FlowRegion(flow=SimpleNamespace(), constituent_regions=[first, second])
+
+    rows = list(flow_region.extract_table(method="pdfplumber", merge_headers=False))
+
+    assert rows == [["0", "0"], ["10", "20"], ["11", "21"]]
+    assert len(second.extract_table_calls) == 2
+
+
+def test_flow_seam_recovery_rejects_header_above_all_text_table():
+    """All-text rows provide no schema evidence that distinguishes a heading."""
+
+    first = _DummyRegion([["Alice", "Open"]], page_number=1)
+    second = _SeamRecoveryRegion(
+        rows=[["Bob", "Closed"], ["Cara", "Open"]],
+        retry_rows=[["PAGE", "HEADER"], ["Bob", "Closed"], ["Cara", "Open"]],
+        text_lines=[["PAGE", "HEADER"], ["Bob", "Closed"], ["Cara", "Open"]],
+    )
+    flow_region = FlowRegion(flow=SimpleNamespace(), constituent_regions=[first, second])
+
+    rows = list(flow_region.extract_table(method="pdfplumber", merge_headers=False))
+
+    assert rows == [["Alice", "Open"], ["Bob", "Closed"], ["Cara", "Open"]]
+    assert len(second.extract_table_calls) == 2
+
+
+def test_flow_seam_recovery_rejects_retry_that_rewrites_original_rows():
+    first = _DummyRegion([["0", "0"]], page_number=1)
+    second = _SeamRecoveryRegion(
+        rows=[["10", "20"], ["11", "21"]],
+        retry_rows=[["1", "2"], ["10", "changed"], ["11", "21"]],
+        text_lines=[["1", "2"], ["10", "20"], ["11", "21"]],
+    )
+    flow_region = FlowRegion(flow=SimpleNamespace(), constituent_regions=[first, second])
+
+    rows = list(flow_region.extract_table(method="pdfplumber", merge_headers=False))
+
+    assert rows == [["0", "0"], ["10", "20"], ["11", "21"]]

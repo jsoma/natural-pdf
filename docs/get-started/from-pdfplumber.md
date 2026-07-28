@@ -190,7 +190,7 @@ pdfplumber reads the text layer that's in the file; if the page is a scan, there
 pip install "natural-pdf[all]"
 ```
 
-```python skip=true
+```python {.skip-execution}
 pdf = PDF("scanned-report.pdf")
 page = pdf.pages[0]
 page.apply_ocr()          # default engine: rapidocr, models ship with the package
@@ -236,4 +236,4 @@ The behavioral differences called out for pdfplumber apply here too: text elemen
 ## Next
 
 - [Quickstart](quickstart.md) — the 15-minute end-to-end path.
-- [Concepts](../concepts/) — elements, regions, and exclusions in depth.
+- [Concepts](../concepts/index.md) — elements, regions, and exclusions in depth.

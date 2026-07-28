@@ -11,7 +11,7 @@ This PDF lists alcohol licensees in Oklahoma. The table has no drawn cell border
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/m27.pdf")
+pdf = PDF("pdfs/m27.pdf")
 page = pdf.pages[0]
 page.show()
 ```

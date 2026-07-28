@@ -36,7 +36,7 @@ pdf2.add_exclusion(lambda page: page.region(0, page.height - 25, page.width, pag
                    label="footer");
 ```
 
-One binding-time detail worth knowing: a **selector string or collection is resolved when you add it** — the matched elements are stored. A **callable is stored as-is and runs at read time**, against whatever the page contains then. If your exclusion should track content that might change (OCR, edits), use a callable. Inside the callable, exclusions are temporarily off, so `lambda page: page.find(...)` can't recurse into itself.
+One binding-time detail worth knowing: a **selector string or collection is resolved when you add it** — the matched elements are stored. A **callable is stored as-is and runs at read time**, against whatever the page contains then. Page- and region-level callables stay bound to that registering host even when a derived view (such as a guide window) performs the read; PDF-level callables use each page as their host by design. If your exclusion should track content that might change (OCR, edits), use a callable. Inside the callable, exclusions are temporarily off, so `lambda page: page.find(...)` can't recurse into itself.
 
 `method="element"` is the surgical variant: instead of blanking a rectangle, it drops only the specific matched elements, leaving other elements that happen to overlap the same area visible.
 

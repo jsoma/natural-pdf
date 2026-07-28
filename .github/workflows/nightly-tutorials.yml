@@ -62,10 +62,10 @@ jobs:
         with:
           path: |
             .docs-build-cache.json
-            docs-build
-          key: docs-build-nightly-${{ hashFiles('docs/**/*.md', 'scripts/docs_build.py', 'uv.lock') }}
+            docs-executed
+          key: docs-executed-nightly-v2-${{ hashFiles('docs/**/*.md', 'natural_pdf/**/*.py', 'scripts/docs_build.py', 'pyproject.toml', 'uv.lock', 'pdfs/**/*.pdf') }}
           restore-keys: |
-            docs-build-nightly-
+            docs-executed-nightly-v2-
 
       - name: Execute all docs tiers
         run: |
@@ -75,7 +75,12 @@ jobs:
           for section in get-started learn concepts solve troubleshooting for-agents; do
             if [ -d "docs/$section" ]; then
               found=1
-              uv run python scripts/docs_build.py "docs/$section" --out "docs-executed/$section" --keep-going || failed=1
+              uv run python scripts/docs_build.py "docs/$section" \
+                --out "docs-executed/$section" \
+                --colab-ref gh-pages --colab-prefix "$section" \
+                --keep-going || failed=1
+            else
+              rm -rf "docs-executed/$section"
             fi
           done
           if [ "$found" = "0" ]; then
@@ -89,6 +94,6 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: executed-docs
-          path: docs-build
+          path: docs-executed
           if-no-files-found: ignore
           retention-days: 14

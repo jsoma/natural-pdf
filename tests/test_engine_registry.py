@@ -198,6 +198,29 @@ def test_register_ocr_engine_vlm_shorthand(monkeypatch):
     assert calls["family"] == "glm_ocr"
 
 
+def test_register_ocr_engine_vlm_replace_false_preserves_existing_entry():
+    name = f"ocr.vlm.replace.{uuid.uuid4().hex}"
+    register_ocr_engine(
+        name,
+        kind="vlm",
+        model_resolver=lambda: "first-model",
+        vlm_family="glm_ocr",
+    )
+    original = get_registry()[name]
+
+    register_ocr_engine(
+        name,
+        kind="vlm",
+        model_resolver=lambda: "second-model",
+        vlm_family="dots_mocr",
+        replace=False,
+    )
+
+    assert get_registry()[name] is original
+    assert get_registry()[name].model_resolver() == "first-model"
+    assert get_registry()[name].vlm_family == "glm_ocr"
+
+
 def test_register_layout_engine_round_trip():
     name = f"layout.test.{uuid.uuid4().hex}"
 

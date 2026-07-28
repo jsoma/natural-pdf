@@ -54,8 +54,8 @@ def run_table_structure_engine(
     if not engine_id:
         return None
     provider = get_provider()
-    engine = provider.get("tables.detect_structure", context=context, name=engine_id)
-    return engine.detect(context=context, region=region, options=options or {})
+    with provider.checkout("tables.detect_structure", context=context, name=engine_id) as engine:
+        return engine.detect(context=context, region=region, options=options or {})
 
 
 def resolve_structure_engine_name(

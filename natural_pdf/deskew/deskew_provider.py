@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import ExitStack
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Protocol, runtime_checkable
 
@@ -97,19 +98,22 @@ def run_deskew_detect(
 ) -> Optional[float]:
     provider = get_provider()
     name = (engine_name or "standard").strip().lower()
-    try:
-        engine = provider.get("deskew.detect", context=context, name=name)
-    except LookupError:
-        engine = provider.get("deskew", context=context, name=name)
-    if not isinstance(engine, DeskewEngine):
-        raise TypeError(f"Deskew engine '{name}' does not implement the DeskewEngine interface")
-    return engine.detect(
-        target=target,
-        context=context,
-        resolution=resolution,
-        grayscale=grayscale,
-        deskew_kwargs=deskew_kwargs or {},
-    )
+    with ExitStack() as stack:
+        try:
+            engine = stack.enter_context(
+                provider.checkout("deskew.detect", context=context, name=name)
+            )
+        except LookupError:
+            engine = stack.enter_context(provider.checkout("deskew", context=context, name=name))
+        if not isinstance(engine, DeskewEngine):
+            raise TypeError(f"Deskew engine '{name}' does not implement the DeskewEngine interface")
+        return engine.detect(
+            target=target,
+            context=context,
+            resolution=resolution,
+            grayscale=grayscale,
+            deskew_kwargs=deskew_kwargs or {},
+        )
 
 
 def run_deskew_apply(
@@ -125,21 +129,24 @@ def run_deskew_apply(
 ) -> DeskewApplyResult:
     provider = get_provider()
     name = (engine_name or "standard").strip().lower()
-    try:
-        engine = provider.get("deskew.apply", context=context, name=name)
-    except LookupError:
-        engine = provider.get("deskew", context=context, name=name)
-    if not isinstance(engine, DeskewEngine):
-        raise TypeError(f"Deskew engine '{name}' does not implement the DeskewEngine interface")
-    return engine.apply(
-        target=target,
-        context=context,
-        resolution=resolution,
-        angle=angle,
-        detection_resolution=detection_resolution,
-        grayscale=grayscale,
-        deskew_kwargs=deskew_kwargs or {},
-    )
+    with ExitStack() as stack:
+        try:
+            engine = stack.enter_context(
+                provider.checkout("deskew.apply", context=context, name=name)
+            )
+        except LookupError:
+            engine = stack.enter_context(provider.checkout("deskew", context=context, name=name))
+        if not isinstance(engine, DeskewEngine):
+            raise TypeError(f"Deskew engine '{name}' does not implement the DeskewEngine interface")
+        return engine.apply(
+            target=target,
+            context=context,
+            resolution=resolution,
+            angle=angle,
+            detection_resolution=detection_resolution,
+            grayscale=grayscale,
+            deskew_kwargs=deskew_kwargs or {},
+        )
 
 
 class ProjectionProfileEngine:

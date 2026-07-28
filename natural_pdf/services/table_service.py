@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Union, cast
+from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union, cast
 
 from natural_pdf.tables import TableResult
 from natural_pdf.tables.structure_provider import (
@@ -548,13 +548,13 @@ class TableService:
                 and horizontals is None
                 and table_settings.get("horizontal_strategy") != "text"
             ):
-                seam_top = self._find_dropped_seam_top(
+                seam_evidence = self._find_dropped_seam_top(
                     region, rows, apply_exclusions=apply_exclusions
                 )
-                if seam_top is not None:
+                if seam_evidence is not None:
                     recovered = self._retry_segment_with_seam_line(
                         region,
-                        seam_top,
+                        seam_evidence,
                         rows,
                         method=method,
                         table_settings=table_settings,
@@ -619,14 +619,46 @@ class TableService:
         return TableResult(aggregated_rows)
 
     @staticmethod
-    def _find_dropped_seam_top(region, rows, *, apply_exclusions: bool) -> Optional[float]:
-        """Return the top coordinate of the region's first text line when that
-        line is missing from the first extracted row.
+    def _cell_tokens(cell: Optional[str]) -> Tuple[str, ...]:
+        """Normalize a cell to exact whitespace-delimited text tokens."""
+
+        if cell is None:
+            return ()
+        return tuple(str(cell).split())
+
+    @classmethod
+    def _row_tokens(cls, row: Sequence[Optional[str]]) -> Tuple[str, ...]:
+        return tuple(token for cell in row for token in cls._cell_tokens(cell))
+
+    @staticmethod
+    def _cell_shape(cell: Optional[str]) -> Tuple[bool, bool]:
+        """Return ``(is_blank, is_numeric_or_date_like)`` for one cell."""
+
+        if cell is None or not str(cell).strip():
+            return True, False
+        compact = "".join(str(cell).split())
+        numeric_punctuation = set("0123456789+-.,$%()/:\u2212")
+        numeric_or_date_like = any(character.isdigit() for character in compact) and all(
+            character in numeric_punctuation for character in compact
+        )
+        return False, numeric_or_date_like
+
+    @classmethod
+    def _find_dropped_seam_top(
+        cls, region, rows, *, apply_exclusions: bool
+    ) -> Optional[Tuple[float, Tuple[str, ...]]]:
+        """Return evidence for a first text line omitted at a flow seam.
 
         This is the signature of a seam drop: the segment's text layer starts
         with a row whose cells never made it into the extracted table because
         the ruling line above it lives in the previous flow segment.
-        Returns None when the first text line is accounted for (no drop).
+
+        Detection is deliberately conservative.  The next text line must
+        exactly match the first extracted row (token boundaries included), and
+        the candidate-to-row spacing must match subsequent table row spacing.
+        This prevents a title or page header somewhere above a table from
+        becoming a synthetic row merely because its text is absent from the
+        extraction.
         """
         try:
             words = [
@@ -636,23 +668,74 @@ class TableService:
             ]
             if not words:
                 return None
-            topmost = min(w.top for w in words)
-            line_texts = [w.text.strip() for w in words if w.top - topmost <= 2.0]
+            words.sort(key=lambda word: (float(word.top), float(getattr(word, "x0", 0.0))))
+
+            lines: List[Tuple[float, List[Any]]] = []
+            for word in words:
+                word_top = float(word.top)
+                if lines and abs(word_top - lines[-1][0]) <= 2.0:
+                    lines[-1][1].append(word)
+                else:
+                    lines.append((word_top, [word]))
         except Exception:
             # Regions without text elements/geometry (mocks, exotic hosts):
             # never attempt recovery.
             return None
-        if not line_texts:
+
+        if len(lines) < 3 or len(rows) < 2:
             return None
-        first_row_text = " ".join(str(cell) for cell in rows[0] if cell)
-        if all(text in first_row_text for text in line_texts):
+
+        def line_tokens(line_words: Sequence[Any]) -> Tuple[str, ...]:
+            return tuple(
+                token for word in line_words for token in str(getattr(word, "text", "")).split()
+            )
+
+        candidate_top, candidate_words = lines[0]
+        candidate_tokens = line_tokens(candidate_words)
+        first_row_tokens = cls._row_tokens(rows[0])
+        if not candidate_tokens or candidate_tokens == first_row_tokens:
             return None
-        return topmost
+
+        # The first extracted row must be the *immediately following* text
+        # line.  Exact tuples avoid the old substring bug ("1" in "10").
+        first_row_top, first_row_words = lines[1]
+        if line_tokens(first_row_words) != first_row_tokens:
+            return None
+
+        # Establish the normal row pitch using consecutive extracted rows.
+        # If the text layout cannot prove that cadence, leave extraction alone.
+        matched_tops = [first_row_top]
+        line_index = 2
+        for row in rows[1:6]:
+            if line_index >= len(lines):
+                break
+            line_top, line_words = lines[line_index]
+            if line_tokens(line_words) != cls._row_tokens(row):
+                break
+            matched_tops.append(line_top)
+            line_index += 1
+        if len(matched_tops) < 2:
+            return None
+
+        normal_gaps = [
+            following - preceding
+            for preceding, following in zip(matched_tops, matched_tops[1:])
+            if following > preceding
+        ]
+        if not normal_gaps:
+            return None
+        ordered_gaps = sorted(normal_gaps)
+        normal_gap = ordered_gaps[len(ordered_gaps) // 2]
+        candidate_gap = first_row_top - candidate_top
+        if candidate_gap < normal_gap * 0.5 or candidate_gap > normal_gap * 1.5:
+            return None
+
+        return candidate_top, candidate_tokens
 
     def _retry_segment_with_seam_line(
         self,
         region,
-        seam_top: float,
+        seam_evidence: Tuple[float, Tuple[str, ...]],
         rows: List[List[Optional[str]]],
         *,
         method: Optional[str],
@@ -666,6 +749,7 @@ class TableService:
         Returns the recovered rows, or None when the retry did not improve on
         the original extraction (in which case the caller keeps ``rows``).
         """
+        seam_top, candidate_tokens = seam_evidence
         retry_settings = dict(table_settings)
         explicit = list(retry_settings.get("explicit_horizontal_lines") or [])
         seam_line = seam_top - 0.5
@@ -689,9 +773,34 @@ class TableService:
                 exc_info=True,
             )
             return None
-        if retry_rows and len(retry_rows) > len(rows) and len(retry_rows[0]) == len(rows[0]):
-            return retry_rows
-        return None
+        if not retry_rows or len(retry_rows) != len(rows) + 1:
+            return None
+
+        expected_width = len(rows[0])
+        if expected_width == 0 or any(len(row) != expected_width for row in rows + retry_rows):
+            return None
+
+        # The retry may add exactly the candidate row, but it must not alter,
+        # merge, split, or reorder anything the original extraction returned.
+        if retry_rows[1:] != rows:
+            return None
+
+        candidate_row = retry_rows[0]
+        if self._row_tokens(candidate_row) != candidate_tokens:
+            return None
+
+        # A seam row must have the same immediate per-column shape as the
+        # first surviving row.  At least one numeric/date-like cell is required:
+        # without it, an all-text heading is indistinguishable from all-text
+        # table data and recovery cannot be fail-closed.
+        candidate_shape = tuple(self._cell_shape(cell) for cell in candidate_row)
+        immediate_row_shape = tuple(self._cell_shape(cell) for cell in rows[0])
+        if candidate_shape != immediate_row_shape:
+            return None
+        if not any(is_numeric_or_date for _is_blank, is_numeric_or_date in candidate_shape):
+            return None
+
+        return retry_rows
 
     def extract_flow_tables(
         self,

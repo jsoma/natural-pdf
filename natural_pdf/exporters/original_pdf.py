@@ -6,11 +6,11 @@ import io
 import logging
 import os
 import urllib.request
-import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Set, Union
 
 from natural_pdf.exceptions import ExportError
+from natural_pdf.utils.filesystem import atomic_output_path
 from natural_pdf.utils.optional_imports import require
 
 if TYPE_CHECKING:
@@ -127,13 +127,19 @@ def create_original_pdf(
                     ("http://", "https://")
                 ):
                     try:
-                        with urllib.request.urlopen(first_page_pdf_path, timeout=60) as resp:
+                        request = first_page_pdf_obj._create_url_request(first_page_pdf_path)
+                        ssl_context = first_page_pdf_obj._create_ssl_context()
+                        with urllib.request.urlopen(
+                            request, context=ssl_context, timeout=60
+                        ) as resp:
                             data = resp.read()
-                        source_handle = pikepdf.Pdf.open(io.BytesIO(data))
                     except Exception as dl_err:
                         raise FileNotFoundError(
                             f"Source PDF bytes not available and download failed for {first_page_pdf_path}: {dl_err}"
                         ) from dl_err
+                    # Parsing is intentionally outside the download handler:
+                    # pikepdf.PasswordError must propagate for URL sources too.
+                    source_handle = pikepdf.Pdf.open(io.BytesIO(data))
                 else:
                     raise FileNotFoundError(
                         f"Source PDF bytes not available for {first_page_pdf_path}"
@@ -154,18 +160,8 @@ def create_original_pdf(
 
             # Write to a temp path in the destination directory, then replace,
             # so a failure never leaves a truncated file at output_path.
-            output_path_obj = Path(output_path_str)
-            # Unique per call so concurrent writers targeting the same
-            # output_path cannot clobber each other's temp file.
-            tmp_output_path = output_path_obj.with_name(
-                f"{output_path_obj.name}.tmp-{uuid.uuid4().hex[:8]}"
-            )
-            try:
+            with atomic_output_path(output_path_str) as tmp_output_path:
                 target_pikepdf_doc.save(str(tmp_output_path))
-                tmp_output_path.replace(output_path_obj)
-            except Exception:
-                tmp_output_path.unlink(missing_ok=True)
-                raise
             logger.info(
                 f"Successfully saved original pages PDF ({len(target_pikepdf_doc.pages)} pages) to: {output_path_str}"
             )

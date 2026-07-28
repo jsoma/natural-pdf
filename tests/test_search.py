@@ -116,12 +116,83 @@ class TestSearchService:
         results = SearchService.rank("query", embeddings, [], top_k=5)
         assert results == []
 
+    @pytest.mark.parametrize(
+        "embeddings",
+        [None, np.array(1.0), np.array([], dtype=np.float32)],
+        ids=["none", "scalar", "one-dimensional-empty"],
+    )
+    def test_rank_rejects_non_matrix_page_embeddings(self, embeddings):
+        from natural_pdf.exceptions import SearchError
+        from natural_pdf.search.search_service import SearchService
+
+        with pytest.raises(SearchError, match="expected a matrix"):
+            SearchService.rank("query", embeddings, [])
+
     def test_get_model_caching(self):
         from natural_pdf.search.search_service import SearchService
 
         model1 = SearchService.get_model("all-MiniLM-L6-v2")
         model2 = SearchService.get_model("all-MiniLM-L6-v2")
         assert model1 is model2
+
+    def test_encode_rejects_provider_result_count_mismatch(self, monkeypatch):
+        from natural_pdf.exceptions import SearchError
+        from natural_pdf.search.search_service import SearchService
+
+        model = SearchService.get_model()
+        monkeypatch.setattr(
+            model,
+            "encode",
+            lambda *_args, **_kwargs: np.ones((1, 4), dtype=np.float32),
+        )
+        with pytest.raises(SearchError, match="1 embeddings for 2 inputs"):
+            SearchService.encode_texts(["one", "two"])
+
+    def test_rank_rejects_wrong_query_embedding_shape(self, monkeypatch):
+        from natural_pdf.exceptions import SearchError
+        from natural_pdf.search.search_service import SearchService
+
+        model = SearchService.get_model()
+        monkeypatch.setattr(
+            model,
+            "encode",
+            lambda *_args, **_kwargs: np.ones((1, 4), dtype=np.float32),
+        )
+        with pytest.raises(SearchError, match="query shape"):
+            SearchService.rank(
+                "query",
+                np.ones((1, 4), dtype=np.float32),
+                [FakePage("one")],
+            )
+
+    def test_model_errors_propagate_unchanged(self, monkeypatch):
+        from natural_pdf.search.search_service import SearchService
+
+        model = SearchService.get_model()
+
+        def fail(*_args, **_kwargs):
+            raise RuntimeError("provider failed")
+
+        monkeypatch.setattr(model, "encode", fail)
+        with pytest.raises(RuntimeError, match="provider failed"):
+            SearchService.encode_texts(["one"])
+        with pytest.raises(RuntimeError, match="provider failed"):
+            SearchService.rank(
+                "query",
+                np.ones((1, 4), dtype=np.float32),
+                [FakePage("one")],
+            )
+
+    def test_rank_rejects_page_embedding_count_mismatch(self):
+        from natural_pdf.exceptions import SearchError
+        from natural_pdf.search.search_service import SearchService
+
+        with pytest.raises(SearchError, match="1 embeddings for 2 inputs"):
+            SearchService.rank(
+                "query",
+                np.ones((1, 4), dtype=np.float32),
+                [FakePage("one"), FakePage("two")],
+            )
 
 
 class TestPDFSearch:

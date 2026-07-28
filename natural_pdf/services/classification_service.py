@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import warnings
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any, List, Optional
 
 from PIL import Image
@@ -10,10 +11,38 @@ from PIL import Image
 from natural_pdf.classification.classification_provider import (
     run_classification_item,
 )
+from natural_pdf.classification.pipelines import validate_classification_labels
 from natural_pdf.classification.results import ClassificationResult
 from natural_pdf.engine_provider import get_provider
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ClassificationCallOptions:
+    """Options split at the host/content/engine service boundary.
+
+    Classification accepts extension-engine keyword arguments, so the public
+    API cannot enumerate every engine option.  It can still make ownership
+    explicit: ``resolution`` belongs to content rendering and
+    ``classification_engine`` belongs to engine selection; only the remaining
+    options cross into the selected engine.
+    """
+
+    engine_name: Optional[str]
+    content: dict[str, Any]
+    engine: dict[str, Any]
+
+
+def partition_classification_kwargs(kwargs: dict[str, Any]) -> ClassificationCallOptions:
+    """Return independently owned option maps without mutating ``kwargs``."""
+
+    engine_options = dict(kwargs)
+    engine_name = engine_options.pop("classification_engine", None)
+    content_options = {}
+    if "resolution" in engine_options:
+        content_options["resolution"] = engine_options.pop("resolution")
+    return ClassificationCallOptions(engine_name, content_options, engine_options)
 
 
 @contextmanager
@@ -54,6 +83,12 @@ class ClassificationService:
         multi_label: bool = False,
         **kwargs,
     ) -> ClassificationResult:
+        # Validate before touching host state or resolving an engine.  Besides
+        # making single-item behavior consistent with the batch APIs, this
+        # avoids constructing a potentially heavyweight transient engine for
+        # a call that can never run.
+        validate_classification_labels(labels)
+
         analyses = getattr(host, "analyses", None)
         if analyses is None:
             logger.warning("'analyses' attribute not found or is None. Initializing as empty dict.")
@@ -64,13 +99,9 @@ class ClassificationService:
         # content getter, everything else to the engine. Forwarding one stream
         # to both lets strays be silently swallowed by the pipeline while still
         # being recorded in the result's parameters.
-        content_kwargs = {}
-        if "resolution" in kwargs:
-            content_kwargs["resolution"] = kwargs.pop("resolution")
+        options = partition_classification_kwargs(kwargs)
 
-        with checkout_classification_engine(
-            host, kwargs.pop("classification_engine", None)
-        ) as engine_obj:
+        with checkout_classification_engine(host, options.engine_name) as engine_obj:
             chosen_mode = using
             content = None
 
@@ -81,7 +112,7 @@ class ClassificationService:
             if chosen_mode == "text":
                 try:
                     tentative_text = self._get_classification_content(
-                        host, "text", **content_kwargs
+                        host, "text", **options.content
                     )
                     if tentative_text and not (
                         isinstance(tentative_text, str) and tentative_text.isspace()
@@ -108,7 +139,7 @@ class ClassificationService:
             if content is None:
                 if chosen_mode is None:
                     chosen_mode = "vision"
-                content = self._get_classification_content(host, chosen_mode, **content_kwargs)
+                content = self._get_classification_content(host, chosen_mode, **options.content)
 
             effective_model_id = model or engine_obj.default_model(chosen_mode)
 
@@ -121,7 +152,7 @@ class ClassificationService:
                 using=chosen_mode,
                 min_confidence=min_confidence,
                 multi_label=multi_label,
-                **kwargs,
+                **options.engine,
             )
 
         analyses[analysis_key] = result_obj

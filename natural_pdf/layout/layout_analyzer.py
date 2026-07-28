@@ -1,5 +1,6 @@
 import dataclasses
 import logging
+from contextlib import ExitStack, contextmanager
 from typing import Any, List, Optional, Set
 
 from natural_pdf import options as npdf_options
@@ -200,72 +201,20 @@ class LayoutAnalyzer:
         )
 
         # --- Call Layout Manager (ALWAYS with options object) ---
-        detections, detector = self._run_layout_engine(
-            std_res_page_image, final_options, engine=engine, context=detection_context
-        )
-        if detections is None:
-            return []
-
-        # --- Apply Canonical Type Mapping ---
-        type_map = getattr(detector, "TYPE_MAP", {})
-        for detection in detections:
-            engine_normalized = detection.get("normalized_class", "unknown")
-            detection["canonical_type"] = type_map.get(engine_normalized, engine_normalized)
-
-        # --- Process Detections (Convert to Regions, Scale Coords from Image to PDF) ---
-        layout_regions = []
-
-        for detection in detections:
-            try:
-                # bbox is relative to std_res_page_image
-                x_min, y_min, x_max, y_max = detection["bbox"]
-
-                # Convert coordinates from image to PDF space
-                pdf_x0 = x_min * img_scale_x
-                pdf_y0 = y_min * img_scale_y
-                pdf_x1 = x_max * img_scale_x
-                pdf_y1 = y_max * img_scale_y
-
-                # Ensure PDF coords are valid
-                pdf_x0, pdf_x1 = min(pdf_x0, pdf_x1), max(pdf_x0, pdf_x1)
-                pdf_y0, pdf_y1 = min(pdf_y0, pdf_y1), max(pdf_y0, pdf_y1)
-                pdf_x0 = max(0, pdf_x0)
-                pdf_y0 = max(0, pdf_y0)
-                pdf_x1 = min(self._page.width, pdf_x1)
-                pdf_y1 = min(self._page.height, pdf_y1)
-
-                # Create a Region object with PDF coordinates
-                region = Region(self._page, (pdf_x0, pdf_y0, pdf_x1, pdf_y1))
-                region.region_type = detection.get("class", "unknown")
-                region.normalized_type = detection.get("canonical_type", "unknown")
-                region.confidence = detection.get("confidence", 0.0)
-                region.model = detection.get("model", engine or "unknown")
-                region.source = "detected"
-
-                # Add extra info if available
-                if "text" in detection:
-                    region.text_content = detection["text"]
-
-                layout_regions.append(region)
-
-            except (KeyError, IndexError, TypeError, ValueError) as e:
-                logger.warning(f"Could not process layout detection: {detection}. Error: {e}")
-                continue
-
-        # --- Store Results ---
-        logger.debug(f"Storing {len(layout_regions)} processed layout regions (mode: replace).")
-        self._page.clear_detected_layout_regions()
-
-        for region in layout_regions:
-            self._page.add_region(region, source="detected")
-
-        logger.info(f"Layout analysis complete for page {self._page.number}.")
-
-        # --- Engine-specific post-processing (e.g., TATR cell creation) ---
-        if detector is not None and hasattr(detector, "post_process_regions"):
-            detector.post_process_regions(layout_regions, final_options)
-
-        return layout_regions
+        with self._run_layout_engine(
+            std_res_page_image,
+            final_options,
+            engine=engine,
+            context=detection_context,
+        ) as (detections, detector):
+            return self._process_layout_detections(
+                detections,
+                detector,
+                final_options,
+                engine=engine,
+                img_scale_x=img_scale_x,
+                img_scale_y=img_scale_y,
+            )
 
     # ------------------------------------------------------------------
     # Helpers
@@ -299,30 +248,99 @@ class LayoutAnalyzer:
         )
         _DEFAULT_ENGINE_WARNING_SHOWN.add(normalized)
 
+    @contextmanager
     def _run_layout_engine(self, image, options, engine: Optional[str], context=None):
         engine_name = self._resolve_engine_name(engine, options)
         if engine_name is None:
             logger.error("Unable to determine layout engine for provided options")
-            return None, None
+            yield None, None
+            return
 
-        try:
-            detector = self._engine_provider.get("layout", context=self._page, name=engine_name)
-            detections = detector.detect(image, options, context=context)
+        with ExitStack() as stack:
+            try:
+                detector = stack.enter_context(
+                    self._engine_provider.checkout("layout", context=self._page, name=engine_name)
+                )
+            except LookupError as provider_err:
+                raise RuntimeError(
+                    f"Layout engine '{engine_name}' is not registered: {provider_err}"
+                ) from provider_err
+
+            try:
+                detections = detector.detect(image, options, context=context)
+            except Exception as exc:
+                logger.error(
+                    "Layout engine '%s' failed via provider: %s",
+                    engine_name,
+                    exc,
+                    exc_info=True,
+                )
+                raise
+
             logger.info(
                 "  Layout engine '%s' returned %d detections.",
                 engine_name,
                 len(detections),
             )
-            return detections, detector
-        except LookupError as provider_err:
-            raise RuntimeError(
-                f"Layout engine '{engine_name}' is not registered: {provider_err}"
-            ) from provider_err
-        except Exception as exc:
-            logger.error(
-                "Layout engine '%s' failed via provider: %s", engine_name, exc, exc_info=True
-            )
-            raise
+            yield detections, detector
+
+    def _process_layout_detections(
+        self,
+        detections,
+        detector,
+        final_options,
+        *,
+        engine: Optional[str],
+        img_scale_x: float,
+        img_scale_y: float,
+    ) -> List[Region]:
+        """Convert and post-process detections while the engine is checked out."""
+
+        if detections is None:
+            return []
+
+        type_map = getattr(detector, "TYPE_MAP", {})
+        for detection in detections:
+            engine_normalized = detection.get("normalized_class", "unknown")
+            detection["canonical_type"] = type_map.get(engine_normalized, engine_normalized)
+
+        layout_regions = []
+        for detection in detections:
+            try:
+                x_min, y_min, x_max, y_max = detection["bbox"]
+                pdf_x0 = x_min * img_scale_x
+                pdf_y0 = y_min * img_scale_y
+                pdf_x1 = x_max * img_scale_x
+                pdf_y1 = y_max * img_scale_y
+
+                pdf_x0, pdf_x1 = min(pdf_x0, pdf_x1), max(pdf_x0, pdf_x1)
+                pdf_y0, pdf_y1 = min(pdf_y0, pdf_y1), max(pdf_y0, pdf_y1)
+                pdf_x0 = max(0, pdf_x0)
+                pdf_y0 = max(0, pdf_y0)
+                pdf_x1 = min(self._page.width, pdf_x1)
+                pdf_y1 = min(self._page.height, pdf_y1)
+
+                region = Region(self._page, (pdf_x0, pdf_y0, pdf_x1, pdf_y1))
+                region.region_type = detection.get("class", "unknown")
+                region.normalized_type = detection.get("canonical_type", "unknown")
+                region.confidence = detection.get("confidence", 0.0)
+                region.model = detection.get("model", engine or "unknown")
+                region.source = "detected"
+                if "text" in detection:
+                    region.text_content = detection["text"]
+                layout_regions.append(region)
+            except (KeyError, IndexError, TypeError, ValueError) as exc:
+                logger.warning("Could not process layout detection: %s. Error: %s", detection, exc)
+
+        logger.debug("Storing %d processed layout regions (mode: replace).", len(layout_regions))
+        self._page.clear_detected_layout_regions()
+        for region in layout_regions:
+            self._page.add_region(region, source="detected")
+
+        logger.info("Layout analysis complete for page %s.", self._page.number)
+        if detector is not None and hasattr(detector, "post_process_regions"):
+            detector.post_process_regions(layout_regions, final_options)
+        return layout_regions
 
     def _default_engine_name(self) -> str:
         config_engine = self._page.get_config("layout_engine", None, scope="page")

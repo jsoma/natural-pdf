@@ -44,7 +44,7 @@ else:
 
 from natural_pdf.classification.accessors import ClassificationResultAccessorMixin
 from natural_pdf.classification.classification_provider import run_classification_batch
-from natural_pdf.classification.pipelines import ClassificationError
+from natural_pdf.classification.pipelines import ClassificationError, validate_classification_labels
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighting_service import HighlightingService
 from natural_pdf.core.ocr_contracts import OCRFunctionRequest, OCRRequest
@@ -648,6 +648,7 @@ class PDF(
         self._is_stream = False
         self._closed = False
         self._text_layer = text_layer
+        self._original_bytes: Optional[bytes] = None
         stream_to_open = None
 
         if hasattr(path_or_url_or_stream, "read"):  # Check if it's file-like
@@ -684,6 +685,10 @@ class PDF(
 
                     with urllib.request.urlopen(request, context=ssl_context) as response:
                         data = response.read()
+                    # Retain the exact downloaded source for original/region
+                    # exports. This also avoids a second network request whose
+                    # response could differ from the document we opened.
+                    self._original_bytes = data
                     # Load directly into an in-memory buffer — no temp file needed
                     buffer = io.BytesIO(data)
                     buffer.seek(0)
@@ -2001,8 +2006,7 @@ class PDF(
         Returns:
             Self for method chaining
         """
-        if not labels:
-            raise ValueError("Labels list cannot be empty.")
+        validate_classification_labels(labels)
 
         target_pages = self._get_target_pages(pages)
 
@@ -2010,18 +2014,19 @@ class PDF(
             logger.warning("No pages selected for classification.")
             return self
 
-        engine_name = kwargs.pop("classification_engine", None)
-
         from natural_pdf.services.classification_service import (
             ClassificationService,
             checkout_classification_engine,
+            partition_classification_kwargs,
         )
+
+        options = partition_classification_kwargs(kwargs)
 
         # Check the engine out once and pass the instance to
         # run_classification_batch below, so exactly one engine instance is
         # created regardless of registration lifetime — and transient
         # instances are cleaned up when the call finishes.
-        with checkout_classification_engine(self, engine_name) as engine_obj:
+        with checkout_classification_engine(self, options.engine_name) as engine_obj:
             inferred_using = engine_obj.infer_using(
                 model or engine_obj.default_model("text"), using
             )
@@ -2029,10 +2034,6 @@ class PDF(
             # Split the kwarg stream the same way ClassificationService.classify
             # does: content-extraction options go to the content getter, everything
             # else (e.g. device=) to the engine call.
-            content_kwargs = {}
-            if "resolution" in kwargs:
-                content_kwargs["resolution"] = kwargs.pop("resolution")
-
             logger.info(
                 f"Classifying {len(target_pages)} pages using model '{model or '(default)'}' (mode: {inferred_using})"
             )
@@ -2044,7 +2045,7 @@ class PDF(
             for page in target_pages:
                 try:
                     content = page._get_classification_content(
-                        model_type=inferred_using, **content_kwargs
+                        model_type=inferred_using, **options.content
                     )
                     page_contents.append(content)
                     pages_to_classify.append(page)
@@ -2076,7 +2077,7 @@ class PDF(
                     batch_size=batch_size,
                     progress_bar=progress_bar,
                     engine=engine_obj,
-                    **kwargs,
+                    **options.engine,
                 )
             except Exception as e:
                 logger.error(f"Batch classification failed: {e}")

@@ -58,6 +58,15 @@ class _CachedEngine:
     retained_options: Mapping[str, Any]
 
 
+@dataclass
+class _EngineLease:
+    """Active cached checkout count and deferred-cleanup state."""
+
+    engine: Any
+    count: int = 0
+    pending_cleanup: bool = False
+
+
 class _WeakContextKey:
     __slots__ = ("identity", "reference", "token")
 
@@ -115,7 +124,9 @@ class EngineProvider:
 
     A context registration may supply ``cache_key`` to intentionally share
     instances according to a stable, hashable application key instead of the
-    default context/options key.
+    default context/options key. :meth:`checkout` leases cached engines:
+    replacement, eviction, and clearing detach cache entries immediately, but
+    cleanup is deferred until the final active checkout exits.
     """
 
     ENTRY_POINT_GROUP = "natural_pdf.engines"
@@ -123,6 +134,7 @@ class EngineProvider:
     def __init__(self) -> None:
         self._registry: Dict[str, Dict[str, _EngineRegistration]] = defaultdict(dict)
         self._instances: Dict[tuple[str, str, Hashable], _CachedEngine] = {}
+        self._leases: Dict[int, _EngineLease] = {}
         self._context_keys: Dict[int, _WeakContextKey] = {}
         self._lock = threading.RLock()
         self._entry_points_loaded = False
@@ -155,8 +167,9 @@ class EngineProvider:
                 value and makes any cross-context sharing explicit.
 
         Replacing a registration detaches old instances while holding the
-        provider lock, then invokes their cleanup hooks after releasing it.
-        Cleanup failures are logged and do not undo the new registration.
+        provider lock. Cleanup hooks run after releasing it and, for leased
+        instances, after the final active checkout exits. Cleanup failures are
+        logged and do not undo the new registration.
         """
 
         capability = capability.strip().lower()
@@ -231,7 +244,35 @@ class EngineProvider:
         Context-lifetime engines reuse an instance only when both the context
         and constructor options resolve to the same cache key. Singleton
         registrations deliberately ignore those inputs. Transient instances
-        are returned directly and are never owned or cleaned by the provider.
+        and context engines whose semantic options report no canonical init
+        key are returned directly and are never owned or cleaned by the
+        provider. Prefer :meth:`checkout` for scoped automatic cleanup.
+        """
+
+        engine, _caller_owned, _leased = self._get_with_ownership(
+            capability,
+            context=context,
+            name=name,
+            options=options,
+            lease_checkout=False,
+        )
+        return engine
+
+    def _get_with_ownership(
+        self,
+        capability: str,
+        *,
+        context: Any,
+        name: Optional[str],
+        options: Mapping[str, Any],
+        lease_checkout: bool,
+    ) -> tuple[Any, bool, bool]:
+        """Acquire an engine and atomically report ownership and lease state.
+
+        The ownership decision is made from the same registration used to
+        construct or retrieve the instance while the provider lock is held.
+        This prevents a concurrent registration replacement from changing the
+        cleanup decision made by :meth:`checkout`.
         """
 
         self._ensure_entry_points_loaded()
@@ -261,19 +302,35 @@ class EngineProvider:
                 )
 
             if registration.lifetime == "transient":
-                return registration.factory(context=context, **options)
+                engine = registration.factory(context=context, **options)
+                return engine, True, False
 
             variant_key, retained_options = self._instance_variant_key(
                 registration, context, options
             )
+            if variant_key is None:
+                # A semantic option object explicitly reported that its
+                # constructor identity cannot be canonicalized. Treat this
+                # acquisition like a transient instead of silently retaining
+                # a heavy engine under the option object's process-local id.
+                engine = registration.factory(context=context, **options)
+                return engine, True, False
+
             key = (cap, engine_name, variant_key)
             cached = self._instances.get(key)
             if cached is None:
                 engine = registration.factory(context=context, **options)
+                if self._registry.get(cap, {}).get(engine_name) is not registration:
+                    # A factory can re-enter this RLock and replace its own
+                    # registration. The instance then belongs to neither the
+                    # replacement nor its cache, so hand cleanup to checkout.
+                    return engine, True, False
                 cached = _CachedEngine(engine=engine, retained_options=retained_options)
                 self._instances[key] = cached
 
-            return cached.engine
+            if lease_checkout:
+                self._acquire_lease_locked(cached.engine)
+            return cached.engine, False, lease_checkout
 
     @contextmanager
     def checkout(
@@ -286,27 +343,26 @@ class EngineProvider:
     ):
         """Scoped :meth:`get`: yield an engine and clean up transient instances.
 
-        Transient registrations return a fresh instance from every ``get``
-        and assign cleanup to the caller; ``checkout`` discharges that duty by
-        invoking the engine's ``cleanup()`` (or ``close()``) hook on exit —
-        the same convention used for evicted cached engines. Engines with
-        ``context``/``singleton`` lifetimes are yielded untouched: the
-        provider still owns those instances and cleans them via
-        :meth:`evict`/:meth:`clear` or context collection.
+        Caller-owned acquisitions (transient registrations and context engines
+        with explicitly uncacheable semantic options) are not retained in the
+        provider cache and are cleaned directly on exit. Cached engines are
+        leased so eviction cannot clean them during an active checkout.
         """
 
-        engine = self.get(capability, context=context, name=name, **options)
-
-        cap = capability.strip().lower()
-        engine_name = (name or "").strip().lower()
-        with self._lock:
-            registration = self._registry.get(cap, {}).get(engine_name)
-        transient = registration is not None and registration.lifetime == "transient"
+        engine, caller_owned, leased = self._get_with_ownership(
+            capability,
+            context=context,
+            name=name,
+            options=options,
+            lease_checkout=True,
+        )
 
         try:
             yield engine
         finally:
-            if transient:
+            if leased:
+                self._cleanup_engines(self._release_lease(engine))
+            elif caller_owned:
                 self._cleanup_engines([engine])
 
     def evict(self, capability: str, name: str) -> int:
@@ -315,9 +371,9 @@ class EngineProvider:
         Instances are detached atomically and cleaned after releasing the
         provider lock. The return value is the number of cache entries removed;
         shared object identities are cleaned at most once, and only after no
-        other provider cache entry references them. Callers must coordinate
-        eviction with engine use; returned engines are not leased or reference
-        counted once :meth:`get` returns.
+        other provider cache entry or active checkout references them. Engines
+        returned by raw :meth:`get` are not leased; callers using that lower-
+        level API must still coordinate eviction with engine use.
         """
 
         cap = capability.strip().lower()
@@ -330,12 +386,37 @@ class EngineProvider:
         self._cleanup_engines(cleanup)
         return count
 
+    def evict_instance(self, capability: str, name: str, engine: Any) -> int:
+        """Evict cached variants that reference one exact engine instance.
+
+        This narrow operation is useful when runtime validation determines
+        that an acquired plugin instance is unusable. Other instances and
+        option variants remain cached. Active checkouts defer cleanup in the
+        same way as :meth:`evict`.
+        """
+
+        cap = capability.strip().lower()
+        engine_name = name.strip().lower()
+        if not cap or not engine_name:
+            raise ValueError("capability and name must be non-empty strings")
+
+        with self._lock:
+            matching = [
+                key
+                for key, record in self._instances.items()
+                if key[0] == cap and key[1] == engine_name and record.engine is engine
+            ]
+            count, cleanup = self._detach_keys_locked(matching)
+        self._cleanup_engines(cleanup)
+        return count
+
     def clear(self, capability: Optional[str] = None) -> int:
         """Evict cached instances, optionally restricted to one capability.
 
         Registrations remain intact. Instances are detached under the provider
-        lock and their cleanup hooks run after the lock has been released.
-        Callers must ensure matching engines are not concurrently in use.
+        lock and their cleanup hooks run after the lock has been released and
+        any active checkout leases have ended. Raw :meth:`get` users must still
+        coordinate concurrent use themselves.
         """
 
         cap = capability.strip().lower() if capability is not None else None
@@ -352,7 +433,7 @@ class EngineProvider:
         registration: _EngineRegistration,
         context: Any,
         options: Mapping[str, Any],
-    ) -> tuple[Hashable, Mapping[str, Any]]:
+    ) -> tuple[Optional[Hashable], Mapping[str, Any]]:
         if registration.lifetime == "singleton":
             return "singleton", {}
 
@@ -364,7 +445,10 @@ class EngineProvider:
                 raise TypeError("Engine cache_key() must return a hashable value") from exc
             return key, {}
 
-        return (self._context_key_locked(context), _freeze_options(options)), dict(options)
+        frozen_options = _freeze_options(options)
+        if frozen_options is None:
+            return None, {}
+        return (self._context_key_locked(context), frozen_options), dict(options)
 
     def _context_key_locked(self, context: Any) -> Hashable:
         if context is None:
@@ -431,6 +515,42 @@ class EngineProvider:
         ]
         return self._detach_keys_locked(matching)
 
+    def _acquire_lease_locked(self, engine: Any) -> None:
+        """Record an active cached checkout by object identity. Lock required."""
+
+        identity = id(engine)
+        lease = self._leases.get(identity)
+        if lease is None:
+            lease = _EngineLease(engine=engine)
+            self._leases[identity] = lease
+        elif lease.engine is not engine:  # pragma: no cover - strong ref prevents id reuse
+            raise RuntimeError("Engine lease identity collision")
+        lease.count += 1
+
+    def _release_lease(self, engine: Any) -> List[Any]:
+        """Release one checkout and return engines whose cleanup is now safe."""
+
+        with self._lock:
+            identity = id(engine)
+            lease = self._leases.get(identity)
+            if lease is None or lease.engine is not engine or lease.count < 1:
+                logger.error("Engine checkout lease accounting mismatch")
+                return []
+
+            lease.count -= 1
+            if lease.count:
+                return []
+
+            self._leases.pop(identity, None)
+            if lease.pending_cleanup and not self._engine_is_cached_locked(engine):
+                return [engine]
+            return []
+
+    def _engine_is_cached_locked(self, engine: Any) -> bool:
+        """Return whether any current cache record owns ``engine``. Lock required."""
+
+        return any(record.engine is engine for record in self._instances.values())
+
     def _detach_keys_locked(
         self, matching: Iterable[tuple[str, str, Hashable]]
     ) -> tuple[int, List[Any]]:
@@ -444,7 +564,11 @@ class EngineProvider:
             identity = id(record.engine)
             if identity not in live_ids and identity not in seen:
                 seen.add(identity)
-                cleanup.append(record.engine)
+                lease = self._leases.get(identity)
+                if lease is not None and lease.engine is record.engine and lease.count:
+                    lease.pending_cleanup = True
+                else:
+                    cleanup.append(record.engine)
         return len(keys), cleanup
 
     @staticmethod
@@ -489,18 +613,48 @@ class EngineProvider:
                 self._entry_points_loaded = True
 
 
-def _freeze_options(options: Mapping[str, Any]) -> Hashable:
-    """Build a stable key for ordinary option containers and opaque identities."""
+class _UncacheableEngineOptions(Exception):
+    """Internal signal for semantic options without a canonical init key."""
+
+
+def _freeze_options(options: Mapping[str, Any]) -> Optional[Hashable]:
+    """Build a stable key, or ``None`` for explicitly uncacheable options."""
 
     active: set[int] = set()
-    return tuple(
-        sorted((str(key), _freeze_option_value(value, active)) for key, value in options.items())
-    )
+    try:
+        return tuple(
+            sorted(
+                (str(key), _freeze_option_value(value, active)) for key, value in options.items()
+            )
+        )
+    except _UncacheableEngineOptions:
+        return None
 
 
 def _freeze_option_value(value: Any, active: set[int]) -> Hashable:
     if value is None or isinstance(value, (bool, int, float, str, bytes)):
         return (type(value).__qualname__, value)
+
+    # OCR option objects expose their constructor identity explicitly. Honor
+    # that protocol before falling back to opaque object identity so separately
+    # normalized but semantically equivalent mappings reuse the same model.
+    init_key_fn = getattr(value, "_init_key", None)
+    if callable(init_key_fn):
+        init_key = init_key_fn()
+        if init_key is None:
+            raise _UncacheableEngineOptions
+        try:
+            hash(init_key)
+        except TypeError as exc:
+            raise TypeError(
+                "Engine option _init_key() must return a hashable value or None"
+            ) from exc
+        return (
+            "init_key",
+            type(value).__module__,
+            type(value).__qualname__,
+            init_key,
+        )
 
     if isinstance(value, (Mapping, tuple, list, set, frozenset)):
         identity = id(value)

@@ -7,8 +7,12 @@ on:
     paths:
       - 'docs/**'
       - 'natural_pdf/**'
+      - 'pdfs/**'
       - 'mkdocs.yml'
       - 'scripts/docs_build.py'
+      - 'scripts/generate_reference.py'
+      - 'pyproject.toml'
+      - 'uv.lock'
       - '.github/workflows/docs.yml'
     tags:
       - 'v*'
@@ -64,9 +68,9 @@ jobs:
           path: |
             .docs-build-cache.json
             docs-executed
-          key: docs-executed-${{ hashFiles('docs/**/*.md', 'scripts/docs_build.py', 'uv.lock') }}
+          key: docs-executed-deploy-v2-${{ hashFiles('docs/**/*.md', 'natural_pdf/**/*.py', 'scripts/docs_build.py', 'pyproject.toml', 'uv.lock', 'pdfs/**/*.pdf') }}
           restore-keys: |
-            docs-executed-
+            docs-executed-deploy-v2-
 
       # Execute ALL tiers for deploy: the deployed site is the product, and
       # the content-hash cache makes reruns incremental. A broken page fails
@@ -80,6 +84,8 @@ jobs:
                 --out "docs-executed/$section" \
                 --colab-ref gh-pages --colab-prefix "$section" \
                 --keep-going || failed=1
+            else
+              rm -rf "docs-executed/$section"
             fi
           done
           exit "$failed"

@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
+from natural_pdf.exceptions import SearchError
 from natural_pdf.utils.optional_imports import require
 
 logger = logging.getLogger(__name__)
@@ -55,13 +56,39 @@ class SearchService:
     @staticmethod
     def encode_texts(texts: List[str], model_name: str = DEFAULT_MODEL) -> np.ndarray:
         """Encode texts into a normalized embedding matrix."""
+        if not texts:
+            return np.empty((0, 0), dtype=np.float32)
         model = SearchService.get_model(model_name)
-        embeddings = model.encode(
+        payload = model.encode(
             texts,
             normalize_embeddings=True,
             show_progress_bar=len(texts) > 20,
         )
-        return np.asarray(embeddings, dtype=np.float32)
+        embeddings = np.asarray(payload, dtype=np.float32)
+        SearchService._validate_embedding_matrix(
+            embeddings, expected_rows=len(texts), source=f"embedding model {model_name!r}"
+        )
+        return embeddings
+
+    @staticmethod
+    def _validate_embedding_matrix(
+        embeddings: np.ndarray,
+        *,
+        expected_rows: int,
+        source: str,
+    ) -> None:
+        """Fail closed on malformed provider embeddings before ranking."""
+
+        if embeddings.ndim != 2:
+            raise SearchError(
+                f"{source} returned a {embeddings.ndim}-D embedding payload; expected a matrix"
+            )
+        if embeddings.shape[0] != expected_rows:
+            raise SearchError(
+                f"{source} returned {embeddings.shape[0]} embeddings for " f"{expected_rows} inputs"
+            )
+        if embeddings.shape[1] == 0:
+            raise SearchError(f"{source} returned embeddings with zero dimensions")
 
     @staticmethod
     def encode_pages(pages, model_name: str = DEFAULT_MODEL) -> np.ndarray:
@@ -111,15 +138,38 @@ class SearchService:
         """
         SearchService.validate_query(query, top_k)
 
-        if len(page_embeddings) == 0:
+        page_matrix = np.asarray(page_embeddings, dtype=np.float32)
+
+        # Check dimensionality before asking for a row count.  ``len()`` on a
+        # scalar ndarray raises a raw TypeError, and a 1-D empty array is not a
+        # valid embedding matrix even though its length is zero.
+        if page_matrix.ndim != 2:
+            raise SearchError(
+                f"Search page cache returned a {page_matrix.ndim}-D embedding payload; "
+                "expected a matrix"
+            )
+
+        if page_matrix.shape[0] == 0:
+            if pages:
+                raise SearchError(f"Search received 0 embeddings for {len(pages)} pages")
             return []
+
+        SearchService._validate_embedding_matrix(
+            page_matrix,
+            expected_rows=len(pages),
+            source="Search page cache",
+        )
 
         model = SearchService.get_model(model_name)
         query_emb = model.encode(query, normalize_embeddings=True)
         query_vec = np.asarray(query_emb, dtype=np.float32)
-
+        if query_vec.ndim != 1 or query_vec.shape[0] != page_matrix.shape[1]:
+            raise SearchError(
+                f"Embedding model {model_name!r} returned query shape "
+                f"{query_vec.shape}; expected ({page_matrix.shape[1]},)"
+            )
         # Cosine similarity (embeddings are already normalized)
-        scores = page_embeddings @ query_vec
+        scores = page_matrix @ query_vec
 
         k = min(top_k, len(scores))
         top_idx = np.argsort(scores)[-k:][::-1]

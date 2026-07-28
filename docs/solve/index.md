@@ -4,7 +4,7 @@ skip: true
 
 # Solve: real PDFs, worked end to end
 
-Every page in this section starts from a genuinely bad PDF — the kind that shows up after a records request or a scrape — states why it resists extraction, and works the solution in runnable code. Each page is also downloadable as a notebook, and every document is fetched by URL, so you can run any of them top to bottom.
+Every page in this section starts from a genuinely bad PDF — the kind that shows up after a records request or a scrape — states why it resists extraction, and works the solution in runnable code. Each page is also downloadable as a notebook. Same-repository examples use checked-out files under `pdfs/` during the docs build, and notebook export rewrites those paths to raw GitHub URLs so you can still run them top to bottom in Colab. A few externally hosted records remain URL inputs because they are not committed to this repository.
 
 If you're new to the library, start with [Learn](../learn/01-text-and-tables.md); come here when you have a document that looks like one of these.
 

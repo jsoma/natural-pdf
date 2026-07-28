@@ -64,13 +64,13 @@ def run_table_engine(
     """
 
     provider = get_provider()
-    engine = provider.get("tables", context=context, name=engine_name)
-    return engine.extract_tables(
-        context=context,
-        region=region,
-        table_settings=table_settings,
-        **kwargs,
-    )
+    with provider.checkout("tables", context=context, name=engine_name) as engine:
+        return engine.extract_tables(
+            context=context,
+            region=region,
+            table_settings=table_settings,
+            **kwargs,
+        )
 
 
 def normalize_table_settings(table_settings: Optional[Mapping[str, Any]]) -> Dict[str, Any]:

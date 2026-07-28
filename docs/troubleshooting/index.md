@@ -43,7 +43,7 @@ page.find("""text:ocr("Durham's Meatpacking")""").text   # curly apostrophe in t
 
 If one specific document keeps splitting words apart (letter-spaced text, missing space characters), re-load with different grouping tolerances — this changes how elements are *built*, not how they're searched:
 
-```python skip=true
+```python {.skip-execution}
 pdf = PDF("report.pdf", text_tolerance={"x_tolerance": 5})
 ```
 
@@ -71,7 +71,7 @@ scan_page.describe()
 
 **Fix:** run OCR, then extract. The default engine is RapidOCR, included in `pip install "natural-pdf[all]"`:
 
-```python skip=true
+```python {.skip-execution}
 scan_page.apply_ocr()               # adds text elements to the page
 text = scan_page.extract_text()     # now has content
 ```
@@ -105,7 +105,7 @@ len(page.find_all('line'))
 
 **Fastest check:** run the engines you have side by side and look:
 
-```python skip=true
+```python {.skip-execution}
 cmp = page.compare_ocr(engines=["rapidocr", "doctr"])
 cmp.summary()     # per-engine word counts, confidence
 cmp.show()        # side-by-side render
@@ -161,7 +161,7 @@ except TypeError as e:
 
 **Fix:** one of three, depending on what you meant:
 
-```python skip=true
+```python {.skip-execution}
 label.below(height=200)                        # extend 200 pts downward
 label.below(width='element').expand(right=50)  # custom cross-size
 page.region(x0, top, x1, bottom)               # you already know the coordinates
@@ -193,7 +193,7 @@ It prints every dependency group with OK/MISS status, installed versions, and th
 
 **Fix:** close every PDF when you're done with it — `PDF` is a context manager, so the canonical loop is:
 
-```python skip=true
+```python {.skip-execution}
 for path in pdf_paths:
     with PDF(path) as pdf:
         for page in pdf.pages:

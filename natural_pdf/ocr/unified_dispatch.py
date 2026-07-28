@@ -9,9 +9,10 @@ from __future__ import annotations
 import logging
 import threading
 from collections import OrderedDict
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from inspect import Parameter, signature
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, Type
 
 from PIL import Image
 
@@ -191,15 +192,38 @@ def list_engines() -> Dict[str, EngineEntry]:
     return dict(get_registry())
 
 
-def register_engine(name: str, entry: EngineEntry) -> None:
+def register_engine(name: str, entry: EngineEntry, *, replace: bool = True) -> bool:
     """Register an engine in the unified registry.
 
     Useful for tests and plugins that add custom engines.
+
+    Returns ``False`` without changing the registry when ``replace=False`` and
+    the normalized name already exists; otherwise returns ``True``.
     """
     registry = get_registry()
+    normalized = name.strip().lower()
     with _registry_lock:
-        registry[name.strip().lower()] = entry
-    _engine_cache.invalidate(name)
+        if normalized in registry and not replace:
+            return False
+        registry[normalized] = entry
+    _engine_cache.invalidate(normalized)
+    return True
+
+
+def _capture_registration(
+    engine_name: str,
+    entry: EngineEntry,
+) -> tuple[int, Callable[[], bool]]:
+    """Capture the registry entry identity and a publication validator."""
+
+    normalized = engine_name.strip().lower()
+
+    def is_current() -> bool:
+        current_registry = get_registry()
+        with _registry_lock:
+            return current_registry.get(normalized) is entry
+
+    return id(entry), is_current
 
 
 def _instantiate_provider(provider: Any, *, context: Any = None, options: Any = None) -> Any:
@@ -229,26 +253,39 @@ def _instantiate_provider(provider: Any, *, context: Any = None, options: Any = 
 # ---------------------------------------------------------------------------
 
 
-class EngineCache:
-    """Thread-safe LRU cache for classic OCR engine instances.
+@dataclass
+class _CacheLease:
+    engine: Any
+    count: int = 0
+    pending_cleanup: bool = False
 
-    On eviction, calls ``engine.cleanup()`` if available.
+
+class EngineCache:
+    """Thread-safe leased LRU cache for classic OCR engine instances.
+
+    :meth:`checkout` keeps cached engines alive through inference. Eviction
+    detaches entries immediately, defers cleanup until their final lease exits,
+    and always invokes hooks outside the cache lock. :meth:`get_or_create`
+    remains as the compatible lower-level, unleased API.
     """
 
     def __init__(self, maxsize: int = 4):
         self._cache: OrderedDict[tuple, Any] = OrderedDict()
-        self._lock = threading.Lock()
-        self._maxsize = maxsize
+        self._leases: Dict[int, _CacheLease] = {}
+        self._lock = threading.RLock()
+        self._maxsize = max(1, maxsize)
 
     @property
     def maxsize(self) -> int:
-        return self._maxsize
+        with self._lock:
+            return self._maxsize
 
     @maxsize.setter
     def maxsize(self, value: int) -> None:
-        self._maxsize = max(1, value)
         with self._lock:
-            self._evict_to_capacity()
+            self._maxsize = max(1, value)
+            _, cleanup = self._evict_to_capacity_locked()
+        self._run_cleanups(cleanup)
 
     def get_or_create(
         self,
@@ -258,63 +295,199 @@ class EngineCache:
         init_key: str,
         factory: Callable[[], Any],
         provider_identity: Optional[int] = None,
+        *,
+        registration_identity: Optional[Hashable] = None,
+        registration_is_current: Optional[Callable[[], bool]] = None,
     ) -> Any:
-        """Get a cached engine or create a new one."""
-        key = (engine_name, languages, device, init_key, provider_identity)
+        """Get or create an engine without leasing the returned instance."""
+
+        engine, _caller_owned, _leased = self._acquire(
+            engine_name=engine_name,
+            languages=languages,
+            device=device,
+            init_key=init_key,
+            factory=factory,
+            provider_identity=provider_identity,
+            registration_identity=registration_identity,
+            registration_is_current=registration_is_current,
+            lease_checkout=False,
+        )
+        return engine
+
+    @contextmanager
+    def checkout(
+        self,
+        engine_name: str,
+        languages: Tuple[str, ...],
+        device: str,
+        init_key: str,
+        factory: Callable[[], Any],
+        provider_identity: Optional[int] = None,
+        *,
+        registration_identity: Optional[Hashable] = None,
+        registration_is_current: Optional[Callable[[], bool]] = None,
+    ):
+        """Yield a scoped engine lease and clean detached instances on exit."""
+
+        engine, caller_owned, leased = self._acquire(
+            engine_name=engine_name,
+            languages=languages,
+            device=device,
+            init_key=init_key,
+            factory=factory,
+            provider_identity=provider_identity,
+            registration_identity=registration_identity,
+            registration_is_current=registration_is_current,
+            lease_checkout=True,
+        )
+        try:
+            yield engine
+        finally:
+            if leased:
+                self._run_cleanups(self._release_lease(engine))
+            elif caller_owned:
+                self._run_cleanups([engine])
+
+    def _acquire(
+        self,
+        *,
+        engine_name: str,
+        languages: Tuple[str, ...],
+        device: str,
+        init_key: str,
+        factory: Callable[[], Any],
+        provider_identity: Optional[int],
+        registration_identity: Optional[Hashable],
+        registration_is_current: Optional[Callable[[], bool]],
+        lease_checkout: bool,
+    ) -> tuple[Any, bool, bool]:
+        normalized = engine_name.strip().lower()
+        key = (
+            normalized,
+            languages,
+            device,
+            init_key,
+            provider_identity,
+            registration_identity,
+        )
         with self._lock:
-            if key in self._cache:
+            cached = self._cache.get(key)
+            if cached is not None:
                 self._cache.move_to_end(key)
-                return self._cache[key]
+                if lease_checkout:
+                    self._acquire_lease_locked(cached)
+                return cached, False, lease_checkout
 
-            # Evict LRU if at capacity
-            self._evict_to_capacity()
-
-            # Create outside lock scope to avoid holding lock during heavy init
+        # Heavy construction deliberately happens outside the cache lock.
         engine = factory()
-
+        cleanup: list[Any] = []
         with self._lock:
-            # Re-check in case another thread created the same key
-            if key in self._cache:
+            cached = self._cache.get(key)
+            if cached is not None:
                 self._cache.move_to_end(key)
-                winner = self._cache[key]
+                if lease_checkout:
+                    self._acquire_lease_locked(cached)
+                cleanup.append(engine)
+                result = (cached, False, lease_checkout)
+            elif registration_is_current is not None and not registration_is_current():
+                # The factory belongs to a registration that was replaced while
+                # construction was in flight. It may serve this one checkout,
+                # but must never repopulate the cache after invalidation.
+                result = (engine, True, False)
             else:
                 self._cache[key] = engine
-                self._evict_to_capacity()
-                return engine
+                if lease_checkout:
+                    self._acquire_lease_locked(engine)
+                _, capacity_cleanup = self._evict_to_capacity_locked()
+                cleanup.extend(capacity_cleanup)
+                result = (engine, False, lease_checkout)
 
-        # Lost the creation race: release the engine we built so it does not
-        # leak model memory, then return the cached winner.
-        self._cleanup_engine(engine)
-        return winner
+        self._run_cleanups(cleanup)
+        return result
 
     def clear(self) -> int:
-        """Evict all cached engines, calling cleanup on each."""
+        """Detach every cache entry and clean it after active leases end."""
+
         with self._lock:
-            count = len(self._cache)
-            while self._cache:
-                _, engine = self._cache.popitem()
-                self._cleanup_engine(engine)
-            return count
+            count, cleanup = self._detach_keys_locked(list(self._cache))
+        self._run_cleanups(cleanup)
+        return count
 
     def invalidate(self, engine_name: str) -> int:
-        """Evict cached instances for a re-registered engine name."""
+        """Detach cached instances for one normalized registration name."""
+
         normalized = engine_name.strip().lower()
         with self._lock:
             keys = [key for key in self._cache if key[0] == normalized]
-            for key in keys:
-                self._cleanup_engine(self._cache.pop(key))
-            return len(keys)
+            count, cleanup = self._detach_keys_locked(keys)
+        self._run_cleanups(cleanup)
+        return count
 
-    def _evict_to_capacity(self) -> None:
-        """Evict oldest entries until at or below maxsize. Must hold lock."""
-        while len(self._cache) > self._maxsize:
-            _, evicted = self._cache.popitem(last=False)
-            self._cleanup_engine(evicted)
+    def _evict_to_capacity_locked(self) -> tuple[int, List[Any]]:
+        """Detach least-recently-used entries to capacity. Lock required."""
+
+        excess = max(0, len(self._cache) - self._maxsize)
+        return self._detach_keys_locked(list(self._cache)[:excess])
+
+    def _detach_keys_locked(
+        self,
+        keys: List[tuple],
+    ) -> tuple[int, List[Any]]:
+        records = [self._cache.pop(key) for key in keys]
+        live_ids = {id(engine) for engine in self._cache.values()}
+        cleanup: list[Any] = []
+        seen: set[int] = set()
+        for engine in records:
+            identity = id(engine)
+            if identity in live_ids or identity in seen:
+                continue
+            seen.add(identity)
+            lease = self._leases.get(identity)
+            if lease is not None and lease.engine is engine and lease.count:
+                lease.pending_cleanup = True
+            else:
+                cleanup.append(engine)
+        return len(keys), cleanup
+
+    def _acquire_lease_locked(self, engine: Any) -> None:
+        identity = id(engine)
+        lease = self._leases.get(identity)
+        if lease is None:
+            lease = _CacheLease(engine=engine)
+            self._leases[identity] = lease
+        elif lease.engine is not engine:  # pragma: no cover - strong ref prevents id reuse
+            raise RuntimeError("OCR engine lease identity collision")
+        lease.count += 1
+
+    def _release_lease(self, engine: Any) -> List[Any]:
+        with self._lock:
+            identity = id(engine)
+            lease = self._leases.get(identity)
+            if lease is None or lease.engine is not engine or lease.count < 1:
+                logger.error("OCR engine cache lease accounting mismatch")
+                return []
+            lease.count -= 1
+            if lease.count:
+                return []
+            self._leases.pop(identity, None)
+            if lease.pending_cleanup and not self._engine_is_cached_locked(engine):
+                return [engine]
+            return []
+
+    def _engine_is_cached_locked(self, engine: Any) -> bool:
+        return any(cached is engine for cached in self._cache.values())
+
+    def _run_cleanups(self, engines: List[Any]) -> None:
+        for engine in engines:
+            self._cleanup_engine(engine)
 
     @staticmethod
     def _cleanup_engine(engine: Any) -> None:
-        """Call cleanup on an evicted engine."""
+        """Call an engine cleanup hook; callers must not hold cache locks."""
+
         cleanup_fn = getattr(engine, "cleanup", None)
+        if not callable(cleanup_fn):
+            cleanup_fn = getattr(engine, "close", None)
         if callable(cleanup_fn):
             try:
                 cleanup_fn()
@@ -587,62 +760,68 @@ def _run_classic(
 
     def factory():
         instance = _instantiate_provider(entry.provider, context=context, options=options)
-        is_available = getattr(instance, "is_available", None)
-        if callable(is_available) and not is_available():
-            hint = entry.install_hint or f"pip install {engine_name}"
-            raise RuntimeError(
-                f"OCR engine {engine_name!r} is not available. Install it with: {hint}"
-            )
-        initialize = getattr(instance, "_initialize_model", None)
-        if callable(initialize):
-            initialize(list(effective_languages), effective_device, options)
-            if hasattr(instance, "_initialized"):
-                instance._initialized = True
+        try:
+            is_available = getattr(instance, "is_available", None)
+            if callable(is_available) and not is_available():
+                hint = entry.install_hint or f"pip install {engine_name}"
+                raise RuntimeError(
+                    f"OCR engine {engine_name!r} is not available. Install it with: {hint}"
+                )
+            initialize = getattr(instance, "_initialize_model", None)
+            if callable(initialize):
+                initialize(list(effective_languages), effective_device, options)
+                if hasattr(instance, "_initialized"):
+                    instance._initialized = True
+        except BaseException:
+            EngineCache._cleanup_engine(instance)
+            raise
         return instance
 
-    uncacheable_engine = init_key is None
-    if uncacheable_engine:
-        logger.debug(
-            "Bypassing OCR engine cache for %s: options do not have a canonical "
-            "constructor identity.",
-            engine_name,
-        )
-        engine = factory()
-    else:
-        engine = _engine_cache.get_or_create(
-            engine_name=engine_name,
-            languages=effective_languages,
-            device=effective_device,
-            init_key=init_key,
-            factory=factory,
-            provider_identity=id(entry.provider),
-        )
+    def run_with_engine(engine: Any) -> OCRRunResult:
+        def process():
+            return engine.process_image(
+                image,
+                languages=list(effective_languages),
+                min_confidence=min_confidence,
+                device=effective_device,
+                detect_only=detect_only,
+                options=options,
+            )
 
-    def process():
-        return engine.process_image(
-            image,
-            languages=list(effective_languages),
-            min_confidence=min_confidence,
-            device=effective_device,
-            detect_only=detect_only,
-            options=options,
-        )
-
-    try:
         if entry.needs_gpu_lock:
             lock = _get_inference_lock(engine_name)
             with lock:
                 raw_output = process()
         else:
             raw_output = process()
-    finally:
-        if uncacheable_engine:
+
+        results = _normalize_engine_output(raw_output, engine_name=engine_name)
+        return OCRRunResult(results=results, image_size=image.size, engine_type="classic")
+
+    if init_key is None:
+        logger.debug(
+            "Bypassing OCR engine cache for %s: options do not have a canonical "
+            "constructor identity.",
+            engine_name,
+        )
+        engine = factory()
+        try:
+            return run_with_engine(engine)
+        finally:
             EngineCache._cleanup_engine(engine)
 
-    # Normalize: process_image may return List[Dict] (single) or List[List[Dict]] (batch)
-    results = _normalize_engine_output(raw_output, engine_name=engine_name)
-
-    return OCRRunResult(results=results, image_size=image.size, engine_type="classic")
+    registration_identity, registration_is_current = _capture_registration(engine_name, entry)
+    with _engine_cache.checkout(
+        engine_name=engine_name,
+        languages=effective_languages,
+        device=effective_device,
+        init_key=init_key,
+        factory=factory,
+        provider_identity=id(entry.provider),
+        registration_identity=registration_identity,
+        registration_is_current=registration_is_current,
+    ) as engine:
+        return run_with_engine(engine)
 
 
 def _run_via_provider(
@@ -673,50 +852,67 @@ def _run_via_provider(
         constructor_options["languages"] = list(languages)
         constructor_options["device"] = device
 
-    try:
-        engine = provider.get(
-            "ocr.apply",
-            context=context,
-            name=engine_name,
-            **constructor_options,
-        )
-    except LookupError:
-        engine = provider.get(
-            "ocr",
-            context=context,
-            name=engine_name,
-            **constructor_options,
-        )
-
-    # Public custom wrappers validate before EngineProvider caches the instance.
-    # Provider-only registrations still need the dispatch-level availability check.
-    if not entry.provider_init_options:
-        is_available = getattr(engine, "is_available", None)
-        if callable(is_available) and not is_available():
-            hint = entry.install_hint or f"pip install {engine_name}"
-            raise RuntimeError(
-                f"OCR engine {engine_name!r} is not available. Install it with: {hint}"
+    with ExitStack() as stack:
+        try:
+            provider_capability = "ocr.apply"
+            engine = stack.enter_context(
+                provider.checkout(
+                    provider_capability,
+                    context=context,
+                    name=engine_name,
+                    **constructor_options,
+                )
+            )
+        except LookupError:
+            provider_capability = "ocr"
+            engine = stack.enter_context(
+                provider.checkout(
+                    provider_capability,
+                    context=context,
+                    name=engine_name,
+                    **constructor_options,
+                )
             )
 
-    def process():
-        return engine.process_image(
-            image,
-            languages=list(languages),
-            min_confidence=min_confidence,
-            device=device,
-            detect_only=detect_only,
-            options=options,
-        )
+        # Public custom wrappers validate before EngineProvider caches the instance.
+        # Provider-only registrations still need the dispatch-level availability check.
+        if not entry.provider_init_options:
+            is_available = getattr(engine, "is_available", None)
+            if callable(is_available):
+                try:
+                    available = is_available()
+                except BaseException:
+                    provider.evict_instance(provider_capability, engine_name, engine)
+                    raise
+                if not available:
+                    # Direct provider plugins are cached before dispatch can
+                    # validate them. Detach only this exact failed instance;
+                    # its active checkout lease defers cleanup until stack exit.
+                    provider.evict_instance(provider_capability, engine_name, engine)
+                    hint = entry.install_hint or f"pip install {engine_name}"
+                    raise RuntimeError(
+                        f"OCR engine {engine_name!r} is not available. Install it with: {hint}"
+                    )
 
-    if entry.needs_gpu_lock:
-        lock = _get_inference_lock(engine_name)
-        with lock:
+        def process():
+            return engine.process_image(
+                image,
+                languages=list(languages),
+                min_confidence=min_confidence,
+                device=device,
+                detect_only=detect_only,
+                options=options,
+            )
+
+        if entry.needs_gpu_lock:
+            lock = _get_inference_lock(engine_name)
+            with lock:
+                raw_output = process()
+        else:
             raw_output = process()
-    else:
-        raw_output = process()
 
-    results = _normalize_engine_output(raw_output, engine_name=engine_name)
-    return OCRRunResult(results=results, image_size=image.size, engine_type="classic")
+        results = _normalize_engine_output(raw_output, engine_name=engine_name)
+        return OCRRunResult(results=results, image_size=image.size, engine_type="classic")
 
 
 def _normalize_engine_output(payload, *, engine_name: str):

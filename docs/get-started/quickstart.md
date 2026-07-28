@@ -36,7 +36,7 @@ text = page.extract_text()
 print(text[:190])
 ```
 
-`extract_text()` always returns a `str`. If it comes back empty, your PDF is probably a scan with no text layer — that's an OCR job: see [scanned documents](../solve/) and the [install page](index.md) for `pip install "natural-pdf[all]"`.
+`extract_text()` always returns a `str`. If it comes back empty, your PDF is probably a scan with no text layer — that's an OCR job: see [scanned documents](../solve/index.md) and the [install page](index.md) for `pip install "natural-pdf[all]"`.
 
 ## Find things with selectors
 
@@ -82,7 +82,7 @@ Directional methods return Regions: `.right()` and `.left()` stay on the element
 page.extract_table().to_df()
 ```
 
-`extract_table()` returns a `TableResult`; `.to_df()` hands you a pandas DataFrame with the first row as the header. If the result is empty or scrambled, the table probably has no ruling lines or is a scan — see [tables](../solve/) for the guided and OCR-backed approaches.
+`extract_table()` returns a `TableResult`; `.to_df()` hands you a pandas DataFrame with the first row as the header. If the result is empty or scrambled, the table probably has no ruling lines or is a scan — see [tables](../solve/index.md) for the guided and OCR-backed approaches.
 
 ## Scale it to a stack of filings
 
@@ -118,7 +118,7 @@ The `value_after` helper returns `None` instead of crashing when a filing is mis
 
 ## Where to go next
 
-- [Learn](../learn/) — tutorials that build up each skill: selectors, regions, tables, OCR.
-- [Concepts](../concepts/) — how Natural PDF thinks: elements, regions, exclusions as read-time filters.
-- [Solve](../solve/) — recipes for specific problems: scanned documents, borderless tables, headers and footers, multi-column layouts.
+- [Learn](../learn/index.md) — tutorials that build up each skill: selectors, regions, tables, OCR.
+- [Concepts](../concepts/index.md) — how Natural PDF thinks: elements, regions, exclusions as read-time filters.
+- [Solve](../solve/index.md) — recipes for specific problems: scanned documents, borderless tables, headers and footers, multi-column layouts.
 - [Coming from pdfplumber](from-pdfplumber.md) — if you already have pdfplumber code, a task-by-task translation.

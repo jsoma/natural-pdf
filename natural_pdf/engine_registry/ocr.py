@@ -46,21 +46,31 @@ def _wrap_classic_factory(
 
     def provider_factory(*, context: Any = None, **constructor_options: Any) -> Any:
         instance = _call_custom_factory(factory, context=context, **constructor_options)
+        try:
+            is_available = getattr(instance, "is_available", None)
+            if callable(is_available) and not is_available():
+                hint = install_hint or f"pip install {engine_name}"
+                raise RuntimeError(
+                    f"OCR engine {engine_name!r} is not available. Install it with: {hint}"
+                )
 
-        is_available = getattr(instance, "is_available", None)
-        if callable(is_available) and not is_available():
-            hint = install_hint or f"pip install {engine_name}"
-            raise RuntimeError(
-                f"OCR engine {engine_name!r} is not available. Install it with: {hint}"
-            )
-
-        initialize = getattr(instance, "_initialize_model", None)
-        if callable(initialize):
-            languages = list(constructor_options.get("languages") or ["en"])
-            device = constructor_options.get("device") or "auto"
-            initialize(languages, device, constructor_options.get("options"))
-            if hasattr(instance, "_initialized"):
-                instance._initialized = True
+            initialize = getattr(instance, "_initialize_model", None)
+            if callable(initialize):
+                languages = list(constructor_options.get("languages") or ["en"])
+                device = constructor_options.get("device") or "auto"
+                initialize(languages, device, constructor_options.get("options"))
+                if hasattr(instance, "_initialized"):
+                    instance._initialized = True
+        except BaseException:
+            cleanup = getattr(instance, "cleanup", None)
+            if not callable(cleanup):
+                cleanup = getattr(instance, "close", None)
+            if callable(cleanup):
+                try:
+                    cleanup()
+                except Exception:
+                    pass
+            raise
         return instance
 
     return provider_factory
@@ -159,7 +169,7 @@ def register_ocr_engine(
                 lifetime=lifetime,
                 cache_key=cache_key,
             )
-        register_unified_engine(normalized_name, entry)
+        register_unified_engine(normalized_name, entry, replace=replace)
         return
 
     if normalized_kind in {"vlm", "vlm_shorthand"}:
@@ -185,7 +195,7 @@ def register_ocr_engine(
             install_hint=install_hint,
             cache_namespace=cache_namespace,
         )
-        register_unified_engine(normalized_name, entry)
+        register_unified_engine(normalized_name, entry, replace=replace)
 
         return
 

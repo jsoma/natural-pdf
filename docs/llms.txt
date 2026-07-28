@@ -6,36 +6,36 @@ Natural PDF combines traditional PDF parsing with modern AI capabilities. It pro
 
 ## Quick Start
 
-- [Installation](/docs/get-started/): pip install natural-pdf, what each extra unlocks
-- [Quickstart](/docs/get-started/quickstart/): Open a PDF, extract a value and a table
-- [Selector Reference](/docs/reference/selectors/): Essential methods and patterns
+- [Installation](https://jsoma.github.io/natural-pdf/get-started/): pip install natural-pdf, what each extra unlocks
+- [Quickstart](https://jsoma.github.io/natural-pdf/get-started/quickstart/): Open a PDF, extract a value and a table
+- [Selector Reference](https://jsoma.github.io/natural-pdf/reference/selectors/): Essential methods and patterns
 
 ## Core Documentation
 
-- [Selectors](/docs/concepts/selectors/): CSS-like selector syntax for finding PDF elements
-- [The Spatial Model](/docs/concepts/spatial-model/): Directional methods like .below(), .above(), .left(), .right()
-- [How Text Becomes Elements](/docs/concepts/text-and-elements/): Characters, words, and the text layer
-- [Exclusions](/docs/concepts/exclusions/): Headers, footers, and exclusion zones
-- [Tables, a Decision Guide](/docs/concepts/tables/): Extract tables using pdfplumber, TATR, guides, or text methods
-- [Engines and Models](/docs/concepts/engines-and-models/): OCR, layout, and extraction engine choices
+- [Selectors](https://jsoma.github.io/natural-pdf/concepts/selectors/): CSS-like selector syntax for finding PDF elements
+- [The Spatial Model](https://jsoma.github.io/natural-pdf/concepts/spatial-model/): Directional methods like .below(), .above(), .left(), .right()
+- [How Text Becomes Elements](https://jsoma.github.io/natural-pdf/concepts/text-and-elements/): Characters, words, and the text layer
+- [Exclusions](https://jsoma.github.io/natural-pdf/concepts/exclusions/): Headers, footers, and exclusion zones
+- [Tables, a Decision Guide](https://jsoma.github.io/natural-pdf/concepts/tables/): Extract tables using pdfplumber, TATR, guides, or text methods
+- [Engines and Models](https://jsoma.github.io/natural-pdf/concepts/engines-and-models/): OCR, layout, and extraction engine choices
 
 ## Learn (course)
 
-- [Text and Tables](/docs/learn/01-text-and-tables/): Opening PDFs, extracting text and tables
-- [OCR](/docs/learn/02-ocr/): RapidOCR, PaddleOCR, DocTR, and VLM OCR
-- [AI Extraction](/docs/learn/03-ai-extraction/): Question answering, structured extraction, classification
-- [Page Structure](/docs/learn/04-page-structure/): Layout analysis, regions, sections, multi-page flows
-- [Putting It Together](/docs/learn/05-putting-it-together/): Batch processing whole documents
-- [Solve](/docs/solve/): Worked solutions to real problem documents
-- [Troubleshooting](/docs/troubleshooting/): Symptom-indexed fixes
+- [Text and Tables](https://jsoma.github.io/natural-pdf/learn/01-text-and-tables/): Opening PDFs, extracting text and tables
+- [OCR](https://jsoma.github.io/natural-pdf/learn/02-ocr/): RapidOCR, PaddleOCR, DocTR, and VLM OCR
+- [AI Extraction](https://jsoma.github.io/natural-pdf/learn/03-ai-extraction/): Question answering, structured extraction, classification
+- [Page Structure](https://jsoma.github.io/natural-pdf/learn/04-page-structure/): Layout analysis, regions, sections, multi-page flows
+- [Putting It Together](https://jsoma.github.io/natural-pdf/learn/05-putting-it-together/): Batch processing whole documents
+- [Solve](https://jsoma.github.io/natural-pdf/solve/): Worked solutions to real problem documents
+- [Troubleshooting](https://jsoma.github.io/natural-pdf/troubleshooting/): Symptom-indexed fixes
 
 ## For LLMs
 
-- [For Agents](/docs/for-agents/): Canonical code patterns, return types, and anti-patterns
+- [For Agents](https://jsoma.github.io/natural-pdf/for-agents/): Canonical code patterns, return types, and anti-patterns
 
 ## API Reference
 
-- [API Documentation](/docs/api/): Full API reference for all classes and methods
+- [API Documentation](https://jsoma.github.io/natural-pdf/api/): Full API reference for all classes and methods
 
 ## Key Concepts
 

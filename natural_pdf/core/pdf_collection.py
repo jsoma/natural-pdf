@@ -25,6 +25,7 @@ from PIL import Image
 from tqdm.auto import tqdm
 
 from natural_pdf.classification.classification_provider import run_classification_batch
+from natural_pdf.classification.pipelines import validate_classification_labels
 
 # Set up logger early
 # Configure logging to include thread information
@@ -726,8 +727,7 @@ class PDFCollection(
         """
         Classify each PDF document in the collection using provider-backed batch processing.
         """
-        if not labels:
-            raise ValueError("Labels list cannot be empty.")
+        validate_classification_labels(labels)
 
         if not self._pdfs:
             logger.warning("PDFCollection is empty, skipping classification.")
@@ -738,19 +738,20 @@ class PDFCollection(
             f"Starting batch classification for {len(self._pdfs)} PDFs in collection ({mode_desc})..."
         )
 
-        engine_name = kwargs.pop("classification_engine", None)
-
         from natural_pdf.exceptions import ClassificationError
         from natural_pdf.services.classification_service import (
             ClassificationService,
             checkout_classification_engine,
+            partition_classification_kwargs,
         )
+
+        options = partition_classification_kwargs(kwargs)
 
         # Check the engine out once and pass the instance straight to
         # run_classification_batch below, so exactly one engine instance is
         # created regardless of registration lifetime — and transient
         # instances are cleaned up when the call finishes.
-        with checkout_classification_engine(self, engine_name) as engine_obj:
+        with checkout_classification_engine(self, options.engine_name) as engine_obj:
             inferred_using = engine_obj.infer_using(
                 model or engine_obj.default_model("text"), using
             )
@@ -758,10 +759,6 @@ class PDFCollection(
             # Split the kwarg stream the same way ClassificationService.classify
             # does: content-extraction options go to the content getter, everything
             # else (e.g. device=) to the engine call.
-            content_kwargs = {}
-            if "resolution" in kwargs:
-                content_kwargs["resolution"] = kwargs.pop("resolution")
-
             pdf_contents: List[Any] = []
             valid_pdfs: List[Any] = []
 
@@ -771,7 +768,7 @@ class PDFCollection(
             for pdf in self._pdfs:
                 try:
                     content = pdf._get_classification_content(
-                        model_type=inferred_using, **content_kwargs
+                        model_type=inferred_using, **options.content
                     )
                     pdf_contents.append(content)
                     valid_pdfs.append(pdf)
@@ -800,7 +797,7 @@ class PDFCollection(
                 batch_size=batch_size,
                 progress_bar=progress_bar,
                 engine=engine_obj,
-                **kwargs,
+                **options.engine,
             )
 
         if len(batch_results) != len(valid_pdfs):

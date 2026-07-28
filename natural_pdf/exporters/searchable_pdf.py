@@ -4,7 +4,6 @@ Module for exporting PDF content to various formats.
 
 import logging
 import tempfile
-import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Sequence, Union
@@ -12,6 +11,7 @@ from xml.etree.ElementTree import Element as ETElement
 from xml.etree.ElementTree import SubElement
 
 from natural_pdf.exceptions import ExportError
+from natural_pdf.utils.filesystem import atomic_output_path
 from natural_pdf.utils.optional_imports import require
 
 if TYPE_CHECKING:
@@ -370,34 +370,25 @@ def create_searchable_pdf(
             raise ExportError("Failed to process any pages for searchable PDF creation.")
 
         logger.info(f"Merging {len(temp_pdf_pages)} processed pages into final PDF...")
-        # Unique per call so concurrent writers targeting the same output path
-        # cannot clobber each other's temp file.
-        tmp_output_path = output_abs_path.with_name(
-            f"{output_abs_path.name}.tmp-{uuid.uuid4().hex[:8]}"
-        )
         try:
-            # Use pikepdf for merging
-            output_pdf = pikepdf.Pdf.new()
-            for temp_pdf_path in temp_pdf_pages:
-                with pikepdf.Pdf.open(str(temp_pdf_path)) as src_page_pdf:
-                    # Assuming each temp PDF has exactly one page
-                    if len(src_page_pdf.pages) == 1:
-                        output_pdf.pages.append(src_page_pdf.pages[0])
-                    else:
-                        raise ExportError(
-                            f"Temporary PDF '{temp_pdf_path}' had unexpected number of "
-                            f"pages ({len(src_page_pdf.pages)})."
-                        )
-            # Write to a temp path in the destination directory, then replace,
-            # so a failure never leaves a truncated file at output_path.
-            output_pdf.save(str(tmp_output_path))
-            tmp_output_path.replace(output_abs_path)
+            with atomic_output_path(output_abs_path) as tmp_output_path:
+                # Use pikepdf for merging
+                output_pdf = pikepdf.Pdf.new()
+                for temp_pdf_path in temp_pdf_pages:
+                    with pikepdf.Pdf.open(str(temp_pdf_path)) as src_page_pdf:
+                        # Assuming each temp PDF has exactly one page
+                        if len(src_page_pdf.pages) == 1:
+                            output_pdf.pages.append(src_page_pdf.pages[0])
+                        else:
+                            raise ExportError(
+                                f"Temporary PDF '{temp_pdf_path}' had unexpected number of "
+                                f"pages ({len(src_page_pdf.pages)})."
+                            )
+                output_pdf.save(str(tmp_output_path))
             logger.info(f"Successfully saved merged searchable PDF to: {output_abs_path}")
         except ExportError:
-            tmp_output_path.unlink(missing_ok=True)
             raise
         except Exception as e:
-            tmp_output_path.unlink(missing_ok=True)
             raise ExportError(f"Failed to save final PDF to '{output_abs_path}': {e}") from e
 
     logger.debug("Temporary directory cleaned up.")

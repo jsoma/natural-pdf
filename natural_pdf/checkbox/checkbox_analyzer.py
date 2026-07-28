@@ -175,10 +175,24 @@ class CheckboxAnalyzer:
     ) -> Optional[List[Dict[str, Any]]]:
         """Try running an engine, return None on failure."""
         try:
-            detector = self._provider.get("checkbox", context=self._page, name=engine_name)
+            with self._provider.checkout(
+                "checkbox", context=self._page, name=engine_name
+            ) as detector:
+                return self._run_checked_out_engine(detector, engine_name, options)
         except (LookupError, RuntimeError) as e:
             logger.debug("Engine '%s' not available: %s", engine_name, e)
             return None
+        except Exception as e:
+            logger.error("Engine '%s' failed: %s", engine_name, e, exc_info=True)
+            return None
+
+    def _run_checked_out_engine(
+        self,
+        detector: Any,
+        engine_name: str,
+        options: BaseCheckboxOptions,
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Run detection while the provider engine lease remains active."""
 
         # Convert to engine-specific options before rendering so the
         # engine's defaults (e.g. resolution, sahi_enabled) take effect.
@@ -197,56 +211,53 @@ class CheckboxAnalyzer:
             except TypeError:
                 pass
 
-        try:
-            # Build detection context
-            if engine_name == "vector":
-                # Vector detector doesn't need image rendering
-                context = DetectionContext(
-                    page=self._page,
-                    img_scale_x=1.0,
-                    img_scale_y=1.0,
-                )
-                # Pass a dummy image (vector detector ignores it)
-                from PIL import Image
+        # Build detection context
+        if engine_name == "vector":
+            # Vector detector doesn't need image rendering
+            context = DetectionContext(
+                page=self._page,
+                img_scale_x=1.0,
+                img_scale_y=1.0,
+            )
+            # Pass a dummy image (vector detector ignores it)
+            from PIL import Image
 
-                dummy = Image.new("RGB", (1, 1))
-                return detector.detect(dummy, options, context)
-            else:
-                # Render page image
-                resolution = getattr(options, "resolution", 150)
-                image = self._page.render(resolution=resolution)
-                if image is None:
-                    logger.error("Page rendering returned None")
-                    return None
+            dummy = Image.new("RGB", (1, 1))
+            return detector.detect(dummy, options, context)
 
-                img_scale_x = self._page.width / image.width
-                img_scale_y = self._page.height / image.height
-
-                context = DetectionContext(
-                    page=self._page,
-                    img_scale_x=img_scale_x,
-                    img_scale_y=img_scale_y,
-                )
-                detections = detector.detect(image, options, context)
-
-                # Stamp actual scale factors so _convert_to_regions
-                # doesn't need to re-render at a potentially different DPI.
-                if detections:
-                    for det in detections:
-                        det["_img_scale_x"] = img_scale_x
-                        det["_img_scale_y"] = img_scale_y
-
-                return detections
-
-        except Exception as e:
-            logger.error("Engine '%s' failed: %s", engine_name, e, exc_info=True)
+        # Render page image
+        resolution = getattr(options, "resolution", 150)
+        image = self._page.render(resolution=resolution)
+        if image is None:
+            logger.error("Page rendering returned None")
             return None
+
+        img_scale_x = self._page.width / image.width
+        img_scale_y = self._page.height / image.height
+
+        context = DetectionContext(
+            page=self._page,
+            img_scale_x=img_scale_x,
+            img_scale_y=img_scale_y,
+        )
+        detections = detector.detect(image, options, context)
+
+        # Stamp actual scale factors so _convert_to_regions
+        # doesn't need to re-render at a potentially different DPI.
+        if detections:
+            for det in detections:
+                det["_img_scale_x"] = img_scale_x
+                det["_img_scale_y"] = img_scale_y
+
+        return detections
 
     def _engine_available(self, engine_name: str) -> bool:
         """Check if an engine is registered and available."""
         try:
-            detector = self._provider.get("checkbox", context=self._page, name=engine_name)
-            return detector.is_available()
+            with self._provider.checkout(
+                "checkbox", context=self._page, name=engine_name
+            ) as detector:
+                return detector.is_available()
         except (LookupError, RuntimeError):
             return False
 

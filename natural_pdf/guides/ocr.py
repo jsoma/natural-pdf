@@ -374,60 +374,6 @@ def _snapshot_guide_geometry(guides: "Guides") -> _GuideGeometrySnapshot:
     )
 
 
-def _bake_host_exclusions(host: Region, entries: Sequence) -> list:
-    """Copy host exclusion entries onto a window, resolving callables first.
-
-    Callable exclusions are defined against the ORIGINAL host; copying them
-    onto a window would later invoke them with the window as argument,
-    changing their meaning (they could unmask intended content or mask
-    unrelated content). Resolve them against the host now and attach the
-    resulting static regions instead — geometry is baked, callables never
-    see a window object.
-    """
-    baked: list = []
-    for entry in entries:
-        if len(entry) == 2:
-            item, label = entry
-            method = "region"
-        else:
-            item, label, method = entry
-        if callable(item):
-            resolved = host._evaluate_exclusion_entries([entry], True, False)
-            baked.extend((resolved_region, label, method) for resolved_region in resolved)
-        else:
-            baked.append(entry)
-    return baked
-
-
-def _defer_host_exclusions(host: Region, entries: Sequence) -> list:
-    """Copy host exclusion entries onto a window WITHOUT invoking callables.
-
-    Same host-resolution semantics as :func:`_bake_host_exclusions`, but lazy:
-    each callable entry is wrapped so that, if and when the window's
-    exclusions are actually evaluated (read-time), the original callable is
-    resolved against the ORIGINAL host — never against the window. Plain
-    window materialization therefore never runs user callables (which may be
-    expensive or raise), and OCR with ``apply_exclusions=False`` never runs
-    them either because the render path skips exclusion evaluation entirely.
-    """
-    deferred: list = []
-    for entry in entries:
-        if len(entry) == 2:
-            item, label = entry
-            method = "region"
-        else:
-            item, label, method = entry
-        if callable(item):
-
-            def _resolve_against_host(_window: Any, *, _host=host, _entry=entry) -> list:
-                return _host._evaluate_exclusion_entries([_entry], True, False)
-
-            deferred.append((_resolve_against_host, label, method))
-        else:
-            deferred.append(entry)
-    return deferred
-
-
 def _region_for_target(
     target: GuidesContext,
     bbox: Bounds,
@@ -447,10 +393,13 @@ def _region_for_target(
         # with exclusions applied) or lazily (everything else).
         host_exclusions = getattr(target, "_exclusions", None)
         if host_exclusions:
-            if bake_callable_exclusions:
-                region._exclusions = _bake_host_exclusions(target, host_exclusions)
-            else:
-                region._exclusions = _defer_host_exclusions(target, host_exclusions)
+            from natural_pdf.services.exclusion_service import (
+                bind_exclusion_entries_to_host,
+            )
+
+            region._exclusions = bind_exclusion_entries_to_host(
+                target, host_exclusions, eager=bake_callable_exclusions
+            )
         host_config = target.metadata.get("config") if isinstance(target.metadata, dict) else None
         if isinstance(host_config, dict) and host_config:
             region.metadata["config"] = dict(host_config)

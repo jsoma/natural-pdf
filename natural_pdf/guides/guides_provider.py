@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import ExitStack
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Literal, Optional, Sequence
 
@@ -101,8 +102,8 @@ class _RouterGuidesEngine(GuidesEngine):
         if not target_name:
             raise LookupError(f"No built-in engine registered for guides method '{method}'.")
         provider = get_provider()
-        engine = provider.get("guides.detect", context=context, name=target_name)
-        return engine.detect(axis=axis, method=method, context=context, options=options)
+        with provider.checkout("guides.detect", context=context, name=target_name) as engine:
+            return engine.detect(axis=axis, method=method, context=context, options=options)
 
     def detect_both(
         self,
@@ -115,8 +116,8 @@ class _RouterGuidesEngine(GuidesEngine):
         if not target_name:
             raise LookupError(f"No built-in engine registered for guides method '{method}'.")
         provider = get_provider()
-        engine = provider.get("guides.detect", context=context, name=target_name)
-        return engine.detect_both(method=method, context=context, options=options)
+        with provider.checkout("guides.detect", context=context, name=target_name) as engine:
+            return engine.detect_both(method=method, context=context, options=options)
 
 
 def register_guides_engines(provider=None) -> None:
@@ -149,14 +150,19 @@ def run_guides_detect(
     resolved_name = engine_name or DEFAULT_GUIDE_ENGINES.get(method) or "builtin"
     if resolved_name is None:
         raise ValueError(f"No default engine registered for guides method '{method}'.")
-    try:
-        engine = provider.get("guides.detect", context=context, name=resolved_name)
-    except LookupError as exc:
-        if resolved_name != "builtin":
-            engine = provider.get("guides.detect", context=context, name="builtin")
-        else:
-            raise exc
-    return engine.detect(axis=axis, method=method, context=context, options=options or {})
+    with ExitStack() as stack:
+        try:
+            engine = stack.enter_context(
+                provider.checkout("guides.detect", context=context, name=resolved_name)
+            )
+        except LookupError as exc:
+            if resolved_name != "builtin":
+                engine = stack.enter_context(
+                    provider.checkout("guides.detect", context=context, name="builtin")
+                )
+            else:
+                raise exc
+        return engine.detect(axis=axis, method=method, context=context, options=options or {})
 
 
 def run_guides_detect_both(
@@ -170,14 +176,19 @@ def run_guides_detect_both(
     resolved_name = engine_name or DEFAULT_GUIDE_ENGINES.get(method) or "builtin"
     if resolved_name is None:
         raise ValueError(f"No default engine registered for guides method '{method}'.")
-    try:
-        engine = provider.get("guides.detect", context=context, name=resolved_name)
-    except LookupError as exc:
-        if resolved_name != "builtin":
-            engine = provider.get("guides.detect", context=context, name="builtin")
-        else:
-            raise exc
-    return engine.detect_both(method=method, context=context, options=options or {})
+    with ExitStack() as stack:
+        try:
+            engine = stack.enter_context(
+                provider.checkout("guides.detect", context=context, name=resolved_name)
+            )
+        except LookupError as exc:
+            if resolved_name != "builtin":
+                engine = stack.enter_context(
+                    provider.checkout("guides.detect", context=context, name="builtin")
+                )
+            else:
+                raise exc
+        return engine.detect_both(method=method, context=context, options=options or {})
 
 
 register_guides_engines()

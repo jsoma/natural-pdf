@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import uuid
 from dataclasses import dataclass
 
@@ -126,7 +127,8 @@ def test_public_custom_engine_uses_provider_context_and_constructor_variants(
     assert len(constructed) == 4
     assert constructed[0][:4] == (first_context, options, ["en"], "cpu")
 
-    # EngineProvider documents opaque constructor objects as identity-keyed.
+    # Separately normalized options with the same semantic init key reuse the
+    # heavy model variant.
     run_ocr(
         target=_Target(),
         engine_name=name,
@@ -136,7 +138,7 @@ def test_public_custom_engine_uses_provider_context_and_constructor_variants(
         device="cpu",
         options=_CustomOptions(profile="accurate"),
     )
-    assert len(constructed) == 5
+    assert len(constructed) == 4
 
 
 def test_provider_only_factory_receives_normalized_options_without_extra_kwargs(
@@ -196,7 +198,112 @@ def test_provider_only_factory_receives_normalized_options_without_extra_kwargs(
         context=object(),
         options=options,
     )
+    assert len(constructed) == 2
+
+
+@pytest.mark.parametrize("availability_failure", ["false", "raise"])
+def test_unavailable_provider_only_variant_is_evicted_and_retried(
+    isolated_provider,
+    availability_failure,
+):
+    name = f"ocr.provider-unavailable.{uuid.uuid4().hex}"
+    good_context = object()
+    bad_context = object()
+    constructed = []
+    cleaned = []
+
+    class Engine:
+        def __init__(self, context):
+            self.context = context
+            constructed.append(self)
+
+        def is_available(self):
+            if self.context is bad_context:
+                if availability_failure == "raise":
+                    raise RuntimeError("availability probe failed")
+                return False
+            return True
+
+        def process_image(self, image, **kwargs):
+            return []
+
+        def cleanup(self):
+            cleaned.append(self)
+
+    isolated_provider.register(
+        "ocr.apply",
+        name,
+        lambda *, context: Engine(context),
+    )
+
+    run_ocr(target=_Target(), engine_name=name, resolution=72, context=good_context)
+    good_engine = constructed[0]
+    for _ in range(2):
+        error = "availability probe failed" if availability_failure == "raise" else "not available"
+        with pytest.raises(RuntimeError, match=error):
+            run_ocr(target=_Target(), engine_name=name, resolution=72, context=bad_context)
+
+    # The valid context variant remains cached, while every failed variant is
+    # detached, cleaned after checkout exit, and freshly reconstructed.
+    run_ocr(target=_Target(), engine_name=name, resolution=72, context=good_context)
     assert len(constructed) == 3
+    assert constructed[0] is good_engine
+    assert cleaned == constructed[1:]
+
+
+def test_uncacheable_custom_options_create_and_clean_one_engine_per_run(isolated_provider):
+    name = f"ocr.uncacheable.{uuid.uuid4().hex}"
+    constructed = []
+    cleaned = []
+
+    class MutableCallback:
+        pass
+
+    class Engine:
+        def __init__(self):
+            constructed.append(self)
+
+        def process_image(self, image, **kwargs):
+            return []
+
+        def cleanup(self):
+            cleaned.append(self)
+
+    register_ocr_engine(name, Engine, options_class=_CustomOptions)
+    context = object()
+    option_mapping = {"extra_args": {"callback": MutableCallback()}}
+
+    for _ in range(2):
+        run_ocr(
+            target=_Target(),
+            engine_name=name,
+            resolution=72,
+            context=context,
+            options=option_mapping,
+            device="cpu",
+        )
+
+    assert len(constructed) == 2
+    assert cleaned == constructed
+    assert isolated_provider.evict("ocr.apply", name) == 0
+
+
+def test_transient_custom_ocr_engine_is_cleaned_after_processing(isolated_provider):
+    name = f"ocr.transient.{uuid.uuid4().hex}"
+    events = []
+
+    class Engine:
+        def process_image(self, image, **kwargs):
+            events.append("process")
+            return []
+
+        def cleanup(self):
+            events.append("cleanup")
+
+    register_ocr_engine(name, Engine, lifetime="transient")
+    run_ocr(target=_Target(), engine_name=name, resolution=72, context=object())
+
+    assert events == ["process", "cleanup"]
 
 
 def test_public_custom_provider_initializes_each_model_variant_once(isolated_provider):
@@ -260,6 +367,7 @@ def test_public_custom_provider_initializes_each_model_variant_once(isolated_pro
 def test_unavailable_public_custom_provider_is_not_cached(isolated_provider):
     name = f"ocr.unavailable.{uuid.uuid4().hex}"
     constructed = []
+    cleaned = []
 
     class Engine:
         def is_available(self):
@@ -270,6 +378,9 @@ def test_unavailable_public_custom_provider_is_not_cached(isolated_provider):
 
         def process_image(self, image, **kwargs):  # pragma: no cover
             raise AssertionError("unavailable engines must not run")
+
+        def cleanup(self):
+            cleaned.append(self)
 
     def factory():
         engine = Engine()
@@ -291,6 +402,7 @@ def test_unavailable_public_custom_provider_is_not_cached(isolated_provider):
             )
 
     assert len(constructed) == 2
+    assert cleaned == constructed
 
 
 def test_provider_capability_paths_forward_options(isolated_provider):
@@ -463,3 +575,140 @@ def test_builtin_classic_path_still_initializes_and_reuses_engine_cache(monkeypa
     assert len(initialized) == 2
     assert initialized[0][1:] == (["en"], "cpu", None)
     assert initialized[1][1:] == (["fr"], "cpu", None)
+
+
+def test_inflight_old_builtin_factory_cannot_publish_after_registration_change(
+    isolated_provider,
+    monkeypatch,
+):
+    name = f"ocr.stale-factory.{uuid.uuid4().hex}"
+    cache = EngineCache(maxsize=4)
+    monkeypatch.setattr("natural_pdf.ocr.unified_dispatch._engine_cache", cache)
+    factory_started = threading.Event()
+    release_factory = threading.Event()
+    created = []
+    cleaned = []
+    results = []
+    errors = []
+
+    class Engine:
+        def __init__(self, label):
+            self.label = label
+            created.append(self)
+
+        def process_image(self, image, **kwargs):
+            return [{"bbox": [0, 0, 1, 1], "text": self.label, "confidence": 1.0}]
+
+        def cleanup(self):
+            cleaned.append(self)
+
+    def slow_factory():
+        engine = Engine("old")
+        factory_started.set()
+        if not release_factory.wait(timeout=2):  # pragma: no cover - deadlock diagnostic
+            raise RuntimeError("factory release timed out")
+        return engine
+
+    old_entry = EngineEntry(
+        engine_type="classic",
+        provider=slow_factory,
+        needs_gpu_lock=False,
+    )
+    replacement_entry = EngineEntry(
+        engine_type="classic",
+        provider=lambda: Engine("replacement"),
+        needs_gpu_lock=False,
+    )
+    register_engine(name, old_entry)
+
+    def run_old_registration():
+        try:
+            result = run_ocr(target=_Target(), engine_name=name, resolution=72)
+            results.append(result.results[0]["text"])
+        except BaseException as exc:  # pragma: no cover - diagnostic capture
+            errors.append(exc)
+
+    worker = threading.Thread(target=run_old_registration)
+    worker.start()
+    assert factory_started.wait(timeout=2)
+    register_engine(name, replacement_entry)
+    release_factory.set()
+    worker.join(timeout=2)
+
+    assert not worker.is_alive()
+    assert errors == []
+    assert results == ["old"]
+    assert cache.invalidate(name) == 0
+    assert cleaned == created
+
+
+def test_builtin_inference_lease_defers_replacement_cleanup(
+    isolated_provider,
+    monkeypatch,
+):
+    name = f"ocr.active-inference.{uuid.uuid4().hex}"
+    cache = EngineCache(maxsize=4)
+    monkeypatch.setattr("natural_pdf.ocr.unified_dispatch._engine_cache", cache)
+    inference_started = threading.Event()
+    release_inference = threading.Event()
+    cleaned = []
+    results = []
+    errors = []
+
+    class Engine:
+        def __init__(self, label, block=False):
+            self.label = label
+            self.block = block
+
+        def process_image(self, image, **kwargs):
+            if self.block:
+                inference_started.set()
+                if not release_inference.wait(timeout=2):  # pragma: no cover
+                    raise RuntimeError("inference release timed out")
+            return [{"bbox": [0, 0, 1, 1], "text": self.label, "confidence": 1.0}]
+
+        def cleanup(self):
+            cleaned.append(self)
+
+    old_engine = Engine("old", block=True)
+    replacement_engine = Engine("replacement")
+    register_engine(
+        name,
+        EngineEntry(
+            engine_type="classic",
+            provider=lambda: old_engine,
+            needs_gpu_lock=False,
+        ),
+    )
+
+    def run_old_inference():
+        try:
+            result = run_ocr(target=_Target(), engine_name=name, resolution=72)
+            results.append(result.results[0]["text"])
+        except BaseException as exc:  # pragma: no cover - diagnostic capture
+            errors.append(exc)
+
+    worker = threading.Thread(target=run_old_inference)
+    worker.start()
+    assert inference_started.wait(timeout=2)
+    register_engine(
+        name,
+        EngineEntry(
+            engine_type="classic",
+            provider=lambda: replacement_engine,
+            needs_gpu_lock=False,
+        ),
+    )
+    assert cleaned == []
+
+    release_inference.set()
+    worker.join(timeout=2)
+    assert not worker.is_alive()
+    assert errors == []
+    assert results == ["old"]
+    assert cleaned == [old_engine]
+
+    replacement = run_ocr(target=_Target(), engine_name=name, resolution=72)
+    assert replacement.results[0]["text"] == "replacement"
+    assert cache.clear() == 1
+    assert cleaned == [old_engine, replacement_engine]
