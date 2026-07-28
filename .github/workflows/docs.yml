@@ -122,7 +122,7 @@ jobs:
         run: npm run build
 
       - name: Verify built site
-        run: uv run pytest tests/test_docs_site_output.py
+        run: uv run --extra test pytest tests/test_docs_site_output.py
 
       # gh-pages history is the artifact store. Rollback to a previous deploy:
       #   git push origin <last-good-sha>:gh-pages --force

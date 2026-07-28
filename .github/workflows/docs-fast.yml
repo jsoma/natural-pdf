@@ -117,7 +117,7 @@ jobs:
         run: npm run build
 
       - name: Verify built site
-        run: uv run pytest tests/test_docs_site_output.py
+        run: uv run --extra test pytest tests/test_docs_site_output.py
 
       - name: Upload built site on failure
         if: failure()
