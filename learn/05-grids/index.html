@@ -1,0 +1,574 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-sidebar class="astro-vdxcvpsm"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Guides: build the grid from evidence | Natural PDF</title><link rel="canonical" href="https://jsoma.github.io/natural-pdf/learn/05-grids/"/><link rel="sitemap" href="/natural-pdf/sitemap-index.xml"/><link rel="shortcut icon" href="/natural-pdf/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.1.4"/><meta name="generator" content="Starlight v0.41.5"/><meta property="og:title" content="Guides: build the grid from evidence"/><meta property="og:type" content="article"/><meta property="og:url" content="https://jsoma.github.io/natural-pdf/learn/05-grids/"/><meta property="og:locale" content="en"/><meta property="og:site_name" content="Natural PDF"/><meta name="twitter:card" content="summary_large_image"/><link rel="icon" type="image/svg+xml" href="/natural-pdf/_astro/favicon.CIR-is7N.svg"><script type="module" src="/natural-pdf/_astro/Head.astro_astro_type_script_index_0_lang.DKguoj2y.js"></script><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/natural-pdf/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/natural-pdf/_astro/common.DMm7cBmA.css"><script type="module" src="/natural-pdf/_astro/page.LAbJoB63.js"></script></head><body class="astro-vdxcvpsm"><a class="sl-skip-link astro-vxeigawq" href="#_top">Skip to content</a><div class="page sl-flex astro-gqpr5s5a"><header class="header astro-gqpr5s5a"><div class="header astro-nczgtkxc"><div class="title-wrapper sl-flex astro-nczgtkxc"><a href="/natural-pdf/" class="site-title sl-flex astro-clw6ags5"><span class="astro-clw6ags5" translate="no">Natural PDF</span></a></div><div class="sl-flex print:hidden astro-nczgtkxc"><site-search class="astro-nczgtkxc astro-r5ar4xm7" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-r5ar4xm7"><svg aria-hidden="true" class="astro-r5ar4xm7 astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-r5ar4xm7" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-r5ar4xm7" style="display: none;"><kbd class="astro-r5ar4xm7">Ctrl</kbd><kbd class="astro-r5ar4xm7">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-r5ar4xm7"><div class="dialog-frame sl-flex astro-r5ar4xm7"><button data-close-modal class="sl-flex md:sl-hidden astro-r5ar4xm7">Cancel</button><div class="search-container astro-r5ar4xm7"><div id="starlight__search" class="astro-r5ar4xm7"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/natural-pdf/_astro/Search.astro_astro_type_script_index_0_lang.bQKUD95p.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-nczgtkxc"><div class="sl-flex social-icons astro-nczgtkxc"><a href="https://github.com/jsoma/natural-pdf" rel="me" class="sl-flex astro-cg55etiy"><span class="sr-only astro-cg55etiy">GitHub</span><svg aria-hidden="true" class="astro-cg55etiy astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-r2p65idu"><span class="sr-only astro-r2p65idu">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-r2p65idu"><option value="dark" class="astro-r2p65idu">Dark</option><option value="light" class="astro-r2p65idu">Light</option><option value="auto" selected class="astro-r2p65idu">Auto</option></select><svg aria-hidden="true" class="icon caret astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module" src="/natural-pdf/_astro/ThemeSelect.astro_astro_type_script_index_0_lang.COBTTKEJ.js"></script><script type="module" src="/natural-pdf/_astro/LanguageSelect.astro_astro_type_script_index_0_lang.DZJqHYaV.js"></script></div></div></header><nav class="sidebar print:hidden astro-gqpr5s5a" aria-label="Main"><starlight-menu-button class="print:hidden astro-vvx7mffu"><button aria-expanded="false" aria-label="Menu" aria-controls="starlight__sidebar" class="sl-flex md:sl-hidden astro-vvx7mffu"><svg aria-hidden="true" class="open-menu astro-vvx7mffu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-vvx7mffu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg></button></starlight-menu-button><script type="module" src="/natural-pdf/_astro/MobileMenuToggle.astro_astro_type_script_index_0_lang.BdbKaZ7j.js"></script><div id="starlight__sidebar" class="sidebar-pane astro-gqpr5s5a"><div class="sidebar-content sl-flex astro-gqpr5s5a"><sl-sidebar-state-persist data-hash="0cjfcl5" class="astro-f5yvicm7"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/" class="large astro-ojxuodky"><span class="astro-ojxuodky">Home</span></a></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Get Started</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/get-started/" class="astro-ojxuodky"><span class="astro-ojxuodky">Installation</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/get-started/quickstart/" class="astro-ojxuodky"><span class="astro-ojxuodky">Quickstart</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/get-started/from-pdfplumber/" class="astro-ojxuodky"><span class="astro-ojxuodky">Coming from pdfplumber</span></a></li></ul></details></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Learn</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/learn/" class="astro-ojxuodky"><span class="astro-ojxuodky">Learn</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/01-text-and-tables/" class="astro-ojxuodky"><span class="astro-ojxuodky">1. Text and tables</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/02-ocr/" class="astro-ojxuodky"><span class="astro-ojxuodky">2. OCR</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/03-ai-extraction/" class="astro-ojxuodky"><span class="astro-ojxuodky">3. AI extraction</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/04-page-structure/" class="astro-ojxuodky"><span class="astro-ojxuodky">4. Page structure</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/05-grids/" aria-current="page" class="astro-ojxuodky"><span class="astro-ojxuodky">5. Grids</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/06-putting-it-together/" class="astro-ojxuodky"><span class="astro-ojxuodky">6. Putting it together</span></a></li></ul></details></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Concepts</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/" class="astro-ojxuodky"><span class="astro-ojxuodky">Concepts</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/spatial-model/" class="astro-ojxuodky"><span class="astro-ojxuodky">The spatial model</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/text-and-elements/" class="astro-ojxuodky"><span class="astro-ojxuodky">How text becomes elements</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/exclusions/" class="astro-ojxuodky"><span class="astro-ojxuodky">Exclusions</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/selectors/" class="astro-ojxuodky"><span class="astro-ojxuodky">Selectors</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/tables/" class="astro-ojxuodky"><span class="astro-ojxuodky">Tables, a decision guide</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/engines-and-models/" class="astro-ojxuodky"><span class="astro-ojxuodky">Engines and models</span></a></li></ul></details></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Solve</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/solve/" class="astro-ojxuodky"><span class="astro-ojxuodky">Solve: real PDFs, worked end to end</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/multi-column-reflow/" class="astro-ojxuodky"><span class="astro-ojxuodky">Multi-column reflow</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/zebra-stripe-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Zebra-stripe table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/arabic-election-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Arabic election table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/use-of-force-logs/" class="astro-ojxuodky"><span class="astro-ojxuodky">Use-of-force logs</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/pixelated-scan-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Pixelated scan table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/serbian-multipage-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Serbian multi-page table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/borderless-call-log/" class="astro-ojxuodky"><span class="astro-ojxuodky">Borderless call log</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/complaint-database-printout/" class="astro-ojxuodky"><span class="astro-ojxuodky">Complaint database printout</span></a></li></ul></details></li><li class="astro-ojxuodky"><a href="/natural-pdf/troubleshooting/" class="large astro-ojxuodky"><span class="astro-ojxuodky">Troubleshooting</span></a></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Reference</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/reference/selectors/" class="astro-ojxuodky"><span class="astro-ojxuodky">Selectors</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/engines/" class="astro-ojxuodky"><span class="astro-ojxuodky">Engines</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/installation-extras/" class="astro-ojxuodky"><span class="astro-ojxuodky">Installation extras</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/exceptions/" class="astro-ojxuodky"><span class="astro-ojxuodky">Exceptions</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/ocr-options/" class="astro-ojxuodky"><span class="astro-ojxuodky">OCR options</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/api/" class="astro-ojxuodky"><span class="astro-ojxuodky">API</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/api/text-extraction/" class="astro-ojxuodky"><span class="astro-ojxuodky">Text Extraction</span></a></li></ul></details></li><li class="astro-ojxuodky"><a href="/natural-pdf/for-agents/" class="large astro-ojxuodky"><span class="astro-ojxuodky">For Agents</span></a></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-b5gddk54"><div class="social-icons astro-b5gddk54"><a href="https://github.com/jsoma/natural-pdf" rel="me" class="sl-flex astro-cg55etiy"><span class="sr-only astro-cg55etiy">GitHub</span><svg aria-hidden="true" class="astro-cg55etiy astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-r2p65idu"><span class="sr-only astro-r2p65idu">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-r2p65idu"><option value="dark" class="astro-r2p65idu">Dark</option><option value="light" class="astro-r2p65idu">Light</option><option value="auto" selected class="astro-r2p65idu">Auto</option></select><svg aria-hidden="true" class="icon caret astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></div></nav><div class="main-frame astro-gqpr5s5a"><script type="module" src="/natural-pdf/_astro/Page.astro_astro_type_script_index_0_lang.DC4zszI0.js"></script><div class="lg:sl-flex astro-abfeecmu"><div class="main-pane astro-abfeecmu"><main data-pagefind-body class="astro-vdxcvpsm" lang="en" dir="ltr"><div class="content-panel astro-oil7k7jf"><div class="sl-container astro-oil7k7jf"><h1 id="_top" class="astro-2sm4b3ln">Guides: build the grid from evidence</h1></div></div><div class="content-panel astro-oil7k7jf"><div class="sl-container astro-oil7k7jf"><div class="sl-markdown-content"><p><code dir="auto">extract_table()</code> on a scan has nothing to work with — OCR gives you words, but the ruling lines are just dark pixels. Guides make the grid explicit: you build the column and row boundaries from whatever evidence exists, look at them, and only then extract.</p>
+<p>The document is the scanned inspection report from <a href="../02-ocr/">the OCR page</a>. OCR it and anchor the table region, same as there:</p>
+<div class="expressive-code"><link rel="stylesheet" href="/natural-pdf/_astro/ec.w36nc.css"><script type="module" src="/natural-pdf/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:74ch"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">from</span><span style="--0:#D6DEEB;--1:#403F53"> natural_pdf </span><span style="--0:#C792EA;--1:#8844AE">import</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">PDF</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">scan </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#B2CCD6;--1:#096E72">PDF</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">pdfs/needs-ocr.pdf</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">spage </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> scan.pages[</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D6DEEB;--1:#403F53">]</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">spage.</span><span style="--0:#B2CCD6;--1:#096E72">apply_ocr</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">table_area </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> (</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">spage</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text:contains("Violations")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">below</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">until</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text:contains("Jungle Health")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">include_endpoint</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">False</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">trim</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">table_area.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">True</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="from natural_pdf import PDFscan = PDF(&#x22;pdfs/needs-ocr.pdf&#x22;)spage = scan.pages[0]spage.apply_ocr()table_area = (    spage    .find(&#x27;text:contains(&#x22;Violations&#x22;)&#x27;)    .below(until=&#x27;text:contains(&#x22;Jungle Health&#x22;)&#x27;, include_endpoint=False)    .trim())table_area.show(crop=True)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/b30d9df7f9cb.png" alt="Guides: build the grid from evidence"></p>
+<p><strong>Columns from the headers.</strong> The header words are evenly spread, one per column — tell the guides to split there:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:76ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> table_area.</span><span style="--0:#B2CCD6;--1:#096E72">guides</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">from_headers</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">[</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Statute</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#82AAFF;--1:#3B61B0">, </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Description</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#82AAFF;--1:#3B61B0">, </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Level</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#82AAFF;--1:#3B61B0">, </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Repeat?</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D9F5DD;--1:#111111">]</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="guides = table_area.guides()guides.vertical.from_headers([&#x22;Statute&#x22;, &#x22;Description&#x22;, &#x22;Level&#x22;, &#x22;Repeat?&#x22;])guides.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/ec4938b29d3d.png" alt="Guides: build the grid from evidence"></p>
+<p>Look before extracting — that’s the whole point of guides. The boundaries landed <em>on the text</em>: one runs through the middle of “Statute”, another clips the longest description line, a third cuts through the Level column.</p>
+<p><strong>Snap to whitespace.</strong> Migrate each boundary to the nearest empty vertical channel:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:27ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides.</span><span style="--0:#B2CCD6;--1:#096E72">snap_to_whitespace</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="guides.snap_to_whitespace()guides.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/d49909f7e893.png" alt="Guides: build the grid from evidence"></p>
+<p><strong>Rows from content.</strong> No horizontal lines to detect, but the first column is dependable — one statute number per row. Use those elements as row anchors:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:43ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">anchors </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> guides.</span><span style="--0:#B2CCD6;--1:#096E72">column</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">find_all</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides.horizontal.</span><span style="--0:#B2CCD6;--1:#096E72">from_content</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">anchors</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="anchors = guides.column(0).find_all(&#x27;text&#x27;)guides.horizontal.from_content(anchors)guides.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/281b23a0f541.png" alt="Guides: build the grid from evidence"></p>
+<p>A full grid, built from headers, whitespace, and a reliable column — three kinds of evidence, none of them ruling lines. One last gap before extracting: the Repeat? column is drawn checkboxes, which OCR can’t read. This is the gap left open on the very first Learn page, and this is where it closes:</p>
+<aside aria-label="This downloads a model on first use" class="starlight-aside starlight-aside--caution"><p class="starlight-aside__title" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" class="starlight-aside__icon"><path d="M12 16a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm10.67 1.47-8.05-14a3 3 0 0 0-5.24 0l-8 14A3 3 0 0 0 3.94 22h16.12a3 3 0 0 0 2.61-4.53Zm-1.73 2a1 1 0 0 1-.88.51H3.94a1 1 0 0 1-.88-.51 1 1 0 0 1 0-1l8-14a1 1 0 0 1 1.78 0l8.05 14a1 1 0 0 1 .05 1.02v-.02ZM12 8a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0V9a1 1 0 0 0-1-1Z"></path></svg>This downloads a model on first use</p><div class="starlight-aside__content"><p><code dir="auto">detect_checkboxes()</code> downloads a YOLO12n ONNX model (<code dir="auto">wendys-llc/checkbox-detector</code>, ~10 MB) on the first call.</p></div></aside>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:38ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">checkboxes </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> spage.</span><span style="--0:#B2CCD6;--1:#096E72">detect_checkboxes</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#C5E478;--1:#3B61B0">len</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">checkboxes</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="checkboxes = spage.detect_checkboxes()len(checkboxes)"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>checkbox_yolo12n.onnx:   0%|          | 0.00/10.8M [00:00&#x3C;?, ?B/s]
+7</code></pre>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:30ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides.</span><span style="--0:#B2CCD6;--1:#096E72">extract_table</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">to_df</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="guides.extract_table().to_df()"><div></div></button></div></figure></div>
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Statute</th>
+      <th>Description</th>
+      <th>Level</th>
+      <th>Repeat?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>4.12.7</td>
+      <td>Unsanitary Working Conditions.</td>
+      <td>Critical</td>
+      <td>[CHECKED]</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>5.8.3</td>
+      <td>Inadequate Protective Equipment.</td>
+      <td>Serious</td>
+      <td>[CHECKED]</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>6.3.9</td>
+      <td>Ineffective Injury Prevention.</td>
+      <td>Serious</td>
+      <td>[UNCHECKED]</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>7.1.5</td>
+      <td>Failure to Properly Store Hazardous Materials..</td>
+      <td>Critical</td>
+      <td>[UNCHECKED]</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>8.9.2</td>
+      <td>Lack of Adequate Fire Safety Measures.</td>
+      <td>Serious</td>
+      <td>[UNCHECKED]</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>9.6.4</td>
+      <td>Inadequate Ventilation Systems.</td>
+      <td>Serious</td>
+      <td>[CHECKED]</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>10.2.7</td>
+      <td>Insufficient Employee Training for Safe Work P...</td>
+      <td>Serious</td>
+      <td>[UNCHECKED]</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p>Statutes, descriptions, levels, and real <code dir="auto">[CHECKED]</code> / <code dir="auto">[UNCHECKED]</code> states — from a page that started as pixels.</p>
+<p><strong>The punchline.</strong> That ladder was the general method, and it works when a table has no lines at all. This table, though, <em>does</em> have visible lines — they’re just pixels, not vector graphics. <code dir="auto">from_lines(detection_method='pixels')</code> scans the rendered image for dark runs, and the whole grid takes three lines:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:55ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> table_area.</span><span style="--0:#B2CCD6;--1:#096E72">guides</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">pixels</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides.horizontal.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">pixels</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="guides = table_area.guides()guides.vertical.from_lines(detection_method=&#x27;pixels&#x27;)guides.horizontal.from_lines(detection_method=&#x27;pixels&#x27;)guides.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/187673c0a433.png" alt="Guides: build the grid from evidence"></p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:30ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">guides.</span><span style="--0:#B2CCD6;--1:#096E72">extract_table</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">to_df</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="guides.extract_table().to_df()"><div></div></button></div></figure></div>
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Statute</th>
+      <th>Description</th>
+      <th>Level</th>
+      <th>Repeat?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>4.12.7</td>
+      <td>Unsanitary Working Conditions.</td>
+      <td>Critical</td>
+      <td>[CHECKED]</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>5.8.3</td>
+      <td>Inadequate Protective Equipment.</td>
+      <td>Serious</td>
+      <td>[CHECKED]</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>6.3.9</td>
+      <td>Ineffective Injury Prevention.</td>
+      <td>Serious</td>
+      <td>[UNCHECKED]</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>7.1.5</td>
+      <td>Failure to Properly Store Hazardous Materials..</td>
+      <td>Critical</td>
+      <td>[UNCHECKED]</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>8.9.2</td>
+      <td>Lack of Adequate Fire Safety Measures.</td>
+      <td>Serious</td>
+      <td>[UNCHECKED]</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>9.6.4</td>
+      <td>Inadequate Ventilation Systems.</td>
+      <td>Serious</td>
+      <td>[CHECKED]</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>10.2.7</td>
+      <td>Insufficient Employee Training for Safe Work P...</td>
+      <td>Serious</td>
+      <td>[UNCHECKED]</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p>Same DataFrame. The craft is matching the tool to the evidence: pixel lines when the rulings are visible, headers + whitespace + content anchors when they aren’t, and <code dir="auto">guides.show()</code> at every step, because a wrong grid produces a <em>plausible</em> wrong table.</p>
+<p>That’s the method. The rest of this page is the toolbox — what each guide source actually does, the parameters that matter, and what to reach for when the first attempt gives you a wrong grid.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="ruled-tables-when-the-lines-are-vectors">Ruled tables: when the lines are vectors</h2><a class="sl-anchor-link" href="#ruled-tables-when-the-lines-are-vectors"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Ruled tables: when the lines are vectors”</span></a></div>
+<p>The scan’s rulings were pixels. In a born-digital PDF the rulings are usually <em>vector graphics</em> — real <code dir="auto">line</code> elements with exact coordinates — and <code dir="auto">from_lines()</code> reads them directly, no rendering involved. This equipment log has a fully drawn grid:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:43ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">ruled </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#B2CCD6;--1:#096E72">PDF</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">pdfs/guides-ruled-sample.pdf</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">rpage </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> ruled.pages[</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D6DEEB;--1:#403F53">]</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">rpage.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="ruled = PDF(&#x22;pdfs/guides-ruled-sample.pdf&#x22;)rpage = ruled.pages[0]rpage.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/be50a78b3744.png" alt="Ruled tables: when the lines are vectors"></p>
+<p>Anchor the table area first — the decorative rule under the title is also a <code dir="auto">line</code> element, and scoping the region keeps it out of the evidence. Then look at the evidence itself:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:71ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">equip </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> (</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">rpage</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text:contains("approved requisitions")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">below</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">until</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text:contains("Petty Cash")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">include_endpoint</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">False</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">equip.</span><span style="--0:#B2CCD6;--1:#096E72">find_all</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">line</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">True</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="equip = (    rpage    .find(&#x27;text:contains(&#x22;approved requisitions&#x22;)&#x27;)    .below(until=&#x27;text:contains(&#x22;Petty Cash&#x22;)&#x27;, include_endpoint=False))equip.find_all(&#x27;line&#x27;).show(crop=True)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/204e40d10da1.png" alt="Ruled tables: when the lines are vectors"></p>
+<p>Every line element in the region: the grid — plus a short underline beneath each vendor name. Vector detection turns each one into a guide:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:50ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">g </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> equip.</span><span style="--0:#B2CCD6;--1:#096E72">guides</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">g.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">vector</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">g.horizontal.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">vector</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">g.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="g = equip.guides()g.vertical.from_lines(detection_method=&#x27;vector&#x27;)g.horizontal.from_lines(detection_method=&#x27;vector&#x27;)g.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/5207a07b4c34.png" alt="Ruled tables: when the lines are vectors"></p>
+<p>The columns are perfect. The rows are doubled — every underline became a phantom row boundary a few points above the real ruling:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:25ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">g.</span><span style="--0:#B2CCD6;--1:#096E72">extract_table</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">to_df</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="g.extract_table().to_df()"><div></div></button></div></figure></div>
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Item</th>
+      <th>Vendor</th>
+      <th>Qty</th>
+      <th>Unit Price</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>Soil auger, 3in</td>
+      <td>Forestry Direct</td>
+      <td>2</td>
+      <td>$84.00</td>
+      <td>$168.00</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>Sample bags (500)</td>
+      <td>LabSource</td>
+      <td>4</td>
+      <td>$22.50</td>
+      <td>$90.00</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>GPS receiver</td>
+      <td>TrailTech</td>
+      <td>1</td>
+      <td>$412.00</td>
+      <td>$412.00</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>Water test kit</td>
+      <td>LabSource</td>
+      <td>6</td>
+      <td>$31.75</td>
+      <td>$190.50</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>Folding table</td>
+      <td>Office Depot</td>
+      <td>2</td>
+      <td>$45.99</td>
+      <td>$91.98</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>Clipboards</td>
+      <td>Office Depot</td>
+      <td>12</td>
+      <td>$3.25</td>
+      <td>$39.00</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>Waders, size L</td>
+      <td>Forestry Direct</td>
+      <td>3</td>
+      <td>$97.00</td>
+      <td>$291.00</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>First aid kit</td>
+      <td>SafetyPro</td>
+      <td>2</td>
+      <td>$28.40</td>
+      <td>$56.80</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+      <td>None</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p>Every other row is an empty sliver. The fix is to count what you trust: nine rows of table means ten rulings, and <code dir="auto">n=10</code> keeps only the ten <em>longest</em> detected lines — the full-width rulings win, the short underlines lose:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:56ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">g.horizontal.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">vector</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">n</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">10</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">g.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="g.horizontal.from_lines(detection_method=&#x27;vector&#x27;, n=10)g.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/bff60f1f76af.png" alt="Ruled tables: when the lines are vectors"></p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:25ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">g.</span><span style="--0:#B2CCD6;--1:#096E72">extract_table</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">to_df</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="g.extract_table().to_df()"><div></div></button></div></figure></div>
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Item</th>
+      <th>Vendor</th>
+      <th>Qty</th>
+      <th>Unit Price</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>Soil auger, 3in</td>
+      <td>Forestry Direct</td>
+      <td>2</td>
+      <td>$84.00</td>
+      <td>$168.00</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>Sample bags (500)</td>
+      <td>LabSource</td>
+      <td>4</td>
+      <td>$22.50</td>
+      <td>$90.00</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>GPS receiver</td>
+      <td>TrailTech</td>
+      <td>1</td>
+      <td>$412.00</td>
+      <td>$412.00</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>Water test kit</td>
+      <td>LabSource</td>
+      <td>6</td>
+      <td>$31.75</td>
+      <td>$190.50</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>Folding table</td>
+      <td>Office Depot</td>
+      <td>2</td>
+      <td>$45.99</td>
+      <td>$91.98</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>Clipboards</td>
+      <td>Office Depot</td>
+      <td>12</td>
+      <td>$3.25</td>
+      <td>$39.00</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>Waders, size L</td>
+      <td>Forestry Direct</td>
+      <td>3</td>
+      <td>$97.00</td>
+      <td>$291.00</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>First aid kit</td>
+      <td>SafetyPro</td>
+      <td>2</td>
+      <td>$28.40</td>
+      <td>$56.80</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p>Two things worth knowing about <code dir="auto">from_lines</code>. The default <code dir="auto">detection_method='auto'</code> uses vector lines when the page has line elements and falls back to pixels when it doesn’t — and warns you which one it picked; passing <code dir="auto">'vector'</code> or <code dir="auto">'pixels'</code> explicitly makes the choice yours. And <code dir="auto">threshold</code> does nothing in vector mode: a line element either exists or it doesn’t. If the junk lines <em>aren’t</em> shorter than the real ones, <code dir="auto">n</code> will keep the wrong ones — that’s a job for <code dir="auto">remove_at()</code>, further down.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="pixel-detection-the-knobs-that-matter">Pixel detection: the knobs that matter</h2><a class="sl-anchor-link" href="#pixel-detection-the-knobs-that-matter"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Pixel detection: the knobs that matter”</span></a></div>
+<p>The punchline above made <code dir="auto">detection_method='pixels'</code> look effortless, but it worked because of <em>where</em> it ran. Run the identical call on the whole scanned page instead of the anchored table:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:54ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gpage </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> spage.</span><span style="--0:#B2CCD6;--1:#096E72">guides</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gpage.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">pixels</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gpage.horizontal.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">pixels</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gpage.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gpage = spage.guides()gpage.vertical.from_lines(detection_method=&#x27;pixels&#x27;)gpage.horizontal.from_lines(detection_method=&#x27;pixels&#x27;)gpage.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/d09b6b948f0f.png" alt="Pixel detection: the knobs that matter"></p>
+<p>The row rulings show up. The column rulings don’t — not one. Here’s why: pixel detection renders the region (at <code dir="auto">resolution=192</code> dpi) and looks for pixel rows and columns that are dark across at least <code dir="auto">threshold</code> of the region’s width or height — <code dir="auto">'auto'</code> means half. The table’s vertical rulings span well under half the <em>page’s</em> height, so they never clear the bar. Lower the bar and they appear:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:69ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gpage.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">pixels</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">threshold</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0.2</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gpage.horizontal.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">pixels</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">threshold</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0.2</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gpage.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gpage.vertical.from_lines(detection_method=&#x27;pixels&#x27;, threshold=0.2)gpage.horizontal.from_lines(detection_method=&#x27;pixels&#x27;, threshold=0.2)gpage.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/ee0d360ea275.png" alt="Pixel detection: the knobs that matter"></p>
+<p>The verticals are right — and the horizontals are ruined, because every line of paragraph text is dark across 20% of the page’s width too. Each axis is its own call, so give each axis its own threshold:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:67ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gpage.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">pixels</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">threshold</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0.2</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gpage.horizontal.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">pixels</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gpage.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gpage.vertical.from_lines(detection_method=&#x27;pixels&#x27;, threshold=0.2)gpage.horizontal.from_lines(detection_method=&#x27;pixels&#x27;)gpage.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/79900cdffc2f.png" alt="Pixel detection: the knobs that matter"></p>
+<p>One more knob: <code dir="auto">min_gap</code>, the minimum spacing (in pixels, at that same <code dir="auto">resolution</code>) between detected lines. At <code dir="auto">threshold=0.2</code> the horizontal pass finds many of the same fuzzy lines two or three times over, a few pixels apart:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:69ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">messy </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> spage.</span><span style="--0:#B2CCD6;--1:#096E72">guides</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">messy.horizontal.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">pixels</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">threshold</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0.2</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#C5E478;--1:#3B61B0">len</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">messy.horizontal</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="messy = spage.guides()messy.horizontal.from_lines(detection_method=&#x27;pixels&#x27;, threshold=0.2)len(messy.horizontal)"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>39</code></pre>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:81ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">messy.horizontal.</span><span style="--0:#B2CCD6;--1:#096E72">from_lines</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">detection_method</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">pixels</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">threshold</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0.2</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">min_gap</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">30</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#C5E478;--1:#3B61B0">len</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">messy.horizontal</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="messy.horizontal.from_lines(detection_method=&#x27;pixels&#x27;, threshold=0.2, min_gap=30)len(messy.horizontal)"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>23</code></pre>
+<p>The near-duplicates collapse — but every text row survives, because <code dir="auto">min_gap</code> merges detections, it doesn’t judge them. Which points at the real lesson: the best fix for messy pixel detection is usually a smaller region, not a better parameter. Inside <code dir="auto">table_area</code> the rulings span the full region, the default threshold clears easily, and the punchline took three lines. Shrink the region first; reach for the knobs when you can’t.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="no-lines-at-all-columns-from-whitespace">No lines at all: columns from whitespace</h2><a class="sl-anchor-link" href="#no-lines-at-all-columns-from-whitespace"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “No lines at all: columns from whitespace”</span></a></div>
+<p>The equipment page has a second block with no evidence to detect — no rulings, no headers, just three columns separated by gaps:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:64ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">petty </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> rpage.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text:contains("Petty Cash")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">below</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">trim</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">petty.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">True</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="petty = rpage.find(&#x27;text:contains(&#x22;Petty Cash&#x22;)&#x27;).below().trim()petty.show(crop=True)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/8a257eef7c08.png" alt="No lines at all: columns from whitespace"></p>
+<p><code dir="auto">from_whitespace()</code> puts the boundaries in the gaps:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:39ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gp </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> petty.</span><span style="--0:#B2CCD6;--1:#096E72">guides</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gp.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">from_whitespace</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">min_gap</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">10</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gp.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gp = petty.guides()gp.vertical.from_whitespace(min_gap=10)gp.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/6bccc686abc3.png" alt="No lines at all: columns from whitespace"></p>
+<p>Three clean columns. Know what it’s doing under the hood, though: it splits the region evenly three ways, then snaps each boundary into the nearest text gap that’s at least <code dir="auto">min_gap</code> points wide. Three columns is all it ever proposes — it fit here because this <em>is</em> a three-column table. For any other shape, build the same thing yourself from its two parts, <code dir="auto">divide()</code> and <code dir="auto">snap_to_whitespace()</code> — which are worth knowing separately anyway.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="manual-control-divide-then-tweezers">Manual control: divide, then tweezers</h2><a class="sl-anchor-link" href="#manual-control-divide-then-tweezers"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Manual control: divide, then tweezers”</span></a></div>
+<p><code dir="auto">divide(n=3)</code> is the blind half of the recipe: evenly spaced boundaries, outer edges included, no evidence consulted —</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:23ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gm </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> petty.</span><span style="--0:#B2CCD6;--1:#096E72">guides</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gm.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">divide</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">n</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">3</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gm.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gm = petty.guides()gm.vertical.divide(n=3)gm.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/2bbfacad786a.png" alt="Manual control: divide, then tweezers"></p>
+<p>— and it shows. One boundary cuts straight through the descriptions, the other floats in a gap. When only a boundary or two is wrong, you don’t need a better detector, you need tweezers: <code dir="auto">shift(i, offset)</code> nudges one guide, <code dir="auto">remove_at(i)</code> deletes one, <code dir="auto">add(x)</code> inserts one. And you don’t have to guess coordinates — read them off an element:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:89ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gm.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">shift</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#F78C6C;--1:#AA0982">1</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#C792EA;--1:#8844AE">-</span><span style="--0:#F78C6C;--1:#AA0982">60</span><span style="--0:#D6DEEB;--1:#403F53">)                       </span><span style="--0:#919F9F;--1:#5F636F"># nudge the date boundary into the gap</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">amount_x </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> petty.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text:contains("$")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">).x0  </span><span style="--0:#919F9F;--1:#5F636F"># where the amounts start</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gm.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">remove_at</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#F78C6C;--1:#AA0982">2</span><span style="--0:#D6DEEB;--1:#403F53">)                        </span><span style="--0:#919F9F;--1:#5F636F"># drop the boundary stuck mid-description</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gm.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">add</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">amount_x </span><span style="--0:#C792EA;--1:#8844AE">-</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#F78C6C;--1:#AA0982">5</span><span style="--0:#D6DEEB;--1:#403F53">)                   </span><span style="--0:#919F9F;--1:#5F636F"># place one just left of the amounts</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gm.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gm.vertical.shift(1, -60)                       # nudge the date boundary into the gapamount_x = petty.find(&#x27;text:contains(&#x22;$&#x22;)&#x27;).x0  # where the amounts startgm.vertical.remove_at(2)                        # drop the boundary stuck mid-descriptiongm.vertical.add(amount_x - 5)                   # place one just left of the amountsgm.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/829d5d0b5583.png" alt="Manual control: divide, then tweezers"></p>
+<p><code dir="auto">guides.columns[i]</code> and <code dir="auto">guides.rows[i]</code> hand back each strip as a Region, so you can check one column before trusting the whole grid:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:28ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gm.columns[</span><span style="--0:#F78C6C;--1:#AA0982">2</span><span style="--0:#D6DEEB;--1:#403F53">].</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gm.columns[2].extract_text()"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>'$12.00\n$8.40\n$44.16\n$5.80\n$19.98\n$23.50'</code></pre>
+<div class="sl-heading-wrapper level-h2"><h2 id="snapping-let-the-evidence-move-the-guides">Snapping: let the evidence move the guides</h2><a class="sl-anchor-link" href="#snapping-let-the-evidence-move-the-guides"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Snapping: let the evidence move the guides”</span></a></div>
+<p>Hand-fixing scales badly past a couple of boundaries. Snapping is the same repair done by evidence: start from a blind split and let the layout pull each guide into place. First look at what the guides will be snapping <em>between</em> — the word boxes and the gaps around them:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:38ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">petty.</span><span style="--0:#B2CCD6;--1:#096E72">find_all</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">True</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="petty.find_all(&#x27;text&#x27;).show(crop=True)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/5eb82ec91e06.png" alt="Snapping: let the evidence move the guides"></p>
+<p><code dir="auto">snap_to_whitespace()</code> migrates each guide to the nearest gap at least <code dir="auto">min_gap</code> points wide (its <code dir="auto">detection_method</code> can weigh rendered <code dir="auto">'pixels'</code> or text element positions, <code dir="auto">'text'</code>; <code dir="auto">on_no_snap</code> controls whether a guide that finds no gap warns, raises, or stays put):</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:32ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gs </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> petty.</span><span style="--0:#B2CCD6;--1:#096E72">guides</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gs.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">divide</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">n</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">3</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gs.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">snap_to_whitespace</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gs.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gs = petty.guides()gs.vertical.divide(n=3)gs.vertical.snap_to_whitespace()gs.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/beaf6888ff9a.png" alt="Snapping: let the evidence move the guides"></p>
+<p>Both misplaced boundaries found their gaps. A gap is a <em>range</em>, though, and the guide lands somewhere inside it. When you want a boundary flush against a known column instead, <code dir="auto">snap_to_content()</code> pulls the guide nearest each marker onto that element’s edge:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:76ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gs.vertical.</span><span style="--0:#B2CCD6;--1:#096E72">snap_to_content</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">markers</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">[</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">Parking</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">],</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">align</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">left</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">tolerance</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">50</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gs.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gs.vertical.snap_to_content(markers=[&#x27;Parking&#x27;], align=&#x27;left&#x27;, tolerance=50)gs.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/8c28e3992b38.png" alt="Snapping: let the evidence move the guides"></p>
+<p>The middle boundary now sits exactly on the description column’s left edge. <code dir="auto">tolerance</code> is the maximum distance a guide may travel — and it’s your safety rail: each marker moves whichever guide is currently <em>closest</em> to it, so a generous tolerance can drag a boundary you never meant to touch (including an outer edge). Keep it barely bigger than the move you intend.</p>
+<p>Rows, same as the scan walkthrough: one date per row makes the dates perfect anchors. Show the anchors, then build from them:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:46ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">dates </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> petty.</span><span style="--0:#B2CCD6;--1:#096E72">find_all</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text:contains("03/")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">dates.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#82AAFF;--1:#3B61B0">petty</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="dates = petty.find_all(&#x27;text:contains(&#x22;03/&#x22;)&#x27;)dates.show(crop=petty)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/128ae0c23271.png" alt="Snapping: let the evidence move the guides"></p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:58ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gs.horizontal.</span><span style="--0:#B2CCD6;--1:#096E72">from_content</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">dates</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">align</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">top</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">outer</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">True</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gs.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gs.horizontal.from_content(dates, align=&#x27;top&#x27;, outer=True)gs.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/05-grids/1f8f6e51024b.png" alt="Snapping: let the evidence move the guides"></p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:38ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">gs.</span><span style="--0:#B2CCD6;--1:#096E72">extract_table</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">to_df</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">header</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">False</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gs.extract_table().to_df(header=False)"><div></div></button></div></figure></div>
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>0</th>
+      <th>1</th>
+      <th>2</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>03/02</td>
+      <td>Parking, county records office</td>
+      <td>$12.00</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>03/05</td>
+      <td>Copies and printing</td>
+      <td>$8.40</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>03/11</td>
+      <td>Mileage reimbursement, site visit</td>
+      <td>$44.16</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>03/14</td>
+      <td>Postage</td>
+      <td>$5.80</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>03/21</td>
+      <td>Batteries for GPS units</td>
+      <td>$19.98</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>03/28</td>
+      <td>Coffee for volunteer training</td>
+      <td>$23.50</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p>A table with no lines and no headers, extracted three different ways — <code dir="auto">from_whitespace</code> when three columns is what you have, tweezers when one boundary is wrong, divide-and-snap for everything else.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="what-you-can-do-now">What you can do now</h2><a class="sl-anchor-link" href="#what-you-can-do-now"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “What you can do now”</span></a></div>
+<p>Build table grids from whatever evidence a page offers — vector rulings (<code dir="auto">from_lines</code>, with <code dir="auto">n</code> to keep only the lines you trust), pixel rulings (<code dir="auto">threshold</code>, <code dir="auto">min_gap</code>, and above all a tightly scoped region), headers, whitespace gaps, or content anchors — and fix the grid when detection isn’t enough: <code dir="auto">divide</code> for known counts, <code dir="auto">shift</code>/<code dir="auto">add</code>/<code dir="auto">remove_at</code> for one bad boundary, <code dir="auto">snap_to_whitespace</code> and <code dir="auto">snap_to_content</code> to let the layout pull guides into place. Check each step with <code dir="auto">guides.show()</code>, because a wrong grid produces a <em>plausible</em> wrong table, and read drawn checkboxes with <code dir="auto">detect_checkboxes()</code>. The last page puts the whole toolkit on one real document, start to finish.</p></div><footer class="sl-flex astro-xhxjzfa7"><div class="meta sl-flex astro-xhxjzfa7"></div><div class="pagination-links print:hidden astro-jgq3vlii" dir="ltr"><a href="/natural-pdf/learn/04-page-structure/" rel="prev" class="astro-jgq3vlii"><svg aria-hidden="true" class="astro-jgq3vlii astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-jgq3vlii">Previous<br class="astro-jgq3vlii"><span class="link-title astro-jgq3vlii">4. Page structure</span></span></a><a href="/natural-pdf/learn/06-putting-it-together/" rel="next" class="astro-jgq3vlii"><svg aria-hidden="true" class="astro-jgq3vlii astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-jgq3vlii">Next<br class="astro-jgq3vlii"><span class="link-title astro-jgq3vlii">6. Putting it together</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

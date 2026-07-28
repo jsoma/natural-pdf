@@ -1,0 +1,640 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-sidebar class="astro-vdxcvpsm"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Text and tables | Natural PDF</title><link rel="canonical" href="https://jsoma.github.io/natural-pdf/learn/01-text-and-tables/"/><link rel="sitemap" href="/natural-pdf/sitemap-index.xml"/><link rel="shortcut icon" href="/natural-pdf/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.1.4"/><meta name="generator" content="Starlight v0.41.5"/><meta property="og:title" content="Text and tables"/><meta property="og:type" content="article"/><meta property="og:url" content="https://jsoma.github.io/natural-pdf/learn/01-text-and-tables/"/><meta property="og:locale" content="en"/><meta property="og:site_name" content="Natural PDF"/><meta name="twitter:card" content="summary_large_image"/><link rel="icon" type="image/svg+xml" href="/natural-pdf/_astro/favicon.CIR-is7N.svg"><script type="module" src="/natural-pdf/_astro/Head.astro_astro_type_script_index_0_lang.DKguoj2y.js"></script><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/natural-pdf/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/natural-pdf/_astro/common.DMm7cBmA.css"><script type="module" src="/natural-pdf/_astro/page.LAbJoB63.js"></script></head><body class="astro-vdxcvpsm"><a class="sl-skip-link astro-vxeigawq" href="#_top">Skip to content</a><div class="page sl-flex astro-gqpr5s5a"><header class="header astro-gqpr5s5a"><div class="header astro-nczgtkxc"><div class="title-wrapper sl-flex astro-nczgtkxc"><a href="/natural-pdf/" class="site-title sl-flex astro-clw6ags5"><span class="astro-clw6ags5" translate="no">Natural PDF</span></a></div><div class="sl-flex print:hidden astro-nczgtkxc"><site-search class="astro-nczgtkxc astro-r5ar4xm7" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-r5ar4xm7"><svg aria-hidden="true" class="astro-r5ar4xm7 astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-r5ar4xm7" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-r5ar4xm7" style="display: none;"><kbd class="astro-r5ar4xm7">Ctrl</kbd><kbd class="astro-r5ar4xm7">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-r5ar4xm7"><div class="dialog-frame sl-flex astro-r5ar4xm7"><button data-close-modal class="sl-flex md:sl-hidden astro-r5ar4xm7">Cancel</button><div class="search-container astro-r5ar4xm7"><div id="starlight__search" class="astro-r5ar4xm7"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/natural-pdf/_astro/Search.astro_astro_type_script_index_0_lang.bQKUD95p.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-nczgtkxc"><div class="sl-flex social-icons astro-nczgtkxc"><a href="https://github.com/jsoma/natural-pdf" rel="me" class="sl-flex astro-cg55etiy"><span class="sr-only astro-cg55etiy">GitHub</span><svg aria-hidden="true" class="astro-cg55etiy astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-r2p65idu"><span class="sr-only astro-r2p65idu">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-r2p65idu"><option value="dark" class="astro-r2p65idu">Dark</option><option value="light" class="astro-r2p65idu">Light</option><option value="auto" selected class="astro-r2p65idu">Auto</option></select><svg aria-hidden="true" class="icon caret astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module" src="/natural-pdf/_astro/ThemeSelect.astro_astro_type_script_index_0_lang.COBTTKEJ.js"></script><script type="module" src="/natural-pdf/_astro/LanguageSelect.astro_astro_type_script_index_0_lang.DZJqHYaV.js"></script></div></div></header><nav class="sidebar print:hidden astro-gqpr5s5a" aria-label="Main"><starlight-menu-button class="print:hidden astro-vvx7mffu"><button aria-expanded="false" aria-label="Menu" aria-controls="starlight__sidebar" class="sl-flex md:sl-hidden astro-vvx7mffu"><svg aria-hidden="true" class="open-menu astro-vvx7mffu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-vvx7mffu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg></button></starlight-menu-button><script type="module" src="/natural-pdf/_astro/MobileMenuToggle.astro_astro_type_script_index_0_lang.BdbKaZ7j.js"></script><div id="starlight__sidebar" class="sidebar-pane astro-gqpr5s5a"><div class="sidebar-content sl-flex astro-gqpr5s5a"><sl-sidebar-state-persist data-hash="0cjfcl5" class="astro-f5yvicm7"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/" class="large astro-ojxuodky"><span class="astro-ojxuodky">Home</span></a></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Get Started</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/get-started/" class="astro-ojxuodky"><span class="astro-ojxuodky">Installation</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/get-started/quickstart/" class="astro-ojxuodky"><span class="astro-ojxuodky">Quickstart</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/get-started/from-pdfplumber/" class="astro-ojxuodky"><span class="astro-ojxuodky">Coming from pdfplumber</span></a></li></ul></details></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Learn</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/learn/" class="astro-ojxuodky"><span class="astro-ojxuodky">Learn</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/01-text-and-tables/" aria-current="page" class="astro-ojxuodky"><span class="astro-ojxuodky">1. Text and tables</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/02-ocr/" class="astro-ojxuodky"><span class="astro-ojxuodky">2. OCR</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/03-ai-extraction/" class="astro-ojxuodky"><span class="astro-ojxuodky">3. AI extraction</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/04-page-structure/" class="astro-ojxuodky"><span class="astro-ojxuodky">4. Page structure</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/05-grids/" class="astro-ojxuodky"><span class="astro-ojxuodky">5. Grids</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/06-putting-it-together/" class="astro-ojxuodky"><span class="astro-ojxuodky">6. Putting it together</span></a></li></ul></details></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Concepts</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/" class="astro-ojxuodky"><span class="astro-ojxuodky">Concepts</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/spatial-model/" class="astro-ojxuodky"><span class="astro-ojxuodky">The spatial model</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/text-and-elements/" class="astro-ojxuodky"><span class="astro-ojxuodky">How text becomes elements</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/exclusions/" class="astro-ojxuodky"><span class="astro-ojxuodky">Exclusions</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/selectors/" class="astro-ojxuodky"><span class="astro-ojxuodky">Selectors</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/tables/" class="astro-ojxuodky"><span class="astro-ojxuodky">Tables, a decision guide</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/engines-and-models/" class="astro-ojxuodky"><span class="astro-ojxuodky">Engines and models</span></a></li></ul></details></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Solve</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/solve/" class="astro-ojxuodky"><span class="astro-ojxuodky">Solve: real PDFs, worked end to end</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/multi-column-reflow/" class="astro-ojxuodky"><span class="astro-ojxuodky">Multi-column reflow</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/zebra-stripe-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Zebra-stripe table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/arabic-election-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Arabic election table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/use-of-force-logs/" class="astro-ojxuodky"><span class="astro-ojxuodky">Use-of-force logs</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/pixelated-scan-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Pixelated scan table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/serbian-multipage-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Serbian multi-page table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/borderless-call-log/" class="astro-ojxuodky"><span class="astro-ojxuodky">Borderless call log</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/complaint-database-printout/" class="astro-ojxuodky"><span class="astro-ojxuodky">Complaint database printout</span></a></li></ul></details></li><li class="astro-ojxuodky"><a href="/natural-pdf/troubleshooting/" class="large astro-ojxuodky"><span class="astro-ojxuodky">Troubleshooting</span></a></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Reference</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/reference/selectors/" class="astro-ojxuodky"><span class="astro-ojxuodky">Selectors</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/engines/" class="astro-ojxuodky"><span class="astro-ojxuodky">Engines</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/installation-extras/" class="astro-ojxuodky"><span class="astro-ojxuodky">Installation extras</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/exceptions/" class="astro-ojxuodky"><span class="astro-ojxuodky">Exceptions</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/ocr-options/" class="astro-ojxuodky"><span class="astro-ojxuodky">OCR options</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/api/" class="astro-ojxuodky"><span class="astro-ojxuodky">API</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/api/text-extraction/" class="astro-ojxuodky"><span class="astro-ojxuodky">Text Extraction</span></a></li></ul></details></li><li class="astro-ojxuodky"><a href="/natural-pdf/for-agents/" class="large astro-ojxuodky"><span class="astro-ojxuodky">For Agents</span></a></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-b5gddk54"><div class="social-icons astro-b5gddk54"><a href="https://github.com/jsoma/natural-pdf" rel="me" class="sl-flex astro-cg55etiy"><span class="sr-only astro-cg55etiy">GitHub</span><svg aria-hidden="true" class="astro-cg55etiy astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-r2p65idu"><span class="sr-only astro-r2p65idu">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-r2p65idu"><option value="dark" class="astro-r2p65idu">Dark</option><option value="light" class="astro-r2p65idu">Light</option><option value="auto" selected class="astro-r2p65idu">Auto</option></select><svg aria-hidden="true" class="icon caret astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></div></nav><div class="main-frame astro-gqpr5s5a"><script type="module" src="/natural-pdf/_astro/Page.astro_astro_type_script_index_0_lang.DC4zszI0.js"></script><div class="lg:sl-flex astro-abfeecmu"><div class="main-pane astro-abfeecmu"><main data-pagefind-body class="astro-vdxcvpsm" lang="en" dir="ltr"><div class="content-panel astro-oil7k7jf"><div class="sl-container astro-oil7k7jf"><h1 id="_top" class="astro-2sm4b3ln">Text and tables</h1></div></div><div class="content-panel astro-oil7k7jf"><div class="sl-container astro-oil7k7jf"><div class="sl-markdown-content"><p>You have a stack of inspection reports and you need what’s inside them: who got inspected, when, how many violations, and the table listing each one. This page works through a single report — a fake slaughterhouse inspection borrowed from <em>The Jungle</em> — but every move on it is the same move you’d make on a real filing.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="open-the-pdf">Open the PDF</h2><a class="sl-anchor-link" href="#open-the-pdf"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Open the PDF”</span></a></div>
+<p><code dir="auto">PDF(...)</code> takes a file path, a URL, or raw bytes. <code dir="auto">.pages</code> is the list of pages; grab the first one and look at it.</p>
+<div class="expressive-code"><link rel="stylesheet" href="/natural-pdf/_astro/ec.w36nc.css"><script type="module" src="/natural-pdf/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:33ch"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">from</span><span style="--0:#D6DEEB;--1:#403F53"> natural_pdf </span><span style="--0:#C792EA;--1:#8844AE">import</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">PDF</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">pdf </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#B2CCD6;--1:#096E72">PDF</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">pdfs/01-practice.pdf</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> pdf.pages[</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D6DEEB;--1:#403F53">]</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="from natural_pdf import PDFpdf = PDF(&#x22;pdfs/01-practice.pdf&#x22;)page = pdf.pages[0]page.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/6892d771944a.png" alt="Open the PDF"></p>
+<p><code dir="auto">.show()</code> returns a PIL image, so <code dir="auto">page.show().save("page.png")</code> writes it to disk if you need the file.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="grab-the-text">Grab the text</h2><a class="sl-anchor-link" href="#grab-the-text"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Grab the text”</span></a></div>
+<p>Most of the time you want the words. <code dir="auto">extract_text()</code> gives you all of them.</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:26ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">text </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> page.</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#C5E478;--1:#3B61B0">print</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">text</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="text = page.extract_text()print(text)"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>Jungle Health and Safety Inspection Service
+INS-UP70N51NCL41R
+Site: Durham’s Meatpacking Chicago, Ill.
+Date: February 3, 1905
+Violation Count: 7
+Summary: Worst of any, however, were the fertilizer men, and those who served in the cooking rooms.
+These people could not be shown to the visitor - for the odor of a fertilizer man would scare any ordinary
+visitor at a hundred yards, and as for the other men, who worked in tank rooms full of steam, and in
+some of which there were open vats near the level of the floor, their peculiar trouble was that they fell
+into the vats; and when they were fished out, there was never enough of them left to be worth
+exhibiting - sometimes they would be overlooked for days, till all but the bones of them had gone out
+to the world as Durham’s Pure Leaf Lard!
+Violations
+Statute Description Level Repeat?
+4.12.7 Unsanitary Working Conditions. Critical
+5.8.3 Inadequate Protective Equipment. Serious
+6.3.9 Ineffective Injury Prevention. Serious
+7.1.5 Failure to Properly Store Hazardous Materials. Critical
+8.9.2 Lack of Adequate Fire Safety Measures. Serious
+9.6.4 Inadequate Ventilation Systems. Serious
+10.2.7 Insufficient Employee Training for Safe Work Practices. Serious
+Jungle Health and Safety Inspection Service</code></pre>
+<p>Everything is there, but it’s a stream — labels, values, table cells, and the footnote all run together. If you want a version that keeps the visual arrangement, pass <code dir="auto">layout=True</code>:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:37ch"><code><div class="ec-line"><div class="code"><span style="--0:#C5E478;--1:#3B61B0">print</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">page.</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">layout</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">True</span><span style="--0:#D6DEEB;--1:#403F53">))</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="print(page.extract_text(layout=True))"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>Jungle Health and Safety Inspection Service
+                                                     INS-UP70N51NCL41R
+
+       Site: Durham’s Meatpacking Chicago, Ill.
+
+       Date: February 3, 1905
+
+       Violation Count: 7
+       Summary: Worst of any, however, were the fertilizer men, and those who served in the cooking rooms.
+       These people could not be shown to the visitor - for the odor of a fertilizer man would scare any ordinary
+
+       visitor at a hundred yards, and as for the other men, who worked in tank rooms full of steam, and in
+       some of which there were open vats near the level of the floor, their peculiar trouble was that they fell
+       into the vats; and when they were fished out, there was never enough of them left to be worth
+       exhibiting - sometimes they would be overlooked for days, till all but the bones of them had gone out
+       to the world as Durham’s Pure Leaf Lard!
+
+
+
+
+
+
+
+
+
+
+       Violations
+
+        Statute Description                                    Level  Repeat?
+        4.12.7 Unsanitary Working Conditions.                  Critical
+
+        5.8.3 Inadequate Protective Equipment.                 Serious
+        6.3.9 Ineffective Injury Prevention.                   Serious
+
+        7.1.5 Failure to Properly Store Hazardous Materials.   Critical
+        8.9.2 Lack of Adequate Fire Safety Measures.           Serious
+
+        9.6.4 Inadequate Ventilation Systems.                  Serious
+        10.2.7 Insufficient Employee Training for Safe Work Practices. Serious
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                Jungle Health and Safety Inspection Service</code></pre>
+<p>That’s readable, but “readable” isn’t “extracted.” To pull out <em>specific</em> pieces — the date, the site, the violation count — you need a way to point at them.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="describing-what-you-want">Describing what you want</h2><a class="sl-anchor-link" href="#describing-what-you-want"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Describing what you want”</span></a></div>
+<p>Look at the inspection ID, <strong>INS-UP70N51NCL41R</strong> (squint: it spells UPTON SINCLAIR). How would you describe it to someone over the phone?</p>
+<ul>
+<li>“It’s in a box”</li>
+<li>“It’s the second piece of text on the page”</li>
+<li>“It’s the red text”</li>
+<li>“It starts with INS-”</li>
+</ul>
+<p>Each of those descriptions is a selector. All four roads lead to the same element.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="its-in-a-box">“It’s in a box”</h3><a class="sl-anchor-link" href="#its-in-a-box"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled ““It’s in a box””</span></a></div>
+<p>The box is a rectangle element. <code dir="auto">page.find()</code> takes a CSS-like selector and returns the first match — or <code dir="auto">None</code> if nothing matches, so check before chaining onto the result.</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:31ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">rect</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">50</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.find(&#x27;rect&#x27;).show(crop=50)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/c795aa9e3101.png" alt="&#x22;It&#x27;s in a box&#x22;"></p>
+<p><code dir="auto">crop=50</code> renders just the element plus a margin of context instead of the whole page — bigger number, more surroundings.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="its-the-second-piece-of-text">“It’s the second piece of text”</h3><a class="sl-anchor-link" href="#its-the-second-piece-of-text"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled ““It’s the second piece of text””</span></a></div>
+<p><code dir="auto">find_all()</code> returns every match as a collection.</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:28ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">find_all</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.find_all(&#x27;text&#x27;).show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/86bf2fa9df2d.png" alt="&#x22;It&#x27;s the second piece of text&#x22;"></p>
+<p><code dir="auto">extract_each_text()</code> gives you one string per element, in reading order:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:49ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">texts </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> page.</span><span style="--0:#B2CCD6;--1:#096E72">find_all</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">extract_each_text</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">texts[:</span><span style="--0:#F78C6C;--1:#AA0982">5</span><span style="--0:#D6DEEB;--1:#403F53">]</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="texts = page.find_all(&#x27;text&#x27;).extract_each_text()texts[:5]"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>['Jungle Health and Safety Inspection Service',
+ 'INS-UP70N51NCL41R',
+ 'Site:',
+ 'Durham’s Meatpacking',
+ 'Chicago, Ill.']</code></pre>
+<p>So the second piece of text is:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:8ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">texts[</span><span style="--0:#F78C6C;--1:#AA0982">1</span><span style="--0:#D6DEEB;--1:#403F53">]</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="texts[1]"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>'INS-UP70N51NCL41R'</code></pre>
+<p>Counting positions works until a report adds a line and everything shifts by one. The next two descriptions hold up better.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="its-the-red-text">“It’s the red text”</h3><a class="sl-anchor-link" href="#its-the-red-text"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled ““It’s the red text””</span></a></div>
+<p>Square brackets filter by attributes. <code dir="auto">color~=</code> is an approximate match — it tolerates the almost-but-not-quite-red that PDFs actually use.</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:38ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">ins_id </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text[color~=red]</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">ins_id.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">50</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="ins_id = page.find(&#x27;text[color~=red]&#x27;)ins_id.show(crop=50)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/23f19130aac6.png" alt="&#x22;It&#x27;s the red text&#x22;"></p>
+<p>Same box, different road — this time the highlight is on the text element itself, which knows its own content:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:21ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">ins_id.</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="ins_id.extract_text()"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>'INS-UP70N51NCL41R'</code></pre>
+<p>The same trick works for other colors — “Chicago, Ill.” is the grey text:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:30ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text[color~=grey]</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.find(&#x27;text[color~=grey]&#x27;)"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>&#x3C;TextElement text='Chicago, I...' font='Helvetica' size=10.0 bbox=(182.26000000000002, 84.07000000000005, 234.50000000000003, 94.07000000000005)></code></pre>
+<p>That’s the element’s repr, not its text — call <code dir="auto">.extract_text()</code> when you want the string.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="it-starts-with-ins-">“It starts with INS-”</h3><a class="sl-anchor-link" href="#it-starts-with-ins-"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled ““It starts with INS-””</span></a></div>
+<p>Pseudo-classes match on content: <code dir="auto">:contains("INS-")</code> matches anywhere in the text, <code dir="auto">:starts-with("INS-")</code> anchors to the front.</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:44ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">code </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text:starts-with("INS-")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">code.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">20</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="code = page.find(&#x27;text:starts-with(&#x22;INS-&#x22;)&#x27;)code.show(crop=20)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/21bd4b7a6619.png" alt="&#x22;It starts with INS-&#x22;"></p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:19ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">code.</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="code.extract_text()"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>'INS-UP70N51NCL41R'</code></pre>
+<div class="sl-heading-wrapper level-h2"><h2 id="learning-whats-on-the-page">Learning what’s on the page</h2><a class="sl-anchor-link" href="#learning-whats-on-the-page"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Learning what’s on the page”</span></a></div>
+<p>Those selectors assumed you already knew the ID was red and 8 pt. On an unfamiliar PDF, ask the page to describe itself:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:15ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">describe</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.describe()"><div></div></button></div></figure></div>
+<h2>Page 1 Summary</h2>
+<p><strong>Page Info</strong>:</p>
+<ul>
+<li><strong>page number</strong>: 1</li>
+<li><strong>dimensions</strong>: 612 x 792 pts</li>
+</ul>
+<p><strong>Overview</strong>:</p>
+<ul>
+<li><strong>total elements</strong>: 73</li>
+<li><strong>type breakdown</strong>: <strong>Word</strong>: 44, <strong>Line</strong>: 21, <strong>Rect</strong>: 8</li>
+</ul>
+<p><strong>Word</strong>:</p>
+<ul>
+<li><strong>typography</strong>:</li>
+<li><strong>fonts</strong>:<ul>
+<li>Helvetica: 44</li>
+</ul>
+</li>
+<li><strong>sizes</strong>:<ul>
+<li>10.0pt: 40</li>
+<li>8.0pt: 3</li>
+<li>12.0pt: 1</li>
+</ul>
+</li>
+<li>styles: 9 bold, 1 strike</li>
+<li><strong>colors</strong>:<ul>
+<li>black: 42</li>
+<li>other: 2</li>
+</ul>
+</li>
+</ul>
+<p><strong>Rect</strong>:</p>
+<ul>
+<li><strong>size stats</strong>:</li>
+<li>width range: 8-180</li>
+<li>height range: 8-35</li>
+<li>avg area: 844 sq pts</li>
+<li><strong>styles</strong>:</li>
+<li>stroke: 8</li>
+<li>fill: 8</li>
+<li><strong>stroke widths</strong>:<ul>
+<li>0.5: 7</li>
+</ul>
+</li>
+<li><strong>colors</strong>:<ul>
+<li><code>#000000</code>: 8</li>
+</ul>
+</li>
+</ul>
+<p><strong>Line</strong>:</p>
+<ul>
+<li><strong>length stats</strong>:</li>
+<li>min: 11</li>
+<li>max: 500</li>
+<li>avg: 279</li>
+<li><strong>line widths</strong>:</li>
+<li>0.5: 6</li>
+<li>2.0: 1</li>
+<li><strong>orientations</strong>:</li>
+<li>horizontal: 10</li>
+<li>vertical: 5</li>
+<li>diagonal: 6</li>
+<li><strong>colors</strong>:</li>
+<li><code>#808080</code>: 14</li>
+<li><code>#000000</code>: 7</li>
+</ul>
+<p>44 words, 21 lines, 8 rects, one font. For element-by-element detail, <code dir="auto">inspect()</code> prints a table of every element and its attributes — <code dir="auto">limit</code> caps the rows:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:38ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">find_all</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">inspect</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">limit</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">8</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.find_all(&#x27;text&#x27;).inspect(limit=8)"><div></div></button></div></figure></div>
+<h2>Collection Inspection (44 elements)</h2>
+<h3>Word Elements</h3>
+<table>
+<thead>
+<tr>
+<th>text</th>
+<th>x0</th>
+<th>top</th>
+<th>x1</th>
+<th>bottom</th>
+<th>font_family</th>
+<th>font_variant</th>
+<th>size</th>
+<th>styles</th>
+<th>source</th>
+<th>confidence</th>
+<th>color</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Jungle Health and Safety Inspection Service</td>
+<td>385</td>
+<td>36</td>
+<td>542</td>
+<td>44</td>
+<td>Helvetica</td>
+<td></td>
+<td>8</td>
+<td></td>
+<td>native</td>
+<td>1.00</td>
+<td>#000000</td>
+</tr>
+<tr>
+<td>INS-UP70N51NCL41R</td>
+<td>385</td>
+<td>46</td>
+<td>466</td>
+<td>54</td>
+<td>Helvetica</td>
+<td></td>
+<td>8</td>
+<td></td>
+<td>native</td>
+<td>1.00</td>
+<td>#ff0000</td>
+</tr>
+<tr>
+<td>Site:</td>
+<td>50</td>
+<td>84</td>
+<td>74</td>
+<td>94</td>
+<td>Helvetica</td>
+<td></td>
+<td>10</td>
+<td>bold</td>
+<td>native</td>
+<td>1.00</td>
+<td>#000000</td>
+</tr>
+<tr>
+<td>Durham’s Meatpacking</td>
+<td>74</td>
+<td>84</td>
+<td>182</td>
+<td>94</td>
+<td>Helvetica</td>
+<td></td>
+<td>10</td>
+<td></td>
+<td>native</td>
+<td>1.00</td>
+<td>#000000</td>
+</tr>
+<tr>
+<td>Chicago, Ill.</td>
+<td>182</td>
+<td>84</td>
+<td>235</td>
+<td>94</td>
+<td>Helvetica</td>
+<td></td>
+<td>10</td>
+<td></td>
+<td>native</td>
+<td>1.00</td>
+<td>#808080</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>50</td>
+<td>104</td>
+<td>81</td>
+<td>114</td>
+<td>Helvetica</td>
+<td></td>
+<td>10</td>
+<td>bold</td>
+<td>native</td>
+<td>1.00</td>
+<td>#000000</td>
+</tr>
+<tr>
+<td>February 3, 1905</td>
+<td>81</td>
+<td>104</td>
+<td>157</td>
+<td>114</td>
+<td>Helvetica</td>
+<td></td>
+<td>10</td>
+<td></td>
+<td>native</td>
+<td>1.00</td>
+<td>#000000</td>
+</tr>
+<tr>
+<td>Violation Count:</td>
+<td>50</td>
+<td>124</td>
+<td>130</td>
+<td>134</td>
+<td>Helvetica</td>
+<td></td>
+<td>10</td>
+<td>bold</td>
+<td>native</td>
+<td>1.00</td>
+<td>#000000</td>
+</tr>
+<tr>
+<td><em>Showing 8 of 44 elements (pass a higher limit to see more)</em></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Those <code dir="auto">size</code>, <code dir="auto">font_family</code>, and <code dir="auto">color</code> columns are exactly what goes inside the square brackets. <code dir="auto">max()</code> and <code dir="auto">min()</code> work in attribute filters too — here’s the largest text on the page, no hardcoded size:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:47ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">find_all</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text[size=max()]</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">50</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.find_all(&#x27;text[size=max()]&#x27;).show(crop=50)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/2bb81c7bea75.png" alt="Learning what&#x27;s on the page"></p>
+<p>That’s the bold 12 pt “Violations” heading. Hold that thought — it becomes the anchor for the table later.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="spatial-navigation">Spatial navigation</h2><a class="sl-anchor-link" href="#spatial-navigation"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Spatial navigation”</span></a></div>
+<p>Labels like “Date:” and “Site:” are easy to find, but you want the value <em>next to</em> the label. Every element can look <code dir="auto">.right()</code>, <code dir="auto">.left()</code>, <code dir="auto">.above()</code>, and <code dir="auto">.below()</code>, and each returns a Region — a rectangle of page you can show, search, or extract from.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="the-date">The date</h3><a class="sl-anchor-link" href="#the-date"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “The date”</span></a></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:44ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">text</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Date</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">right</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">50</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.find(text=&#x22;Date&#x22;).right().show(crop=50)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/eaaa47398f44.png" alt="The date"></p>
+<p><code dir="auto">.right()</code> defaults to the height of the element itself, so the region is just that row. Extract it:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:45ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">text</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Date</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">right</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.find(text=&#x22;Date&#x22;).right().extract_text()"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>'February 3, 1905'</code></pre>
+<div class="sl-heading-wrapper level-h3"><h3 id="the-site">The site</h3><a class="sl-anchor-link" href="#the-site"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “The site”</span></a></div>
+<p>Same move on “Site:” — but this row has two things in it:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:45ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">text</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Site</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">right</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.find(text=&#x22;Site&#x22;).right().extract_text()"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>'Durham’s Meatpacking Chicago, Ill.'</code></pre>
+<p>The site name <em>and</em> the grey city ran together, because <code dir="auto">.right()</code> sweeps everything to the edge of the page. To stop early, pass <code dir="auto">until=</code> — the region runs up to and including the first element matching that selector, and <code dir="auto">.endpoint</code> is the element it stopped at:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:49ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">site </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">text</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Site</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">right</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">until</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">site.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">50</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="site = page.find(text=&#x22;Site&#x22;).right(until=&#x27;text&#x27;)site.show(crop=50)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/23cab26e9ea8.png" alt="The site"></p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:28ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">site.endpoint.</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="site.endpoint.extract_text()"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>'Durham’s Meatpacking'</code></pre>
+<div class="sl-heading-wrapper level-h3"><h3 id="the-violation-count">The violation count</h3><a class="sl-anchor-link" href="#the-violation-count"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “The violation count”</span></a></div>
+<p>Same move as the date — no surprises this time:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:56ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">text</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Violation Count</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">right</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.find(text=&#x22;Violation Count&#x22;).right().extract_text()"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>'7'</code></pre>
+<div class="sl-heading-wrapper level-h3"><h3 id="the-summary">The summary</h3><a class="sl-anchor-link" href="#the-summary"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “The summary”</span></a></div>
+<p>Try the same move on “Summary:” and watch it go wrong:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:48ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">text</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Summary</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">right</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.find(text=&#x22;Summary&#x22;).right().extract_text()"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>'Worst of any, however, were the fertilizer men, and those who served in the cooking rooms.'</code></pre>
+<p>That’s one line of a paragraph that runs seven. <code dir="auto">.right()</code> stayed in the label’s row, but the summary wraps. What you actually want is everything <em>below</em> the label, down to the horizontal rule that closes the section. <code dir="auto">.below()</code> defaults to the full page width, <code dir="auto">until='line'</code> stops at the rule, and <code dir="auto">include_source=True</code> keeps the label’s own row in the region:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:76ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">summary </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">text</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Summary</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">below</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">until</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">line</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">include_source</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">True</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">summary.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">True</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="summary = page.find(text=&#x22;Summary&#x22;).below(until=&#x27;line&#x27;, include_source=True)summary.show(crop=True)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/b9b4097360f5.png" alt="The summary"></p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:36ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">summary.</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">newlines</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">False</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="summary.extract_text(newlines=False)"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>'Summary: Worst of any, however, were the fertilizer men, and those who served in the cooking rooms. These people could not be shown to the visitor - for the odor of a fertilizer man would scare any ordinary visitor at a hundred yards, and as for the other men, who worked in tank rooms full of steam, and in some of which there were open vats near the level of the floor, their peculiar trouble was that they fell into the vats; and when they were fished out, there was never enough of them left to be worth exhibiting - sometimes they would be overlooked for days, till all but the bones of them had gone out to the world as Durham’s Pure Leaf Lard!'</code></pre>
+<p><code dir="auto">newlines=False</code> folds the wrapped lines back into one string.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="tables">Tables</h2><a class="sl-anchor-link" href="#tables"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Tables”</span></a></div>
+<p><code dir="auto">page.extract_table()</code> finds the table on the page and returns a <code dir="auto">TableResult</code>:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:20ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">extract_table</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.extract_table()"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>TableResult(rows=8…)</code></pre>
+<p>This page has exactly one table, so grabbing it page-wide works. On a page with several tables — or with headers that confuse the detector — the reliable move is to describe the region the table lives in and extract from <em>that</em>.</p>
+<div class="npdf-tabs" data-npdf-tabs="">
+<section class="npdf-tab" data-label="Whole page">
+<p class="npdf-tab-label">Whole page</p>
+<p><code dir="auto">TableResult.to_df()</code> hands you a pandas DataFrame:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:28ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">extract_table</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">to_df</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.extract_table().to_df()"><div></div></button></div></figure></div>
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Statute</th>
+      <th>Description</th>
+      <th>Level</th>
+      <th>Repeat?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>4.12.7</td>
+      <td>Unsanitary Working Conditions.</td>
+      <td>Critical</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>5.8.3</td>
+      <td>Inadequate Protective Equipment.</td>
+      <td>Serious</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>6.3.9</td>
+      <td>Ineffective Injury Prevention.</td>
+      <td>Serious</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>7.1.5</td>
+      <td>Failure to Properly Store Hazardous Materials.</td>
+      <td>Critical</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>8.9.2</td>
+      <td>Lack of Adequate Fire Safety Measures.</td>
+      <td>Serious</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>9.6.4</td>
+      <td>Inadequate Ventilation Systems.</td>
+      <td>Serious</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>10.2.7</td>
+      <td>Insufficient Employee Training for Safe Work P...</td>
+      <td>Serious</td>
+      <td>&#x3C;NA></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</section>
+<section class="npdf-tab" data-label="Scoped to a region">
+<p class="npdf-tab-label">Scoped to a region</p>
+<p>Anchor on the “Violations” heading (the 12 pt bold text from earlier), take everything below it until the fine print, and trim the whitespace:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:60ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">violations </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> (</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">page</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text[size=max()]:bold:contains("Violations")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">below</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">until</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text[size=min()]</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">include_endpoint</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">False</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">trim</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">violations.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">crop</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">True</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="violations = (    page    .find(&#x27;text[size=max()]:bold:contains(&#x22;Violations&#x22;)&#x27;)    .below(until=&#x27;text[size=min()]&#x27;, include_endpoint=False)    .trim())violations.show(crop=True)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/cea4dfedd5cf.png" alt="Tables"></p>
+<p>The region <em>is</em> the table — so extracting from it can’t pick up anything else:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:34ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">violations.</span><span style="--0:#B2CCD6;--1:#096E72">extract_table</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">to_df</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="violations.extract_table().to_df()"><div></div></button></div></figure></div>
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Statute</th>
+      <th>Description</th>
+      <th>Level</th>
+      <th>Repeat?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>4.12.7</td>
+      <td>Unsanitary Working Conditions.</td>
+      <td>Critical</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>5.8.3</td>
+      <td>Inadequate Protective Equipment.</td>
+      <td>Serious</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>6.3.9</td>
+      <td>Ineffective Injury Prevention.</td>
+      <td>Serious</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>7.1.5</td>
+      <td>Failure to Properly Store Hazardous Materials.</td>
+      <td>Critical</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>8.9.2</td>
+      <td>Lack of Adequate Fire Safety Measures.</td>
+      <td>Serious</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>9.6.4</td>
+      <td>Inadequate Ventilation Systems.</td>
+      <td>Serious</td>
+      <td>&#x3C;NA></td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>10.2.7</td>
+      <td>Insufficient Employee Training for Safe Work P...</td>
+      <td>Serious</td>
+      <td>&#x3C;NA></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</section>
+</div>
+<p>If <code dir="auto">extract_table()</code> comes back empty or scrambled, scoping to a region like this is the first thing to try.</p>
+<p>One honest gap in both versions: the Repeat? column is all <code dir="auto">&#x3C;NA></code>. Look at the page — those cells are drawn checkboxes, not text, so text extraction has nothing to read there. Getting checkbox states out is a separate, model-backed step (<code dir="auto">detect_checkboxes()</code>), which is out of scope for this page.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="ignoring-content-with-exclusion-zones">Ignoring content with exclusion zones</h2><a class="sl-anchor-link" href="#ignoring-content-with-exclusion-zones"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Ignoring content with exclusion zones”</span></a></div>
+<p>Now imagine two hundred of these reports, and all you want is the text-y top half — no letterhead, no table, no footnote. Instead of describing what you want, describe what you <em>don’t</em> want.</p>
+<p><code dir="auto">page.region()</code> cuts a rectangle by coordinates; spatial navigation builds the other zone from the thick rule above the table:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:52ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">letterhead </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> page.</span><span style="--0:#B2CCD6;--1:#096E72">region</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">top</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">left</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">height</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">80</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">below_the_rule </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">line[width>=2]</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">below</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">(letterhead </span><span style="--0:#C792EA;--1:#8844AE">+</span><span style="--0:#D6DEEB;--1:#403F53"> below_the_rule).</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="letterhead = page.region(top=0, left=0, height=80)below_the_rule = page.find(&#x27;line[width>=2]&#x27;).below()(letterhead + below_the_rule).show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/7394f34386ce.png" alt="Ignoring content with exclusion zones"></p>
+<p>Register both as exclusions. <code dir="auto">page.show(exclusions='red')</code> confirms what’s being blocked:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:34ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">add_exclusion</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">letterhead</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">add_exclusion</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">below_the_rule</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">exclusions</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">red</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="page.add_exclusion(letterhead)page.add_exclusion(below_the_rule)page.show(exclusions=&#x27;red&#x27;)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/learn/assets/01-text-and-tables/b40e4a76019d.png" alt="Ignoring content with exclusion zones"></p>
+<p>Exclusions don’t delete anything — they filter what read operations return. The same <code dir="auto">extract_text()</code> from the top of this page now skips both zones:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:26ch"><code><div class="ec-line"><div class="code"><span style="--0:#C5E478;--1:#3B61B0">print</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">page.</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--0:#D6DEEB;--1:#403F53">())</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="print(page.extract_text())"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>Site: Durham’s Meatpacking Chicago, Ill.
+Date: February 3, 1905
+Violation Count: 7
+Summary: Worst of any, however, were the fertilizer men, and those who served in the cooking rooms.
+These people could not be shown to the visitor - for the odor of a fertilizer man would scare any ordinary
+visitor at a hundred yards, and as for the other men, who worked in tank rooms full of steam, and in
+some of which there were open vats near the level of the floor, their peculiar trouble was that they fell
+into the vats; and when they were fished out, there was never enough of them left to be worth
+exhibiting - sometimes they would be overlooked for days, till all but the bones of them had gone out
+to the world as Durham’s Pure Leaf Lard!</code></pre>
+<p>For a whole stack of reports, register the exclusions once on the PDF as functions — each page evaluates them when it loads, and <code dir="auto">add_exclusion</code> hands the PDF back so registrations can chain:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:69ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">pdf.</span><span style="--0:#B2CCD6;--1:#096E72">add_exclusion</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#C792EA;--1:#8844AE">lambda</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#7FDBCA;--1:#096E72">page</span><span style="--0:#82AAFF;--1:#3B61B0">: page.</span><span style="--0:#B2CCD6;--1:#096E72">region</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">top</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">left</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">height</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">80</span><span style="--0:#D6DEEB;--1:#403F53">))</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">pdf.</span><span style="--0:#B2CCD6;--1:#096E72">add_exclusion</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#C792EA;--1:#8844AE">lambda</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#7FDBCA;--1:#096E72">page</span><span style="--0:#82AAFF;--1:#3B61B0">: page.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">line[width>=2]</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span><span style="--0:#82AAFF;--1:#3B61B0">.</span><span style="--0:#B2CCD6;--1:#096E72">below</span><span style="--0:#D6DEEB;--1:#403F53">())</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="pdf.add_exclusion(lambda page: page.region(top=0, left=0, height=80))pdf.add_exclusion(lambda page: page.find(&#x27;line[width>=2]&#x27;).below())"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>&#x3C;PDF source='pdfs/01-practice.pdf' pages=1></code></pre>
+<p>Headers, footers, page-number stamps, “DRAFT” watermarks — anything that repeats across a filing is a candidate for an exclusion instead of a workaround in every extraction.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="what-you-can-do-now">What you can do now</h2><a class="sl-anchor-link" href="#what-you-can-do-now"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “What you can do now”</span></a></div>
+<p>Open a PDF, dump its text, select elements by type, attribute, and content, navigate from labels to values, pull a table into a DataFrame, and blank out the parts you never want to see again. All of it assumed the PDF has real text underneath. When it doesn’t — when the page is a scan — that’s what OCR is for, and that’s the next page.</p></div><footer class="sl-flex astro-xhxjzfa7"><div class="meta sl-flex astro-xhxjzfa7"></div><div class="pagination-links print:hidden astro-jgq3vlii" dir="ltr"><a href="/natural-pdf/learn/" rel="prev" class="astro-jgq3vlii"><svg aria-hidden="true" class="astro-jgq3vlii astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-jgq3vlii">Previous<br class="astro-jgq3vlii"><span class="link-title astro-jgq3vlii">Learn</span></span></a><a href="/natural-pdf/learn/02-ocr/" rel="next" class="astro-jgq3vlii"><svg aria-hidden="true" class="astro-jgq3vlii astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-jgq3vlii">Next<br class="astro-jgq3vlii"><span class="link-title astro-jgq3vlii">2. OCR</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

@@ -1,0 +1,388 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-sidebar class="astro-vdxcvpsm"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Multi-column pages that read in the wrong order | Natural PDF</title><link rel="canonical" href="https://jsoma.github.io/natural-pdf/solve/multi-column-reflow/"/><link rel="sitemap" href="/natural-pdf/sitemap-index.xml"/><link rel="shortcut icon" href="/natural-pdf/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.1.4"/><meta name="generator" content="Starlight v0.41.5"/><meta property="og:title" content="Multi-column pages that read in the wrong order"/><meta property="og:type" content="article"/><meta property="og:url" content="https://jsoma.github.io/natural-pdf/solve/multi-column-reflow/"/><meta property="og:locale" content="en"/><meta property="og:site_name" content="Natural PDF"/><meta name="twitter:card" content="summary_large_image"/><link rel="icon" type="image/svg+xml" href="/natural-pdf/_astro/favicon.CIR-is7N.svg"><script type="module" src="/natural-pdf/_astro/Head.astro_astro_type_script_index_0_lang.DKguoj2y.js"></script><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/natural-pdf/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/natural-pdf/_astro/common.DMm7cBmA.css"><script type="module" src="/natural-pdf/_astro/page.LAbJoB63.js"></script></head><body class="astro-vdxcvpsm"><a class="sl-skip-link astro-vxeigawq" href="#_top">Skip to content</a><div class="page sl-flex astro-gqpr5s5a"><header class="header astro-gqpr5s5a"><div class="header astro-nczgtkxc"><div class="title-wrapper sl-flex astro-nczgtkxc"><a href="/natural-pdf/" class="site-title sl-flex astro-clw6ags5"><span class="astro-clw6ags5" translate="no">Natural PDF</span></a></div><div class="sl-flex print:hidden astro-nczgtkxc"><site-search class="astro-nczgtkxc astro-r5ar4xm7" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-r5ar4xm7"><svg aria-hidden="true" class="astro-r5ar4xm7 astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-r5ar4xm7" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-r5ar4xm7" style="display: none;"><kbd class="astro-r5ar4xm7">Ctrl</kbd><kbd class="astro-r5ar4xm7">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-r5ar4xm7"><div class="dialog-frame sl-flex astro-r5ar4xm7"><button data-close-modal class="sl-flex md:sl-hidden astro-r5ar4xm7">Cancel</button><div class="search-container astro-r5ar4xm7"><div id="starlight__search" class="astro-r5ar4xm7"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/natural-pdf/_astro/Search.astro_astro_type_script_index_0_lang.bQKUD95p.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-nczgtkxc"><div class="sl-flex social-icons astro-nczgtkxc"><a href="https://github.com/jsoma/natural-pdf" rel="me" class="sl-flex astro-cg55etiy"><span class="sr-only astro-cg55etiy">GitHub</span><svg aria-hidden="true" class="astro-cg55etiy astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-r2p65idu"><span class="sr-only astro-r2p65idu">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-r2p65idu"><option value="dark" class="astro-r2p65idu">Dark</option><option value="light" class="astro-r2p65idu">Light</option><option value="auto" selected class="astro-r2p65idu">Auto</option></select><svg aria-hidden="true" class="icon caret astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module" src="/natural-pdf/_astro/ThemeSelect.astro_astro_type_script_index_0_lang.COBTTKEJ.js"></script><script type="module" src="/natural-pdf/_astro/LanguageSelect.astro_astro_type_script_index_0_lang.DZJqHYaV.js"></script></div></div></header><nav class="sidebar print:hidden astro-gqpr5s5a" aria-label="Main"><starlight-menu-button class="print:hidden astro-vvx7mffu"><button aria-expanded="false" aria-label="Menu" aria-controls="starlight__sidebar" class="sl-flex md:sl-hidden astro-vvx7mffu"><svg aria-hidden="true" class="open-menu astro-vvx7mffu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-vvx7mffu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg></button></starlight-menu-button><script type="module" src="/natural-pdf/_astro/MobileMenuToggle.astro_astro_type_script_index_0_lang.BdbKaZ7j.js"></script><div id="starlight__sidebar" class="sidebar-pane astro-gqpr5s5a"><div class="sidebar-content sl-flex astro-gqpr5s5a"><sl-sidebar-state-persist data-hash="0cjfcl5" class="astro-f5yvicm7"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/" class="large astro-ojxuodky"><span class="astro-ojxuodky">Home</span></a></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Get Started</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/get-started/" class="astro-ojxuodky"><span class="astro-ojxuodky">Installation</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/get-started/quickstart/" class="astro-ojxuodky"><span class="astro-ojxuodky">Quickstart</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/get-started/from-pdfplumber/" class="astro-ojxuodky"><span class="astro-ojxuodky">Coming from pdfplumber</span></a></li></ul></details></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Learn</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/learn/" class="astro-ojxuodky"><span class="astro-ojxuodky">Learn</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/01-text-and-tables/" class="astro-ojxuodky"><span class="astro-ojxuodky">1. Text and tables</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/02-ocr/" class="astro-ojxuodky"><span class="astro-ojxuodky">2. OCR</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/03-ai-extraction/" class="astro-ojxuodky"><span class="astro-ojxuodky">3. AI extraction</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/04-page-structure/" class="astro-ojxuodky"><span class="astro-ojxuodky">4. Page structure</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/05-grids/" class="astro-ojxuodky"><span class="astro-ojxuodky">5. Grids</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/learn/06-putting-it-together/" class="astro-ojxuodky"><span class="astro-ojxuodky">6. Putting it together</span></a></li></ul></details></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Concepts</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/" class="astro-ojxuodky"><span class="astro-ojxuodky">Concepts</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/spatial-model/" class="astro-ojxuodky"><span class="astro-ojxuodky">The spatial model</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/text-and-elements/" class="astro-ojxuodky"><span class="astro-ojxuodky">How text becomes elements</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/exclusions/" class="astro-ojxuodky"><span class="astro-ojxuodky">Exclusions</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/selectors/" class="astro-ojxuodky"><span class="astro-ojxuodky">Selectors</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/tables/" class="astro-ojxuodky"><span class="astro-ojxuodky">Tables, a decision guide</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/concepts/engines-and-models/" class="astro-ojxuodky"><span class="astro-ojxuodky">Engines and models</span></a></li></ul></details></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Solve</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/solve/" class="astro-ojxuodky"><span class="astro-ojxuodky">Solve: real PDFs, worked end to end</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/multi-column-reflow/" aria-current="page" class="astro-ojxuodky"><span class="astro-ojxuodky">Multi-column reflow</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/zebra-stripe-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Zebra-stripe table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/arabic-election-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Arabic election table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/use-of-force-logs/" class="astro-ojxuodky"><span class="astro-ojxuodky">Use-of-force logs</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/pixelated-scan-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Pixelated scan table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/serbian-multipage-table/" class="astro-ojxuodky"><span class="astro-ojxuodky">Serbian multi-page table</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/borderless-call-log/" class="astro-ojxuodky"><span class="astro-ojxuodky">Borderless call log</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/solve/complaint-database-printout/" class="astro-ojxuodky"><span class="astro-ojxuodky">Complaint database printout</span></a></li></ul></details></li><li class="astro-ojxuodky"><a href="/natural-pdf/troubleshooting/" class="large astro-ojxuodky"><span class="astro-ojxuodky">Troubleshooting</span></a></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Reference</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/natural-pdf/reference/selectors/" class="astro-ojxuodky"><span class="astro-ojxuodky">Selectors</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/engines/" class="astro-ojxuodky"><span class="astro-ojxuodky">Engines</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/installation-extras/" class="astro-ojxuodky"><span class="astro-ojxuodky">Installation extras</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/exceptions/" class="astro-ojxuodky"><span class="astro-ojxuodky">Exceptions</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/reference/ocr-options/" class="astro-ojxuodky"><span class="astro-ojxuodky">OCR options</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/api/" class="astro-ojxuodky"><span class="astro-ojxuodky">API</span></a></li><li class="astro-ojxuodky"><a href="/natural-pdf/api/text-extraction/" class="astro-ojxuodky"><span class="astro-ojxuodky">Text Extraction</span></a></li></ul></details></li><li class="astro-ojxuodky"><a href="/natural-pdf/for-agents/" class="large astro-ojxuodky"><span class="astro-ojxuodky">For Agents</span></a></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-b5gddk54"><div class="social-icons astro-b5gddk54"><a href="https://github.com/jsoma/natural-pdf" rel="me" class="sl-flex astro-cg55etiy"><span class="sr-only astro-cg55etiy">GitHub</span><svg aria-hidden="true" class="astro-cg55etiy astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-r2p65idu"><span class="sr-only astro-r2p65idu">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-r2p65idu"><option value="dark" class="astro-r2p65idu">Dark</option><option value="light" class="astro-r2p65idu">Light</option><option value="auto" selected class="astro-r2p65idu">Auto</option></select><svg aria-hidden="true" class="icon caret astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></div></nav><div class="main-frame astro-gqpr5s5a"><script type="module" src="/natural-pdf/_astro/Page.astro_astro_type_script_index_0_lang.DC4zszI0.js"></script><div class="lg:sl-flex astro-abfeecmu"><div class="main-pane astro-abfeecmu"><main data-pagefind-body class="astro-vdxcvpsm" lang="en" dir="ltr"><div class="content-panel astro-oil7k7jf"><div class="sl-container astro-oil7k7jf"><h1 id="_top" class="astro-2sm4b3ln">Multi-column pages that read in the wrong order</h1></div></div><div class="content-panel astro-oil7k7jf"><div class="sl-container astro-oil7k7jf"><div class="sl-markdown-content"><p>Sometimes you have data that flows over multiple columns, or pages, or just isn’t arranged in a “normal” top-to-bottom way. This page has three columns of text with two tables buried in them — and a plain <code dir="auto">extract_text()</code> walks straight across all three columns at once, interleaving sentences that have nothing to do with each other.</p>
+<div class="expressive-code"><link rel="stylesheet" href="/natural-pdf/_astro/ec.w36nc.css"><script type="module" src="/natural-pdf/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:33ch"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">from</span><span style="--0:#D6DEEB;--1:#403F53"> natural_pdf </span><span style="--0:#C792EA;--1:#8844AE">import</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">PDF</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">pdf </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#B2CCD6;--1:#096E72">PDF</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">pdfs/multicolumn.pdf</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> pdf.pages[</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D6DEEB;--1:#403F53">]</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="from natural_pdf import PDFpdf = PDF(&#x22;pdfs/multicolumn.pdf&#x22;)page = pdf.pages[0]page.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/solve/assets/multi-column-reflow/a6c500574f8d.png" alt="Multi-column pages that read in the wrong order"></p>
+<p>Look at the first few hundred characters of a naive extraction — each line jumps from column to column:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:43ch"><code><div class="ec-line"><div class="code"><span style="--0:#C5E478;--1:#3B61B0">print</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">page.</span><span style="--0:#B2CCD6;--1:#096E72">extract_text</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">layout</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">True</span><span style="--0:#D6DEEB;--1:#403F53">)</span><span style="--0:#D9F5DD;--1:#111111">[</span><span style="--0:#82AAFF;--1:#3B61B0">:</span><span style="--0:#F78C6C;--1:#AA0982">500</span><span style="--0:#D9F5DD;--1:#111111">]</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="print(page.extract_text(layout=True)[:500])"><div></div></button></div></figure></div>
+<pre class="npdf-output"><code>This is some text             25     8115      XXX21        6783
+
+          This is some text             26     8448      XXX22        7116
+                                        27     8781      XXX23        7449
+          This is some text             28     9114      XXX24        7782
+                                        29     9447      XXX25        8115</code></pre>
+<p>The fix is to <em>reflow</em> the page: cut out each column as a region, then paste the pieces back together end-to-end so “below” means “further along in reading order.”</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="cut-the-page-into-columns">Cut the page into columns</h2><a class="sl-anchor-link" href="#cut-the-page-into-columns"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Cut the page into columns”</span></a></div>
+<p><code dir="auto">page.region()</code> cuts a rectangle by coordinates. Three vertical slices, each a third of the page wide:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:85ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">left </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> page.</span><span style="--0:#B2CCD6;--1:#096E72">region</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">left</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">right</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#82AAFF;--1:#3B61B0">page.width</span><span style="--0:#C792EA;--1:#8844AE">/</span><span style="--0:#F78C6C;--1:#AA0982">3</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">top</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">bottom</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#82AAFF;--1:#3B61B0">page.height</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">mid </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> page.</span><span style="--0:#B2CCD6;--1:#096E72">region</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">left</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#82AAFF;--1:#3B61B0">page.width</span><span style="--0:#C792EA;--1:#8844AE">/</span><span style="--0:#F78C6C;--1:#AA0982">3</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">right</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#82AAFF;--1:#3B61B0">page.width</span><span style="--0:#C792EA;--1:#8844AE">/</span><span style="--0:#F78C6C;--1:#AA0982">3</span><span style="--0:#C792EA;--1:#8844AE">*</span><span style="--0:#F78C6C;--1:#AA0982">2</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">top</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">bottom</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#82AAFF;--1:#3B61B0">page.height</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">right </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> page.</span><span style="--0:#B2CCD6;--1:#096E72">region</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">left</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#82AAFF;--1:#3B61B0">page.width</span><span style="--0:#C792EA;--1:#8844AE">/</span><span style="--0:#F78C6C;--1:#AA0982">3</span><span style="--0:#C792EA;--1:#8844AE">*</span><span style="--0:#F78C6C;--1:#AA0982">2</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">right</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#82AAFF;--1:#3B61B0">page.width</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">top</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">bottom</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#82AAFF;--1:#3B61B0">page.height</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">page.</span><span style="--0:#B2CCD6;--1:#096E72">highlight</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">left</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> mid</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> right</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="left = page.region(left=0, right=page.width/3, top=0, bottom=page.height)mid = page.region(left=page.width/3, right=page.width/3*2, top=0, bottom=page.height)right = page.region(left=page.width/3*2, right=page.width, top=0, bottom=page.height)page.highlight(left, mid, right)"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/solve/assets/multi-column-reflow/93e3bbc1dcb2.png" alt="Cut the page into columns"></p>
+<div class="sl-heading-wrapper level-h2"><h2 id="stack-them-with-a-flow">Stack them with a Flow</h2><a class="sl-anchor-link" href="#stack-them-with-a-flow"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Stack them with a Flow”</span></a></div>
+<p>A <code dir="auto">Flow</code> connects separate regions (or whole pages) vertically or horizontally. Stacking the three columns vertically turns the page into one long single-column document:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:53ch"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">from</span><span style="--0:#D6DEEB;--1:#403F53"> natural_pdf.flows </span><span style="--0:#C792EA;--1:#8844AE">import</span><span style="--0:#D6DEEB;--1:#403F53"> Flow</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">stacked </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">[</span><span style="--0:#D6DEEB;--1:#403F53">left, mid, right</span><span style="--0:#D9F5DD;--1:#111111">]</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">flow </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#B2CCD6;--1:#096E72">Flow</span><span style="--1:#403F53"><span style="--0:#D6DEEB">(</span><span style="--0:#D7DBE0">segments</span></span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#82AAFF;--1:#3B61B0">stacked</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">arrangement</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">vertical</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">flow.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="from natural_pdf.flows import Flowstacked = [left, mid, right]flow = Flow(segments=stacked, arrangement=&#x22;vertical&#x22;)flow.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/solve/assets/multi-column-reflow/aa5c99dcbad3.png" alt="Stack them with a Flow"></p>
+<p>Now any spatial operation — “find something below this” — follows reading order, even when that means jumping from the bottom of one column to the top of the next:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:43ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">region </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> (</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">flow</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">find</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text:contains("Table one")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">below</span><span style="--0:#D6DEEB;--1:#403F53">(</span></div></div><div class="ec-line" style="--ecIndent:8ch"><div class="code"><span class="indent">        </span><span style="--0:#D7DBE0;--1:#403F53">until</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text:contains("Table two")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span></div></div><div class="ec-line" style="--ecIndent:8ch"><div class="code"><span class="indent">        </span><span style="--0:#D7DBE0;--1:#403F53">include_endpoint</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">False</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent">    </span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">region.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="region = (    flow    .find(&#x27;text:contains(&#x22;Table one&#x22;)&#x27;)    .below(        until=&#x27;text:contains(&#x22;Table two&#x22;)&#x27;,        include_endpoint=False    ))region.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/solve/assets/multi-column-reflow/f557316866c7.png" alt="Stack them with a Flow"></p>
+<div class="sl-heading-wrapper level-h2"><h2 id="pull-out-every-table">Pull out every table</h2><a class="sl-anchor-link" href="#pull-out-every-table"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Pull out every table”</span></a></div>
+<p>The tables sit under bold headers. Find the headers first — the <code dir="auto">width > 10</code> filter skips some tiny empty boxes that also register as bold:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:43ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">flow.</span><span style="--0:#B2CCD6;--1:#096E72">find_all</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text[width>10]:bold</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">).</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="flow.find_all(&#x27;text[width>10]:bold&#x27;).show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/solve/assets/multi-column-reflow/8b63779c3be2.png" alt="Pull out every table"></p>
+<p>Then take each header and sweep down until the <em>next</em> bold header or the closing paragraph, whichever comes first. The <code dir="auto">|</code> in the selector means “either of these”:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:67ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">regions </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> (</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">flow</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">find_all</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text[width>10]:bold</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">.</span><span style="--0:#B2CCD6;--1:#096E72">below</span><span style="--0:#D6DEEB;--1:#403F53">(</span></div></div><div class="ec-line" style="--ecIndent:8ch"><div class="code"><span class="indent">        </span><span style="--0:#D7DBE0;--1:#403F53">until</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">text[width>10]:bold|text:contains("Here is a bit")</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D9F5DD;--1:#111111">,</span></div></div><div class="ec-line" style="--ecIndent:8ch"><div class="code"><span class="indent">        </span><span style="--0:#D7DBE0;--1:#403F53">include_endpoint</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">False</span></div></div><div class="ec-line" style="--ecIndent:4ch"><div class="code"><span class="indent">    </span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">regions.</span><span style="--0:#B2CCD6;--1:#096E72">show</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="regions = (    flow    .find_all(&#x27;text[width>10]:bold&#x27;)    .below(        until=&#x27;text[width>10]:bold|text:contains(&#x22;Here is a bit&#x22;)&#x27;,        include_endpoint=False    ))regions.show()"><div></div></button></div></figure></div>
+<p><img src="/natural-pdf/solve/assets/multi-column-reflow/a31d3bf47852.png" alt="Pull out every table"></p>
+<p>Each region is one table, so <code dir="auto">extract_table()</code> on a region can’t grab the wrong one:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:34ch"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">regions[</span><span style="--0:#F78C6C;--1:#AA0982">0</span><span style="--0:#D6DEEB;--1:#403F53">].</span><span style="--0:#B2CCD6;--1:#096E72">extract_table</span><span style="--0:#D6DEEB;--1:#403F53">().</span><span style="--0:#B2CCD6;--1:#096E72">to_df</span><span style="--0:#D6DEEB;--1:#403F53">()</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="regions[0].extract_table().to_df()"><div></div></button></div></figure></div>
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>index</th>
+      <th>number</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>123</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>456</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>789</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>1122</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>1455</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>6</td>
+      <td>1788</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>7</td>
+      <td>2121</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>8</td>
+      <td>2454</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>9</td>
+      <td>2787</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>10</td>
+      <td>3120</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>11</td>
+      <td>3453</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>12</td>
+      <td>3786</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>13</td>
+      <td>4119</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>14</td>
+      <td>4452</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>15</td>
+      <td>4785</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>16</td>
+      <td>5118</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>17</td>
+      <td>5451</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>18</td>
+      <td>5784</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>19</td>
+      <td>6117</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>20</td>
+      <td>6450</td>
+    </tr>
+    <tr>
+      <th>20</th>
+      <td>21</td>
+      <td>6783</td>
+    </tr>
+    <tr>
+      <th>21</th>
+      <td>22</td>
+      <td>7116</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>23</td>
+      <td>7449</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>24</td>
+      <td>7782</td>
+    </tr>
+    <tr>
+      <th>24</th>
+      <td>25</td>
+      <td>8115</td>
+    </tr>
+    <tr>
+      <th>25</th>
+      <td>26</td>
+      <td>8448</td>
+    </tr>
+    <tr>
+      <th>26</th>
+      <td>27</td>
+      <td>8781</td>
+    </tr>
+    <tr>
+      <th>27</th>
+      <td>28</td>
+      <td>9114</td>
+    </tr>
+    <tr>
+      <th>28</th>
+      <td>29</td>
+      <td>9447</td>
+    </tr>
+    <tr>
+      <th>29</th>
+      <td>30</td>
+      <td>9780</td>
+    </tr>
+    <tr>
+      <th>30</th>
+      <td>31</td>
+      <td>10113</td>
+    </tr>
+    <tr>
+      <th>31</th>
+      <td>32</td>
+      <td>10446</td>
+    </tr>
+    <tr>
+      <th>32</th>
+      <td>33</td>
+      <td>10779</td>
+    </tr>
+    <tr>
+      <th>33</th>
+      <td>34</td>
+      <td>11112</td>
+    </tr>
+    <tr>
+      <th>34</th>
+      <td>35</td>
+      <td>11445</td>
+    </tr>
+    <tr>
+      <th>35</th>
+      <td>36</td>
+      <td>11778</td>
+    </tr>
+    <tr>
+      <th>36</th>
+      <td>37</td>
+      <td>12111</td>
+    </tr>
+    <tr>
+      <th>37</th>
+      <td>38</td>
+      <td>12444</td>
+    </tr>
+    <tr>
+      <th>38</th>
+      <td>39</td>
+      <td>12777</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p>And if the tables share a structure, combine them into one DataFrame:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="python" class="wrap" style="--ecMaxLine:66ch"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">import</span><span style="--0:#D6DEEB;--1:#403F53"> pandas </span><span style="--0:#C792EA;--1:#8844AE">as</span><span style="--0:#D6DEEB;--1:#403F53"> pd</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">dfs </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> regions.</span><span style="--0:#B2CCD6;--1:#096E72">apply</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#C792EA;--1:#8844AE">lambda</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#7FDBCA;--1:#096E72">region</span><span style="--0:#82AAFF;--1:#3B61B0">: region.</span><span style="--0:#B2CCD6;--1:#096E72">extract_table</span><span style="--0:#D6DEEB;--1:#403F53">()</span><span style="--0:#82AAFF;--1:#3B61B0">.</span><span style="--0:#B2CCD6;--1:#096E72">to_df</span><span style="--0:#D6DEEB;--1:#403F53">())</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">merged </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> pd.</span><span style="--0:#B2CCD6;--1:#096E72">concat</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#82AAFF;--1:#3B61B0">dfs</span><span style="--0:#D9F5DD;--1:#111111">,</span><span style="--0:#82AAFF;--1:#3B61B0"> </span><span style="--0:#D7DBE0;--1:#403F53">ignore_index</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#FF6A83;--1:#A24848">True</span><span style="--0:#D6DEEB;--1:#403F53">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">merged</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="import pandas as pddfs = regions.apply(lambda region: region.extract_table().to_df())merged = pd.concat(dfs, ignore_index=True)merged"><div></div></button></div></figure></div>
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>index</th>
+      <th>number</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>123</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>456</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>789</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>1122</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>1455</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>73</th>
+      <td>XXX35</td>
+      <td>11445</td>
+    </tr>
+    <tr>
+      <th>74</th>
+      <td>XXX36</td>
+      <td>11778</td>
+    </tr>
+    <tr>
+      <th>75</th>
+      <td>XXX37</td>
+      <td>12111</td>
+    </tr>
+    <tr>
+      <th>76</th>
+      <td>XXX38</td>
+      <td>12444</td>
+    </tr>
+    <tr>
+      <th>77</th>
+      <td>XXX39</td>
+      <td>12777</td>
+    </tr>
+  </tbody>
+</table>
+<p>78 rows × 2 columns</p>
+</div>
+<div class="sl-heading-wrapper level-h2"><h2 id="if-your-columns-arent-this-tidy">If your columns aren’t this tidy</h2><a class="sl-anchor-link" href="#if-your-columns-arent-this-tidy"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “If your columns aren’t this tidy”</span></a></div>
+<p>This page splits into exact thirds, so hardcoded coordinates work. When column widths vary — or you can’t hand-measure every document in a stack — <code dir="auto">page.analyze_layout()</code> can detect text blocks for you (it downloads YOLO weights on first use), and the detected regions feed into a <code dir="auto">Flow</code> the same way. The same <code dir="auto">Flow</code> trick also spans <em>pages</em>: pass <code dir="auto">pdf.pages</code> as the segments and a table that breaks across a page boundary becomes one table.</p></div><footer class="sl-flex astro-xhxjzfa7"><div class="meta sl-flex astro-xhxjzfa7"></div><div class="pagination-links print:hidden astro-jgq3vlii" dir="ltr"><a href="/natural-pdf/solve/" rel="prev" class="astro-jgq3vlii"><svg aria-hidden="true" class="astro-jgq3vlii astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-jgq3vlii">Previous<br class="astro-jgq3vlii"><span class="link-title astro-jgq3vlii">Solve: real PDFs, worked end to end</span></span></a><a href="/natural-pdf/solve/zebra-stripe-table/" rel="next" class="astro-jgq3vlii"><svg aria-hidden="true" class="astro-jgq3vlii astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-jgq3vlii">Next<br class="astro-jgq3vlii"><span class="link-title astro-jgq3vlii">Zebra-stripe table</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>
