@@ -135,14 +135,20 @@ COLAB_BRANCH = "main"
 # with --colab-ref / --colab-prefix when the deployment layout differs.
 COLAB_DEFAULT_REF = "gh-pages"
 COLAB_DEFAULT_PREFIX = ""
-# Keep this cell a plain install. Colab imports PIL at kernel startup, so any
-# dependency that forces a Pillow replacement breaks the next PIL import until
-# the runtime restarts — natural-pdf's own dependency bounds (pdfplumber cap
-# in pyproject.toml) are chosen so pip never needs to touch Pillow here. The
-# explicit pdfplumber cap below shields readers who get a published
-# natural-pdf that predates the pyproject cap; remove it together with the
-# pyproject cap once Colab ships Pillow >=12.2.
-PIP_INSTALL_CELL = '%pip install -q "natural-pdf[all]" "pdfplumber<0.11.10"'
+# The install cell handles a Colab trap: the runtime imports PIL at startup,
+# and pdfplumber's Pillow floor can force pip to replace Pillow on disk under
+# the live kernel. Mixing cached old modules with new files breaks the next
+# PIL import (e.g. "cannot import name '_Ink'"), so when the installed
+# Pillow no longer matches the imported one, restart the runtime once.
+PIP_INSTALL_CELL = """%pip install -q "natural-pdf[all]"
+
+import importlib.metadata, PIL
+
+if importlib.metadata.version("pillow") != PIL.__version__:
+    print("Pillow was upgraded; restarting the runtime — run the cells again once it reconnects.")
+    import os
+
+    os.kill(os.getpid(), 9)"""
 SKIP_CELL_COMMENT = "# This cell is illustrative — requires client/API setup"
 ASSET_HASH_LENGTH = 12
 RAW_FIXTURE_BASE = f"https://raw.githubusercontent.com/{COLAB_REPO}/{COLAB_BRANCH}"
