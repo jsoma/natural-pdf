@@ -256,7 +256,7 @@ def test_end_to_end_build_cache_and_force(docs_build, tmp_path):
     assert nb.cells[0].cell_type == "markdown"
     assert "colab.research.google.com" in nb.cells[0].source
     assert nb.cells[1].cell_type == "code"
-    assert nb.cells[1].source == '%pip install "natural-pdf[all]"'
+    assert nb.cells[1].source == docs_build.PIP_INSTALL_CELL
     code_cells = [c for c in nb.cells if c.cell_type == "code"]
     assert len(code_cells) == 3  # pip cell + two fences
     assert all(c.outputs == [] for c in code_cells)  # unexecuted
@@ -1000,3 +1000,14 @@ def test_hidden_silencer_mutes_noisy_loggers_and_leaves_no_trace(docs_build, tmp
     assert "real output" in text
     assert "model chatter" not in text
     assert all(c.get("metadata", {}).get("npdf") != "hidden-setup" for c in nb.cells)
+
+
+def test_pip_install_cell_restarts_colab_runtime_once(docs_build):
+    """On Colab the runtime preloads packages the install may upgrade
+    (Pillow being the known case), so the install cell forces one runtime
+    restart, gated by a marker file so re-running the cells never loops."""
+    cell = docs_build.PIP_INSTALL_CELL
+    assert '%pip install -q "natural-pdf[all]"' in cell
+    assert "COLAB_RELEASE_TAG" in cell
+    assert "_marker.exists()" in cell and "_marker.touch()" in cell
+    assert "os.kill(os.getpid(), 9)" in cell

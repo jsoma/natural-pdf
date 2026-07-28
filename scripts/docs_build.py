@@ -135,7 +135,17 @@ COLAB_BRANCH = "main"
 # with --colab-ref / --colab-prefix when the deployment layout differs.
 COLAB_DEFAULT_REF = "gh-pages"
 COLAB_DEFAULT_PREFIX = ""
-PIP_INSTALL_CELL = '%pip install "natural-pdf[all]"'
+PIP_INSTALL_CELL = """%pip install -q "natural-pdf[all]"
+
+# Colab preloads packages the install may have just upgraded (Pillow etc.);
+# restart the runtime once so the new versions load cleanly.
+import os, pathlib
+
+_marker = pathlib.Path("/tmp/.natural-pdf-restarted")
+if "COLAB_RELEASE_TAG" in os.environ and not _marker.exists():
+    _marker.touch()
+    print("Restarting the runtime once — re-run the cells when it reconnects.")
+    os.kill(os.getpid(), 9)"""
 SKIP_CELL_COMMENT = "# This cell is illustrative — requires client/API setup"
 ASSET_HASH_LENGTH = 12
 RAW_FIXTURE_BASE = f"https://raw.githubusercontent.com/{COLAB_REPO}/{COLAB_BRANCH}"
