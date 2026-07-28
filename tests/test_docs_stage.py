@@ -214,14 +214,30 @@ def test_tab_terminator_inside_fence_ignored(corpus):
 # fences
 
 
-def test_output_fence_becomes_text(corpus):
+def test_output_fence_becomes_shaded_pre(corpus):
     authored = corpus[0]
     write(authored, "page.md", "# Title\n\n```output\nhello\n```\n")
     _, _, errors = run_stage(corpus)
     assert errors == []
     out = staged(corpus, "page.md")
-    assert "```text" in out
+    assert '<pre class="npdf-output"><code>hello</code></pre>' in out
     assert "```output" not in out
+
+
+def test_output_fence_content_html_escaped_and_not_link_rewritten(corpus):
+    authored = corpus[0]
+    write(
+        authored,
+        "page.md",
+        '# Title\n\n```output\n<Page 1> & src="x.png" [link](other.md)\n```\n',
+    )
+    _, _, errors = run_stage(corpus)
+    assert errors == []
+    out = staged(corpus, "page.md")
+    assert "&lt;Page 1&gt; &amp;" in out
+    # raw output is display text: no attribute or link rewriting applies
+    assert 'src="x.png"' in out
+    assert "[link](other.md)" in out
 
 
 def test_output_word_inside_fence_untouched(corpus):

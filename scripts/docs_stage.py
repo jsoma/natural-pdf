@@ -13,7 +13,7 @@ Transformations per page (see docs/specs/starlight_migration_spec.md §5):
   - lift title into frontmatter, remove the source H1
   - drop executor-only frontmatter keys (fixture/tier/thumbnail/skip)
   - convert pymdown ``/// tab | Label`` groups to npdf-tabs comment markers
-  - normalize ```output fences to ```text
+  - replace ```output fences with shaded <pre class="npdf-output"> blocks
   - convert leftover ``!!! type`` admonitions to Starlight asides
   - rewrite internal .md links to route-relative directory form
   - copy referenced images into public/ and rewrite to /natural-pdf/ URLs
@@ -23,6 +23,7 @@ Transformations per page (see docs/specs/starlight_migration_spec.md §5):
 from __future__ import annotations
 
 import argparse
+import html
 import posixpath
 import re
 import shutil
@@ -298,17 +299,41 @@ def convert_tabs(lines: list[str], ctx: StageContext, page: str) -> list[str]:
 
 
 def rewrite_output_fences(lines: list[str]) -> list[str]:
-    """Turn ```output fence openers into ```text (only at fence-open position)."""
+    """Replace ```output fenced blocks with shaded <pre class="npdf-output"> HTML.
+
+    Executed-cell output should not render like a syntax-highlighted code
+    frame; an escaped <pre> lets CSS give it a muted inline-code-style
+    background instead. MUST run after link/image rewriting: the emitted raw
+    HTML would otherwise be scanned by the href/src attribute rewriters
+    (while fenced, the content is protected by the fence trackers).
+    """
     out: list[str] = []
     tracker = FenceTracker()
+    body: list[str] = []
+    indent = ""
+    collecting = False
     for line in lines:
         was_in_fence = tracker.in_fence
         tracker.feed(line)
+        if collecting:
+            if tracker.in_fence:
+                body.append(line)
+            else:  # this line closed the output fence
+                content = html.escape("\n".join(body), quote=False)
+                out.append(f'{indent}<pre class="npdf-output"><code>{content}</code></pre>')
+                collecting = False
+                body = []
+            continue
         if not was_in_fence and tracker.in_fence:
             m = OUTPUT_FENCE_RE.match(line)
             if m:
-                line = f"{m.group(1)}{m.group(2)}text{m.group(3) or ''}"
+                indent = m.group(1)
+                collecting = True
+                continue
         out.append(line)
+    if collecting:  # unterminated fence at EOF
+        content = html.escape("\n".join(body), quote=False)
+        out.append(f'{indent}<pre class="npdf-output"><code>{content}</code></pre>')
     return out
 
 
@@ -448,8 +473,8 @@ def compile_page(page_rel: str, ctx: StageContext) -> None:
     lines = convert_admonitions(lines, ctx, page_rel)
     title, lines = lift_title(meta, lines, ctx, page_rel)
     lines = convert_tabs(lines, ctx, page_rel)
-    lines = rewrite_output_fences(lines)
     lines = rewrite_links_and_images(lines, page_rel, ctx)
+    lines = rewrite_output_fences(lines)
 
     if title is None:
         return  # error already collected

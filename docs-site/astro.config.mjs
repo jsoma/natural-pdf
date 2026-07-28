@@ -38,6 +38,12 @@ export default defineConfig({
         },
       ],
       customCss: ["./src/styles/custom.css"],
+      // No right-hand "On this page" panel.
+      tableOfContents: false,
+      // Wrap long code lines instead of horizontal scrolling.
+      expressiveCode: {
+        defaultProps: { wrap: true },
+      },
       // The default favicon link resolves to public/favicon.svg, which the
       // staging script provides. src/components/Head.astro additionally emits
       // a Vite-bundled copy of the same icon so the site never lacks one.

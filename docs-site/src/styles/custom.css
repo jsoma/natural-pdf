@@ -11,15 +11,13 @@
  * heading. After enhancement the script injects a [role=tablist] of
  * buttons and hides the label paragraphs. */
 
+/* Flat presentation: no box around the group, just an underlined tab row. */
 .npdf-tabs {
   margin: 1.5rem 0;
-  border: 1px solid var(--sl-color-gray-5);
-  border-radius: 0.5rem;
-  overflow: hidden;
 }
 
 .npdf-tab {
-  padding: 0 1rem 0.25rem;
+  padding: 0;
 }
 
 /* No-JS fallback: labels look like small headings separating the
@@ -36,10 +34,8 @@
 .npdf-tablist {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
-  padding: 0.35rem 0.5rem 0;
+  align-items: center;
   border-block-end: 1px solid var(--sl-color-gray-5);
-  background-color: var(--sl-color-gray-6);
 }
 
 .npdf-tablist [role="tab"] {
@@ -53,6 +49,9 @@
   font-weight: 600;
   padding: 0.5rem 0.75rem;
   cursor: pointer;
+  /* Starlight's content flow spacing adds margin-top to `* + *` siblings,
+   * which pushed every tab after the first downward. */
+  margin: 0 !important;
 }
 
 .npdf-tablist [role="tab"]:hover {
@@ -151,4 +150,41 @@
 .sl-markdown-content img {
   max-width: 100%;
   height: auto;
+}
+
+/* ------------------------------------------------------- Output blocks.
+ * Executed-cell text output (staged as <pre class="npdf-output">). Muted,
+ * inline-code-colored background — visually distinct from highlighted
+ * code frames. */
+
+.npdf-output {
+  background-color: var(--sl-color-gray-6);
+  border-radius: 0.25rem;
+  padding: 0.65rem 1rem;
+  font-size: var(--sl-text-sm);
+  line-height: 1.5;
+  color: var(--sl-color-gray-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-x: auto;
+}
+
+.npdf-output code {
+  all: unset;
+  font-family: var(--__sl-font-mono, ui-monospace, monospace);
+}
+
+/* -------------------------------------------------------------- Sidebar.
+ * Flat highlight (no pill) and quieter section headers. */
+
+.sidebar-pane a {
+  border-radius: 0;
+}
+
+.sidebar-pane .group-label .large {
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sl-color-gray-2);
 }
