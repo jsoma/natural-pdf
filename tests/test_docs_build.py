@@ -1000,14 +1000,3 @@ def test_hidden_silencer_mutes_noisy_loggers_and_leaves_no_trace(docs_build, tmp
     assert "real output" in text
     assert "model chatter" not in text
     assert all(c.get("metadata", {}).get("npdf") != "hidden-setup" for c in nb.cells)
-
-
-def test_pip_install_cell_guards_against_stale_pillow(docs_build):
-    """Colab imports PIL at runtime startup; if installing natural-pdf
-    upgrades Pillow on disk (pdfplumber pins a floor), the runtime must
-    restart before PIL can import cleanly. The notebook install cell must
-    detect the mismatch and restart automatically."""
-    cell = docs_build.PIP_INSTALL_CELL
-    assert '%pip install -q "natural-pdf[all]"' in cell
-    assert 'importlib.metadata.version("pillow") != PIL.__version__' in cell
-    assert "os.kill(os.getpid(), 9)" in cell

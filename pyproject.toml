@@ -25,7 +25,11 @@ dependencies = [
     "scikit-learn",
     "markdown",
     "pandas",
-    "pdfplumber>=0.11.7",
+    # <0.11.10: that release pins Pillow>=12.2.0, which forces pip to replace
+    # Colab's preinstalled (and already-imported) Pillow and breaks the next
+    # PIL import until the runtime restarts. Lift the cap once Colab ships
+    # Pillow >=12.2.
+    "pdfplumber>=0.11.7,<0.11.10",
     "colormath2",
     "pillow",
     "colour",

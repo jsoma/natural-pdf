@@ -3018,7 +3018,7 @@ requires-dist = [
     { name = "paddlepaddle", marker = "extra == 'paddle'", specifier = ">=3.0.0" },
     { name = "paddlex", extras = ["ocr"], marker = "extra == 'paddle'", specifier = ">=3.0.2" },
     { name = "pandas" },
-    { name = "pdfplumber", specifier = ">=0.11.7" },
+    { name = "pdfplumber", specifier = ">=0.11.7,<0.11.10" },
     { name = "pikepdf", marker = "extra == 'export'" },
     { name = "pillow" },
     { name = "pipdeptree", marker = "extra == 'dev'" },
