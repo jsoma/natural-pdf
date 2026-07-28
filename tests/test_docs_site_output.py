@@ -197,6 +197,9 @@ def test_public_contract_files_exist():
     expected = [
         "llms.txt",
         "favicon.svg",
+        # Without .nojekyll, GitHub Pages' Jekyll pass drops the _astro/
+        # asset directory and the site serves completely unstyled.
+        ".nojekyll",
         "404.html",
         "ocr-tool/index.html",
         "ocr-tool/words.txt",

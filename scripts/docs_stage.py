@@ -527,6 +527,11 @@ def copy_public_files(ctx: StageContext) -> None:
     if favicon.is_file():
         shutil.copy2(favicon, ctx.public_dir / "favicon.svg")
         ctx.copied_public.add("favicon.svg")
+    # GitHub Pages runs Jekyll by default, and Jekyll drops underscore
+    # directories — including Astro's _astro/ asset dir. Without this file
+    # the deployed site serves HTML with every stylesheet/script 404ing.
+    (ctx.public_dir / ".nojekyll").write_text("")
+    ctx.copied_public.add(".nojekyll")
     if ctx.executed.exists():
         for nb in sorted(ctx.executed.glob("*/notebooks/*.ipynb")):
             rel = nb.relative_to(ctx.executed).as_posix()

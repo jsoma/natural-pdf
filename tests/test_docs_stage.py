@@ -421,7 +421,10 @@ def test_public_files_copied_ocr_tool_dotfiles_excluded(corpus):
     assert not (pub / "ocr-tool" / ".DS_Store").exists()
     assert (pub / "assets" / "logo.svg").is_file()
     assert (pub / "learn" / "notebooks" / "01.ipynb").is_file()
-    assert public_count == 5
+    # +1 for the always-written .nojekyll (keeps GitHub Pages' Jekyll pass
+    # from dropping the _astro/ asset directory)
+    assert public_count == 6
+    assert (pub / ".nojekyll").is_file()
 
 
 # ---------------------------------------------------------------------------
