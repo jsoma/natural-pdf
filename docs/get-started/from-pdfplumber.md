@@ -236,4 +236,4 @@ The behavioral differences called out for pdfplumber apply here too: text elemen
 ## Next
 
 - [Quickstart](quickstart.md) — the 15-minute end-to-end path.
-- [Concepts](../concepts/) — elements, regions, and exclusions in depth.
+- [Concepts](../concepts/index.md) — elements, regions, and exclusions in depth.
