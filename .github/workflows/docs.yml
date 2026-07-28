@@ -6,9 +6,12 @@ on:
       - main
     paths:
       - 'docs/**'
+      - 'docs-site/**'
       - 'natural_pdf/**'
-      - 'mkdocs.yml'
       - 'scripts/docs_build.py'
+      - 'scripts/docs_stage.py'
+      - 'scripts/generate_api_reference.py'
+      - 'tests/test_docs_site_output.py'
       - '.github/workflows/docs.yml'
     tags:
       - 'v*'
@@ -87,21 +90,38 @@ jobs:
       - name: Check generated reference pages are current
         run: uv run python scripts/generate_reference.py --check
 
-      # Staging tree = authored docs overlaid with executed outputs; mkdocs
-      # reads it via the NPDF_DOCS_DIR override in mkdocs.yml.
-      - name: Assemble staging tree
-        run: |
-          rm -rf docs-staging
-          cp -R docs docs-staging
-          rsync -a docs-executed/ docs-staging/
+      # griffe comes from the docs extra; without --extra docs the import fails.
+      - name: Generate API reference fragments
+        run: uv run --extra docs python scripts/generate_api_reference.py
 
-      - name: Build docs
-        env:
-          NPDF_DOCS_DIR: docs-staging
-        run: uv run mkdocs build
+      # Overlays executed output on authored pages and populates
+      # docs-site/src/content/docs and docs-site/public (notebooks included,
+      # so they land in dist/ at their gh-pages paths).
+      - name: Stage docs into Starlight site tree
+        run: uv run --extra docs python scripts/docs_stage.py
 
+      - name: Set up Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: Install site dependencies
+        working-directory: docs-site
+        run: npm ci
+
+      - name: Build site
+        working-directory: docs-site
+        run: npm run build
+
+      - name: Verify built site
+        run: uv run pytest tests/test_docs_site_output.py
+
+      # gh-pages history is the artifact store. Rollback to a previous deploy:
+      #   git push origin <last-good-sha>:gh-pages --force
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: site
+          folder: docs-site/dist
           branch: gh-pages
