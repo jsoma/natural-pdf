@@ -449,7 +449,7 @@ def execute_page_notebook(
     executed notebook. Raises DocsBuildError on any cell error or timeout.
     The kernel is always shut down before this function returns."""
     exec_md = nodes_to_execution_markdown(nodes)
-    notebook = jupytext.reads(exec_md, fmt="md")
+    notebook = jupytext.reads(exec_md, fmt="md:markdown")
     normalize_notebook_metadata(notebook)
 
     code_cells = [c for c in notebook.cells if c.cell_type == "code"]
@@ -755,7 +755,7 @@ def build_notebook_artifact(
     URL is composed by :func:`colab_url` (see its docstring for the deployed
     layout assumption behind the defaults)."""
     nb_md = nodes_to_notebook_markdown(nodes)
-    notebook = jupytext.reads(nb_md, fmt="md")
+    notebook = jupytext.reads(nb_md, fmt="md:markdown")
     for cell in notebook.cells:
         if cell.cell_type == "code":
             cell.source = rewrite_fixture_paths_for_colab(cell.source)

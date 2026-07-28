@@ -790,3 +790,27 @@ def test_frontmatter_skip_passes_page_through(docs_build, tmp_path, monkeypatch)
     md = (tmp_path / "out" / "skippy.md").read_text(encoding="utf-8")
     assert "skip: true" not in md
     assert "```python\nraise SystemExit\n```" in md
+
+
+def test_starlight_asides_do_not_break_jupytext_parsing(docs_build):
+    """Column-0 ::: aside syntax must not make jupytext sniff the page as
+    pandoc markdown (which collapses everything into one cell and loses
+    every code fence). Regression test for the md -> md:markdown fmt pin."""
+    import jupytext
+
+    page = (
+        ":::caution[Model download]\n"
+        "This downloads a model on first use.\n"
+        ":::\n"
+        "\n"
+        "Some prose.\n"
+        "\n"
+        "```python\n"
+        "x = 1\n"
+        "```\n"
+    )
+    nb = jupytext.reads(page, fmt="md:markdown")
+    assert sum(1 for c in nb.cells if c.cell_type == "code") == 1
+    # the exact failure mode of the unpinned "md" format:
+    sniffed = jupytext.reads(page, fmt="md")
+    assert sum(1 for c in sniffed.cells if c.cell_type == "code") == 0
