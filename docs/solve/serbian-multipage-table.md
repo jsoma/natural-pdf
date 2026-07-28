@@ -11,7 +11,7 @@ This PDF is a Serbian regulatory document — 120 pages of it — collected for 
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/serbia-zakon-o-naknadama-za-koriscenje-javnih.pdf")
+pdf = PDF("pdfs/serbia-zakon-o-naknadama-za-koriscenje-javnih.pdf")
 pdf.pages[:8].show(cols=4)
 ```
 

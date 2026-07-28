@@ -47,6 +47,16 @@ def test_output_is_deterministic_across_runs(genref):
     assert sorted(first) == sorted(EXPECTED_PAGES)
 
 
+def test_isolated_generation_has_a_timeout(genref, monkeypatch):
+    def time_out(*args, **kwargs):
+        assert kwargs["timeout"] == genref.INTROSPECTION_TIMEOUT_SECONDS
+        raise subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+
+    monkeypatch.setattr(genref.subprocess, "run", time_out)
+    with pytest.raises(genref.ReferenceGenerationError, match="timed out"):
+        genref.build_all_pages_isolated()
+
+
 def test_check_passes_right_after_generation(genref, tmp_path):
     out = tmp_path / "reference"
     assert genref.main(["--output", str(out)]) == 0
@@ -261,6 +271,7 @@ def test_engines_page_lists_registered_capabilities(genref):
         assert f"`{capability}`" in page, f"capability {capability} missing"
         for name in names:
             assert f"`{name}`" in page, f"engine {name} ({capability}) missing"
+    assert "generic `vlm` entry can use either a local model or a configured remote client" in page
 
 
 def test_extras_page_lists_all_groups_and_deps(genref):

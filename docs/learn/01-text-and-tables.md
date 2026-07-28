@@ -14,7 +14,7 @@ You have a stack of inspection reports and you need what's inside them: who got 
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/01-practice.pdf")
+pdf = PDF("pdfs/01-practice.pdf")
 page = pdf.pages[0]
 page.show()
 ```

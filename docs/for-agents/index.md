@@ -7,7 +7,7 @@ tier: fast
 
 The contract surface for writing extraction code against natural-pdf: exact return types, what raises vs. what returns empty, the selector grammar, and the anti-patterns that produce plausible-but-wrong output. Every claim on this page is verified against the current codebase.
 
-```python skip=true
+```python {.skip-execution}
 from natural_pdf import PDF
 
 pdf = PDF("document.pdf")        # path, URL, or bytes — there is no PDF.open()
@@ -120,7 +120,7 @@ Parameter names that do not exist: `case_sensitive=False` → `case=False`; `eng
 
 ### Always handle `find()` returning `None`
 
-```python skip=true
+```python {.skip-execution}
 element = page.find('text:contains("Total")')
 if element is None:
     ...                      # handle the miss — chaining onto None raises AttributeError
@@ -129,7 +129,7 @@ value = element.right().extract_text()
 
 ### Close PDFs in batch loops
 
-```python skip=true
+```python {.skip-execution}
 for path in paths:
     with PDF(path) as pdf:          # PDF is a context manager
         rows.append(pdf.pages[0].extract_text())   # keep plain data, not Page/Element objects
@@ -185,7 +185,7 @@ Whether a call sends page images off-machine follows one rule (implemented ident
 - **Explicit `client=` ⇒ remote,** to exactly that client.
 - **The default client (`natural_pdf.set_default_client(...)`) applies only when *both* `model=` and `client=` are unset.**
 
-```python skip=true
+```python {.skip-execution}
 import natural_pdf
 from openai import OpenAI
 

@@ -138,6 +138,23 @@ class TestEngineCache:
         assert count == 1
         e1.cleanup.assert_called_once()
 
+    def test_shared_cached_identity_is_cleaned_after_last_key_is_detached(self):
+        cache = EngineCache(maxsize=4)
+        cleaned = []
+
+        class Engine:
+            def cleanup(self):
+                cleaned.append(self)
+
+        engine = Engine()
+        cache.get_or_create("first", ("en",), "cpu", "", lambda: engine)
+        cache.get_or_create("second", ("en",), "cpu", "", lambda: engine)
+
+        assert cache.invalidate("first") == 1
+        assert cleaned == []
+        assert cache.invalidate("second") == 1
+        assert cleaned == [engine]
+
     def test_thread_safety(self):
         cache = EngineCache(maxsize=4)
         results = {}
@@ -168,6 +185,66 @@ class TestEngineCache:
         # Should have evicted 2 entries
         count = cache.clear()
         assert count == 2
+
+    @pytest.mark.parametrize("mutation", ["invalidate", "clear", "capacity", "maxsize"])
+    def test_active_checkout_defers_all_cache_eviction_cleanup(self, mutation):
+        cache = EngineCache(maxsize=1 if mutation == "capacity" else 2)
+        cleaned = []
+        worker_errors = []
+
+        class Engine:
+            def cleanup(self):
+                cleaned.append(self)
+
+        engine = Engine()
+
+        def mutate_cache():
+            try:
+                if mutation == "invalidate":
+                    assert cache.invalidate("leased") == 1
+                elif mutation == "clear":
+                    assert cache.clear() == 1
+                elif mutation == "capacity":
+                    cache.get_or_create("other", ("en",), "cpu", "", object)
+                else:
+                    cache.get_or_create("other", ("en",), "cpu", "", object)
+                    cache.maxsize = 1
+            except BaseException as exc:  # pragma: no cover - diagnostic capture
+                worker_errors.append(exc)
+
+        with cache.checkout("leased", ("en",), "cpu", "", lambda: engine) as leased:
+            worker = threading.Thread(target=mutate_cache)
+            worker.start()
+            worker.join(timeout=2)
+
+            assert leased is engine
+            assert not worker.is_alive()
+            assert worker_errors == []
+            assert cleaned == []
+            assert cache.invalidate("leased") == 0
+
+        assert cleaned == [engine]
+
+    def test_cleanup_hook_runs_outside_cache_lock(self):
+        cache = EngineCache(maxsize=2)
+        observer_completed = []
+
+        class Engine:
+            def cleanup(self):
+                completed = threading.Event()
+
+                def inspect_cache():
+                    cache.clear()
+                    completed.set()
+
+                observer = threading.Thread(target=inspect_cache)
+                observer.start()
+                observer.join(timeout=2)
+                observer_completed.append(completed.is_set())
+
+        cache.get_or_create("reentrant", ("en",), "cpu", "", Engine)
+        assert cache.clear() == 1
+        assert observer_completed == [True]
 
 
 # ---------------------------------------------------------------------------

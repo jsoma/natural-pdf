@@ -35,7 +35,25 @@ __all__ = [
     "cleanup_models",
     "infer_using",
     "is_classification_available",
+    "validate_classification_labels",
 ]
+
+
+def validate_classification_labels(labels: Sequence[str]) -> None:
+    """Validate candidate labels before any classification side effects."""
+
+    if labels is None or len(labels) == 0:
+        raise ValueError("Labels list cannot be empty.")
+    if isinstance(labels, (str, bytes)):
+        raise TypeError("Labels must be provided as a sequence of strings, not a string.")
+    for index, label in enumerate(labels):
+        if not isinstance(label, str):
+            raise TypeError(
+                f"Classification label at index {index} must be a string; "
+                f"got {type(label).__name__}."
+            )
+        if not label.strip():
+            raise ValueError(f"Classification label at index {index} cannot be blank.")
 
 
 def _check_classification_dependencies() -> bool:
@@ -183,25 +201,32 @@ def _parse_raw_scores(
             f"Empty labels/scores payload from pipeline for model '{model_id}'"
         )
 
+    normalized_pairs = []
     for label, score_val in pairs:
         if not isinstance(label, str):
             raise ClassificationError(
                 f"Non-string label {label!r} from pipeline for model '{model_id}'"
             )
+        normalized_label = label.strip()
+        if not normalized_label:
+            raise ClassificationError(f"Blank label {label!r} from pipeline for model '{model_id}'")
         # bool is an int subclass, but True/False are not scores.
         if isinstance(score_val, bool) or not isinstance(score_val, (int, float)):
             raise ClassificationError(
-                f"Non-numeric score {score_val!r} for label {label!r} "
+                f"Non-numeric score {score_val!r} for label {normalized_label!r} "
                 f"from pipeline for model '{model_id}'"
             )
         if not math.isfinite(score_val):
             raise ClassificationError(
-                f"Non-finite score {score_val!r} for label {label!r} "
+                f"Non-finite score {score_val!r} for label {normalized_label!r} "
                 f"from pipeline for model '{model_id}'"
             )
+        normalized_pairs.append((normalized_label, score_val))
 
     return [
-        CategoryScore(label, score_val) for label, score_val in pairs if score_val >= min_confidence
+        CategoryScore(label, score_val)
+        for label, score_val in normalized_pairs
+        if score_val >= min_confidence
     ]
 
 
@@ -218,13 +243,12 @@ def classify_single(
 ) -> ClassificationResult:
     """Classify a single piece of content."""
 
+    validate_classification_labels(labels)
+
     if not _check_classification_dependencies():
         raise ImportError(
             "Classification dependencies missing. Install with: pip install torch transformers"
         )
-
-    if not labels:
-        raise ValueError("Labels list cannot be empty.")
 
     selected_model = model_id
     effective_using = using
@@ -302,13 +326,12 @@ def classify_batch_contents(
 ) -> List[ClassificationResult]:
     """Classify a batch of content items."""
 
+    validate_classification_labels(labels)
+
     if not _check_classification_dependencies():
         raise ImportError(
             "Classification dependencies missing. Install with: pip install torch transformers"
         )
-
-    if not labels:
-        raise ValueError("Labels list cannot be empty.")
     if not contents:
         return []
 

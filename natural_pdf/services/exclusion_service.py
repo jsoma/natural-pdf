@@ -15,6 +15,48 @@ from natural_pdf.exceptions import ExclusionError
 logger = logging.getLogger(__name__)
 
 
+def bind_exclusion_entries_to_host(
+    host: Any,
+    entries: Sequence[ExclusionSpec],
+    *,
+    eager: bool = False,
+) -> List[ExclusionSpec]:
+    """Transfer exclusions without changing callable binding semantics.
+
+    A callable exclusion is a read-time rule bound to the host on which it was
+    registered.  Derived regions (guide windows today, potentially other views
+    later) must therefore either resolve it against that host immediately or
+    install a lazy wrapper that still resolves against that host.  Copying the
+    callable itself would incorrectly rebind it to the derived region.
+    """
+
+    bound: List[ExclusionSpec] = []
+    for entry in entries:
+        if len(entry) == 2:
+            item, label = entry  # type: ignore[misc]
+            method = "region"
+        else:
+            item, label, method = entry  # type: ignore[misc]
+        if not callable(item):
+            bound.append(entry)
+            continue
+        if eager:
+            resolved = host._evaluate_exclusion_entries([entry], True, False)
+            bound.extend((region, label, method) for region in resolved)
+            continue
+
+        def resolve_against_host(
+            _derived_host: Any,
+            *,
+            registering_host: Any = host,
+            registered_entry: ExclusionSpec = entry,
+        ) -> list:
+            return registering_host._evaluate_exclusion_entries([registered_entry], True, False)
+
+        bound.append((resolve_against_host, label, method))
+    return bound
+
+
 class ExclusionService:
     """Service that owns exclusion bookkeeping and evaluation."""
 

@@ -11,7 +11,7 @@ This PDF contains Vancouver Police use-of-force incident records, released to jo
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/use-of-force-raw.pdf")
+pdf = PDF("pdfs/use-of-force-raw.pdf")
 page = pdf.pages[0]
 page.show()
 ```

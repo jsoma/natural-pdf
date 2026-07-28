@@ -11,7 +11,7 @@ This is the capstone: one real document, no models, and every move comes from th
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf")
+pdf = PDF("pdfs/Atlanta_Public_Schools_GA_sample.pdf")
 page = pdf.pages[0]
 page.show()
 ```
@@ -192,7 +192,7 @@ The real version of this project is many PDFs — the next FOIA batch, the next 
 
 ```python
 sources = {
-    'atlanta': "https://github.com/jsoma/natural-pdf/raw/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf",
+    'atlanta': "pdfs/Atlanta_Public_Schools_GA_sample.pdf",
     # next district's log goes here
 }
 

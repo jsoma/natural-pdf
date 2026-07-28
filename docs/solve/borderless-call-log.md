@@ -11,7 +11,7 @@ This PDF is a service call report covering 911 incidents at the Rainforest Cafe 
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/24480polcompleted.pdf")
+pdf = PDF("pdfs/24480polcompleted.pdf")
 pdf.show(cols=3, limit=9)
 ```
 

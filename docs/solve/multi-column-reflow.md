@@ -11,7 +11,7 @@ Sometimes you have data that flows over multiple columns, or pages, or just isn'
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/multicolumn.pdf")
+pdf = PDF("pdfs/multicolumn.pdf")
 page = pdf.pages[0]
 page.show()
 ```

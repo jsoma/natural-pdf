@@ -5,12 +5,16 @@ import logging
 import pytest
 
 import natural_pdf as npdf
+import natural_pdf.classification.pipelines as pipelines_module
 import natural_pdf.engine_provider as provider_module
 from natural_pdf.classification.pipelines import (
     _CACHE_LOCK,
     _PIPELINE_CACHE,
     _parse_raw_scores,
+    classify_batch_contents,
+    classify_single,
     cleanup_models,
+    validate_classification_labels,
 )
 from natural_pdf.classification.results import CategoryScore, ClassificationResult
 from natural_pdf.core.context import PDFContext
@@ -267,6 +271,119 @@ class TestParseRawScores:
         raw = {"labels": ("cat", "dog"), "scores": (0.7, 0.3)}
         scores = _parse_raw_scores(raw, 0.0, "test-model")
         assert [s.label for s in scores] == ["cat", "dog"]
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            {"labels": ["   "], "scores": [0.5]},
+            [{"label": "\t", "score": 0.5}],
+        ],
+    )
+    def test_blank_label_raises(self, raw):
+        with pytest.raises(ClassificationError, match="Blank label"):
+            _parse_raw_scores(raw, 0.0, "test-model")
+
+    def test_labels_are_whitespace_normalized(self):
+        raw = {"labels": ["  cat \n"], "scores": [0.7]}
+        scores = _parse_raw_scores(raw, 0.0, "test-model")
+        assert [score.label for score in scores] == ["cat"]
+
+
+@pytest.mark.parametrize(
+    ("labels", "error_type"),
+    [
+        ([], ValueError),
+        (["   "], ValueError),
+        (["valid", 3], TypeError),
+    ],
+)
+def test_single_item_invalid_labels_fail_before_engine_checkout(monkeypatch, labels, error_type):
+    class Host:
+        analyses = None
+
+    def checkout_must_not_run(*_args, **_kwargs):
+        raise AssertionError("empty labels must fail before engine checkout")
+
+    monkeypatch.setattr(
+        classification_service,
+        "checkout_classification_engine",
+        checkout_must_not_run,
+    )
+
+    host = Host()
+    with pytest.raises(error_type):
+        ClassificationService(PDFContext.with_defaults()).classify(host, labels=labels)
+    assert host.analyses is None
+
+
+@pytest.mark.parametrize(
+    ("labels", "error_type"),
+    [
+        ([], ValueError),
+        (["\t"], ValueError),
+        (["valid", object()], TypeError),
+    ],
+)
+def test_label_validator_rejects_invalid_entries(labels, error_type):
+    with pytest.raises(error_type):
+        validate_classification_labels(labels)
+
+
+@pytest.mark.parametrize("entrypoint", ["single", "batch"])
+@pytest.mark.parametrize(
+    ("labels", "error_type"),
+    [
+        ([], ValueError),
+        (["  "], ValueError),
+        (["valid", 1], TypeError),
+    ],
+)
+def test_pipeline_entries_validate_labels_before_dependency_probe(
+    monkeypatch, entrypoint, labels, error_type
+):
+    dependency_checks = []
+
+    def dependency_probe():
+        dependency_checks.append(True)
+        return True
+
+    monkeypatch.setattr(pipelines_module, "_check_classification_dependencies", dependency_probe)
+
+    with pytest.raises(error_type):
+        if entrypoint == "single":
+            classify_single(item_content="text", labels=labels)
+        else:
+            classify_batch_contents(contents=["text"], labels=labels)
+
+    assert dependency_checks == []
+
+
+def test_public_batch_entries_reject_blank_labels_before_checkout(monkeypatch):
+    from natural_pdf.core.pdf_collection import PDFCollection
+
+    def checkout_must_not_run(*_args, **_kwargs):
+        raise AssertionError("invalid labels must fail before engine checkout")
+
+    monkeypatch.setattr(
+        classification_service,
+        "checkout_classification_engine",
+        checkout_must_not_run,
+    )
+
+    pdf = npdf.PDF("pdfs/01-practice.pdf")
+    try:
+        with pytest.raises(ValueError, match="cannot be blank"):
+            pdf.classify_pages(labels=[" "])
+
+        collection = PDFCollection([pdf])
+        with pytest.raises(ValueError, match="cannot be blank"):
+            collection.classify_all(labels=[" "])
+
+        elements = pdf.pages[0].find_all("text")[:1]
+        with pytest.raises(ValueError, match="cannot be blank"):
+            elements.classify_all(labels=[" "])
+    finally:
+        pdf.close()
 
 
 # ---------- cleanup_models ----------
@@ -527,6 +644,97 @@ class TestTransientEngineCleanup:
         finally:
             pdf.close()
 
+    def test_direct_run_item_closes_transient_engine_once(self, monkeypatch):
+        from natural_pdf.classification import run_classification_item
+
+        closed, factory_calls = self._install(monkeypatch, "transient")
+        result = run_classification_item(
+            context=PDFContext.with_defaults(),
+            content="text",
+            labels=["stub"],
+            model_id="stub-model",
+            using="text",
+            min_confidence=0.0,
+            multi_label=False,
+        )
+
+        assert result.category == "stub"
+        assert len(factory_calls) == 1
+        assert len(closed) == 1
+
+    @pytest.mark.parametrize("entrypoint", ["item", "batch"])
+    @pytest.mark.parametrize(
+        ("labels", "error_type"),
+        [
+            ([], ValueError),
+            (["  "], ValueError),
+            (["valid", 1], TypeError),
+        ],
+    )
+    def test_direct_run_helpers_reject_invalid_labels_before_checkout(
+        self, monkeypatch, entrypoint, labels, error_type
+    ):
+        from natural_pdf.classification import run_classification_batch, run_classification_item
+
+        closed, factory_calls = self._install(monkeypatch, "transient")
+        with pytest.raises(error_type):
+            common = {
+                "context": PDFContext.with_defaults(),
+                "labels": labels,
+                "model_id": "stub-model",
+                "using": "text",
+                "min_confidence": 0.0,
+                "multi_label": False,
+            }
+            if entrypoint == "item":
+                run_classification_item(content="text", **common)
+            else:
+                run_classification_batch(
+                    contents=["text"], batch_size=1, progress_bar=False, **common
+                )
+
+        assert factory_calls == []
+        assert closed == []
+
+    def test_direct_run_batch_closes_transient_engine_once(self, monkeypatch):
+        from natural_pdf.classification import run_classification_batch
+
+        closed, factory_calls = self._install(monkeypatch, "transient")
+        results = run_classification_batch(
+            context=PDFContext.with_defaults(),
+            contents=["one", "two"],
+            labels=["stub"],
+            model_id="stub-model",
+            using="text",
+            min_confidence=0.0,
+            multi_label=False,
+            batch_size=2,
+            progress_bar=False,
+        )
+
+        assert [result.category for result in results] == ["stub", "stub"]
+        assert len(factory_calls) == 1
+        assert len(closed) == 1
+
+    def test_pre_resolved_engine_remains_caller_owned(self):
+        from natural_pdf.classification import run_classification_item
+
+        closed = []
+        engine = _ClosableEngine(closed)
+        result = run_classification_item(
+            context=PDFContext.with_defaults(),
+            content="text",
+            labels=["stub"],
+            model_id="stub-model",
+            using="text",
+            min_confidence=0.0,
+            multi_label=False,
+            engine=engine,
+        )
+
+        assert result.category == "stub"
+        assert closed == []
+
     @pytest.mark.parametrize("lifetime", ["context", "singleton"])
     def test_cached_lifetimes_are_never_cleaned(self, monkeypatch, lifetime):
         closed, factory_calls = self._install(monkeypatch, lifetime)
@@ -611,6 +819,29 @@ class TestBatchKwargRouting:
             for pdf in collection.pdfs:
                 pdf.close()
 
+    def test_element_collection_routes_options_to_one_boundary(self, monkeypatch):
+        """Element batches use the same content/engine split as PDF batches."""
+        engine_calls, _ = self._install_provider(monkeypatch)
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        try:
+            elements = pdf.pages[0].find_all("text")[:2]
+            content_calls = []
+
+            def fake_content(model_type, **kwargs):
+                content_calls.append(kwargs)
+                return "element text"
+
+            for element in elements:
+                monkeypatch.setattr(element, "_get_classification_content", fake_content)
+
+            elements.classify_all(labels=["a"], device="cpu", resolution=99, progress_bar=False)
+
+            assert engine_calls[-1]["device"] == "cpu"
+            assert "resolution" not in engine_calls[-1]
+            assert content_calls == [{"resolution": 99}, {"resolution": 99}]
+        finally:
+            pdf.close()
+
 
 # ---------- Batch mismatch ----------
 
@@ -660,5 +891,14 @@ class TestBatchMismatch:
             assert len(empty) == 0
             result = empty.classify_all(labels=["a"])
             assert result is empty
+        finally:
+            pdf.close()
+
+    def test_empty_collection_still_validates_labels(self):
+        pdf = npdf.PDF("pdfs/01-practice.pdf")
+        try:
+            empty = pdf.pages[0].find_all('text:contains("ZZZNONEXISTENT")')
+            with pytest.raises(ValueError, match="Labels list cannot be empty"):
+                empty.classify_all(labels=[])
         finally:
             pdf.close()

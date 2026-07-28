@@ -190,7 +190,7 @@ pdfplumber reads the text layer that's in the file; if the page is a scan, there
 pip install "natural-pdf[all]"
 ```
 
-```python skip=true
+```python {.skip-execution}
 pdf = PDF("scanned-report.pdf")
 page = pdf.pages[0]
 page.apply_ocr()          # default engine: rapidocr, models ship with the package

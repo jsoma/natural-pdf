@@ -12,11 +12,11 @@ import io
 import logging
 import os
 import urllib.request
-import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 from natural_pdf.exceptions import ExportError
+from natural_pdf.utils.filesystem import atomic_output_path
 from natural_pdf.utils.optional_imports import require
 
 if TYPE_CHECKING:
@@ -37,18 +37,8 @@ def _close_all(docs) -> None:
 def _save_atomically(target_doc, output_path: Union[str, Path]) -> None:
     """Save to a temp file in the destination directory, then replace, so a
     failure never leaves a truncated file at output_path."""
-    output_path_obj = Path(str(output_path))
-    # Unique per call so concurrent writers targeting the same output_path
-    # cannot clobber each other's temp file.
-    tmp_output_path = output_path_obj.with_name(
-        f"{output_path_obj.name}.tmp-{uuid.uuid4().hex[:8]}"
-    )
-    try:
+    with atomic_output_path(output_path) as tmp_output_path:
         target_doc.save(str(tmp_output_path))
-        tmp_output_path.replace(output_path_obj)
-    except Exception:
-        tmp_output_path.unlink(missing_ok=True)
-        raise
 
 
 def _make_whiteout_stream(pikepdf, target_doc, rects) -> object:
@@ -96,13 +86,15 @@ def _open_source_pdf(page: "Page", cache: Optional[Dict[str, object]] = None):
             source_doc = pikepdf.Pdf.open(io.BytesIO(pdf_obj._original_bytes))
         elif isinstance(pdf_path, str) and pdf_path.startswith(("http://", "https://")):
             try:
-                with urllib.request.urlopen(pdf_path, timeout=60) as resp:
+                request = pdf_obj._create_url_request(pdf_path)
+                ssl_context = pdf_obj._create_ssl_context()
+                with urllib.request.urlopen(request, context=ssl_context, timeout=60) as resp:
                     data = resp.read()
-                source_doc = pikepdf.Pdf.open(io.BytesIO(data))
             except Exception as dl_err:
                 raise FileNotFoundError(
                     f"Source PDF download failed for {pdf_path}: {dl_err}"
                 ) from dl_err
+            source_doc = pikepdf.Pdf.open(io.BytesIO(data))
         else:
             raise FileNotFoundError(f"Cannot open source PDF: path={pdf_path}")
 

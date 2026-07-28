@@ -7,9 +7,13 @@ on:
       - 'docs-site/**'
       - 'scripts/docs_build.py'
       - 'scripts/docs_stage.py'
+      - 'scripts/generate_reference.py'
       - 'scripts/generate_api_reference.py'
       - 'tests/test_docs_site_output.py'
       - 'natural_pdf/**'
+      - 'pdfs/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
       - '.github/workflows/docs-fast.yml'
 
 permissions:
@@ -44,7 +48,7 @@ jobs:
 
       - name: Sync dependencies
         run: |
-          uv sync --extra all --extra notebook
+          uv sync --extra all --extra notebook --extra docs
 
       # Fast-tier pages are model-free, so this cache should stay empty;
       # it is a harmless safety net if a page pulls a model by accident.
@@ -63,9 +67,9 @@ jobs:
           path: |
             .docs-build-cache.json
             docs-executed
-          key: docs-build-fast-${{ hashFiles('docs/**/*.md', 'scripts/docs_build.py', 'uv.lock') }}
+          key: docs-executed-pr-v2-${{ hashFiles('docs/**/*.md', 'natural_pdf/**/*.py', 'scripts/docs_build.py', 'pyproject.toml', 'uv.lock', 'pdfs/**/*.pdf') }}
           restore-keys: |
-            docs-build-fast-
+            docs-executed-pr-v2-
 
       - name: Execute fast-tier docs pages
         run: |
@@ -74,7 +78,12 @@ jobs:
           for section in get-started learn concepts solve troubleshooting for-agents; do
             if [ -d "docs/$section" ]; then
               found=1
-              uv run python scripts/docs_build.py "docs/$section" --out "docs-executed/$section" --tier fast --keep-going || failed=1
+              uv run python scripts/docs_build.py "docs/$section" \
+                --out "docs-executed/$section" \
+                --colab-ref gh-pages --colab-prefix "$section" \
+                --tier fast --keep-going || failed=1
+            else
+              rm -rf "docs-executed/$section"
             fi
           done
           if [ "$found" = "0" ]; then

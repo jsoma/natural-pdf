@@ -13,7 +13,7 @@ The document is the scanned inspection report from [the OCR page](02-ocr.md). OC
 ```python
 from natural_pdf import PDF
 
-scan = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/needs-ocr.pdf")
+scan = PDF("pdfs/needs-ocr.pdf")
 spage = scan.pages[0]
 spage.apply_ocr()
 

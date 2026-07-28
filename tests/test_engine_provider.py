@@ -285,6 +285,133 @@ def test_engine_provider_checkout_cleans_transient_on_error_and_uses_close() -> 
     assert len(closed) == 1
 
 
+@pytest.mark.parametrize("mutation", ["replace", "evict", "clear"])
+def test_cached_checkout_defers_concurrent_cleanup_until_lease_exit(mutation: str) -> None:
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+    cleanups = []
+    mutation_result = []
+    mutation_errors = []
+
+    class Engine:
+        def cleanup(self):
+            cleanups.append(self)
+
+    provider.register("demo", "leased", lambda **_: Engine(), lifetime="singleton")
+
+    def mutate_provider():
+        try:
+            if mutation == "replace":
+                provider.register(
+                    "demo",
+                    "leased",
+                    lambda **_: object(),
+                    lifetime="singleton",
+                    replace=True,
+                )
+            elif mutation == "evict":
+                mutation_result.append(provider.evict("demo", "leased"))
+            else:
+                mutation_result.append(provider.clear("demo"))
+        except BaseException as exc:  # pragma: no cover - diagnostic capture
+            mutation_errors.append(exc)
+
+    with provider.checkout("demo", context=None, name="leased") as engine:
+        worker = threading.Thread(target=mutate_provider)
+        worker.start()
+        worker.join(timeout=2)
+
+        assert not worker.is_alive()
+        assert mutation_errors == []
+        assert cleanups == []
+        if mutation != "replace":
+            assert mutation_result == [1]
+        assert provider.get("demo", context=None, name="leased") is not engine
+
+    assert cleanups == [engine]
+    provider.clear()
+    assert cleanups.count(engine) == 1
+
+
+def test_cached_engine_cleanup_waits_for_final_nested_lease() -> None:
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+    cleanups = []
+
+    class Engine:
+        def cleanup(self):
+            cleanups.append(self)
+
+    provider.register("demo", "nested", lambda **_: Engine(), lifetime="singleton")
+    first_checkout = provider.checkout("demo", context=None, name="nested")
+    second_checkout = provider.checkout("demo", context=None, name="nested")
+    first = first_checkout.__enter__()
+    second = second_checkout.__enter__()
+    assert first is second
+
+    assert provider.evict("demo", "nested") == 1
+    assert cleanups == []
+    first_checkout.__exit__(None, None, None)
+    assert cleanups == []
+    second_checkout.__exit__(None, None, None)
+    assert cleanups == [first]
+
+
+def test_cached_checkout_handles_reentrant_registration_replacement() -> None:
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+    cleanups = []
+    replacement = object()
+
+    class Engine:
+        def replace_registration(self):
+            provider.register(
+                "demo",
+                "reentrant",
+                lambda **_: replacement,
+                lifetime="singleton",
+                replace=True,
+            )
+
+        def cleanup(self):
+            cleanups.append(self)
+
+    provider.register("demo", "reentrant", lambda **_: Engine(), lifetime="singleton")
+    with provider.checkout("demo", context=None, name="reentrant") as engine:
+        engine.replace_registration()
+        assert cleanups == []
+        assert provider.get("demo", context=None, name="reentrant") is replacement
+
+    assert cleanups == [engine]
+
+
+def test_checkout_cleans_context_engine_with_uncacheable_semantic_options() -> None:
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+    created = []
+    cleaned = []
+
+    class Options:
+        def _init_key(self):
+            return None
+
+    class Engine:
+        def __init__(self):
+            created.append(self)
+
+        def cleanup(self):
+            cleaned.append(self)
+
+    provider.register("demo", "uncacheable", lambda **_: Engine())
+    for _ in range(2):
+        with provider.checkout("demo", context=object(), name="uncacheable", options=Options()):
+            pass
+
+    assert len(created) == 2
+    assert cleaned == created
+    assert provider.evict("demo", "uncacheable") == 0
+
+
 def test_engine_provider_checkout_never_cleans_cached_lifetimes() -> None:
     provider = EngineProvider()
     provider._entry_points_loaded = True

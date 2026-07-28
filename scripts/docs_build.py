@@ -24,10 +24,9 @@ contain it):
     skip: true                      # skip execution; page passes through
     tier: fast                      # CI tier: fast (default) or nightly
 
-Fence attributes (jupytext cell-attribute syntax; stripped from the rendered
-fence in the executed markdown):
+Fence attributes (stripped from the rendered fence in the executed markdown):
 
-    ```python skip=true         # cell is not executed (nbclient skip tag)
+    ```python {.skip-execution} # cell is not executed (nbclient skip tag)
     ```python hide-output       # cell executes; its outputs are omitted
     ```python alt="A chart"     # alt text for images this fence produces
                                 # (2nd image gets 'A chart (2)', etc.)
@@ -73,9 +72,13 @@ into ``--out``. A build that would overwrite the authored page is an error.
 Caching
 -------
 ``.docs-build-cache.json`` at the repo root maps each (source page, output
-destination) pair to the sha256 of the page's markdown plus the installed
-natural-pdf version; when both match and all recorded outputs still exist
-the page is skipped. ``--force`` bypasses the cache.
+destination) pair to the sha256 of the page's markdown plus a build-context
+fingerprint (local natural-pdf sources, dependency inputs, kernel, working
+directory, Colab URL options, and referenced checked-out PDF fixtures).
+Arbitrary URLs are outside the reproducibility boundary; executable examples
+use literal local ``pdfs/...`` paths when reproducible input is required. When
+the cache inputs match and all recorded outputs still exist, the page is
+skipped. ``--force`` bypasses the cache.
 
 Usage
 -----
@@ -109,6 +112,7 @@ import shutil
 import sys
 import time
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -121,6 +125,7 @@ from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CACHE_FILE = REPO_ROOT / ".docs-build-cache.json"
+CACHE_SCHEMA_VERSION = 2
 DEFAULT_TIMEOUT = 600
 THUMB_MAX_WIDTH = 480
 COLAB_REPO = "jsoma/natural-pdf"
@@ -146,6 +151,8 @@ HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 ALT_ATTR_RE = re.compile(r'(?:^|\s)alt="([^"]*)"')
 HIDE_OUTPUT_ATTR_RE = re.compile(r"(?:^|\s)hide-output(?:=true)?(?=\s|$)")
 HIDE_OUTPUT_TAG = "hide-output"
+SKIP_EXECUTION_TAG = "skip-execution"
+SKIP_EXECUTION_ATTR_RE = re.compile(r"(?:^|[\s{.])skip-execution(?=[\s}]|$)")
 
 
 class DocsBuildError(Exception):
@@ -160,18 +167,30 @@ class DocsBuildError(Exception):
 def parse_frontmatter(text: str) -> Tuple[Dict[str, Any], str]:
     """Split optional YAML frontmatter off the top of a markdown page.
 
-    Returns (metadata dict, body). Missing/invalid frontmatter yields ({}, text).
+    Returns ``(metadata, body)``. Missing frontmatter yields ``({}, text)``;
+    malformed frontmatter raises so execution controls such as ``skip`` and
+    ``tier`` cannot silently turn into visible markdown and be ignored by CI.
     """
-    match = re.match(r"\A---[ \t]*\n(.*?)\n---[ \t]*\n", text, flags=re.DOTALL)
-    if not match:
+    lines = text.splitlines(keepends=True)
+    if not lines or re.fullmatch(r"---[ \t]*(?:\r?\n)?", lines[0]) is None:
         return {}, text
+
+    closing_index: Optional[int] = None
+    for index, line in enumerate(lines[1:], start=1):
+        if re.fullmatch(r"---[ \t]*(?:\r?\n)?", line):
+            closing_index = index
+            break
+    if closing_index is None:
+        raise DocsBuildError("Unclosed YAML frontmatter (missing closing '---')")
+
+    yaml_text = "".join(lines[1:closing_index])
     try:
-        meta = yaml.safe_load(match.group(1)) or {}
-    except yaml.YAMLError:
-        return {}, text
+        meta = yaml.safe_load(yaml_text) or {}
+    except yaml.YAMLError as exc:
+        raise DocsBuildError(f"Invalid YAML frontmatter: {exc}") from exc
     if not isinstance(meta, dict):
-        return {}, text
-    return meta, text[match.end() :]
+        raise DocsBuildError("YAML frontmatter must be a mapping of keys to values")
+    return meta, "".join(lines[closing_index + 1 :])
 
 
 # ---------------------------------------------------------------------------
@@ -187,7 +206,7 @@ class MarkdownNode:
 @dataclass
 class CodeNode:
     code: str
-    info: str  # full fence info string, e.g. 'python' or 'python skip=true'
+    info: str  # full fence info string, e.g. 'python' or 'python {.skip-execution}'
     index: int  # 0-based ordinal among python fences, document order
 
 
@@ -363,17 +382,18 @@ def nodes_to_notebook_markdown(nodes: List[Node]) -> str:
 def normalize_notebook_metadata(notebook: Any) -> None:
     """Promote docs fence attributes to cell tags.
 
-    ``skip=true`` becomes nbclient's ``skip-execution`` tag. ``hide-output`` (bare
-    or ``=true`` — jupytext parses the bare form into
+    MkDocs-compatible ``{.skip-execution}`` (and the legacy ``skip=true``)
+    becomes nbclient's ``skip-execution`` tag. ``hide-output`` (bare or
+    ``=true`` — jupytext parses the bare form into
     ``incorrectly_encoded_metadata``) becomes the ``hide-output`` tag, which
     the output harvester honors by dropping the cell's outputs.
     """
     for cell in notebook.cells:
         metadata = cell.setdefault("metadata", {})
-        if metadata.get("skip"):
+        if _metadata_requests_skip(metadata):
             tags = metadata.setdefault("tags", [])
-            if "skip-execution" not in tags:
-                tags.append("skip-execution")
+            if SKIP_EXECUTION_TAG not in tags:
+                tags.append(SKIP_EXECUTION_TAG)
         hide = bool(metadata.get("hide-output") or metadata.get("hide_output"))
         if not hide:
             stray = metadata.get("incorrectly_encoded_metadata")
@@ -383,6 +403,15 @@ def normalize_notebook_metadata(notebook: Any) -> None:
             tags = metadata.setdefault("tags", [])
             if HIDE_OUTPUT_TAG not in tags:
                 tags.append(HIDE_OUTPUT_TAG)
+
+
+def _metadata_requests_skip(metadata: Dict[str, Any]) -> bool:
+    if metadata.get("skip"):
+        return True
+    if SKIP_EXECUTION_TAG in metadata.get("tags", []):
+        return True
+    stray = metadata.get("incorrectly_encoded_metadata")
+    return isinstance(stray, str) and SKIP_EXECUTION_ATTR_RE.search(stray) is not None
 
 
 def cell_hides_output(cell: Any) -> bool:
@@ -749,21 +778,22 @@ def rewrite_fixture_paths_for_colab(source: str) -> str:
 
 
 def apply_skip_execution_tags(notebook: Any) -> None:
-    """Convert ``skip=true`` fence metadata into Jupyter's ``skip-execution``
-    cell tag in the EXPORTED notebook, so "Run All" (in frontends/executors
-    that honor the tag, e.g. nbclient) does not run cells the docs build never
-    executed. When the cell does not already open with a comment, a one-line
-    note is prepended so readers see why the cell is inert; cells that start
-    with their own comment just get the tag."""
+    """Convert docs skip metadata into Jupyter's ``skip-execution`` cell tag.
+
+    This recognizes both the MkDocs-compatible ``{.skip-execution}`` syntax
+    and the legacy jupytext ``skip=true`` syntax. When the cell does not
+    already open with a comment, a one-line note is prepended so readers see
+    why the cell is inert.
+    """
     for cell in notebook.cells:
         if cell.cell_type != "code":
             continue
         metadata = cell.get("metadata", {})
-        if not metadata.get("skip"):
+        if not _metadata_requests_skip(metadata):
             continue
         tags = metadata.setdefault("tags", [])
-        if "skip-execution" not in tags:
-            tags.append("skip-execution")
+        if SKIP_EXECUTION_TAG not in tags:
+            tags.append(SKIP_EXECUTION_TAG)
         metadata.pop("skip", None)
         first_line = cell.source.lstrip().splitlines()[:1]
         if not (first_line and first_line[0].startswith("#")):
@@ -782,7 +812,7 @@ def build_notebook_artifact(
 
     Code cells get committed-fixture paths rewritten to raw GitHub URLs
     (.ipynb artifact only — the executed markdown keeps local paths), and
-    ``skip=true`` fences become ``skip-execution``-tagged cells. The badge
+    skipped fences become ``skip-execution``-tagged cells. The badge
     URL is composed by :func:`colab_url` (see its docstring for the deployed
     layout assumption behind the defaults)."""
     nb_md = nodes_to_notebook_markdown(nodes)
@@ -845,6 +875,59 @@ def natural_pdf_version() -> str:
         return "unknown"
 
 
+@lru_cache(maxsize=1)
+def execution_fingerprint() -> str:
+    """Hash every local input that can affect executed-page output.
+
+    setuptools-scm commonly reports the same fallback version in depth-one CI
+    checkouts. Hashing the runtime sources directly keeps the page cache honest
+    on code-only commits without relying on Git history being available.
+    """
+    inputs = [REPO_ROOT / "scripts" / "docs_build.py", REPO_ROOT / "pyproject.toml"]
+    lockfile = REPO_ROOT / "uv.lock"
+    if lockfile.exists():
+        inputs.append(lockfile)
+    inputs.extend(sorted((REPO_ROOT / "natural_pdf").rglob("*.py")))
+
+    digest = hashlib.sha256()
+    for path in inputs:
+        if not path.is_file():
+            continue
+        digest.update(_path_token(path).encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def referenced_fixture_fingerprint(text: str) -> str:
+    """Hash checked-out ``pdfs/...`` files referenced by one page.
+
+    Keeping this page-specific avoids reading the repository's large archive
+    of unrelated PDFs on every docs build while still invalidating output when
+    an example's actual local input changes. Missing or escaping paths are
+    hashed as markers too, so creating/fixing the fixture invalidates the
+    previous entry.
+    """
+    fixture_root = (REPO_ROOT / "pdfs").resolve()
+    digest = hashlib.sha256()
+    names = sorted({match.group(2) for match in FIXTURE_PATH_RE.finditer(text)})
+    for name in names:
+        digest.update(name.encode("utf-8"))
+        digest.update(b"\0")
+        path = (fixture_root / name).resolve()
+        if path != fixture_root and fixture_root not in path.parents:
+            digest.update(b"<outside-fixture-root>")
+        elif not path.is_file():
+            digest.update(b"<missing>")
+        else:
+            with path.open("rb") as fixture:
+                for chunk in iter(lambda: fixture.read(1024 * 1024), b""):
+                    digest.update(chunk)
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
 def load_cache(cache_file: Path) -> Dict[str, Any]:
     if cache_file.exists():
         try:
@@ -874,17 +957,116 @@ def _cache_key(src: Path, page_out_dir: Path) -> str:
     return f"{_path_token(src)} -> {_path_token(page_out_dir)}"
 
 
-def cache_entry_valid(entry: Optional[Dict[str, Any]], source_hash: str) -> bool:
+def _build_context(
+    *,
+    colab_ref: str,
+    colab_prefix: str,
+    kernel_name: str,
+    workdir: Path,
+    fixture_fingerprint: str,
+) -> Dict[str, Any]:
+    return {
+        "schema": CACHE_SCHEMA_VERSION,
+        "execution_fingerprint": execution_fingerprint(),
+        "colab_ref": colab_ref,
+        "colab_prefix": colab_prefix,
+        "kernel_name": kernel_name,
+        "workdir": _path_token(workdir),
+        "fixture_fingerprint": fixture_fingerprint,
+    }
+
+
+def _stored_path(value: str) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else REPO_ROOT / path
+
+
+def cache_entry_valid(
+    entry: Optional[Dict[str, Any]], source_hash: str, build_context: Dict[str, Any]
+) -> bool:
     if not entry:
         return False
     if entry.get("hash") != source_hash:
         return False
     if entry.get("natural_pdf_version") != natural_pdf_version():
         return False
-    outputs = entry.get("outputs", [])
-    if not outputs:
+    if entry.get("build_context") != build_context:
         return False
-    return all(Path(p).exists() for p in outputs)
+    outputs = entry.get("outputs", [])
+    if not outputs or not all(isinstance(path, str) for path in outputs):
+        return False
+    return all(_stored_path(path).is_file() for path in outputs)
+
+
+def _remove_generated_path(path: Path) -> bool:
+    """Remove one pipeline-owned path without following directory symlinks."""
+    if path.is_symlink() or path.is_file():
+        path.unlink(missing_ok=True)
+        return True
+    if path.is_dir():
+        shutil.rmtree(path)
+        return True
+    return False
+
+
+def _source_artifact_id(src: Path, source_root: Path) -> Tuple[Path, str]:
+    rel = src.resolve().relative_to(source_root.resolve())
+    return rel.parent, rel.stem
+
+
+def prune_stale_cache_entries(
+    cache_file: Path, out_dir: Path, source_root: Path, sources: List[Path]
+) -> List[Path]:
+    """Remove recorded outputs for deleted or tier-excluded cached pages.
+
+    The v2 cache entry is the output manifest. No directory shape is inferred:
+    only files named by stale entries are removed, followed by empty generated
+    directories within ``out_dir``.
+    """
+    cache = load_cache(cache_file)
+    if not cache:
+        return []
+    expected = set()
+    for src in sources:
+        rel_parent, _ = _source_artifact_id(src, source_root)
+        expected.add(_cache_key(src, Path(out_dir) / rel_parent))
+
+    out_resolved = Path(out_dir).resolve()
+    removed: List[Path] = []
+    changed = False
+    for key in list(cache):
+        try:
+            destination_token = key.rsplit(" -> ", 1)[1]
+        except (AttributeError, IndexError):
+            continue
+        destination = _stored_path(destination_token).resolve()
+        in_scope = destination == out_resolved or out_resolved in destination.parents
+        if in_scope and key not in expected:
+            entry = cache.get(key)
+            outputs = entry.get("outputs", []) if isinstance(entry, dict) else []
+            for output in outputs:
+                if not isinstance(output, str):
+                    continue
+                path = _stored_path(output)
+                resolved = path.resolve()
+                if resolved != out_resolved and out_resolved not in resolved.parents:
+                    continue
+                if path.is_symlink() or path.is_file():
+                    path.unlink(missing_ok=True)
+                    removed.append(path)
+            del cache[key]
+            changed = True
+    if changed:
+        save_cache(cache_file, cache)
+
+    if Path(out_dir).is_dir():
+        directories = [
+            path for path in Path(out_dir).rglob("*") if path.is_dir() and not path.is_symlink()
+        ]
+        for directory in sorted(directories, key=lambda path: len(path.parts), reverse=True):
+            if not any(directory.iterdir()):
+                directory.rmdir()
+    return removed
 
 
 # ---------------------------------------------------------------------------
@@ -948,10 +1130,17 @@ def build_page(
 
     text = src.read_text(encoding="utf-8")
     source_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    build_context = _build_context(
+        colab_ref=colab_ref,
+        colab_prefix=colab_prefix,
+        kernel_name=kernel_name,
+        workdir=workdir,
+        fixture_fingerprint=referenced_fixture_fingerprint(text),
+    )
 
     cache = load_cache(cache_file)
     key = _cache_key(src, page_out_dir)
-    if execute and not force and cache_entry_valid(cache.get(key), source_hash):
+    if execute and not force and cache_entry_valid(cache.get(key), source_hash, build_context):
         entry = cache[key]
         return PageResult(
             src=src,
@@ -982,8 +1171,7 @@ def build_page(
         code_cells = [c for c in executed.cells if c.cell_type == "code"]
         default_alts = compute_default_alts(nodes)
         # Rebuild the page's assets dir from scratch so stale images vanish.
-        if assets_dir.exists():
-            shutil.rmtree(assets_dir)
+        _remove_generated_path(assets_dir)
         for node, cell in zip(iter_code_nodes(nodes), code_cells):
             if cell_hides_output(cell):
                 # hide-output: the fence ran, but nothing is injected.
@@ -994,6 +1182,13 @@ def build_page(
             )
             outputs_by_index[node.index] = rendered
             all_images.extend(rendered.images)
+    else:
+        # A page changed to skip/no-execute: its markdown and notebook still
+        # get refreshed, but prior executed images must not survive an overlay.
+        _remove_generated_path(assets_dir)
+
+    # Recreate a thumbnail only when this build asks for one successfully.
+    _remove_generated_path(thumb_out)
 
     # 1. Executed markdown
     page_out_dir.mkdir(parents=True, exist_ok=True)
@@ -1028,11 +1223,6 @@ def build_page(
             )
         write_thumbnail(assets_dir / all_images[thumbnail_n - 1], thumb_out)
         produced.append(thumb_out)
-    elif thumbnail_n is None and thumb_out.exists():
-        # The page no longer declares a thumbnail: drop the stale artifact a
-        # previous build left behind (creation-only handling would leak it).
-        thumb_out.unlink()
-
     status = "built" if should_execute else "skipped"
 
     if should_execute:
@@ -1040,8 +1230,12 @@ def build_page(
         cache[key] = {
             "hash": source_hash,
             "natural_pdf_version": natural_pdf_version(),
+            "build_context": build_context,
             "outputs": [str(p) for p in produced],
         }
+        save_cache(cache_file, cache)
+    elif key in cache:
+        del cache[key]
         save_cache(cache_file, cache)
 
     return PageResult(src=src, status=status, elapsed=time.monotonic() - start, outputs=produced)
@@ -1163,9 +1357,6 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Belt-and-braces for equal/edge roots: never discover our own output.
     sources = collect_sources(args.source, exclude_dir=args.out)
-    if not sources:
-        print(f"No markdown files found under {args.source}")
-        return 0
 
     if args.tier:
         try:
@@ -1177,7 +1368,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"[tier   ] {src} (not tier={args.tier})")
         if not sources:
             print(f"No pages with tier={args.tier!r} under {args.source}")
-            return 0
+
+    if args.source.is_dir():
+        removed = prune_stale_cache_entries(args.cache_file, args.out, args.source, sources)
+        if removed:
+            print(f"[pruned ] {len(removed)} stale generated artifact(s) under {args.out}")
+
+    if not sources:
+        print(f"No markdown files selected under {args.source}")
+        return 0
 
     # Directory builds mirror the source tree under --out (see build_page).
     source_root = args.source if args.source.is_dir() else None

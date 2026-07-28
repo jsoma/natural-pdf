@@ -64,7 +64,7 @@ The pattern to internalize: **selectors and geometry are free; the first OCR/lay
 - `standard` / `projection` (same engine, two names): rotates a candidate sweep and scores horizontal-projection sharpness.
 - `hough`: Canny edge detection plus a Hough line transform — sturdier when the page is mostly ruled lines or boxes rather than dense text. Tunable via `sigma`, `num_peaks`, `max_skew_deg`, `min_deviation_deg`.
 
-```python skip=true
+```python {.skip-execution}
 angle = page.detect_skew_angle(engine="hough")   # degrees of correction, 0.0 = straight
 straightened = page.deskew(engine="hough")        # returns a PIL Image
 ```
@@ -77,7 +77,7 @@ straightened = page.deskew(engine="hough")        # returns a PIL Image
 
 VLM-backed features can run two ways: **locally** (weights on your machine, pages never leave it) or **remotely** (page images sent to an OpenAI-compatible API). Which one you get follows one rule, implemented identically in OCR dispatch (`natural_pdf/ocr/unified_dispatch.py`) and extraction (`natural_pdf/services/extraction_service.py`):
 
-```python skip=true
+```python {.skip-execution}
 import natural_pdf
 from openai import OpenAI
 

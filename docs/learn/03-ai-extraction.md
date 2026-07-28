@@ -11,7 +11,7 @@ So far you've *pointed* at things: selectors, spatial navigation, regions. This 
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/01-practice.pdf")
+pdf = PDF("pdfs/01-practice.pdf")
 page = pdf.pages[0]
 page.show()
 ```
@@ -57,7 +57,7 @@ When you need counting, synthesis, or judgment, you need a language model.
 
 `page.extract()` takes a list of field names and an OpenAI-compatible client — OpenAI, Google's compatibility endpoint, OpenRouter, a local server, anything with the same API shape. The page's text is sent to the model; you get back one value per field.
 
-```python skip=true
+```python {.skip-execution}
 from openai import OpenAI
 
 client = OpenAI(api_key=API_KEY)   # any OpenAI-compatible API
@@ -82,7 +82,7 @@ Two things worth noticing. "full name of state" came back `'Illinois'` even thou
 
 Ask the model to show its work. `citations=True` maps each value back to the elements on the page that support it; `confidence=True` asks the model to score each field:
 
-```python skip=true
+```python {.skip-execution}
 results = page.extract(
     fields,
     client=client,
@@ -110,7 +110,7 @@ Treat these two features very differently. **Citations are the good one**: `resu
 
 For anything you'll run across many documents, replace the string list with a Pydantic model: typed fields, descriptions that act as per-field instructions, and validation on the way out.
 
-```python skip=true
+```python {.skip-execution}
 from pydantic import BaseModel, Field
 
 class ReportInfo(BaseModel):
@@ -138,7 +138,7 @@ ReportInfo(inspection_id='INS-UP70N51NCL41R', site="Durham's Meatpacking",
 
 Now the trap. Ask the LLM to extract the violations *table*, including the Repeat? checkboxes:
 
-```python skip=true
+```python {.skip-execution}
 from typing import List, Literal
 
 class ViolationRow(BaseModel):
@@ -183,7 +183,7 @@ Zero-shot classification: no training, any labels you can name. The score is the
 Classification earns its keep on *messy* documents. Here's a 17-page CIA release investigating whether pigeons could be used for aerial photography — typed memos, cost tables, and flowcharts all stapled together:
 
 ```python
-cia = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/cia-doc.pdf")
+cia = PDF("pdfs/cia-doc.pdf")
 cia.pages.show(columns=6, resolution=40)
 ```
 

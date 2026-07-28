@@ -15,6 +15,7 @@ from .pipelines import (
     cleanup_models,
     infer_using,
     is_classification_available,
+    validate_classification_labels,
 )
 from .results import ClassificationResult
 
@@ -31,4 +32,5 @@ __all__ = [
     "register_classification_engines",
     "run_classification_item",
     "run_classification_batch",
+    "validate_classification_labels",
 ]

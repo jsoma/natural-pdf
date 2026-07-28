@@ -53,6 +53,34 @@ def test_parse_frontmatter_ignores_mid_document_rules(docs_build):
     assert body == text
 
 
+def test_parse_frontmatter_rejects_invalid_yaml(docs_build):
+    text = "---\nskip: [unterminated\n---\n# Title\n"
+    with pytest.raises(docs_build.DocsBuildError, match="Invalid YAML frontmatter"):
+        docs_build.parse_frontmatter(text)
+
+
+def test_parse_frontmatter_rejects_non_mapping(docs_build):
+    with pytest.raises(docs_build.DocsBuildError, match="must be a mapping"):
+        docs_build.parse_frontmatter("---\n- skip\n- true\n---\n# Title\n")
+
+
+def test_parse_frontmatter_accepts_closing_delimiter_at_eof(docs_build):
+    meta, body = docs_build.parse_frontmatter("---\ntier: nightly\n---")
+    assert meta == {"tier": "nightly"}
+    assert body == ""
+
+
+def test_parse_frontmatter_rejects_missing_closing_delimiter(docs_build):
+    with pytest.raises(docs_build.DocsBuildError, match="Unclosed YAML frontmatter"):
+        docs_build.parse_frontmatter("---\nskip: true\n# no closing delimiter\n")
+
+
+def test_parse_frontmatter_preserves_crlf_body(docs_build):
+    meta, body = docs_build.parse_frontmatter("---\r\ntier: fast\r\n---\r\n# Title\r\n")
+    assert meta == {"tier": "fast"}
+    assert body == "# Title\r\n"
+
+
 # ---------------------------------------------------------------------------
 # Document model / tabs
 # ---------------------------------------------------------------------------
@@ -282,6 +310,67 @@ def test_cache_invalidated_by_source_change(docs_build, tmp_path, monkeypatch):
     (out_dir / "page.md").unlink()
     assert docs_build.build_page(src, out_dir, cache_file=cache_file).status == "built"
     assert len(calls) == 3
+
+
+def test_cache_invalidated_by_runtime_or_colab_context(docs_build, tmp_path, monkeypatch):
+    src = tmp_path / "page.md"
+    src.write_text("# P\n\n```python\nx = 1\n```\n", encoding="utf-8")
+    out_dir = tmp_path / "out"
+    cache_file = tmp_path / "cache.json"
+    calls = []
+    _install_fake_execute(docs_build, monkeypatch, calls=calls)
+    fingerprint = ["runtime-a"]
+    monkeypatch.setattr(docs_build, "execution_fingerprint", lambda: fingerprint[0])
+
+    assert docs_build.build_page(src, out_dir, cache_file=cache_file).status == "built"
+    assert docs_build.build_page(src, out_dir, cache_file=cache_file).status == "cached"
+
+    fingerprint[0] = "runtime-b"
+    assert docs_build.build_page(src, out_dir, cache_file=cache_file).status == "built"
+    assert (
+        docs_build.build_page(src, out_dir, cache_file=cache_file, colab_prefix="learn").status
+        == "built"
+    )
+    assert len(calls) == 3
+
+
+def test_referenced_fixture_fingerprint_tracks_only_page_inputs(docs_build, tmp_path, monkeypatch):
+    monkeypatch.setattr(docs_build, "REPO_ROOT", tmp_path)
+    fixtures = tmp_path / "pdfs"
+    fixtures.mkdir()
+    referenced = fixtures / "used.pdf"
+    referenced.write_bytes(b"version one")
+    unrelated = fixtures / "unrelated.pdf"
+    unrelated.write_bytes(b"unrelated one")
+    page = '# P\n\npdf = PDF("pdfs/used.pdf")\n'
+
+    first = docs_build.referenced_fixture_fingerprint(page)
+    unrelated.write_bytes(b"unrelated two")
+    assert docs_build.referenced_fixture_fingerprint(page) == first
+
+    referenced.write_bytes(b"version two")
+    assert docs_build.referenced_fixture_fingerprint(page) != first
+
+
+def test_cache_invalidated_by_referenced_fixture_change(docs_build, tmp_path, monkeypatch):
+    src = tmp_path / "page.md"
+    src.write_text('# P\n\n```python\nPDF("pdfs/example.pdf")\n```\n', encoding="utf-8")
+    out_dir = tmp_path / "out"
+    cache_file = tmp_path / "cache.json"
+    calls = []
+    _install_fake_execute(docs_build, monkeypatch, calls=calls)
+    fixture_fingerprint = ["fixture-a"]
+    monkeypatch.setattr(
+        docs_build,
+        "referenced_fixture_fingerprint",
+        lambda text: fixture_fingerprint[0],
+    )
+
+    assert docs_build.build_page(src, out_dir, cache_file=cache_file).status == "built"
+    assert docs_build.build_page(src, out_dir, cache_file=cache_file).status == "cached"
+    fixture_fingerprint[0] = "fixture-b"
+    assert docs_build.build_page(src, out_dir, cache_file=cache_file).status == "built"
+    assert len(calls) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -676,16 +765,80 @@ def test_stale_thumbnail_deleted_when_frontmatter_dropped(docs_build, tmp_path, 
     assert thumb not in result.outputs
 
 
+def test_skip_page_removes_all_prior_execution_artifacts(docs_build, tmp_path, monkeypatch):
+    _install_fake_execute(
+        docs_build, monkeypatch, outputs_for_cell=lambda i: [_png_output((7, 7, 7))]
+    )
+    src = tmp_path / "page.md"
+    out = tmp_path / "out"
+    cache_file = tmp_path / "c.json"
+    src.write_text("---\nthumbnail: 1\n---\n# P\n\n```python\nimg\n```\n", encoding="utf-8")
+    docs_build.build_page(src, out, cache_file=cache_file)
+    assert (out / "assets" / "page").exists()
+    assert (out / "assets" / "page-thumb.png").exists()
+
+    src.write_text("---\nskip: true\n---\n# P\n\n```python\nimg\n```\n", encoding="utf-8")
+    result = docs_build.build_page(src, out, cache_file=cache_file)
+    assert result.status == "skipped"
+    assert not (out / "assets" / "page").exists()
+    assert not (out / "assets" / "page-thumb.png").exists()
+    assert docs_build._cache_key(src, out) not in docs_build.load_cache(cache_file)
+
+
+def test_stale_cache_manifest_prunes_deleted_page_outputs(docs_build, tmp_path):
+    source_root = tmp_path / "docs"
+    out = tmp_path / "generated"
+    cache_file = tmp_path / "cache.json"
+    source_root.mkdir()
+    keep = source_root / "keep.md"
+    keep.write_text("# Keep\n", encoding="utf-8")
+    deleted = source_root / "deleted.md"
+
+    outputs = {}
+    for page in ("keep", "deleted"):
+        (out / f"{page}.md").parent.mkdir(parents=True, exist_ok=True)
+        (out / f"{page}.md").write_text("generated", encoding="utf-8")
+        (out / "notebooks").mkdir(exist_ok=True)
+        (out / "notebooks" / f"{page}.ipynb").write_text("{}", encoding="utf-8")
+        (out / "assets" / page).mkdir(parents=True, exist_ok=True)
+        (out / "assets" / page / "image.png").write_bytes(b"png")
+        (out / "assets" / f"{page}-thumb.png").write_bytes(b"thumb")
+        outputs[page] = [
+            out / f"{page}.md",
+            out / "notebooks" / f"{page}.ipynb",
+            out / "assets" / page / "image.png",
+            out / "assets" / f"{page}-thumb.png",
+        ]
+
+    unrelated = out / "unrecorded.txt"
+    unrelated.write_text("keep me", encoding="utf-8")
+    cache = {
+        docs_build._cache_key(keep, out): {"outputs": [str(path) for path in outputs["keep"]]},
+        docs_build._cache_key(deleted, out): {
+            "outputs": [str(path) for path in outputs["deleted"]]
+        },
+    }
+    docs_build.save_cache(cache_file, cache)
+
+    removed = docs_build.prune_stale_cache_entries(cache_file, out, source_root, [keep])
+    assert removed
+    assert all(path.exists() for path in outputs["keep"])
+    assert all(not path.exists() for path in outputs["deleted"])
+    assert unrelated.exists()
+    assert not (out / "assets" / "deleted").exists()
+    assert set(docs_build.load_cache(cache_file)) == {docs_build._cache_key(keep, out)}
+
+
 # ---------------------------------------------------------------------------
-# skip=true fences in the exported notebook
+# Skipped fences in the exported notebook
 # ---------------------------------------------------------------------------
 
 
 def test_skip_fence_tagged_skip_execution_in_notebook(docs_build, tmp_path):
     body = (
         "# T\n\n"
-        "```python skip=true\nclient = make_client()\n```\n\n"
-        "```python skip=true\n# my own explanation\nx = 1\n```\n\n"
+        "```python {.skip-execution}\nclient = make_client()\n```\n\n"
+        "```python {.skip-execution}\n# my own explanation\nx = 1\n```\n\n"
         "```python\ny = 2\n```\n"
     )
     nodes = docs_build.parse_document(body)

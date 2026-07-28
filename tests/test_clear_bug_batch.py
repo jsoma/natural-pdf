@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -211,7 +212,8 @@ def test_classic_dispatch_preserves_language_order_in_cache_and_engine(monkeypat
             return []
 
     class SpyCache:
-        def get_or_create(
+        @contextmanager
+        def checkout(
             self,
             *,
             engine_name,
@@ -220,10 +222,12 @@ def test_classic_dispatch_preserves_language_order_in_cache_and_engine(monkeypat
             init_key,
             factory,
             provider_identity=None,
+            registration_identity=None,
+            registration_is_current=None,
         ):
             seen["cache_key"] = languages
             seen["provider_identity"] = provider_identity
-            return factory()
+            yield factory()
 
     monkeypatch.setattr("natural_pdf.ocr.unified_dispatch._engine_cache", SpyCache())
 

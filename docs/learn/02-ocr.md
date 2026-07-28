@@ -15,7 +15,7 @@ Open it and look. Nothing seems wrong:
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/needs-ocr.pdf")
+pdf = PDF("pdfs/needs-ocr.pdf")
 page = pdf.pages[0]
 page.show()
 ```
@@ -98,7 +98,7 @@ The comparison gets more useful the more different the engines are. Other engine
 RapidOCR is the only engine whose models ship in the wheel. The first call to each of the others downloads weights: EasyOCR (`pip install easyocr`, ~100 MB), Doctr (`pip install python-doctr`, ~100 MB), Surya (`pip install surya-ocr`, ~1 GB). See [the install matrix](../get-started/index.md) for the full list.
 :::
 
-```python skip=true
+```python {.skip-execution}
 comparison = page.compare_ocr(engines=["rapidocr", "easyocr", "doctr"])
 comparison.summary()
 comparison.apply(engine="doctr")   # persist the winner's elements to the page
@@ -131,7 +131,7 @@ Better — the doubled period is gone — but it now reads "III." with capital i
 `detect_only=True` runs just the detection half of OCR: it finds where the text is and creates elements with boxes but no strings.
 
 ```python
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/needs-ocr.pdf")
+pdf = PDF("pdfs/needs-ocr.pdf")
 page = pdf.pages[0]
 page.apply_ocr(detect_only=True)
 page.find_all('text').show()
@@ -139,7 +139,7 @@ page.find_all('text').show()
 
 46 located, unread boxes. Why would you want that? Because now you can hand each crop to a stronger reader — a remote vision model — one small image at a time. Sending cropped boxes instead of the whole page keeps the model on task and gives every string a real bounding box, which whole-page LLM transcription can't do:
 
-```python skip=true
+```python {.skip-execution}
 from openai import OpenAI
 
 client = OpenAI(api_key=API_KEY)   # any OpenAI-compatible API
@@ -169,7 +169,7 @@ There are also local vision-language OCR models — no API key, but a real downl
 `engine="glm_ocr"` downloads `zai-org/GLM-OCR` (~2 GB; Apple Silicon gets the smaller 4-bit `mlx-community/GLM-OCR-4bit`) into your Hugging Face cache on the first call. After that it's reused. It is also much slower than RapidOCR — minutes per page on CPU.
 :::
 
-```python skip=true
+```python {.skip-execution}
 page.apply_ocr(engine="glm_ocr")
 print(page.extract_text())
 ```

@@ -89,7 +89,7 @@ This page lists the built-in engines only. Third-party plugins registered throug
 
 ## OCR dispatch registry
 
-The unified OCR registry behind `page.apply_ocr(engine=...)`. VLM entries resolve to a local vision-language model family instead of a classic engine.
+The unified OCR registry behind `page.apply_ocr(engine=...)`. Named VLM-family entries resolve to local vision-language models instead of classic OCR engines; the generic `vlm` entry can use either a local model or a configured remote client.
 
 | Engine | Type | Requires | Notes |
 | --- | --- | --- | --- |

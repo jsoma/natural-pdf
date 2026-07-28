@@ -98,7 +98,7 @@ g.extract_table().to_df().iloc[:3, :6]
 
 Some listings aren't line-per-row: each record wraps across several lines, but one column is dependable — every record starts with a name, a date, a case number. Anchor rows on that column and let the header logic handle columns:
 
-```python skip=true
+```python {.skip-execution}
 result = page.extract_table_guided(
     headers=["OFFICER", "DATE OF REPORT", "PRECINCT"],   # or an ElementCollection
     row_anchors='text[x0<40]',       # one match per record: the left key column
@@ -112,7 +112,7 @@ result.to_df()
 
 A scanned table has no text elements, so every rung above sees an empty page. OCR is not a table strategy — it's the step that creates the elements the ladder needs:
 
-```python skip=true
+```python {.skip-execution}
 page.apply_ocr(engine="rapidocr")        # downloads/loads an OCR model on first use
 page.extract_table().to_df()             # now re-enter the ladder at rung 1
 ```

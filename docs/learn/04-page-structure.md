@@ -15,7 +15,7 @@ Here's a three-column page:
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/multicolumn.pdf")
+pdf = PDF("pdfs/multicolumn.pdf")
 page = pdf.pages[0]
 page.show()
 ```
@@ -109,7 +109,7 @@ tables[1].extract_table().to_df().head()
 Columns are the manual case. Page breaks are so common that spatial navigation handles them directly with `multipage=True` — no Flow required. Here's a school district's library weeding log (the next page dissects it fully; right now it makes one point). The June 6 batch says it removed 130 copies, and its entries run on for several pages:
 
 ```python
-books = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf")
+books = PDF("pdfs/Atlanta_Public_Schools_GA_sample.pdf")
 first = books.pages[0]
 first.find('text:contains("6/6/2023")').extract_text()
 ```
@@ -139,7 +139,7 @@ batch.show(resolution=30)
 One more structural tool, for whole documents instead of single pages. A FOIL response from Niagara Falls: 4 pages of request paperwork, then 43 pages of police-call logs sorted newest-first. `pages.groupby()` files each page into a bucket based on what a selector (or any function) finds on it:
 
 ```python
-log = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/24480polcompleted.pdf")
+log = PDF("pdfs/24480polcompleted.pdf")
 
 def year_of(page):
     incident = page.find('text:starts-with("NF-")')   # e.g. NF-00045065-24
@@ -160,7 +160,7 @@ Everything above required *you* to know the structure. Layout models claim to fi
 :::
 
 ```python
-scan = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/needs-ocr.pdf")
+scan = PDF("pdfs/needs-ocr.pdf")
 spage = scan.pages[0]
 spage.analyze_layout('yolo')
 spage.find_all('region').show(group_by='type')
