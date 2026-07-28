@@ -814,3 +814,36 @@ def test_starlight_asides_do_not_break_jupytext_parsing(docs_build):
     # the exact failure mode of the unpinned "md" format:
     sniffed = jupytext.reads(page, fmt="md")
     assert sum(1 for c in sniffed.cells if c.cell_type == "code") == 0
+
+
+def test_hidden_silencer_mutes_noisy_loggers_and_leaves_no_trace(docs_build, tmp_path):
+    """The executor injects a hidden logging-silencer cell before execution
+    and strips it afterwards: noisy-library INFO logging (RapidOCR-style)
+    must not reach harvested outputs, and the returned notebook must contain
+    exactly the page's own cells."""
+    # Mimic what RapidOCR actually does: attach its own StreamHandler and
+    # reset its own level at import/init time — AFTER the silencer cell ran.
+    # The silencer's filter on the emitting logger must still block it.
+    body = (
+        "# T\n"
+        "\n"
+        "```python\n"
+        "import logging, sys\n"
+        'noisy = logging.getLogger("RapidOCR")\n'
+        "noisy.setLevel(logging.INFO)\n"
+        "noisy.addHandler(logging.StreamHandler(sys.stdout))\n"
+        'noisy.info("model chatter")\n'
+        'print("real output")\n'
+        "```\n"
+    )
+    nodes = docs_build.parse_document(body)
+    nb = docs_build.execute_page_notebook(nodes, workdir=tmp_path, timeout=120)
+    code_cells = [c for c in nb.cells if c.cell_type == "code"]
+    assert len(code_cells) == 1
+    assert "RapidOCR" not in code_cells[0].source or "getLogger" in code_cells[0].source
+    text = "".join(
+        out.get("text", "") for out in code_cells[0].get("outputs", []) if isinstance(out, dict)
+    )
+    assert "real output" in text
+    assert "model chatter" not in text
+    assert all(c.get("metadata", {}).get("npdf") != "hidden-setup" for c in nb.cells)

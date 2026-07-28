@@ -156,15 +156,10 @@ Groups iterate pandas-style, and each value is a real `PageCollection` — so ea
 Everything above required *you* to know the structure. Layout models claim to find it for you: hand them a page image, get back labeled regions. This is genuinely useful when the page has no readable text at all — so here's the scanned inspection report from the OCR page:
 
 :::caution[This downloads a model on first use]
-`analyze_layout("yolo")` downloads DocLayout-YOLO weights (`juliozhao/DocLayout-YOLO-DocStructBench`, tens of MB) into your Hugging Face cache on the first call. The `logging` lines keep the detector's and OCR engine's chatter out of the output.
+`analyze_layout("yolo")` downloads DocLayout-YOLO weights (`juliozhao/DocLayout-YOLO-DocStructBench`, tens of MB) into your Hugging Face cache on the first call.
 :::
 
 ```python
-import logging
-
-for chatty in ("doclayout_yolo", "RapidOCR", "huggingface_hub.utils._http"):
-    logging.getLogger(chatty).addFilter(lambda r: r.levelno >= logging.ERROR)
-
 scan = PDF("https://github.com/jsoma/natural-pdf/raw/main/pdfs/needs-ocr.pdf")
 spage = scan.pages[0]
 spage.analyze_layout('yolo')

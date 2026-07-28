@@ -438,6 +438,30 @@ def _shutdown_kernel(client: NotebookClient) -> None:
         pass
 
 
+# Injected as a hidden first cell before every page execution and removed
+# before outputs are harvested: noisy-library logging must never reach
+# published output, and readers should never see the plumbing. A filter is
+# attached (not just a level) because some libraries reconfigure their logger
+# at import time inside a later cell; a filter on the emitting logger
+# survives that.
+HIDDEN_LOG_SILENCER = """\
+import logging as _npdf_logging
+
+for _name in (
+    "RapidOCR",
+    "rapidocr",
+    "doclayout_yolo",
+    "huggingface_hub",
+    "huggingface_hub.utils._http",
+):
+    _logger = _npdf_logging.getLogger(_name)
+    _logger.addFilter(lambda record: record.levelno >= _npdf_logging.ERROR)
+    _logger.setLevel(_npdf_logging.ERROR)
+"""
+
+_HIDDEN_CELL_TAG = "hidden-setup"
+
+
 def execute_page_notebook(
     nodes: List[Node],
     *,
@@ -459,6 +483,10 @@ def execute_page_notebook(
             f"Internal fence/cell mismatch: parsed {expected} python fences "
             f"but jupytext produced {len(code_cells)} code cells"
         )
+
+    silencer = nbformat.v4.new_code_cell(source=HIDDEN_LOG_SILENCER)
+    silencer.metadata["npdf"] = _HIDDEN_CELL_TAG
+    notebook.cells.insert(0, silencer)
 
     client = _DocsNotebookClient(
         notebook,
@@ -493,6 +521,9 @@ def execute_page_notebook(
         raise DocsBuildError(f"Execution failed in {where}{snippet}:\n{traceback_text}") from exc
     finally:
         _shutdown_kernel(client)
+    notebook.cells = [
+        c for c in notebook.cells if c.get("metadata", {}).get("npdf") != _HIDDEN_CELL_TAG
+    ]
     return notebook
 
 
