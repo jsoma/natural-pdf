@@ -4,12 +4,7 @@ This section provides detailed documentation for the public classes and methods 
 
 ## Core Classes
 
-::: natural_pdf
-    options:
-      show_source: false
-      show_bases: true
-      inherited_members: true
-      members: true
+<!-- npdf-api:include id=natural-pdf -->
 
 Text extraction methods are inherited from the host-specific text contract
 mixins. The [text extraction contract reference](text-extraction.md) documents
@@ -35,43 +30,22 @@ from natural_pdf import (
 Their complete fields and validation rules are defined in
 `natural_pdf.text.contracts`.
 
-::: natural_pdf.text.contracts.TextLayoutOptions
-    options:
-      show_source: false
+<!-- npdf-api:include id=text-layout-options -->
 
-::: natural_pdf.text.contracts.ExtractedText
-    options:
-      show_source: false
+<!-- npdf-api:include id=extracted-text -->
 
-::: natural_pdf.text.contracts.SourceTextSegment
-    options:
-      show_source: false
+<!-- npdf-api:include id=source-text-segment -->
 
 The less commonly imported extraction hosts are documented explicitly below;
 they are not re-exported from the package root, but their signatures are part
 of the public contract:
 
-::: natural_pdf.elements.rect.RectangleElement
-    options:
-      show_source: false
-      inherited_members: true
+<!-- npdf-api:include id=rectangle-element -->
 
-::: natural_pdf.elements.element_collection.ElementCollection
-    options:
-      show_source: false
-      inherited_members: true
+<!-- npdf-api:include id=element-collection -->
 
-::: natural_pdf.flows.collections.FlowElementCollection
-    options:
-      show_source: false
-      inherited_members: true
+<!-- npdf-api:include id=flow-element-collection -->
 
-::: natural_pdf.flows.collections.FlowRegionCollection
-    options:
-      show_source: false
-      inherited_members: true
+<!-- npdf-api:include id=flow-region-collection -->
 
-::: natural_pdf.flows.element.FlowElement
-    options:
-      show_source: false
-      inherited_members: true
+<!-- npdf-api:include id=flow-element -->

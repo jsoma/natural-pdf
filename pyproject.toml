@@ -93,6 +93,9 @@ docs = [
     "mkdocs-redirects",
     "mkdocstrings[python]",
     "pymdown-extensions",
+    # Direct dependency: scripts/generate_api_reference.py must keep working
+    # after the mkdocs stack (and its transitive griffe) is removed.
+    "griffelib>=2.0.2,<3",
 ]
 
 test = [
