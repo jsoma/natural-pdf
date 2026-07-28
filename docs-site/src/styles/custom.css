@@ -4,6 +4,12 @@
  * custom properties. Keep this small; don't port the Material stylesheet.
  */
 
+/* With the right-hand TOC removed, let the content column use the freed
+ * space. Starlight's default cap is 45rem. */
+:root {
+  --sl-content-width: 62rem;
+}
+
 /* ---------------------------------------------------------------- Tabs.
  * Markup comes from src/plugins/remark-npdf-tabs.mjs; behavior from
  * src/scripts/tabs.ts. Before enhancement (or with JS disabled) the group
