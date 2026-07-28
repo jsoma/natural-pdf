@@ -1,0 +1,154 @@
+/* Natural PDF docs — project-owned styles.
+ *
+ * Targets only project-owned classes (.npdf-*) and documented Starlight
+ * custom properties. Keep this small; don't port the Material stylesheet.
+ */
+
+/* ---------------------------------------------------------------- Tabs.
+ * Markup comes from src/plugins/remark-npdf-tabs.mjs; behavior from
+ * src/scripts/tabs.ts. Before enhancement (or with JS disabled) the group
+ * renders as stacked sections whose .npdf-tab-label reads as a small
+ * heading. After enhancement the script injects a [role=tablist] of
+ * buttons and hides the label paragraphs. */
+
+.npdf-tabs {
+  margin: 1.5rem 0;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.npdf-tab {
+  padding: 0 1rem 0.25rem;
+}
+
+/* No-JS fallback: labels look like small headings separating the
+ * stacked sections. */
+.npdf-tab-label {
+  font-weight: 600;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-white);
+  border-block-end: 1px solid var(--sl-color-gray-5);
+  padding: 0.5rem 0 0.35rem;
+  margin-block-start: 0.5rem;
+}
+
+.npdf-tablist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.35rem 0.5rem 0;
+  border-block-end: 1px solid var(--sl-color-gray-5);
+  background-color: var(--sl-color-gray-6);
+}
+
+.npdf-tablist [role="tab"] {
+  appearance: none;
+  border: 0;
+  border-block-end: 2px solid transparent;
+  background: transparent;
+  color: var(--sl-color-gray-2);
+  font: inherit;
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.npdf-tablist [role="tab"]:hover {
+  color: var(--sl-color-white);
+}
+
+.npdf-tablist [role="tab"][aria-selected="true"] {
+  color: var(--sl-color-text-accent);
+  border-block-end-color: var(--sl-color-text-accent);
+}
+
+.npdf-tablist [role="tab"]:focus-visible {
+  outline: 2px solid var(--sl-color-text-accent);
+  outline-offset: -2px;
+}
+
+.npdf-tabs-enhanced .npdf-tab {
+  border: 0;
+}
+
+/* ---------------------------------------------------------- Card grid.
+ * docs/solve/index.md is authored as:
+ *   <div class="npdf-cards">
+ *     <a class="npdf-card" href="...">
+ *       <img ...>
+ *       <strong>Title</strong>
+ *       <span class="npdf-card-desc">desc</span>
+ *     </a>
+ *     ...
+ *   </div>
+ */
+
+.npdf-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.npdf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  text-decoration: none;
+  color: var(--sl-color-gray-2);
+  background-color: var(--sl-color-black);
+}
+
+.npdf-card:hover {
+  border-color: var(--sl-color-text-accent);
+}
+
+.npdf-card img {
+  width: 100%;
+  height: 9rem;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 0.25rem;
+  border: 1px solid var(--sl-color-gray-5);
+  margin: 0;
+}
+
+.npdf-card strong {
+  color: var(--sl-color-white);
+  font-size: var(--sl-text-base);
+  line-height: 1.3;
+}
+
+.npdf-card-desc {
+  font-size: var(--sl-text-sm);
+  line-height: 1.4;
+}
+
+/* -------------------------------------------------- Wide-table overflow.
+ * Executed pages embed rendered pandas DataFrames as raw <div><table>
+ * blocks. Wide tables must scroll in their own container instead of
+ * overflowing the page. Starlight already wraps *markdown* tables; this
+ * covers raw-HTML tables inside the page content. */
+
+.sl-markdown-content div:has(> table) {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.sl-markdown-content table {
+  max-width: 100%;
+}
+
+/* -------------------------------------------------------------- Images.
+ * Generated screenshots pass through unoptimized; keep them inside the
+ * content column and at a modest size. */
+
+.sl-markdown-content img {
+  max-width: 100%;
+  height: auto;
+}

@@ -1,0 +1,15 @@
+---
+// Starlight Head component override.
+//
+// Renders the default Starlight head, then:
+// - emits a Vite-bundled favicon link (the file lives in src/assets/, so it
+//   works even before the staging script populates public/);
+// - loads the tab-enhancement script site-wide. The <script> below is
+//   processed by Astro, so Vite bundles tabs.ts into a hashed asset.
+import Default from "@astrojs/starlight/components/Head.astro";
+import faviconUrl from "../assets/favicon.svg?url";
+---
+
+<Default />
+<link rel="icon" type="image/svg+xml" href={faviconUrl} />
+<script src="../scripts/tabs.ts"></script>

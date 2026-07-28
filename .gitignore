@@ -317,3 +317,11 @@ datasets/
 docs-executed/
 docs-staging/
 docs-build/
+
+# Starlight docs site (docs-site/src/content/docs/ and docs-site/public/
+# are populated by scripts/docs_stage.py)
+docs-site/node_modules/
+docs-site/dist/
+docs-site/.astro/
+docs-site/src/content/docs/
+docs-site/public/
