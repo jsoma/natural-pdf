@@ -135,7 +135,20 @@ COLAB_BRANCH = "main"
 # with --colab-ref / --colab-prefix when the deployment layout differs.
 COLAB_DEFAULT_REF = "gh-pages"
 COLAB_DEFAULT_PREFIX = ""
-PIP_INSTALL_CELL = '%pip install "natural-pdf[all]"'
+# The install cell handles a Colab trap: the runtime imports PIL at startup,
+# and pdfplumber's Pillow floor can force pip to replace Pillow on disk under
+# the live kernel. Mixing cached old modules with new files breaks the next
+# PIL import (e.g. "cannot import name '_Ink'"), so when the installed
+# Pillow no longer matches the imported one, restart the runtime once.
+PIP_INSTALL_CELL = """%pip install -q "natural-pdf[all]"
+
+import importlib.metadata, PIL
+
+if importlib.metadata.version("pillow") != PIL.__version__:
+    print("Pillow was upgraded; restarting the runtime — run the cells again once it reconnects.")
+    import os
+
+    os.kill(os.getpid(), 9)"""
 SKIP_CELL_COMMENT = "# This cell is illustrative — requires client/API setup"
 ASSET_HASH_LENGTH = 12
 RAW_FIXTURE_BASE = f"https://raw.githubusercontent.com/{COLAB_REPO}/{COLAB_BRANCH}"
