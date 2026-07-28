@@ -72,7 +72,7 @@ def test_pull_request_workflow_builds_and_verifies_starlight_site():
     assert "uv run --extra docs python scripts/docs_stage.py" in workflow
     assert "npm ci" in workflow
     assert "npm run build" in workflow
-    assert "uv run pytest tests/test_docs_site_output.py" in workflow
+    assert "uv run --extra test pytest tests/test_docs_site_output.py" in workflow
 
 
 def test_authored_docs_use_mkdocs_compatible_skip_fences_and_links():
