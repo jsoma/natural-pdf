@@ -152,6 +152,13 @@ for path in pdf_paths:
 - Most changes need a test; prefer test-driven development
 - Tutorials are markdown files in `docs/` — edit `.md`, not `.ipynb`
 
+### Docs site (Astro Starlight)
+- Execute a page's code cells: `uv run python scripts/docs_build.py docs/learn/02-ocr.md --out temp/exec-out` (accepts a single `.md` or a directory; never point `--out` at `docs-executed/` directly — it prunes outputs outside its source set)
+- Build the site: `uv run --extra docs python scripts/generate_api_reference.py && uv run --extra docs python scripts/docs_stage.py && npm --prefix docs-site run build`
+- Verify the built site: `uv run pytest tests/test_docs_site_output.py`
+- Live authoring: `npm --prefix docs-site run dev`, then re-run `docs_stage.py` after edits
+- Nav and redirects live in `docs-site/astro.config.mjs`; site CSS in `docs-site/src/styles/custom.css`
+
 ### Documentation Style
 - **Say what to do, what happens, and what to try if it doesn't work.** No padding.
 - **No empty adjectives.** Don't call things "robust", "seamless", "comprehensive", "intelligent", "friendly", or "lightweight" unless you're immediately explaining what that means concretely.
