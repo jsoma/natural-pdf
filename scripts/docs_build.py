@@ -138,8 +138,11 @@ COLAB_DEFAULT_PREFIX = ""
 # Keep this cell a plain install. Colab imports PIL at kernel startup, so any
 # dependency that forces a Pillow replacement breaks the next PIL import until
 # the runtime restarts — natural-pdf's own dependency bounds (pdfplumber cap
-# in pyproject.toml) are chosen so pip never needs to touch Pillow here.
-PIP_INSTALL_CELL = '%pip install -q "natural-pdf[all]"'
+# in pyproject.toml) are chosen so pip never needs to touch Pillow here. The
+# explicit pdfplumber cap below shields readers who get a published
+# natural-pdf that predates the pyproject cap; remove it together with the
+# pyproject cap once Colab ships Pillow >=12.2.
+PIP_INSTALL_CELL = '%pip install -q "natural-pdf[all]" "pdfplumber<0.11.10"'
 SKIP_CELL_COMMENT = "# This cell is illustrative — requires client/API setup"
 ASSET_HASH_LENGTH = 12
 RAW_FIXTURE_BASE = f"https://raw.githubusercontent.com/{COLAB_REPO}/{COLAB_BRANCH}"
