@@ -44,7 +44,7 @@ clean_text = page.extract_text()
 The documentation is organized into six sections:
 
 - **[Get Started](get-started/index.md)** - Install Natural PDF (base vs. `[all]`), open a PDF, and extract your first value and table. Includes a [translation guide for pdfplumber users](get-started/from-pdfplumber.md).
-- **[Learn](learn/index.md)** - A five-part course: [text and tables](learn/01-text-and-tables.md), [OCR](learn/02-ocr.md), [AI extraction](learn/03-ai-extraction.md), [page structure](learn/04-page-structure.md), and [putting it together across whole documents](learn/05-putting-it-together.md).
+- **[Learn](learn/index.md)** - A six-part course: [text and tables](learn/01-text-and-tables.md), [OCR](learn/02-ocr.md), [AI extraction](learn/03-ai-extraction.md), [page structure](learn/04-page-structure.md), [grids](learn/05-grids.md), and [putting it together across whole documents](learn/06-putting-it-together.md).
 - **[Concepts](concepts/index.md)** - How the library actually works: the [spatial model](concepts/spatial-model.md), [how text becomes elements](concepts/text-and-elements.md), [exclusions](concepts/exclusions.md), [selectors](concepts/selectors.md), [a table-extraction decision guide](concepts/tables.md), and [engines and models](concepts/engines-and-models.md).
 - **[Solve](solve/index.md)** - Worked solutions to real problem documents: multi-column reflow, zebra-stripe tables, pixelated scans, multi-page tables, and more.
 - **[Troubleshooting](troubleshooting/index.md)** - Symptom-indexed fixes for empty extractions, garbled text, missed rows, and OCR failures.

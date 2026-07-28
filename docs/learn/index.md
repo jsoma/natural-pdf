@@ -15,8 +15,10 @@ yourself.
    structured records with LLMs, classify documents — and see exactly where
    AI extraction fails.
 4. **[Page structure](04-page-structure.md)** — multi-column reflow, content
-   that spans pages, layout models, and building table grids with guides.
-5. **[Putting it together](05-putting-it-together.md)** — the capstone: turn
+   that spans pages, and layout models.
+5. **[Grids](05-grids.md)** — build table grids from headers, whitespace,
+   content anchors, or pixel lines, and read drawn checkboxes.
+6. **[Putting it together](06-putting-it-together.md)** — the capstone: turn
    a five-page library weeding report into one clean DataFrame, then batch
    the whole thing.
 

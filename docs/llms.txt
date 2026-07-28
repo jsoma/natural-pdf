@@ -25,7 +25,8 @@ Natural PDF combines traditional PDF parsing with modern AI capabilities. It pro
 - [OCR](/docs/learn/02-ocr/): RapidOCR, PaddleOCR, DocTR, and VLM OCR
 - [AI Extraction](/docs/learn/03-ai-extraction/): Question answering, structured extraction, classification
 - [Page Structure](/docs/learn/04-page-structure/): Layout analysis, regions, sections, multi-page flows
-- [Putting It Together](/docs/learn/05-putting-it-together/): Batch processing whole documents
+- [Grids](/docs/learn/05-grids/): Table grids from headers, whitespace, content anchors, or pixel lines
+- [Putting It Together](/docs/learn/06-putting-it-together/): Batch processing whole documents
 - [Solve](/docs/solve/): Worked solutions to real problem documents
 - [Troubleshooting](/docs/troubleshooting/): Symptom-indexed fixes
 
