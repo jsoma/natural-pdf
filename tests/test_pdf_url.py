@@ -68,6 +68,7 @@ def test_pdf_url_download_sends_user_agent(monkeypatch):
 
 
 def test_url_exports_reuse_retained_source_bytes(monkeypatch, tmp_path):
+    pytest.importorskip("pikepdf", reason="exporters need the export extra")
     with open(TEST_PDF, "rb") as fh:
         pdf_bytes = fh.read()
 

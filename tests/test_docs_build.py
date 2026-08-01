@@ -964,9 +964,16 @@ def test_starlight_asides_do_not_break_jupytext_parsing(docs_build):
     )
     nb = jupytext.reads(page, fmt="md:markdown")
     assert sum(1 for c in nb.cells if c.cell_type == "code") == 1
-    # the exact failure mode of the unpinned "md" format:
-    sniffed = jupytext.reads(page, fmt="md")
-    assert sum(1 for c in sniffed.cells if c.cell_type == "code") == 0
+    # The failure mode of the unpinned "md" format: the ::: aside makes
+    # jupytext sniff the page as pandoc markdown. With pandoc installed the
+    # code fence is lost; without pandoc the read raises. Either outcome
+    # proves the misrouting.
+    try:
+        sniffed = jupytext.reads(page, fmt="md")
+    except jupytext.pandoc.PandocError:
+        pass
+    else:
+        assert sum(1 for c in sniffed.cells if c.cell_type == "code") == 0
 
 
 def test_hidden_silencer_mutes_noisy_loggers_and_leaves_no_trace(docs_build, tmp_path):

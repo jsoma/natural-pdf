@@ -403,7 +403,14 @@ def test_destination_swap_during_initial_validation_is_never_authorized(pdf, out
 
     monkeypatch.setattr(td, "path_has_identity", swap_then_check)
 
-    with pytest.raises(FileExistsError, match="changed during validation"):
+    # The swap is usually caught by the identity re-check during validation,
+    # but rmtree+mkdir can hand the new directory the same (st_dev, st_ino)
+    # (inode reuse, common on Linux tmpfs); then the swap is caught by the
+    # promote-time re-validation instead. Both refusal paths are correct.
+    with pytest.raises(
+        FileExistsError,
+        match="changed during validation|claimed destination no longer",
+    ):
         export_training_data(pdf, out_dir, overwrite=True)
 
     assert (Path(out_dir) / "valuable.txt").read_text(encoding="utf-8") == "foreign"
