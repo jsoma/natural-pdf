@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 - 2026-08-01
 
 ### Breaking changes
 
@@ -223,6 +223,47 @@
   a `RuntimeWarning`.
 - Declared `openpyxl` in the `export` extra, exposed `set_option` from the package
   root, and removed obsolete pytest asyncio configuration.
+
+## 0.6.5 - 2026-06-17
+
+- Fixed word fragmentation on decorated text: underlines/strikes drawn as
+  multiple overlapping line segments no longer shatter words at segment joins
+  (per-char decoration coverage is now measured against the merged segments).
+- Thread-safety hardening: locks around the PDF context, engine registries, and
+  the OCR engine cache, including a fix for a double-build memory leak when a
+  creation race was lost.
+- Silent failures now surface: stream byte-capture, shadowed exclusions, and QA
+  segment errors warn or propagate instead of passing silently, and engine
+  lookup errors list the available engines.
+- Added a bare-install test session and CI job; pinned lint tooling.
+
+## 0.6.4 - 2026-05-27
+
+- Fixed OCR cache scoping and guide line detection regressions introduced in
+  0.6.3.
+
+## 0.6.3 - 2026-05-27
+
+- Tables: anchored-row table recovery, fixed the fallback for partial guide
+  table extraction, normalized VLM OCR table markup, and preserved inferred
+  spaces in region text extraction.
+- Guides: line detection shares both-axis results, the pixel line detection
+  pipeline is faster, and detection no longer mutates pages; added a
+  guide-window OCR workflow.
+- Checkboxes: v2 detector model plus a magnified detection pass.
+- Rendering and performance: cropped pages render directly with pdfium,
+  describe paths avoid materializing chars, improved highlight rendering and
+  legends, and added a performance harness.
+- Fixed TATR config loading and region OCR cache scoping; capped `to_llm` dense
+  previews; folded MLX VLM support into the `ai` extra; CI and workflow
+  dependency fixes.
+
+## 0.6.2 - 2026-05-06
+
+- RapidOCR is now the default OCR install.
+- Faster word extraction for guide table cells; typing overloads for textmap
+  extraction.
+- Docs now point at the standalone extractor platform repo.
 
 ## 0.6.1 - 2026-04-09
 
